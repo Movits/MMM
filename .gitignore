@@ -1,0 +1,44 @@
+# Segredos — nunca commitar
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Dependências
+node_modules/
+.pnp/
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Build
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Ferramentas
+.cache/
+coverage/
+.pytest_cache/
+.eslintcache
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Dados exportados / backups — não versionar dado pessoal
+*.sqlite
+*.db
+backups/
+dumps/
