@@ -1,7 +1,7 @@
 # Arquitetura — MMM (Mulheres que Movem o Mundo)
 
 > Documento de arquitetura, escrito em 25/08/2026 a partir das 13 seções de escopo
-> enviadas pela Glenda Marques em 06/08/2026 e das notas da reunião de 05/08/2026.
+> enviadas pela Glenda em 06/08/2026 e das notas da reunião de 05/08/2026.
 
 ## Para que serve este documento
 
