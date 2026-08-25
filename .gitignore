@@ -42,3 +42,6 @@ Thumbs.db
 *.db
 backups/
 dumps/
+
+# Configuração pessoal do Claude Code
+.claude/settings.local.json
