@@ -1,20 +1,24 @@
-# Modelo de dados — MMM
+# Modelo de dados
 
-Postgres. DDL simplificado: índices, regras de linha e triggers de auditoria estão
-descritos em [privacidade.md](./privacidade.md) e omitidos aqui para o desenho ficar
-legível.
+Postgres 13 ou superior (o DDL usa `gen_random_uuid()`, nativo a partir do 13; em
+versões anteriores, habilitar a extensão `pgcrypto`). DDL simplificado: as regras de
+linha (RLS) estão em [privacidade.md](./privacidade.md); os índices mínimos e os
+triggers ficam nas seções próprias no fim deste arquivo.
 
-As tabelas estão agrupadas por assunto, para leitura. **Na hora de criar de verdade,
-a ordem é outra**, porque uma tabela não pode referenciar outra que ainda não existe:
+As tabelas estão agrupadas por assunto, para leitura. Na hora de criar de verdade,
+a ordem é outra, porque uma tabela não pode referenciar outra que ainda não existe:
 
 ```
 taxonomia_item → taxonomia_sinonimo → usuario → usuario_papel → documento_versao
-→ perfil_membro → perfil_membro_area → contato → contato_atributo
+→ perfil_membro → perfil_membro_area → contato
 → contexto → contexto_contato → contexto_arquivo
 → reuniao → reuniao_transcricao → reuniao_extracao
-→ consentimento → match → oportunidade → oportunidade_evento → oportunidade_parte
+→ contato_atributo → consentimento → match
+→ oportunidade → oportunidade_evento → oportunidade_parte
 → autorizacao_ouro → compartilhamento → auditoria
 ```
+
+`contato_atributo` vem depois de `reuniao_extracao` porque referencia essa tabela.
 
 ## Visão geral das entidades
 
@@ -28,7 +32,7 @@ erDiagram
     contato }o--o{ contexto : "foi conhecido em"
     taxonomia_item ||--o{ contato_atributo : "classifica"
     contexto ||--o{ reuniao : "abriga"
-    reuniao ||--|| reuniao_transcricao : "gera"
+    reuniao ||--o| reuniao_transcricao : "gera"
     reuniao ||--o{ reuniao_extracao : "gera"
     reuniao_extracao |o--o| contato : "vira"
     contato_atributo ||--o{ match : "casa com"
@@ -53,43 +57,52 @@ CREATE TABLE usuario (
 );
 
 -- Papéis são acumuláveis: alguém pode ser Ouro e Corretor ao mesmo tempo.
--- Por isso é tabela, não uma coluna "perfil" em usuario.
+-- id surrogate em vez de PK (usuario_id, papel): revogar e conceder de novo
+-- gera uma linha nova, preservando o histórico. O índice parcial impede duas
+-- concessões ativas do mesmo papel.
 CREATE TABLE usuario_papel (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   usuario_id     uuid NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
   papel          text NOT NULL CHECK (papel IN ('membro','ouro','corretor','admin')),
   concedido_em   timestamptz NOT NULL DEFAULT now(),
   concedido_por  uuid REFERENCES usuario(id),
-  revogado_em    timestamptz,
-  PRIMARY KEY (usuario_id, papel)
+  revogado_em    timestamptz
 );
+CREATE UNIQUE INDEX usuario_papel_ativo
+  ON usuario_papel (usuario_id, papel) WHERE revogado_em IS NULL;
 ```
 
 ## Perfil do membro
 
-É aqui que moram os ajustes A4 a A8 das notas do Gabriel. Separado de `usuario`
-porque são dados de negócio, não de autenticação.
+Ajustes A4 a A8. Separado de `usuario` porque são dados de negócio, não de
+autenticação.
 
 ```sql
 CREATE TABLE perfil_membro (
   usuario_id          uuid PRIMARY KEY REFERENCES usuario(id) ON DELETE CASCADE,
-  natureza            text CHECK (natureza IN ('PF','PJ','MEI','terceiro_setor')),  -- A6
+  natureza            text NOT NULL
+                      CHECK (natureza IN ('PF','PJ','MEI','terceiro_setor')),       -- A6
   cnpj                text,                                                          -- A7
   porte               text CHECK (porte IN ('MEI','micro','pequena','media','grande')),
   genero              text CHECK (genero IN ('masculino','feminino','nao_informado')),-- A4
   setor_principal_id  uuid REFERENCES taxonomia_item(id),                            -- A5
   setor_texto_livre   text,                    -- A5: quando não está na lista
-  modalidades         text[] NOT NULL DEFAULT '{}',  -- A8: {'presencial','online'}
+  modalidades         text[] NOT NULL DEFAULT '{}'
+                      CHECK (modalidades <@ ARRAY['presencial','online']),           -- A8
   atualizado_em       timestamptz NOT NULL DEFAULT now(),
 
-  -- CNPJ obrigatório para PJ e MEI, proibido para PF
+  -- CNPJ obrigatório para toda pessoa jurídica (PJ, MEI e terceiro setor:
+  -- associações e fundações também têm CNPJ); proibido para PF.
   CONSTRAINT cnpj_coerente CHECK (
-    (natureza IN ('PJ','MEI') AND cnpj IS NOT NULL)
-    OR (natureza NOT IN ('PJ','MEI') AND cnpj IS NULL)
+    (natureza IN ('PJ','MEI','terceiro_setor') AND cnpj IS NOT NULL)
+    OR (natureza = 'PF' AND cnpj IS NULL)
   )
 );
 
--- A1, A2, A3: mínimo 1, máximo 5 áreas. O limite é validado por trigger,
--- porque CHECK não consegue contar linhas de outra tabela.
+-- A1, A2, A3: mínimo 1, máximo 5 áreas. O máximo é validado por trigger.
+-- O mínimo não tem como ser garantido por trigger simples (o perfil nasce com
+-- zero áreas antes do primeiro INSERT aqui): usar constraint trigger deferida
+-- ou validar na aplicação no fluxo de cadastro.
 CREATE TABLE perfil_membro_area (
   usuario_id  uuid NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
   area_id     uuid NOT NULL REFERENCES taxonomia_item(id),
@@ -99,7 +112,7 @@ CREATE TABLE perfil_membro_area (
 
 ---
 
-## Taxonomia — o coração do Match
+## Taxonomia
 
 ```sql
 CREATE TABLE taxonomia_item (
@@ -114,9 +127,11 @@ CREATE TABLE taxonomia_item (
 );
 
 -- Faz 'terras raras', 'terra rara' e 'rare earth' caírem no mesmo item.
+-- UNIQUE global no termo: um mesmo sinônimo não pode apontar para dois itens,
+-- senão a resolução fica ambígua.
 CREATE TABLE taxonomia_sinonimo (
   item_id  uuid NOT NULL REFERENCES taxonomia_item(id) ON DELETE CASCADE,
-  termo    text NOT NULL,
+  termo    text NOT NULL UNIQUE,
   PRIMARY KEY (item_id, termo)
 );
 ```
@@ -132,7 +147,7 @@ CREATE TABLE taxonomia_sinonimo (
 ```sql
 CREATE TABLE contato (
   id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  dono_usuario_id      uuid NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+  dono_usuario_id      uuid NOT NULL REFERENCES usuario(id) ON DELETE RESTRICT,
   -- Quando o contato também é membro do MMM, aponta para ele.
   -- O perfil da própria usuária é um contato cujo dono e vinculado são ela mesma.
   usuario_vinculado_id uuid REFERENCES usuario(id),
@@ -159,10 +174,10 @@ CREATE TABLE contato (
 );
 
 -- Etapa 2 e ajuste A9: as duas pontas na MESMA tabela, distinguidas por direcao.
--- É isso que torna a consulta de Match simétrica e faz A9 sair de graça.
+-- Torna a consulta de Match simétrica e atende o A9 sem tabela adicional.
 CREATE TABLE contato_atributo (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  contato_id     uuid NOT NULL REFERENCES contato(id) ON DELETE CASCADE,
+  contato_id     uuid NOT NULL REFERENCES contato(id) ON DELETE RESTRICT,
   direcao        text NOT NULL CHECK (direcao IN ('possui','procura')),
 
   item_id        uuid REFERENCES taxonomia_item(id),
@@ -170,20 +185,29 @@ CREATE TABLE contato_atributo (
 
   origem         text NOT NULL DEFAULT 'manual'
                  CHECK (origem IN ('manual','reuniao','ia')),
-  origem_id      uuid,          -- aponta para reuniao_extracao quando origem <> manual
+  origem_id      uuid REFERENCES reuniao_extracao(id),  -- quando origem <> manual
   confianca      numeric CHECK (confianca BETWEEN 0 AND 1),
   criado_em      timestamptz NOT NULL DEFAULT now(),
 
   -- Um atributo precisa ser da lista OU texto livre. Nunca vazio.
   CONSTRAINT tem_conteudo CHECK (item_id IS NOT NULL OR texto_livre IS NOT NULL)
 );
+
+-- Sem isto, duas linhas idênticas geram matches duplicados.
+CREATE UNIQUE INDEX contato_atributo_unico
+  ON contato_atributo (contato_id, direcao, item_id) WHERE item_id IS NOT NULL;
 ```
 
 > **Por que `direcao` em vez de duas tabelas.** Com uma tabela só, o Match é um
 > `JOIN` da tabela nela mesma: `a.direcao='possui' AND b.direcao='procura' AND
-> a.item_id = b.item_id`. Com duas tabelas, e mais duas para o perfil do membro, o
-> mesmo cruzamento vira quatro consultas diferentes que precisam ficar em sincronia.
-> É a diferença entre o Match ser uma consulta e ser um problema.
+> a.item_id = b.item_id`. Com duas tabelas, o mesmo cruzamento vira consultas
+> paralelas que precisam ficar em sincronia.
+
+> **Por que `ON DELETE RESTRICT` nesta cadeia.** `contato`, `contato_atributo` e
+> `match` carregam a trilha que sustenta oportunidades e auditoria. Exclusão em
+> cascata apagaria esse histórico (e falharia no meio quando encontrasse uma
+> oportunidade). Exclusão de conta (LGPD) é uma rotina própria: anonimizar os dados
+> pessoais e desativar o usuário, nunca `DELETE` físico da cadeia.
 
 ---
 
@@ -192,7 +216,7 @@ CREATE TABLE contato_atributo (
 ```sql
 CREATE TABLE contexto (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  dono_usuario_id  uuid NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+  dono_usuario_id  uuid NOT NULL REFERENCES usuario(id) ON DELETE RESTRICT,
   tipo             text NOT NULL,   -- congresso, missao, embaixada, evento_mmm...
   nome             text NOT NULL,
   data             date,
@@ -224,14 +248,15 @@ CREATE TABLE contexto_arquivo (
 ```sql
 CREATE TABLE reuniao (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  dono_usuario_id  uuid NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+  dono_usuario_id  uuid NOT NULL REFERENCES usuario(id) ON DELETE RESTRICT,
   contexto_id      uuid REFERENCES contexto(id),
   titulo           text,
   iniciada_em      timestamptz NOT NULL DEFAULT now(),
   encerrada_em     timestamptz,
   audio_url        text,
   status           text NOT NULL DEFAULT 'gravando'
-                   CHECK (status IN ('gravando','processando','transcrita','revisada','erro')),
+                   CHECK (status IN ('gravando','processando','transcrita',
+                                     'extraindo','em_revisao','revisada','erro')),
 
   -- Gravar terceiros exige aviso. Registrar QUE o aviso foi dado e em qual versão.
   consentimento_documento_id uuid REFERENCES documento_versao(id),
@@ -268,9 +293,8 @@ CREATE TABLE reuniao_extracao (
 );
 ```
 
-> **`trecho_origem` é `NOT NULL` de propósito.** Se a IA não consegue apontar onde na
-> transcrição a informação apareceu, ela não deveria estar sugerindo essa informação.
-> É a trava que impede um telefone inventado de virar cadastro.
+> **`trecho_origem` é `NOT NULL` de propósito.** Se a IA não aponta de onde na
+> transcrição a informação saiu, não sugere.
 
 ---
 
@@ -288,6 +312,10 @@ CREATE TABLE documento_versao (
   UNIQUE (tipo, versao)
 );
 
+-- No máximo uma versão vigente por tipo de documento.
+CREATE UNIQUE INDEX documento_vigente_unico
+  ON documento_versao (tipo) WHERE vigente;
+
 CREATE TABLE consentimento (
   id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   usuario_id           uuid NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
@@ -299,14 +327,13 @@ CREATE TABLE consentimento (
 );
 ```
 
-> **Versionar o documento é o que transforma consentimento em prova.** Guardar só
-> "fulano aceitou" não serve: seis meses depois ninguém sabe o que ele aceitou. E
-> revogação é uma data preenchida, nunca um `DELETE` — o histórico precisa mostrar
-> que houve consentimento no período em que os dados foram usados.
+> Versionar o documento é o que transforma consentimento em prova: "fulano aceitou"
+> sem versão não diz o que ele aceitou. Revogação é uma data preenchida, nunca um
+> `DELETE`. Se o consentimento dado numa versão antiga do termo continua valendo
+> quando sai uma versão nova é decisão em aberto (ver decisoes-em-aberto.md).
 >
-> Isso destrava o A11 e a etapa 13 **antes** de o texto jurídico ficar pronto: a
-> mecânica se constrói agora, o texto entra como uma linha em `documento_versao`
-> quando a Glenda entregar.
+> Isso destrava o A11 e a etapa 13 antes de o texto jurídico ficar pronto: a
+> mecânica se constrói agora, o texto entra como uma linha em `documento_versao`.
 
 ---
 
@@ -315,8 +342,8 @@ CREATE TABLE consentimento (
 ```sql
 CREATE TABLE match (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  atributo_possui_id  uuid NOT NULL REFERENCES contato_atributo(id) ON DELETE CASCADE,
-  atributo_procura_id uuid NOT NULL REFERENCES contato_atributo(id) ON DELETE CASCADE,
+  atributo_possui_id  uuid NOT NULL REFERENCES contato_atributo(id) ON DELETE RESTRICT,
+  atributo_procura_id uuid NOT NULL REFERENCES contato_atributo(id) ON DELETE RESTRICT,
   item_id           uuid NOT NULL REFERENCES taxonomia_item(id),  -- o que casou
   score             numeric NOT NULL,
   status            text NOT NULL DEFAULT 'sugerido'
@@ -324,7 +351,16 @@ CREATE TABLE match (
   gerado_em         timestamptz NOT NULL DEFAULT now(),
   UNIQUE (atributo_possui_id, atributo_procura_id)
 );
+```
 
+> **Integridade do match.** `CHECK` não faz subconsulta, então nada aqui garante que
+> `atributo_possui_id` aponte para uma linha com `direcao='possui'` nem que os dois
+> atributos e `item_id` casem entre si. Duas defesas, usar pelo menos uma: um
+> trigger de validação no INSERT, ou `REVOKE INSERT` nesta tabela para a role da
+> aplicação, deixando a escrita só para a role do motor de Match (ver
+> privacidade.md).
+
+```sql
 CREATE TABLE oportunidade (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   match_id            uuid NOT NULL REFERENCES match(id),
@@ -358,11 +394,10 @@ CREATE TABLE oportunidade_parte (
 );
 ```
 
-> **Por que `oportunidade_evento` existe.** A etapa 12 pede "tempo médio de
-> negociação" e "taxa de conversão". Se `oportunidade.status` for só sobrescrito,
-> essas duas métricas são impossíveis de calcular depois — a informação de quando
-> mudou já foi perdida. Gravando cada transição como evento, os cinco indicadores
-> saem de uma consulta, sem trabalho extra.
+> **Por que `oportunidade_evento` existe.** A etapa 12 pede tempo médio de
+> negociação e taxa de conversão. Se `oportunidade.status` for só sobrescrito, a
+> informação de quando mudou se perde e essas métricas ficam incalculáveis. Com
+> eventos, os cinco indicadores saem de uma consulta.
 
 ## Auditoria
 
@@ -380,13 +415,25 @@ CREATE TABLE auditoria (
 ```
 
 Append-only por trigger: sem `UPDATE`, sem `DELETE`. É o registro que sustenta a
-governança pedida na etapa 13 e a evidência de contorno do ajuste A13.
+governança da etapa 13 e a evidência de contorno do ajuste A13.
+
+## Índices mínimos
+
+Além dos índices únicos já declarados acima:
+
+```sql
+CREATE INDEX ON contato_atributo (item_id, direcao);          -- consulta de Match
+CREATE INDEX ON contato (dono_usuario_id);                    -- políticas RLS
+CREATE INDEX ON compartilhamento (usuario_id);                -- políticas RLS
+CREATE INDEX ON oportunidade_evento (oportunidade_id);        -- indicadores
+CREATE INDEX ON auditoria (entidade, entidade_id);            -- consulta de trilha
+```
 
 ---
 
-## A consulta de Match, inteira
+## A consulta de Match
 
-O motor da etapa 7, o "maior diferencial do MMM", é isto:
+O motor da etapa 7:
 
 ```sql
 SELECT
@@ -403,9 +450,10 @@ JOIN taxonomia_item ti ON ti.id = cp.item_id
 WHERE cp.item_id IS NOT NULL;       -- texto livre não entra no cruzamento
 ```
 
-`ti.nome` já é a explicação do match ("casaram em: terras raras"), que a etapa 7 pede
-que seja exibida. Ela sai da própria consulta, sem precisar ser gerada por IA.
+`ti.nome` já é a explicação do match ("casaram em: terras raras") que a etapa 7 pede
+que seja exibida; sai da própria consulta.
 
-O que falta acima são os filtros de permissão e de consentimento — eles estão em
-[privacidade.md](./privacidade.md), e **não são opcionais**: sem eles, o Match cruza
-dado que o dono não liberou.
+Esta é a forma didática. A versão completa, com os filtros de permissão (etapa 10) e
+de consentimento (etapa 11), está em
+[privacidade.md](./privacidade.md#a-consulta-de-match-integrada); os filtros não são
+opcionais, porque sem eles o Match cruza dado que o dono não liberou.
