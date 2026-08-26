@@ -1,5 +1,9 @@
 # Modelo de dados
 
+> Este desenho assume Postgres, e o código recuperado do Manus roda em MySQL. Qual
+> dos dois cede é a [D6](./decisoes-em-aberto.md), ainda em aberto. Até ela ser
+> respondida, o DDL que está no ar é o de `drizzle/`, não o daqui.
+
 Postgres 13 ou superior (o DDL usa `gen_random_uuid()`, nativo a partir do 13; em
 versões anteriores, habilitar a extensão `pgcrypto`). DDL simplificado: as regras de
 linha (RLS) estão em [privacidade.md](./privacidade.md); os índices mínimos e os

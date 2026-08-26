@@ -2,7 +2,9 @@
 
 ## v1.1 (25/08/2026)
 
-Revisão geral após painel de revisão (estilo, relevância e técnica).
+Revisão geral após painel de revisão (estilo, relevância e técnica). Traz também a
+`main` para dentro do branch: o código recuperado do Manus e a D6 (banco e
+hospedagem) entraram enquanto esta revisão estava aberta.
 
 Estilo, em todos os documentos: texto mais seco, sem travessões, sem citações de
 mensagens do time, sem repetição de argumento entre arquivos.
@@ -24,6 +26,10 @@ Correções técnicas no modelo:
   anonimização (LGPD); CHECK em `modalidades`; sinônimo de taxonomia único global;
   `usuario_papel` com id surrogate; seção de índices mínimos; requisito Postgres 13+.
 - `fluxos.md`: estados do diagrama alinhados ao CHECK do modelo.
+- `modelo-de-dados.md`: aviso no topo de que o desenho assume Postgres enquanto o
+  código roda em MySQL, apontando para a D6.
+- `README.md` e `decisoes-em-aberto.md`: mesma limpeza de estilo aplicada ao texto
+  que veio da `main`.
 - `decisoes-em-aberto.md`: três decisões de produto do modelo de acesso
   acrescentadas (escopo da autorização Ouro, cumulatividade dos níveis, validade do
   consentimento entre versões do termo).

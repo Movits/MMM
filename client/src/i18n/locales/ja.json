@@ -1,0 +1,635 @@
+{
+  "nav": {
+    "howItWorks": "仕組み",
+    "opportunities": "機会",
+    "security": "セキュリティ",
+    "login": "ログイン",
+    "startFree": "アカウントを作成",
+    "myDashboard": "マイダッシュボード",
+    "beta": "ベータ"
+  },
+  "hero": {
+    "badge": "グローバルな機会のエコシステム",
+    "headline1": "あなたの可能性を解き放つ",
+    "headline2": "志を同じくする女性とつながる",
+    "headline3": "あなたのキャリアを加速させる",
+    "headline4": "MMM OSで成功を掴む",
+    "subtitle": "あなたが誰であるか、何を求めているか、何を提供できるかをお聞かせください。私たちの人工知能があなたのプロフィールを深く分析し、単純なキーワードをはるかに超えた高い実際の適合性を持つリーダーや機会とあなたをつなぎます。",
+    "cta": "プロフィールを作成 →",
+    "ctaSecondary": "詳細を見る"
+  },
+  "stats": {
+    "users": "ユーザー",
+    "opportunities": "機会",
+    "satisfaction": "満足度",
+    "connections": "つながり"
+  },
+  "steps": {
+    "title": "MMM OSの仕組み",
+    "subtitle": "成功へのシンプルなステップ",
+    "step1": {
+      "title": "プロフィールを作成する",
+      "desc": "あなたのリーダーシップの旅と目標を共有してください。"
+    },
+    "step2": {
+      "title": "スマートマッチング",
+      "desc": "私たちのAIがあなたの完璧なつながりを見つけます。"
+    },
+    "step3": {
+      "title": "つながり、成長する",
+      "desc": "有意義な関係を築き、あなたの影響力を拡大しましょう。"
+    }
+  },
+  "opportunities": {
+    "title": "あなたのための機会",
+    "subtitle": "あなたの成長を加速させる多様な道",
+    "society": {
+      "label": "社会貢献",
+      "desc": "社会にポジティブな影響を与える機会を発見。"
+    },
+    "investment": {
+      "label": "投資",
+      "desc": "あなたのビジョンをサポートする投資家と出会う。"
+    },
+    "mentorship": {
+      "label": "メンターシップ",
+      "desc": "経験豊富なメンターから学び、次世代を指導する。"
+    },
+    "partnership": {
+      "label": "パートナーシップ",
+      "desc": "相乗効果を生み出す戦略的パートナーシップを築く。"
+    },
+    "projects": {
+      "label": "プロジェクト",
+      "desc": "革新的なプロジェクトで協力し、あなたの専門知識を披露する。"
+    },
+    "jobs": {
+      "label": "キャリア機会",
+      "desc": "あなたのスキルと野心に合ったエグゼクティブな役割を見つける。"
+    }
+  },
+  "testimonials": {
+    "title": "私たちのコミュニティの声",
+    "subtitle": "MMM OSが女性リーダーの人生をどのように変えたか",
+    "score": "平均スコア",
+    "t1": {
+      "name": "Ana Paula M.",
+      "text": "3日間で私のプロフィールを完全に補完するパートナーを見つけました。互換性スコアは94%でした。今日、私たちはパートナーです。"
+    },
+    "t2": {
+      "name": "Fernanda R.",
+      "text": "プラットフォームは私の投資論文に本当に合った8人の創業者を紹介してくれました。1ヶ月未満で2件の取引を締結しました。"
+    },
+    "t3": {
+      "name": "Camila V.",
+      "text": "他の方法では決して見つけられなかった幹部から3つのメンタリング提案を受けました。AIは私が必要としているものを正確に理解していました。"
+    },
+    "match": "マッチ度"
+  },
+  "security": {
+    "title": "あなたの安全は私たちの最優先事項です",
+    "subtitle": "信頼とプライバシーのために構築されたプラットフォーム",
+    "encryption": {
+      "title": "エンドツーエンド暗号化",
+      "desc": "あなたのデータは常に保護されています。"
+    },
+    "verification": {
+      "title": "厳格なプロファイル認証",
+      "desc": "本物のつながりのみを保証します。"
+    },
+    "control": {
+      "title": "あなたのプライバシーを完全に管理",
+      "desc": "誰と何を共有するかを決定します。"
+    },
+    "rateLimit": {
+      "title": "レート制限",
+      "desc": "攻撃からの保護"
+    }
+  },
+  "cta": {
+    "title": "あなたの未来を形作る準備はできていますか？",
+    "subtitle": "今すぐ参加して、あなたのリーダーシップの旅を始めましょう。",
+    "button": "アカウントを作成"
+  },
+  "footer": {
+    "tagline": "女性リーダーのための力を与えるつながり。",
+    "rights": "© 2026 MMM OS. 全著作権所有。",
+    "privacy": "プライバシー",
+    "terms": "利用規約",
+    "contact": "お問い合わせ"
+  },
+  "onboarding": {
+    "title": "あなたの旅を始めましょう",
+    "subtitle": "卓越した女性をつなぐAI",
+    "step": "ステップ {{current}} / {{total}}",
+    "next": "次へ",
+    "back": "戻る",
+    "finish": "完了",
+    "saving": "保存中...",
+    "name": "あなたの名前",
+    "bio": "あなたの略歴",
+    "specialty": "あなたの専門分野",
+    "sector": "あなたの業界",
+    "seeking": {
+      "strategic_partner": "戦略的パートナー",
+      "strategic_partner_desc": "一緒に構築する人",
+      "investor": "投資家",
+      "investor_desc": "成長のための資本",
+      "mentor": "メンター",
+      "mentor_desc": "指導と経験",
+      "commercial_partner": "商業パートナー",
+      "commercial_partner_desc": "ビジネスと流通",
+      "team": "チーム/タレント",
+      "team_desc": "チームのための人材",
+      "job": "仕事/プロジェクト",
+      "job_desc": "職業的機会",
+      "advisor": "アドバイザー",
+      "advisor_desc": "専門的なアドバイス",
+      "be_mentor": "メンターになる",
+      "be_mentor_desc": "経験を共有する"
+    },
+    "values": {
+      "innovation": "イノベーション",
+      "social_impact": "社会的インパクト",
+      "autonomy": "自律性",
+      "fast_growth": "急速な成長",
+      "stability": "安定性",
+      "purpose": "目的",
+      "collaboration": "コラボレーション",
+      "results": "結果",
+      "diversity": "多様性",
+      "transparency": "透明性",
+      "sustainability": "持続可能性",
+      "technical_excellence": "技術的卓越性"
+    },
+    "location": "あなたの所在地",
+    "experience": "あなたの経験レベル",
+    "workStyle": {
+      "remote": "100%リモート",
+      "hybrid": "ハイブリッド",
+      "onsite": "オンサイト",
+      "flexible": "フレキシブル"
+    },
+    "investment": {
+      "none": "資本なし",
+      "under_10k": "¥300,000まで",
+      "10k_50k": "¥300k – ¥1.5M",
+      "50k_200k": "¥1.5M – ¥6M",
+      "200k_plus": "¥6M以上"
+    },
+    "steps": {
+      "s1_title": "あなたは誰ですか？",
+      "s1_sub": "基本から始めましょう",
+      "s2_title": "あなたの専門",
+      "s2_sub": "最も得意なことは？",
+      "s3_title": "何を探していますか？",
+      "s3_sub": "あなたの目標と目的",
+      "s4_title": "ビジネスの世界",
+      "s4_sub": "あなたのプロフェッショナルな宇宙",
+      "s5_title": "人生と価値観",
+      "s5_sub": "あなたを定義するもの",
+      "s6_title": "準備完了！",
+      "s6_sub": "確認してマッチを見つけましょう",
+      "s7_title": "私は誰か",
+      "s7_sub": "職業データとネットワーク",
+      "s8_title": "私が持つもの",
+      "s8_sub": "利用可能な資産とリソース",
+      "s9_title": "私が必要なもの",
+      "s9_sub": "要求とニーズ"
+    },
+    "specialties": {
+      "tech": "テクノロジー＆ソフトウェア",
+      "finance": "金融＆投資",
+      "design": "デザイン＆クリエイティビティ",
+      "marketing": "マーケティング＆セールス",
+      "legal": "法律＆コンプライアンス",
+      "engineering": "エンジニアリング＆インフラ",
+      "health": "健康＆ウェルネス",
+      "education": "教育＆研究",
+      "sustainability": "サステナビリティ＆ESG",
+      "retail": "小売＆Eコマース",
+      "gastronomy": "美食＆ホスピタリティ",
+      "startups": "スタートアップ＆イノベーション"
+    },
+    "sectors": {
+      "agribusiness": "農業ビジネス",
+      "construction": "建設",
+      "education": "教育",
+      "energy": "エネルギー＆ユーティリティ",
+      "entertainment": "エンターテインメント＆メディア",
+      "financial": "金融＆フィンテック",
+      "government": "政府＆公共部門",
+      "industry": "産業＆製造",
+      "logistics": "物流＆輸送",
+      "health": "健康＆ヘルステック",
+      "technology": "テクノロジー＆SaaS",
+      "telecom": "通信",
+      "tourism": "観光＆ホスピタリティ",
+      "retail": "小売＆消費者",
+      "other": "その他"
+    },
+    "companySizes": {
+      "micro": "マイクロ (1–9)",
+      "small": "小規模 (10–49)",
+      "medium": "中規模 (50–249)",
+      "large": "大規模 (250+)",
+      "any": "任意の規模"
+    },
+    "incomeRanges": {
+      "under_3k": "$1,000未満",
+      "3k_7k": "$1k – $3k",
+      "7k_15k": "$3k – $7k",
+      "15k_30k": "$7k – $15k",
+      "30k_plus": "$15k以上"
+    },
+    "investmentCapacities": {
+      "none": "利用可能な資本なし",
+      "under_10k": "$2,000未満",
+      "10k_50k": "$2k – $10k",
+      "50k_200k": "$10k – $40k",
+      "200k_plus": "$40k以上"
+    },
+    "workStyles": {
+      "remote": "100%リモート",
+      "hybrid": "ハイブリッド",
+      "presential": "オンサイト",
+      "flexible": "フレキシブル"
+    },
+    "languages": {
+      "portuguese": "ポルトガル語",
+      "english": "英語",
+      "spanish": "スペイン語",
+      "french": "フランス語",
+      "german": "ドイツ語",
+      "mandarin": "中国語（普通話）",
+      "japanese": "日本語",
+      "arabic": "アラビア語",
+      "italian": "イタリア語"
+    },
+    "education": {
+      "high_school": "高校",
+      "technical": "技術",
+      "bachelor": "学士",
+      "postgrad": "大学院",
+      "master": "修士",
+      "phd": "博士",
+      "mba": "MBA"
+    },
+    "errorSave": "プロフィールを保存できませんでした。",
+    "hintBio": "正直に書いてください — AIはこれを使ってあなたの本質を理解します",
+    "hintGoal": "具体的に書いてください — これによりAIが今すぐ繋がりを見つけます",
+    "successMsg": "🎉 プロフィール作成完了！ダッシュボードに移動します...",
+    "errorMsg": "プロフィールを保存できませんでした。",
+    "maxValues": "最大4つの価値観を選択",
+    "dataPrivacy": "データは暗号化され、許可なく共有されることはありません",
+    "nav": {
+      "back": "戻る",
+      "home": "ホーム",
+      "continue": "続ける",
+      "analyzing": "分析中...",
+      "findMatches": "マッチを見つける"
+    },
+    "fields": {
+      "displayName": "何と呼ばれたいですか？*",
+      "displayNamePlaceholder": "お名前またはプロフェッショナルな別名",
+      "displayNameHint": "これがプラットフォームでの公開名になります",
+      "city": "あなたの都市 *",
+      "cityPlaceholder": "東京、大阪...",
+      "country": "国",
+      "selectPlaceholder": "選択...",
+      "age": "あなたの年齢",
+      "agePlaceholder": "例：32",
+      "ageHint": "任意 — より一致したつながりを見つけるのに役立ちます",
+      "bio": "一文であなたは誰ですか？",
+      "bioPlaceholder": "例：フィンテックで10年の経験を持つ連続起業家...",
+      "bioHint": "本物であってください — AIはこれを使ってあなたの本質を理解します",
+      "primarySpecialty": "主な専門分野は何ですか？*",
+      "specialtySelectionCount": "（{{count}}件を選択）",
+      "specialtyLimit": "専門分野は最大3つまで選択できます。",
+      "customSpecialty": "該当する分野がリストにありませんか？",
+      "customSpecialtyPlaceholder": "専門分野を入力してください",
+      "customSpecialtyHint": "主な専門分野に追加されます。",
+      "secondarySpecialties": "副次的分野",
+      "upTo3": "（最大3つ）",
+      "upTo4": "（最大4つ）",
+      "currentRole": "現在の役割",
+      "currentRolePlaceholder": "CEO、開発者、コンサルタント...",
+      "currentCompany": "会社",
+      "currentCompanyPlaceholder": "会社名または「フリーランス」",
+      "experienceYears": "経験年数",
+      "experienceYearsPlaceholder": "例：8",
+      "educationLevel": "学歴",
+      "seekingTypes": "何を探していますか？*",
+      "selectAll": "（該当するものすべて選択）",
+      "shortTermGoal": "短期目標（次の12ヶ月）",
+      "shortTermGoalPlaceholder": "例：B2B SaaSを立ち上げる...",
+      "shortTermGoalHint": "具体的に — AIが今すぐのつながりを見つけるのに役立ちます",
+      "longTermGoal": "長期目標（3〜5年）",
+      "longTermGoalPlaceholder": "例：社会的インパクトのあるテック企業を構築する...",
+      "longTermGoalHint": "将来のビジョン — 軌跡が一致する人々とつながります",
+      "currentResources": "今持っているものは何ですか？",
+      "currentResourcesPlaceholder": "リソース、資産、経験、または利用できるネットワークを入力してください",
+      "currentResourcesHint": "例：チーム、会社、資産、知識、連絡先。",
+      "sector": "主要セクター *",
+      "businessInterests": "興味のあるセクター",
+      "preferredCompanySize": "希望する会社規模",
+      "openToRemote": "リモートに対応",
+      "openToRemoteDesc": "どこでもつながれます",
+      "availableForTravel": "出張可能",
+      "availableForTravelDesc": "対面ミーティング",
+      "incomeRange": "月収の範囲 *",
+      "incomePrivacy": "暗号化されたデータ — 公開されることはありません",
+      "investmentCapacity": "利用可能な投資能力",
+      "lookingForInvestment": "ビジネスへの投資を探しています",
+      "lookingForInvestmentDesc": "プラットフォームのアクティブな投資家とつながります",
+      "workStyle": "希望する働き方 *",
+      "values": "あなたの核心的価値観",
+      "languages": "話せる言語"
+    },
+    "companySize": {
+      "micro": "マイクロ (1–9)",
+      "small": "小規模 (10–49)",
+      "medium": "中規模 (50–249)",
+      "large": "大規模 (250+)",
+      "any": "任意の規模"
+    },
+    "income": {
+      "under_3k": "¥100,000未満",
+      "3k_7k": "¥100k – ¥300k",
+      "7k_15k": "¥300k – ¥700k",
+      "15k_30k": "¥700k – ¥1.5M",
+      "30k_plus": "¥1.5M以上"
+    },
+    "countries": {
+      "brazil": "ブラジル",
+      "portugal": "ポルトガル",
+      "usa": "アメリカ",
+      "argentina": "アルゼンチン",
+      "chile": "チリ",
+      "mexico": "メキシコ",
+      "colombia": "コロンビア",
+      "germany": "ドイツ",
+      "france": "フランス",
+      "uk": "イギリス",
+      "spain": "スペイン",
+      "italy": "イタリア",
+      "japan": "日本",
+      "china": "中国",
+      "india": "インド",
+      "uae": "UAE",
+      "other": "その他"
+    },
+    "aiAnalysis": {
+      "title": "AIが分析すること",
+      "specialty": "専門性の互換性",
+      "goals": "目標の一致",
+      "income": "収入と投資プロファイル",
+      "location": "場所と可用性",
+      "values": "価値観と働き方",
+      "sectors": "興味のあるセクター"
+    },
+    "review": {
+      "name": "名前",
+      "location": "場所",
+      "specialty": "専門",
+      "role": "役割",
+      "seeking": "探している",
+      "sector": "セクター"
+    },
+    "misc": {
+      "step6_hint": "この情報はAIがより正確なつながりを見つけるのに役立ちます。",
+      "step7_hint": "エコシステムに提供できる資産、リソース、能力を選択してください。",
+      "step8_hint": "ビジネスを成長・拡大するために必要なものを選択してください。",
+      "optional": "（任意）",
+      "company": "会社",
+      "jobTitle": "役職",
+      "jobTitlePlaceholder": "例：CEO、営業部長",
+      "activityArea": "活動分野",
+      "activityAreaPlaceholder": "例：輸出、テクノロジー、ファッション、農業",
+      "institutionalNetwork": "機関ネットワーク",
+      "institutionalNetworkPlaceholder": "例：商工会議所、業界団体、経済評議会",
+      "interestSectors": "関心のある分野",
+      "selectAllApply": "（該当するものをすべて選択）",
+      "assetSelected": "件の資産が選択済み",
+      "assetsSelected": "件の資産が選択済み",
+      "demandSelected": "件のニーズが選択済み",
+      "demandsSelected": "件のニーズが選択済み",
+      "asset": "資産",
+      "assets": "資産",
+      "demand": "ニーズ",
+      "demands": "ニーズ",
+      "selected": "選択済み",
+      "selectedPlural": "選択済み",
+      "selectedF": "選択済み",
+      "selectedFPlural": "選択済み"
+    }
+  },
+  "dashboard": {
+    "title": "こんにちは",
+    "matches": "あなたのマッチ",
+    "connections": "つながり",
+    "profile": "マイプロフィール",
+    "noMatches": "次の大きなつながりの準備はできていますか？",
+    "noMatchesDesc": "AIがあなたのプロフィールを5つの次元で分析し、最も高い本当の相性を持つ女性を見つけます。",
+    "compatibility": "平均スコア",
+    "connect": "興味を示す",
+    "dismiss": "マッチを非表示にしました。いつでも新しいマッチを生成できます。",
+    "regenerate": "新しいマッチ",
+    "logout": "サインアウト",
+    "topMatches": "トップマッチ (80%+)",
+    "interestSent": "🎉 興味を送信しました！彼女に通知が届き、つながりを受け入れることができます。",
+    "interestError": "興味を送信できませんでした。もう一度お試しください。",
+    "connectionAccepted": "🤝 つながりが承認されました！あなたたちは今つながっています。",
+    "connectionDeclined": "リクエストが拒否されました。",
+    "newMatches": "✨ {{count}}件の新しいマッチが見つかりました！",
+    "analysisDone": "分析完了。結果を改善するためにプロフィールを完成させてください。",
+    "distribution": "相性の分布",
+    "distributionDesc": "マッチがスコア範囲別にどのように分布しているか",
+    "analyzing": "分析中...",
+    "generateMatches": "✨ 分析してマッチを生成する",
+    "accept": "承認",
+    "decline": "拒否",
+    "connected": "✓ つながっています",
+    "pending": "⏳ 返答待ち",
+    "declined": "✕ 未承認",
+    "profileComplete": "プロフィール完成度",
+    "editProfile": "完全なプロフィールを編集",
+    "reanalyze": "↻ マッチを再分析",
+    "noProfile": "プロフィールが見つかりません",
+    "noProfileDesc": "マッチの受信を開始するためにプロフィールを完成させてください。",
+    "createProfile": "プロフィールを作成",
+    "years": "年",
+    "topMatch": "トップマッチ",
+    "loading": "ダッシュボードを読み込み中",
+    "loadingDesc": "あなたの機会を検索中...",
+    "restricted": "アクセス制限",
+    "opportunities": "オポチュニティ"
+  },
+  "auth": {
+    "login": "ログイン",
+    "register": "登録",
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "name": "名前",
+    "loginButton": "ログイン",
+    "registerButton": "アカウントを作成",
+    "noAccount": "アカウントをお持ちではありませんか？",
+    "hasAccount": "すでにアカウントをお持ちですか？",
+    "forgotPassword": "パスワードをお忘れですか？",
+    "loginTitle": "サインイン",
+    "registerTitle": "アカウントを作成",
+    "platformTagline": "グローバルな機会のエコシステム",
+    "registerTagline": "あなたのチャンスを見つけ始めましょう",
+    "createFree": "アカウントを作成",
+    "loginLink": "サインイン",
+    "welcomeBack": "おかえりなさい、{{name}}！",
+    "redirecting": "ダッシュボードへ移動中...",
+    "loginError": "サインインできませんでした",
+    "registerError": "アカウントを作成できませんでした",
+    "fillAllFields": "すべてのフィールドを入力してください",
+    "passwordTooShort": "最低8文字",
+    "passwordMismatch": "パスワードが一致しません。",
+    "passwordsMatch": "パスワードが一致しました！",
+    "accountCreated": "アカウントが正常に作成されました！",
+    "nowLogin": "続けるにはサインインしてください。",
+    "loggingIn": "サインイン中...",
+    "creating": "アカウント作成中...",
+    "confirmPassword": "新しいパスワードを確認",
+    "namePlaceholder": "フルネーム",
+    "passwordPlaceholder": "最低8文字",
+    "confirmPasswordPlaceholder": "新しいパスワードを再入力",
+    "strength": "強度",
+    "pwd8chars": "8文字以上",
+    "pwdUppercase": "大文字",
+    "pwdNumber": "数字",
+    "pwdSpecial": "特殊文字",
+    "pwdWeak": "弱い",
+    "pwdFair": "普通",
+    "pwdGood": "良い",
+    "pwdStrong": "強い",
+    "pwdVeryWeak": "非常に弱い",
+    "termsPrefix": "アカウントを作成することで、",
+    "terms": "利用規約",
+    "termsAnd": "および",
+    "privacy": "プライバシーポリシー",
+    "dataProtected": "に同意します。データはAES-256暗号化で保護されています。",
+    "securityNote": "暗号化接続 · 8時間セッション · AES-256保護",
+    "registerSecurityNote": "暗号化データ · スパムなし · いつでもキャンセル",
+    "backToHome": "ホームに戻る",
+    "forgotPasswordInfo": "パスワード回復は近日公開予定。サポートにお問い合わせください。",
+    "forgotPasswordTitle": "パスワードをお忘れの方",
+    "forgotPasswordSubtitle": "メールアドレスを入力してください。パスワードリセットリンクをお送りします。",
+    "forgotPasswordButton": "回復リンクを送信",
+    "forgotPasswordSentTitle": "リンクを送信しました！",
+    "forgotPasswordSentDesc": "このメールが登録されている場合、まもなく手順が届きます。迷惑メールフォルダもご確認ください。",
+    "forgotPasswordTryAgain": "別のメールで試す",
+    "resetPasswordTitle": "パスワードをリセット",
+    "resetPasswordSubtitle": "アカウントの新しい安全なパスワードを選択してください。",
+    "resetPasswordButton": "パスワードをリセット",
+    "resetPasswordSuccessTitle": "パスワードがリセットされました！",
+    "resetPasswordSuccessDesc": "パスワードが正常に更新されました。まもなくログインページにリダイレクトされます。",
+    "newPassword": "新しいパスワード",
+    "invalidToken": "無効なトークンです。メールで送信されたリンクを使用してください。",
+    "invalidTokenTitle": "無効なリンク",
+    "invalidTokenDesc": "この回復リンクは無効または期限切れです。新しいリンクをリクエストしてください。",
+    "requestNewLink": "新しいリンクをリクエスト",
+    "goToLogin": "ログインへ",
+    "backToLogin": "ログインに戻る",
+    "sending": "送信中...",
+    "passwordStrengthHint": "大文字、数字、記号を使用してより強いパスワードにしてください"
+  },
+  "errors": {
+    "notFound": "ページが見つかりません",
+    "notFoundDesc": "マップから外れてしまったようです。お探しのページは存在しないか、移動されました。",
+    "goHome": "ホームに戻る",
+    "notFoundTitle": "ページが見つかりません",
+    "backHome": "ホームに戻る",
+    "goToDashboard": "ダッシュボードへ",
+    "staleLink": "リンクからここに来た場合、そのリンクが古くなっている可能性があります。",
+    "notFoundDescShort": "お探しのページは存在しません。"
+  },
+  "aiEngine": {
+    "label": "AIエンジン",
+    "title": "本当に意味のあるつながり",
+    "desc": "私たちのAIはあなたのプロフィールの5つの次元を分析します — 専門性、目標、収入、場所、価値観 — そして各ペアに対して0から100の互換性スコアを生成します。そのつながりがあなたにとってなぜ意味があるのかを説明するパーソナライズされた洞察も受け取れます。",
+    "variables": "女性のペアごとに50以上の変数を分析",
+    "dim1": "あなたの主な専門分野",
+    "dim2": "あなたが探しているもの",
+    "dim3": "価値観と目的",
+    "dim4": "投資能力"
+  },
+  "aiSection": {
+    "label": "人工知能",
+    "title1": "あなたが本当に誰であるかを",
+    "title2": "理解するAI",
+    "desc": "単純なキーワードフィルターは使用しません。私たちのAIエンジンはあなたの完全なプロフィールを読み取り、あなたの人生とビジネスの目標を理解し、あなたの今の瞬間に本当に意味のあるつながりを見つけます。"
+  },
+  "realResults": {
+    "label": "リアルな成果"
+  },
+  "governance": {
+    "label": "ガバナンス",
+    "title1": "機関の誠実さを持つ",
+    "title2": "プラットフォーム",
+    "subtitle": "MMM OSへのアクセスは購入できません。獲得するものです。",
+    "silver": {
+      "title": "シルバーメンバー",
+      "desc": "プラットフォームに登録するすべての女性はシルバーメンバーとして参加します。マッチングシステム、公開機会、ネットワーク内の他の女性とのつながりへの完全なアクセス。",
+      "access": "登録によるアクセス — コストなし、選考なし"
+    },
+    "gold": {
+      "badge": "認定",
+      "title": "ゴールドステータス",
+      "desc": "功績によって付与される機関的認定。制限された戦略的機会、国際ミッション、高影響力グループへのアクセス。",
+      "access": "申請、購入、またはサブスクリプションで取得することはできません。プラットフォームのゴールドメンバーによって功績に基づいてのみ付与されます。"
+    },
+    "president": {
+      "title": "ゴールドメンバー",
+      "desc": "ガバナンスの守護者。ゴールドステータスを承認・取り消し、地域リーダーを認定し、戦略的機会を検証します。ネットワークの誠実さを代表します。",
+      "access": "プラットフォーム内で功績に基づいて付与される認定"
+    },
+    "bronze": {
+      "title": "ブロンズメンバー",
+      "desc": "プラットフォームへの新規参加者。公開機会、基本的なマッチング、MMMコミュニティへのアクセス。ネットワークで成長するための出発点。",
+      "access": "登録によるアクセス — すべてのメンバーの初期レベル"
+    }
+  },
+  "profile": {
+    "sections": {
+      "whoIAmTitle": "私は誰か",
+      "whoIAmSubtitle": "あなたの職業データとエコシステムでの存在",
+      "whatIHaveTitle": "私が持つもの",
+      "whatIHaveSubtitle": "エコシステムに提供できる資産、リソース、能力",
+      "whatINeedTitle": "私が必要なもの",
+      "whatINeedSubtitle": "成長と拡大のための要求とニーズ",
+      "noAssets": "まだ資産が選択されていません。",
+      "noDemands": "まだニーズが選択されていません。",
+      "clickToEdit": "編集するにはクリック →"
+    },
+    "gender": {
+      "label": "性別",
+      "placeholder": "選択してください",
+      "male": "男性",
+      "female": "女性",
+      "preferNotToSay": "回答しない"
+    },
+    "business": {
+      "personType": "主体の種類",
+      "personTypePlaceholder": "選択してください",
+      "individual": "個人",
+      "legalEntity": "法人",
+      "mei": "個人零細事業者（MEI）",
+      "companySize": "会社規模",
+      "companySizePlaceholder": "規模を選択",
+      "sizeMei": "MEI",
+      "sizeMicro": "零細企業",
+      "sizeSmall": "小規模企業",
+      "sizeMedium": "中規模企業",
+      "sizeLarge": "大企業",
+      "cnpj": "CNPJ",
+      "cnpjPlaceholder": "00.000.000/0000-00",
+      "cnpjHint": "ある場合のみ入力してください。",
+      "cnpjInvalid": "有効なCNPJを入力してください。"
+    }
+  }
+}
