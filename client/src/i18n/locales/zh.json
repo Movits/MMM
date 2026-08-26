@@ -1,0 +1,635 @@
+{
+  "nav": {
+    "howItWorks": "工作原理",
+    "opportunities": "机会",
+    "security": "安全",
+    "login": "登录",
+    "startFree": "创建账户",
+    "myDashboard": "我的仪表板",
+    "beta": "测试版"
+  },
+  "hero": {
+    "badge": "全球机遇生态系统",
+    "headline1": "连接。",
+    "headline2": "成长。",
+    "headline3": "征服。",
+    "headline4": "您的未来从这里开始。",
+    "subtitle": "告诉我们您是谁、您在寻找什么以及您能提供什么。我们的人工智能深度分析您的档案，将您与高度真实兼容性的领导者和机遇相连接——远远超越简单的关键词匹配。",
+    "cta": "创建我的档案 →",
+    "ctaSecondary": "了解更多"
+  },
+  "stats": {
+    "users": "已连接女性",
+    "opportunities": "已创造机会",
+    "satisfaction": "社区满意度",
+    "connections": "成功连接"
+  },
+  "steps": {
+    "title": "工作原理",
+    "subtitle": "简单、智能、专属。",
+    "step1": {
+      "title": "创建您的个人资料",
+      "desc": "突出您的技能、抱负和您正在寻找的东西。"
+    },
+    "step2": {
+      "title": "获得智能匹配",
+      "desc": "我们的算法将您与推动您成长的女性连接起来。"
+    },
+    "step3": {
+      "title": "连接并征服",
+      "desc": "开始对话，探索机会，建立您的帝国。"
+    }
+  },
+  "opportunities": {
+    "title": "无限机会",
+    "subtitle": "找到您需要的一切，超越自我。",
+    "society": {
+      "label": "社会影响",
+      "desc": "通过有意义的项目为更美好的世界做出贡献。"
+    },
+    "investment": {
+      "label": "投资",
+      "desc": "寻找投资者或投资机会。"
+    },
+    "mentorship": {
+      "label": "导师制",
+      "desc": "接受或提供成功指导。"
+    },
+    "partnership": {
+      "label": "合作伙伴关系",
+      "desc": "建立战略联盟并进行合作。"
+    },
+    "projects": {
+      "label": "项目",
+      "desc": "发现并参与创新项目。"
+    },
+    "jobs": {
+      "label": "专属职位",
+      "desc": "获得领导职位和高影响力工作。"
+    }
+  },
+  "testimonials": {
+    "title": "我们的会员怎么说",
+    "subtitle": "鼓舞人心的成功故事。",
+    "score": "平均评分",
+    "t1": {
+      "name": "Ana Paula M.",
+      "text": "3天内我找到了一位个人资料与我完全互补的合伙人。兼容性评分为94%。今天我们是合作伙伴。"
+    },
+    "t2": {
+      "name": "Fernanda R.",
+      "text": "该平台向我介绍了8位与我的投资论文真正契合的创始人。不到一个月我就完成了2笔交易。"
+    },
+    "t3": {
+      "name": "Camila V.",
+      "text": "我收到了3个来自高管的指导提案，这些是我通过其他方式永远找不到的。AI准确理解了我的需求。"
+    },
+    "match": "匹配度"
+  },
+  "security": {
+    "title": "您的安全是我们的首要任务",
+    "subtitle": "我们保护您的数据和隐私。",
+    "encryption": {
+      "title": "高级加密",
+      "desc": "您的数据受到最高技术的保护。"
+    },
+    "verification": {
+      "title": "严格验证",
+      "desc": "所有会员都经过验证，确保社区的真实性。"
+    },
+    "control": {
+      "title": "您的数据，您的控制权",
+      "desc": "完全控制您的个人信息和隐私设置。"
+    },
+    "rateLimit": {
+      "title": "速率限制",
+      "desc": "防御攻击保护"
+    }
+  },
+  "cta": {
+    "title": "准备好提升您的职业生涯了吗？",
+    "subtitle": "加入 MMM OS，与志同道合的女性建立联系。",
+    "button": "创建账户"
+  },
+  "footer": {
+    "tagline": "赋能女性，共创未来。",
+    "rights": "© 2026 MMM OS. 保留所有权利。",
+    "privacy": "隐私政策",
+    "terms": "条款",
+    "contact": "联系我们"
+  },
+  "onboarding": {
+    "title": "欢迎来到 MMM OS",
+    "subtitle": "连接非凡女性的人工智能",
+    "step": "第 {{current}} 步，共 {{total}} 步",
+    "next": "下一步",
+    "back": "返回",
+    "finish": "完成",
+    "saving": "正在保存...",
+    "name": "您的姓名",
+    "bio": "您的简介",
+    "specialty": "您的专长",
+    "sector": "您的行业",
+    "seeking": {
+      "strategic_partner": "战略合伙人",
+      "strategic_partner_desc": "一起共建的人",
+      "investor": "投资者",
+      "investor_desc": "成长资本",
+      "mentor": "导师",
+      "mentor_desc": "指导和经验",
+      "commercial_partner": "商业伙伴",
+      "commercial_partner_desc": "业务和分销",
+      "team": "团队/人才",
+      "team_desc": "团队成员",
+      "job": "工作/项目",
+      "job_desc": "职业机会",
+      "advisor": "顾问",
+      "advisor_desc": "专业建议",
+      "be_mentor": "成为导师",
+      "be_mentor_desc": "分享经验"
+    },
+    "values": {
+      "innovation": "创新",
+      "social_impact": "社会影响",
+      "autonomy": "自主",
+      "fast_growth": "快速增长",
+      "stability": "稳定",
+      "purpose": "目标",
+      "collaboration": "协作",
+      "results": "结果",
+      "diversity": "多样性",
+      "transparency": "透明",
+      "sustainability": "可持续发展",
+      "technical_excellence": "技术卓越"
+    },
+    "location": "您的位置",
+    "experience": "您的经验水平",
+    "workStyle": {
+      "remote": "100% 远程",
+      "hybrid": "混合",
+      "onsite": "现场办公",
+      "flexible": "灵活"
+    },
+    "investment": {
+      "none": "无可用资本",
+      "under_10k": "最高 ¥20,000",
+      "10k_50k": "¥20k – ¥100k",
+      "50k_200k": "¥100k – ¥400k",
+      "200k_plus": "¥400k 以上"
+    },
+    "steps": {
+      "s1_title": "您是谁？",
+      "s1_sub": "从基础开始",
+      "s2_title": "您的专长",
+      "s2_sub": "您最擅长什么？",
+      "s3_title": "您在寻找什么？",
+      "s3_sub": "您的目标和愿景",
+      "s4_title": "商业世界",
+      "s4_sub": "您的职业宇宙",
+      "s5_title": "生活与价值观",
+      "s5_sub": "定义您的东西",
+      "s6_title": "一切就绪！",
+      "s6_sub": "审查并找到您的匹配",
+      "s7_title": "我是谁",
+      "s7_sub": "职业数据与人脉网络",
+      "s8_title": "我拥有什么",
+      "s8_sub": "可用资产与资源",
+      "s9_title": "我需要什么",
+      "s9_sub": "需求与诉求"
+    },
+    "specialties": {
+      "tech": "技术与软件",
+      "finance": "金融与投资",
+      "design": "设计与创意",
+      "marketing": "营销与销售",
+      "legal": "法律与合规",
+      "engineering": "工程与基础设施",
+      "health": "健康与保健",
+      "education": "教育与研究",
+      "sustainability": "可持续发展与ESG",
+      "retail": "零售与电商",
+      "gastronomy": "美食与酒店",
+      "startups": "初创企业与创新"
+    },
+    "sectors": {
+      "agribusiness": "农业",
+      "construction": "建筑",
+      "education": "教育",
+      "energy": "能源与公用事业",
+      "entertainment": "娱乐与媒体",
+      "financial": "金融与金融科技",
+      "government": "政府与公共部门",
+      "industry": "工业与制造",
+      "logistics": "物流与运输",
+      "health": "健康与医疗科技",
+      "technology": "技术与SaaS",
+      "telecom": "电信",
+      "tourism": "旅游与酒店",
+      "retail": "零售与消费",
+      "other": "其他"
+    },
+    "companySizes": {
+      "micro": "微型 (1–9)",
+      "small": "小型 (10–49)",
+      "medium": "中型 (50–249)",
+      "large": "大型 (250+)",
+      "any": "任意规模"
+    },
+    "incomeRanges": {
+      "under_3k": "低于 $1,000",
+      "3k_7k": "$1k – $3k",
+      "7k_15k": "$3k – $7k",
+      "15k_30k": "$7k – $15k",
+      "30k_plus": "$15k 以上"
+    },
+    "investmentCapacities": {
+      "none": "无可用资金",
+      "under_10k": "低于 $2,000",
+      "10k_50k": "$2k – $10k",
+      "50k_200k": "$10k – $40k",
+      "200k_plus": "$40k 以上"
+    },
+    "workStyles": {
+      "remote": "100% 远程",
+      "hybrid": "混合",
+      "presential": "现场",
+      "flexible": "灵活"
+    },
+    "languages": {
+      "portuguese": "葡萄牙语",
+      "english": "英语",
+      "spanish": "西班牙语",
+      "french": "法语",
+      "german": "德语",
+      "mandarin": "普通话",
+      "japanese": "日语",
+      "arabic": "阿拉伯语",
+      "italian": "意大利语"
+    },
+    "education": {
+      "high_school": "高中",
+      "technical": "技术",
+      "bachelor": "学士",
+      "postgrad": "研究生",
+      "master": "硕士",
+      "phd": "博士",
+      "mba": "MBA"
+    },
+    "errorSave": "无法保存您的个人资料。",
+    "hintBio": "请真实填写 — AI 用它来理解您的本质",
+    "hintGoal": "请具体填写 — 这帮助 AI 找到当前的联系",
+    "successMsg": "🎉 档案创建成功！正在跳转到您的仪表板...",
+    "errorMsg": "无法保存您的档案。",
+    "maxValues": "最多选择4个价值观",
+    "dataPrivacy": "您的数据已加密，未经授权绝不共享",
+    "nav": {
+      "back": "返回",
+      "home": "首页",
+      "continue": "继续",
+      "analyzing": "分析中...",
+      "findMatches": "找到我的匹配"
+    },
+    "fields": {
+      "displayName": "您希望被如何称呼？*",
+      "displayNamePlaceholder": "您的姓名或职业别名",
+      "displayNameHint": "这将是您在平台上的公开名称",
+      "city": "您的城市 *",
+      "cityPlaceholder": "北京、上海...",
+      "country": "国家",
+      "selectPlaceholder": "请选择...",
+      "age": "您的年龄",
+      "agePlaceholder": "例如：32",
+      "ageHint": "可选 — 有助于找到更匹配的联系",
+      "bio": "用一句话描述您自己？",
+      "bioPlaceholder": "例如：连续创业者，在金融科技领域有10年经验...",
+      "bioHint": "真实表达 — AI用此了解您的本质",
+      "primarySpecialty": "您的主要专业领域有哪些？*",
+      "specialtySelectionCount": "（已选择 {{count}}）",
+      "specialtyLimit": "您最多可以选择 3 个专业领域。",
+      "customSpecialty": "您的领域不在列表中？",
+      "customSpecialtyPlaceholder": "输入您的专业领域",
+      "customSpecialtyHint": "它将添加到您的主要专业领域中。",
+      "secondarySpecialties": "次要领域",
+      "upTo3": "（最多3个）",
+      "upTo4": "（最多4个）",
+      "currentRole": "当前职位",
+      "currentRolePlaceholder": "CEO、开发者、顾问...",
+      "currentCompany": "公司",
+      "currentCompanyPlaceholder": "公司名称或『自由职业者』",
+      "experienceYears": "工作年限",
+      "experienceYearsPlaceholder": "例如：8",
+      "educationLevel": "教育程度",
+      "seekingTypes": "您在寻找什么？*",
+      "selectAll": "（选择所有适用项）",
+      "shortTermGoal": "短期目标（未来12个月）",
+      "shortTermGoalPlaceholder": "例如：推出我的B2B SaaS产品...",
+      "shortTermGoalHint": "具体说明 — 这帮助AI找到当前的联系",
+      "longTermGoal": "长期目标（3–5年）",
+      "longTermGoalPlaceholder": "例如：建立一家有社会影响力的科技公司...",
+      "longTermGoalHint": "未来愿景 — 将您与轨迹一致的人联系起来",
+      "currentResources": "您目前拥有什么？",
+      "currentResourcesPlaceholder": "请说明您的资源、资产、经验或可用人脉",
+      "currentResourcesHint": "例如：团队、公司、资产、知识或联系人。",
+      "sector": "主要行业 *",
+      "businessInterests": "感兴趣的行业",
+      "preferredCompanySize": "偏好的公司规模",
+      "openToRemote": "接受远程工作",
+      "openToRemoteDesc": "任何地方的联系",
+      "availableForTravel": "可以出差",
+      "availableForTravelDesc": "面对面会议",
+      "incomeRange": "月收入范围 *",
+      "incomePrivacy": "加密数据 — 绝不公开显示",
+      "investmentCapacity": "可用投资能力",
+      "lookingForInvestment": "我在为我的业务寻找投资",
+      "lookingForInvestmentDesc": "将您与平台上的活跃投资者联系起来",
+      "workStyle": "偏好的工作方式 *",
+      "values": "您的核心价值观",
+      "languages": "您会说的语言"
+    },
+    "companySize": {
+      "micro": "微型 (1–9)",
+      "small": "小型 (10–49)",
+      "medium": "中型 (50–249)",
+      "large": "大型 (250+)",
+      "any": "任何规模"
+    },
+    "income": {
+      "under_3k": "低于 ¥7,000",
+      "3k_7k": "¥7k – ¥20k",
+      "7k_15k": "¥20k – ¥50k",
+      "15k_30k": "¥50k – ¥100k",
+      "30k_plus": "¥100k 以上"
+    },
+    "countries": {
+      "brazil": "巴西",
+      "portugal": "葡萄牙",
+      "usa": "美国",
+      "argentina": "阿根廷",
+      "chile": "智利",
+      "mexico": "墨西哥",
+      "colombia": "哥伦比亚",
+      "germany": "德国",
+      "france": "法国",
+      "uk": "英国",
+      "spain": "西班牙",
+      "italy": "意大利",
+      "japan": "日本",
+      "china": "中国",
+      "india": "印度",
+      "uae": "阿联酋",
+      "other": "其他"
+    },
+    "aiAnalysis": {
+      "title": "AI将分析什么",
+      "specialty": "专业兼容性",
+      "goals": "目标一致性",
+      "income": "收入和投资档案",
+      "location": "位置和可用性",
+      "values": "价值观和工作方式",
+      "sectors": "感兴趣的行业"
+    },
+    "review": {
+      "name": "姓名",
+      "location": "位置",
+      "specialty": "专长",
+      "role": "职位",
+      "seeking": "寻找",
+      "sector": "行业"
+    },
+    "misc": {
+      "step6_hint": "这些信息有助于AI为您找到更精准的连接。",
+      "step7_hint": "选择您可以为生态系统提供的资产、资源和能力。",
+      "step8_hint": "选择您发展业务所需的内容。",
+      "optional": "（可选）",
+      "company": "公司",
+      "jobTitle": "职位",
+      "jobTitlePlaceholder": "例：CEO、商务总监",
+      "activityArea": "业务领域",
+      "activityAreaPlaceholder": "例：出口、科技、时尚、农业",
+      "institutionalNetwork": "机构网络",
+      "institutionalNetworkPlaceholder": "例：商会、行业协会、商业委员会",
+      "interestSectors": "兴趣行业",
+      "selectAllApply": "（选择所有适用项）",
+      "assetSelected": "项资产已选择",
+      "assetsSelected": "项资产已选择",
+      "demandSelected": "项需求已选择",
+      "demandsSelected": "项需求已选择",
+      "asset": "资产",
+      "assets": "资产",
+      "demand": "需求",
+      "demands": "需求",
+      "selected": "已选择",
+      "selectedPlural": "已选择",
+      "selectedF": "已选择",
+      "selectedFPlural": "已选择"
+    }
+  },
+  "dashboard": {
+    "title": "你好",
+    "matches": "您的匹配",
+    "connections": "联系",
+    "profile": "我的资料",
+    "noMatches": "准备好迎接下一个重要联系了吗？",
+    "noMatchesDesc": "我们的AI将从5个维度分析您的资料，找到与您真正最兼容的女性。",
+    "compatibility": "平均分数",
+    "connect": "表达兴趣",
+    "dismiss": "匹配已隐藏。随时生成新匹配。",
+    "regenerate": "新匹配",
+    "logout": "退出登录",
+    "topMatches": "顶级匹配 (80%+)",
+    "interestSent": "🎉 兴趣已发送！她将收到通知，可以接受您的联系。",
+    "interestError": "无法发送兴趣。请重试。",
+    "connectionAccepted": "🤝 联系已接受！你们现在已连接。",
+    "connectionDeclined": "请求已拒绝。",
+    "newMatches": "✨ 找到 {{count}} 个新匹配！",
+    "analysisDone": "分析完成。完善您的资料以改善结果。",
+    "distribution": "兼容性分布",
+    "distributionDesc": "您的匹配按分数范围的分布情况",
+    "analyzing": "分析中...",
+    "generateMatches": "✨ 分析并生成我的匹配",
+    "accept": "接受",
+    "decline": "拒绝",
+    "connected": "✓ 已连接",
+    "pending": "⏳ 等待回复",
+    "declined": "✕ 未接受",
+    "profileComplete": "资料完整度",
+    "editProfile": "编辑完整资料",
+    "reanalyze": "↻ 重新分析匹配",
+    "noProfile": "未找到资料",
+    "noProfileDesc": "完善您的资料以开始接收匹配。",
+    "createProfile": "创建我的资料",
+    "years": "年",
+    "topMatch": "最佳匹配",
+    "loading": "正在加载您的面板",
+    "loadingDesc": "正在获取您的机会...",
+    "restricted": "访问受限",
+    "opportunities": "机会"
+  },
+  "auth": {
+    "login": "登录",
+    "register": "注册",
+    "email": "电子邮件",
+    "password": "密码",
+    "name": "姓名",
+    "loginButton": "登录",
+    "registerButton": "创建账户",
+    "noAccount": "还没有账户？",
+    "hasAccount": "已经有账户了？",
+    "forgotPassword": "忘记密码？",
+    "loginTitle": "登录账户",
+    "registerTitle": "创建账户",
+    "platformTagline": "全球机遇生态系统",
+    "registerTagline": "开始寻找您的机会",
+    "createFree": "创建账户",
+    "loginLink": "登录",
+    "welcomeBack": "欢迎回来，{{name}}！",
+    "redirecting": "正在跳转到您的仪表板...",
+    "loginError": "无法登录",
+    "registerError": "无法创建账户",
+    "fillAllFields": "请填写所有字段",
+    "passwordTooShort": "最少8个字符",
+    "passwordMismatch": "两次输入的密码不一致。",
+    "passwordsMatch": "密码一致！",
+    "accountCreated": "账户创建成功！",
+    "nowLogin": "现在登录以继续。",
+    "loggingIn": "登录中...",
+    "creating": "创建账户中...",
+    "confirmPassword": "确认新密码",
+    "namePlaceholder": "您的全名",
+    "passwordPlaceholder": "至少8个字符",
+    "confirmPasswordPlaceholder": "重复输入新密码",
+    "strength": "强度",
+    "pwd8chars": "8+字符",
+    "pwdUppercase": "大写字母",
+    "pwdNumber": "数字",
+    "pwdSpecial": "特殊字符",
+    "pwdWeak": "弱",
+    "pwdFair": "一般",
+    "pwdGood": "好",
+    "pwdStrong": "强",
+    "pwdVeryWeak": "非常弱",
+    "termsPrefix": "创建账户即表示您同意我们的",
+    "terms": "使用条款",
+    "termsAnd": "和",
+    "privacy": "隐私政策",
+    "dataProtected": "您的数据受AES-256加密保护。",
+    "securityNote": "加密连接 · 8小时会话 · AES-256保护",
+    "registerSecurityNote": "数据加密 · 无垃圾邮件 · 随时取消",
+    "backToHome": "返回首页",
+    "forgotPasswordInfo": "密码恢复即将推出。请联系支持。",
+    "forgotPasswordTitle": "忘记密码",
+    "forgotPasswordSubtitle": "输入您的邮箱，我们将发送密码重置链接。",
+    "forgotPasswordButton": "发送恢复链接",
+    "forgotPasswordSentTitle": "链接已发送！",
+    "forgotPasswordSentDesc": "如果此邮箱已注册，您将很快收到说明。请同时检查垃圾邮件文件夹。",
+    "forgotPasswordTryAgain": "尝试其他邮箱",
+    "resetPasswordTitle": "重置密码",
+    "resetPasswordSubtitle": "为您的账户选择一个新的安全密码。",
+    "resetPasswordButton": "重置密码",
+    "resetPasswordSuccessTitle": "密码已重置！",
+    "resetPasswordSuccessDesc": "您的密码已成功更新。您将很快被重定向到登录页面。",
+    "newPassword": "新密码",
+    "invalidToken": "无效令牌。请使用邮件中发送的链接。",
+    "invalidTokenTitle": "无效链接",
+    "invalidTokenDesc": "此恢复链接无效或已过期。请申请新链接。",
+    "requestNewLink": "申请新链接",
+    "goToLogin": "前往登录",
+    "backToLogin": "返回登录",
+    "sending": "发送中...",
+    "passwordStrengthHint": "使用大写字母、数字和符号以获得更强的密码"
+  },
+  "errors": {
+    "notFound": "页面未找到",
+    "notFoundDesc": "看起来您已经偏离了地图。您正在寻找的页面不存在或已被移动。",
+    "goHome": "返回首页",
+    "notFoundTitle": "页面未找到",
+    "backHome": "返回首页",
+    "goToDashboard": "前往控制台",
+    "staleLink": "如果您通过链接到达这里，该链接可能已过时。",
+    "notFoundDescShort": "您正在寻找的页面不存在。"
+  },
+  "aiEngine": {
+    "label": "AI引擎",
+    "title": "真正有意义的连接",
+    "desc": "我们的AI分析您个人资料的5个维度——专业、目标、收入、位置和价值观——并为每对用户生成0到100的兼容性评分。您还会收到个性化洞察，解释为什么这个连接对您有意义。",
+    "variables": "每对女性分析超过50个变量",
+    "dim1": "您的主要专业",
+    "dim2": "您正在寻找什么",
+    "dim3": "价值观与目标",
+    "dim4": "投资能力"
+  },
+  "aiSection": {
+    "label": "人工智能",
+    "title1": "一个理解",
+    "title2": "真实的您的AI",
+    "desc": "我们不使用简单的关键词过滤器。我们的AI引擎读取您的完整个人资料，理解您的生活和商业目标，并找到对您当前时刻真正有意义的连接。"
+  },
+  "realResults": {
+    "label": "真实成果"
+  },
+  "governance": {
+    "label": "治理",
+    "title1": "一个具有",
+    "title2": "机构诚信的平台",
+    "subtitle": "MMM OS的访问权限不可购买，需要赢得。",
+    "silver": {
+      "title": "银牌会员",
+      "desc": "所有在平台注册的女性都以银牌会员身份加入。完全访问匹配系统、公开机会以及与网络中其他女性的连接。",
+      "access": "通过注册访问——无费用，无筛选"
+    },
+    "gold": {
+      "badge": "认可",
+      "title": "黄金状态",
+      "desc": "基于功绩授予的机构认可。访问受限战略机会、国际使命和高影响力群体。",
+      "access": "不能被请求、购买或通过订阅获得。仅由平台黄金会员凭功绩授予。"
+    },
+    "president": {
+      "title": "黄金会员",
+      "desc": "治理的守护者。她们批准和撤销黄金状态，认可地区领导人并验证战略机会。她们代表网络的诚信。",
+      "access": "在平台内凭功绩授予的认可"
+    },
+    "bronze": {
+      "title": "铜牌会员",
+      "desc": "平台新成员。可访问公开机会、基础匹配和MMM社区。这是在网络中成长的起点。",
+      "access": "通过注册获得访问权限 — 所有会员的初始级别"
+    }
+  },
+  "profile": {
+    "sections": {
+      "whoIAmTitle": "我是谁",
+      "whoIAmSubtitle": "您的职业数据与生态系统中的存在",
+      "whatIHaveTitle": "我拥有什么",
+      "whatIHaveSubtitle": "您为生态系统提供的资产、资源和能力",
+      "whatINeedTitle": "我需要什么",
+      "whatINeedSubtitle": "成长与扩张的需求",
+      "noAssets": "尚未选择任何资产。",
+      "noDemands": "尚未选择任何需求。",
+      "clickToEdit": "点击编辑 →"
+    },
+    "gender": {
+      "label": "性别",
+      "placeholder": "请选择一项",
+      "male": "男性",
+      "female": "女性",
+      "preferNotToSay": "不愿透露"
+    },
+    "business": {
+      "personType": "主体类型",
+      "personTypePlaceholder": "请选择一项",
+      "individual": "自然人",
+      "legalEntity": "法人实体",
+      "mei": "个体微型创业者（MEI）",
+      "companySize": "企业规模",
+      "companySizePlaceholder": "请选择规模",
+      "sizeMei": "MEI",
+      "sizeMicro": "微型企业",
+      "sizeSmall": "小型企业",
+      "sizeMedium": "中型企业",
+      "sizeLarge": "大型企业",
+      "cnpj": "CNPJ",
+      "cnpjPlaceholder": "00.000.000/0000-00",
+      "cnpjHint": "如有则填写。",
+      "cnpjInvalid": "请输入有效的 CNPJ。"
+    }
+  }
+}

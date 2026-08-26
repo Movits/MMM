@@ -42,3 +42,19 @@ Thumbs.db
 *.db
 backups/
 dumps/
+
+# Dumps de banco — o dump do MMM contém dados pessoais reais
+*.sql
+*.sql.gz
+*.dump
+backup/
+# Exceção: as migrações do Drizzle são versionadas
+!drizzle/*.sql
+
+# Documentos internos — não publicar
+SECURITY_PENTEST_REPORT.md
+todo.md
+
+# Logs da plataforma de origem
+.manus-logs/
+*.log

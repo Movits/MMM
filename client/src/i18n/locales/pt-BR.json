@@ -1,0 +1,635 @@
+{
+  "nav": {
+    "howItWorks": "Como funciona",
+    "opportunities": "Oportunidades",
+    "security": "Segurança",
+    "login": "Entrar",
+    "startFree": "Criar conta",
+    "myDashboard": "Meu Dashboard →",
+    "beta": "Beta"
+  },
+  "hero": {
+    "badge": "Ecossistema Mundial de Oportunidades",
+    "headline1": "Encontre as",
+    "headline2": "oportunidades",
+    "headline3": "certas",
+    "headline4": "para você",
+    "subtitle": "Diga-nos quem você é, o que busca e o que tem a oferecer. Nossa inteligência artificial analisa o seu perfil de forma profunda para conectar você a líderes e oportunidades de alta compatibilidade real — indo muito além de simples palavras-chave.",
+    "cta": "Criar meu perfil →",
+    "ctaSecondary": "Ver como funciona"
+  },
+  "stats": {
+    "users": "Mulheres cadastradas",
+    "opportunities": "Oportunidades ativas",
+    "satisfaction": "Satisfação",
+    "connections": "Conexões realizadas"
+  },
+  "steps": {
+    "title": "Como funciona",
+    "subtitle": "Três passos para encontrar as conexões certas",
+    "step1": {
+      "title": "Crie seu perfil",
+      "desc": "Responda um questionário inteligente sobre quem você é, sua especialidade, objetivos e o que busca. Leva menos de 5 minutos."
+    },
+    "step2": {
+      "title": "A IA analisa tudo",
+      "desc": "Nosso motor de inteligência artificial processa seu perfil em 5 dimensões e compara com todas as outras mulheres da plataforma."
+    },
+    "step3": {
+      "title": "Conecte-se",
+      "desc": "Receba um feed personalizado com as mulheres e oportunidades mais compatíveis, com score de 0 a 100 e insight explicativo."
+    }
+  },
+  "opportunities": {
+    "title": "Que tipo de oportunidade você busca?",
+    "subtitle": "A plataforma conecta mulheres em diferentes momentos e objetivos",
+    "society": {
+      "label": "Sociedade",
+      "desc": "Encontre sócias com perfil complementar ao seu"
+    },
+    "investment": {
+      "label": "Investimento",
+      "desc": "Conecte-se com investidoras alinhadas ao seu setor"
+    },
+    "mentorship": {
+      "label": "Mentoria",
+      "desc": "Aprenda com quem já percorreu o caminho que você quer trilhar"
+    },
+    "partnership": {
+      "label": "Parceria",
+      "desc": "Forme parcerias estratégicas para projetos e negócios"
+    },
+    "projects": {
+      "label": "Projetos",
+      "desc": "Junte-se a projetos inovadores que precisam do seu talento"
+    },
+    "jobs": {
+      "label": "Emprego",
+      "desc": "Oportunidades de trabalho curadas pelo seu perfil real"
+    }
+  },
+  "testimonials": {
+    "title": "O que as mulheres estão dizendo",
+    "subtitle": "Histórias reais de conexões que transformaram carreiras",
+    "score": "Score de compatibilidade",
+    "t1": {
+      "name": "Ana Paula M.",
+      "text": "Em 3 dias encontrei uma sócia com perfil exatamente complementar ao meu. O score de compatibilidade foi 94%. Hoje somos parceiras."
+    },
+    "t2": {
+      "name": "Fernanda R.",
+      "text": "A plataforma me apresentou 8 fundadoras com fit real para minha tese de investimento. Fechei 2 deals em menos de um mês."
+    },
+    "t3": {
+      "name": "Camila V.",
+      "text": "Recebi 3 propostas de mentoria de executivas que eu nunca teria encontrado de outra forma. A IA entendeu exatamente o que eu precisava."
+    },
+    "match": "compatibilidade"
+  },
+  "security": {
+    "title": "Segurança e privacidade em primeiro lugar",
+    "subtitle": "Seus dados são protegidos com os mais altos padrões de segurança",
+    "encryption": {
+      "title": "Criptografia ponta a ponta",
+      "desc": "Todas as mensagens e dados sensíveis são criptografados"
+    },
+    "verification": {
+      "title": "Verificação de identidade",
+      "desc": "Perfis verificados para garantir conexões autênticas"
+    },
+    "control": {
+      "title": "Controle total",
+      "desc": "Você decide quem vê seu perfil e quais informações compartilhar"
+    },
+    "rateLimit": {
+      "title": "Rate Limiting",
+      "desc": "Proteção contra ataques"
+    }
+  },
+  "cta": {
+    "title": "Pronta para encontrar suas próximas conexões?",
+    "subtitle": "Junte-se a milhares de mulheres que já estão construindo o futuro",
+    "button": "Criar conta"
+  },
+  "footer": {
+    "tagline": "Conectando mulheres que movem o mundo.",
+    "rights": "Todos os direitos reservados.",
+    "privacy": "Privacidade",
+    "terms": "Termos",
+    "contact": "Contato"
+  },
+  "onboarding": {
+    "title": "Complete seu perfil",
+    "subtitle": "IA que conecta mulheres extraordinárias",
+    "step": "Etapa {{current}} de {{total}}",
+    "next": "Próximo",
+    "back": "Voltar",
+    "finish": "Finalizar e ver matches",
+    "saving": "Salvando...",
+    "name": "Como você quer ser chamada?",
+    "bio": "Conte um pouco sobre você",
+    "specialty": "Sua principal especialidade",
+    "sector": "Setor de atuação",
+    "seeking": {
+      "strategic_partner": "Sócia estratégica",
+      "strategic_partner_desc": "Alguém para construir junto",
+      "investor": "Investidora",
+      "investor_desc": "Capital para crescer",
+      "mentor": "Mentora",
+      "mentor_desc": "Orientação e experiência",
+      "commercial_partner": "Parceira comercial",
+      "commercial_partner_desc": "Negócios e distribuição",
+      "team": "Equipe/Talentos",
+      "team_desc": "Pessoas para o time",
+      "job": "Emprego/Projeto",
+      "job_desc": "Oportunidade profissional",
+      "advisor": "Advisor",
+      "advisor_desc": "Conselho especializado",
+      "be_mentor": "Ser mentora",
+      "be_mentor_desc": "Compartilhar experiência"
+    },
+    "values": {
+      "innovation": "Inovação",
+      "social_impact": "Impacto social",
+      "autonomy": "Autonomia",
+      "fast_growth": "Crescimento rápido",
+      "stability": "Estabilidade",
+      "purpose": "Propósito",
+      "collaboration": "Colaboração",
+      "results": "Resultados",
+      "diversity": "Diversidade",
+      "transparency": "Transparência",
+      "sustainability": "Sustentabilidade",
+      "technical_excellence": "Excelência técnica"
+    },
+    "location": "Onde você está?",
+    "experience": "Anos de experiência",
+    "workStyle": {
+      "remote": "100% Remoto",
+      "hybrid": "Híbrido",
+      "onsite": "Presencial",
+      "flexible": "Flexível"
+    },
+    "investment": {
+      "none": "Sem capital disponível",
+      "under_10k": "Até R$ 10.000",
+      "10k_50k": "R$ 10k – R$ 50k",
+      "50k_200k": "R$ 50k – R$ 200k",
+      "200k_plus": "Acima de R$ 200k"
+    },
+    "steps": {
+      "s1_title": "Quem é você?",
+      "s1_sub": "Vamos começar pelo básico",
+      "s2_title": "Sua especialidade",
+      "s2_sub": "O que você faz de melhor?",
+      "s3_title": "O que você busca?",
+      "s3_sub": "Seus objetivos e metas",
+      "s4_title": "Mundo dos negócios",
+      "s4_sub": "Seu universo profissional",
+      "s5_title": "Vida & Valores",
+      "s5_sub": "O que define você",
+      "s6_title": "Tudo pronto!",
+      "s6_sub": "Revise e encontre seus matches",
+      "s7_title": "Quem sou",
+      "s7_sub": "Dados profissionais e rede",
+      "s8_title": "O que tenho",
+      "s8_sub": "Ativos e recursos disponíveis",
+      "s9_title": "O que preciso",
+      "s9_sub": "Demandas e necessidades"
+    },
+    "specialties": {
+      "tech": "Tecnologia & Software",
+      "finance": "Finanças & Investimentos",
+      "design": "Design & Criatividade",
+      "marketing": "Marketing & Vendas",
+      "legal": "Direito & Compliance",
+      "engineering": "Engenharia & Infraestrutura",
+      "health": "Saúde & Bem-estar",
+      "education": "Educação & Pesquisa",
+      "sustainability": "Sustentabilidade & ESG",
+      "retail": "Varejo & E-commerce",
+      "gastronomy": "Gastronomia & Hospitalidade",
+      "startups": "Startups & Inovação"
+    },
+    "sectors": {
+      "agribusiness": "Agronegócio",
+      "construction": "Construção Civil",
+      "education": "Educação",
+      "energy": "Energia & Utilities",
+      "entertainment": "Entretenimento & Mídia",
+      "financial": "Financeiro & Fintechs",
+      "government": "Governo & Setor Público",
+      "industry": "Indústria & Manufatura",
+      "logistics": "Logística & Transporte",
+      "health": "Saúde & Healthtechs",
+      "technology": "Tecnologia & SaaS",
+      "telecom": "Telecomunicações",
+      "tourism": "Turismo & Hospitalidade",
+      "retail": "Varejo & Consumo",
+      "other": "Outro"
+    },
+    "companySizes": {
+      "micro": "Micro (1–9)",
+      "small": "Pequena (10–49)",
+      "medium": "Média (50–249)",
+      "large": "Grande (250+)",
+      "any": "Qualquer tamanho"
+    },
+    "incomeRanges": {
+      "under_3k": "Até R$ 3.000",
+      "3k_7k": "R$ 3k – R$ 8k",
+      "7k_15k": "R$ 8k – R$ 20k",
+      "15k_30k": "R$ 20k – R$ 50k",
+      "30k_plus": "Acima de R$ 50k"
+    },
+    "investmentCapacities": {
+      "none": "Sem capital disponível",
+      "under_10k": "Até R$ 10.000",
+      "10k_50k": "R$ 10k – R$ 50k",
+      "50k_200k": "R$ 50k – R$ 200k",
+      "200k_plus": "Acima de R$ 200k"
+    },
+    "workStyles": {
+      "remote": "100% Remoto",
+      "hybrid": "Híbrido",
+      "presential": "Presencial",
+      "flexible": "Flexível"
+    },
+    "languages": {
+      "portuguese": "Português",
+      "english": "Inglês",
+      "spanish": "Espanhol",
+      "french": "Francês",
+      "german": "Alemão",
+      "mandarin": "Mandarim",
+      "japanese": "Japonês",
+      "arabic": "Árabe",
+      "italian": "Italiano"
+    },
+    "education": {
+      "high_school": "Ensino Médio",
+      "technical": "Técnico",
+      "bachelor": "Graduação",
+      "postgrad": "Pós-graduação",
+      "master": "Mestrado",
+      "phd": "Doutorado",
+      "mba": "MBA"
+    },
+    "errorSave": "Não foi possível salvar seu perfil.",
+    "hintBio": "Seja autêntica — a IA usa isso para entender sua essência",
+    "hintGoal": "Seja específica — isso ajuda a IA a encontrar conexões para agora",
+    "successMsg": "🎉 Perfil criado com sucesso! Redirecionando para o seu dashboard...",
+    "errorMsg": "Não foi possível salvar seu perfil.",
+    "maxValues": "Máximo de 4 valores selecionados",
+    "dataPrivacy": "Seus dados são criptografados e nunca compartilhados sem sua autorização",
+    "nav": {
+      "back": "Voltar",
+      "home": "Início",
+      "continue": "Continuar",
+      "analyzing": "Analisando...",
+      "findMatches": "Encontrar meus matches"
+    },
+    "fields": {
+      "displayName": "Como você quer ser chamada? *",
+      "displayNamePlaceholder": "Seu nome ou apelido profissional",
+      "displayNameHint": "Este será seu nome público na plataforma",
+      "city": "Sua cidade *",
+      "cityPlaceholder": "São Paulo, Rio de Janeiro...",
+      "country": "País",
+      "selectPlaceholder": "Selecione...",
+      "age": "Sua idade",
+      "agePlaceholder": "Ex: 32",
+      "ageHint": "Opcional — ajuda a encontrar conexões mais alinhadas",
+      "bio": "Quem é você em uma frase?",
+      "bioPlaceholder": "Ex: Empreendedora serial com 10 anos em fintechs, buscando meu próximo projeto de impacto...",
+      "bioHint": "Seja autêntica — a IA usa isso para entender sua essência",
+      "primarySpecialty": "Quais são suas principais áreas de atuação? *",
+      "specialtySelectionCount": "({{count}} selecionadas)",
+      "specialtyLimit": "Você pode escolher até 3 áreas de especialidade.",
+      "customSpecialty": "Sua área não está na lista?",
+      "customSpecialtyPlaceholder": "Digite sua área de especialidade",
+      "customSpecialtyHint": "Ela será adicionada às suas especialidades principais.",
+      "secondarySpecialties": "Áreas secundárias",
+      "upTo3": "(até 3)",
+      "upTo4": "(até 4)",
+      "currentRole": "Cargo atual",
+      "currentRolePlaceholder": "CEO, Desenvolvedora, Consultora...",
+      "currentCompany": "Empresa",
+      "currentCompanyPlaceholder": "Nome da empresa ou 'Autônoma'",
+      "experienceYears": "Anos de experiência",
+      "experienceYearsPlaceholder": "Ex: 8",
+      "educationLevel": "Nível de educação",
+      "seekingTypes": "O que você está buscando? *",
+      "selectAll": "(selecione todos que se aplicam)",
+      "shortTermGoal": "Objetivo de curto prazo (próximos 12 meses)",
+      "shortTermGoalPlaceholder": "Ex: Lançar meu SaaS B2B e atingir os primeiros R$ 50k MRR...",
+      "shortTermGoalHint": "Seja específica — isso ajuda a IA a encontrar conexões para agora",
+      "longTermGoal": "Objetivo de longo prazo (3–5 anos)",
+      "longTermGoalPlaceholder": "Ex: Construir uma empresa de tecnologia com impacto social...",
+      "longTermGoalHint": "Visão de futuro — conecta você a pessoas com trajetórias alinhadas",
+      "currentResources": "O que você tem hoje?",
+      "currentResourcesPlaceholder": "Conte seus recursos, ativos, experiências ou rede disponível",
+      "currentResourcesHint": "Ex.: equipe, empresa, ativos, conhecimento ou contatos.",
+      "sector": "Setor principal de atuação *",
+      "businessInterests": "Setores de interesse",
+      "preferredCompanySize": "Tamanho de empresa preferido",
+      "openToRemote": "Aberta a remoto",
+      "openToRemoteDesc": "Conexões em qualquer lugar",
+      "availableForTravel": "Disponível para viagens",
+      "availableForTravelDesc": "Reuniões presenciais",
+      "incomeRange": "Faixa de renda mensal *",
+      "incomePrivacy": "Dado criptografado — nunca exibido publicamente",
+      "investmentCapacity": "Capacidade de investimento disponível",
+      "lookingForInvestment": "Estou buscando investimento para meu negócio",
+      "lookingForInvestmentDesc": "Conecta você a investidoras ativas na plataforma",
+      "workStyle": "Estilo de trabalho preferido *",
+      "values": "Seus valores principais",
+      "languages": "Idiomas que você fala"
+    },
+    "companySize": {
+      "micro": "Micro (1–9)",
+      "small": "Pequena (10–49)",
+      "medium": "Média (50–249)",
+      "large": "Grande (250+)",
+      "any": "Qualquer tamanho"
+    },
+    "income": {
+      "under_3k": "Até R$ 3.000",
+      "3k_7k": "R$ 3k – R$ 8k",
+      "7k_15k": "R$ 8k – R$ 20k",
+      "15k_30k": "R$ 20k – R$ 50k",
+      "30k_plus": "Acima de R$ 50k"
+    },
+    "countries": {
+      "brazil": "Brasil",
+      "portugal": "Portugal",
+      "usa": "EUA",
+      "argentina": "Argentina",
+      "chile": "Chile",
+      "mexico": "México",
+      "colombia": "Colômbia",
+      "germany": "Alemanha",
+      "france": "França",
+      "uk": "Reino Unido",
+      "spain": "Espanha",
+      "italy": "Itália",
+      "japan": "Japão",
+      "china": "China",
+      "india": "Índia",
+      "uae": "Emirados Árabes",
+      "other": "Outro"
+    },
+    "aiAnalysis": {
+      "title": "O que a IA vai analisar",
+      "specialty": "Compatibilidade de especialidade",
+      "goals": "Alinhamento de objetivos",
+      "income": "Perfil de renda e investimento",
+      "location": "Localização e disponibilidade",
+      "values": "Valores e estilo de trabalho",
+      "sectors": "Setores de interesse"
+    },
+    "review": {
+      "name": "Nome",
+      "location": "Localização",
+      "specialty": "Especialidade",
+      "role": "Cargo",
+      "seeking": "Buscando",
+      "sector": "Setor"
+    },
+    "misc": {
+      "step6_hint": "Essas informações ajudam a IA a encontrar conexões mais precisas para você.",
+      "step7_hint": "Marque os ativos, recursos e capacidades que você tem a oferecer ao ecossistema.",
+      "step8_hint": "Marque o que você precisa para crescer e expandir seu negócio.",
+      "optional": "(opcional)",
+      "company": "Empresa",
+      "jobTitle": "Cargo",
+      "jobTitlePlaceholder": "Ex: CEO, Diretora Comercial",
+      "activityArea": "Área de Atuação",
+      "activityAreaPlaceholder": "Ex: Exportação, Tecnologia, Moda, Agronegócio",
+      "institutionalNetwork": "Rede Institucional",
+      "institutionalNetworkPlaceholder": "Ex: Câmara de Comércio, Associação Setorial, Conselho Empresarial",
+      "interestSectors": "Setores de Interesse",
+      "selectAllApply": "(selecione todos que se aplicam)",
+      "assetSelected": "ativo selecionado",
+      "assetsSelected": "ativos selecionados",
+      "demandSelected": "demanda selecionada",
+      "demandsSelected": "demandas selecionadas",
+      "asset": "ativo",
+      "assets": "ativos",
+      "demand": "demanda",
+      "demands": "demandas",
+      "selected": "selecionado",
+      "selectedPlural": "selecionados",
+      "selectedF": "selecionada",
+      "selectedFPlural": "selecionadas"
+    }
+  },
+  "dashboard": {
+    "title": "Olá",
+    "matches": "Seus Matches",
+    "connections": "Conexões",
+    "profile": "Meu Perfil",
+    "noMatches": "Pronta para sua próxima grande conexão?",
+    "noMatchesDesc": "Nossa IA vai analisar seu perfil em 5 dimensões e encontrar as mulheres com maior compatibilidade real com você.",
+    "compatibility": "Score Médio",
+    "topMatches": "Top Matches (80%+)",
+    "connect": "Demonstrar Interesse",
+    "dismiss": "Match ocultado. Gere novos matches a qualquer momento.",
+    "interestSent": "🎉 Interesse enviado! Ela será notificada e poderá aceitar sua conexão.",
+    "interestError": "Não foi possível enviar o interesse. Tente novamente.",
+    "connectionAccepted": "🤝 Conexão aceita! Vocês agora estão conectadas.",
+    "connectionDeclined": "Solicitação recusada.",
+    "newMatches": "✨ {{count}} novo(s) match(es) encontrado(s)!",
+    "analysisDone": "Análise concluída. Complete seu perfil para melhorar os resultados.",
+    "distribution": "Distribuição de Compatibilidade",
+    "distributionDesc": "Como seus matches estão distribuídos por faixa de score",
+    "analyzing": "Analisando...",
+    "regenerate": "Novos matches",
+    "generateMatches": "✨ Analisar e gerar meus matches",
+    "accept": "Aceitar",
+    "decline": "Recusar",
+    "connected": "✓ Conectada",
+    "pending": "⏳ Aguardando resposta",
+    "declined": "✕ Não aceita",
+    "profileComplete": "Perfil completo",
+    "editProfile": "Editar perfil completo",
+    "reanalyze": "↻ Reanalisar matches",
+    "noProfile": "Perfil não encontrado",
+    "noProfileDesc": "Complete seu perfil para começar a receber matches.",
+    "createProfile": "Criar meu perfil",
+    "years": "anos",
+    "logout": "Sair",
+    "topMatch": "Top Match",
+    "loading": "Carregando seu painel",
+    "loadingDesc": "Buscando suas oportunidades...",
+    "restricted": "Acesso restrito",
+    "opportunities": "Oportunidades"
+  },
+  "auth": {
+    "login": "Fazer login",
+    "register": "Criar conta",
+    "email": "E-mail",
+    "password": "Senha",
+    "name": "Nome completo",
+    "loginButton": "Entrar na plataforma",
+    "registerButton": "Criar conta",
+    "noAccount": "Não tem conta?",
+    "hasAccount": "Já tem conta?",
+    "forgotPassword": "Esqueceu a senha?",
+    "loginTitle": "Entrar na plataforma",
+    "registerTitle": "Criar conta",
+    "platformTagline": "Ecossistema mundial de oportunidades",
+    "registerTagline": "Comece a encontrar suas oportunidades",
+    "createFree": "Criar conta",
+    "loginLink": "Entrar",
+    "welcomeBack": "Bem-vindo(a) de volta, {{name}}!",
+    "redirecting": "Redirecionando para o seu painel...",
+    "loginError": "Não foi possível entrar",
+    "registerError": "Não foi possível criar a conta",
+    "fillAllFields": "Preencha todos os campos",
+    "passwordTooShort": "Mínimo 8 caracteres",
+    "passwordMismatch": "As senhas não coincidem.",
+    "passwordsMatch": "Senhas conferem!",
+    "accountCreated": "Conta criada com sucesso!",
+    "nowLogin": "Agora faça login para continuar.",
+    "loggingIn": "Entrando...",
+    "creating": "Criando conta...",
+    "confirmPassword": "Confirmar nova senha",
+    "namePlaceholder": "Seu nome completo",
+    "passwordPlaceholder": "Mínimo 8 caracteres",
+    "confirmPasswordPlaceholder": "Repita a nova senha",
+    "strength": "Força",
+    "pwd8chars": "8+ caracteres",
+    "pwdUppercase": "Letra maiúscula",
+    "pwdNumber": "Número",
+    "pwdSpecial": "Caractere especial",
+    "pwdWeak": "Fraca",
+    "pwdFair": "Razoável",
+    "pwdGood": "Boa",
+    "pwdStrong": "Forte",
+    "pwdVeryWeak": "Muito fraca",
+    "termsPrefix": "Ao criar sua conta, você concorda com nossos",
+    "terms": "Termos de Uso",
+    "termsAnd": "e",
+    "privacy": "Política de Privacidade",
+    "dataProtected": "Seus dados são protegidos por criptografia AES-256.",
+    "securityNote": "Conexão criptografada · Sessão de 8 horas · Proteção AES-256",
+    "registerSecurityNote": "Dados criptografados · Sem spam · Cancele quando quiser",
+    "backToHome": "Voltar ao início",
+    "forgotPasswordInfo": "Recuperação de senha em breve. Entre em contato com o suporte.",
+    "forgotPasswordTitle": "Esqueci minha senha",
+    "forgotPasswordSubtitle": "Informe seu e-mail e enviaremos um link para redefinir sua senha.",
+    "forgotPasswordButton": "Enviar link de recuperação",
+    "forgotPasswordSentTitle": "Link enviado!",
+    "forgotPasswordSentDesc": "Se este e-mail estiver cadastrado, você receberá as instruções em breve. Verifique também sua caixa de spam.",
+    "forgotPasswordTryAgain": "Tentar com outro e-mail",
+    "resetPasswordTitle": "Redefinir senha",
+    "resetPasswordSubtitle": "Escolha uma nova senha segura para sua conta.",
+    "resetPasswordButton": "Redefinir senha",
+    "resetPasswordSuccessTitle": "Senha redefinida!",
+    "resetPasswordSuccessDesc": "Sua senha foi atualizada com sucesso. Você será redirecionada para o login em instantes.",
+    "newPassword": "Nova senha",
+    "invalidToken": "Token inválido. Use o link enviado por e-mail.",
+    "invalidTokenTitle": "Link inválido",
+    "invalidTokenDesc": "Este link de recuperação é inválido ou expirou. Solicite um novo.",
+    "requestNewLink": "Solicitar novo link",
+    "goToLogin": "Ir para o login",
+    "backToLogin": "Voltar para o login",
+    "sending": "Enviando...",
+    "passwordStrengthHint": "Use letras maiúsculas, números e símbolos para uma senha mais forte"
+  },
+  "errors": {
+    "notFound": "Página não encontrada",
+    "notFoundDesc": "Parece que você saiu do mapa. A página que você está procurando não existe ou foi movida.",
+    "goHome": "Voltar ao início",
+    "notFoundTitle": "Página não encontrada",
+    "backHome": "Voltar para o início",
+    "goToDashboard": "Ir para o Dashboard",
+    "staleLink": "Se você chegou aqui por um link, pode ser que ele esteja desatualizado.",
+    "notFoundDescShort": "A página que você está procurando não existe."
+  },
+  "aiEngine": {
+    "label": "Motor de IA",
+    "title": "Conexões que fazem sentido real",
+    "desc": "Nossa IA analisa 5 dimensões do seu perfil — especialidade, objetivos, renda, localização e valores — e gera um score de compatibilidade de 0 a 100 para cada par. Você ainda recebe um insight personalizado explicando por que aquela conexão faz sentido para você.",
+    "variables": "Mais de 50 variáveis analisadas por par de mulheres",
+    "dim1": "Sua principal especialidade",
+    "dim2": "O que você busca",
+    "dim3": "Valores e propósito",
+    "dim4": "Capacidade de investimento"
+  },
+  "aiSection": {
+    "label": "Inteligência Artificial",
+    "title1": "Uma IA que entende",
+    "title2": "quem você realmente é",
+    "desc": "Não usamos filtros simples de palavras-chave. Nosso motor de IA lê seu perfil completo, entende seus objetivos de vida e negócio, e encontra as conexões que fazem sentido real para o seu momento."
+  },
+  "realResults": {
+    "label": "Resultados reais"
+  },
+  "governance": {
+    "label": "Governança",
+    "title1": "Uma plataforma com",
+    "title2": "integridade institucional",
+    "subtitle": "O acesso na MMM OS não se compra. Ele se conquista.",
+    "silver": {
+      "title": "Membro Prata",
+      "desc": "Todas as mulheres que se cadastram na plataforma entram como Membros Prata. Acesso completo ao sistema de matching, oportunidades públicas e conexões com outras mulheres da rede.",
+      "access": "Acesso por cadastro — sem custo, sem seleção"
+    },
+    "gold": {
+      "badge": "Reconhecimento",
+      "title": "Status Ouro",
+      "desc": "Reconhecimento institucional concedido por mérito. Acesso a oportunidades estratégicas restritas, missões internacionais e grupos de alto impacto.",
+      "access": "Não pode ser solicitado, comprado ou obtido por assinatura. É concedido exclusivamente por mérito pelas membras Ouro da plataforma."
+    },
+    "president": {
+      "title": "Membras Ouro",
+      "desc": "Guardiãs da governança. Aprovam e revogam o Status Ouro, homologam líderes regionais e validam oportunidades estratégicas. Representam a integridade da rede.",
+      "access": "Reconhecimento concedido por mérito dentro da plataforma"
+    },
+    "bronze": {
+      "title": "Membro Bronze",
+      "desc": "Recém-chegadas à plataforma. Acesso às oportunidades públicas, matching básico e comunidade MMM. O ponto de partida para crescer na rede.",
+      "access": "Acesso por cadastro — nível inicial de todas as membras"
+    }
+  },
+  "profile": {
+    "sections": {
+      "whoIAmTitle": "Quem sou",
+      "whoIAmSubtitle": "Seus dados profissionais e presença no ecossistema",
+      "whatIHaveTitle": "O que tenho",
+      "whatIHaveSubtitle": "Ativos, recursos e capacidades que você oferece ao ecossistema",
+      "whatINeedTitle": "O que preciso",
+      "whatINeedSubtitle": "Demandas e necessidades para crescer e expandir",
+      "noAssets": "Nenhum ativo selecionado ainda.",
+      "noDemands": "Nenhuma demanda selecionada ainda.",
+      "clickToEdit": "Clique para editar →"
+    },
+    "gender": {
+      "label": "Gênero",
+      "placeholder": "Selecione uma opção",
+      "male": "Masculino",
+      "female": "Feminino",
+      "preferNotToSay": "Prefiro não dizer"
+    },
+    "business": {
+      "personType": "Tipo de pessoa",
+      "personTypePlaceholder": "Selecione uma opção",
+      "individual": "Pessoa Física",
+      "legalEntity": "Pessoa Jurídica",
+      "mei": "Microempreendedora Individual (MEI)",
+      "companySize": "Porte da empresa",
+      "companySizePlaceholder": "Selecione o porte",
+      "sizeMei": "MEI",
+      "sizeMicro": "Microempresa",
+      "sizeSmall": "Pequena empresa",
+      "sizeMedium": "Média empresa",
+      "sizeLarge": "Grande empresa",
+      "cnpj": "CNPJ",
+      "cnpjPlaceholder": "00.000.000/0000-00",
+      "cnpjHint": "Informe somente se houver.",
+      "cnpjInvalid": "Informe um CNPJ válido."
+    }
+  }
+}
