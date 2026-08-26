@@ -213,8 +213,8 @@ const normalizeToolChoice = (
 };
 
 const resolveApiUrl = () => {
-  if (ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0) {
-    const base = ENV.forgeApiUrl.replace(/\/$/, "");
+  if (ENV.llmApiUrl && ENV.llmApiUrl.trim().length > 0) {
+    const base = ENV.llmApiUrl.replace(/\/$/, "");
     // Bases OpenAI-compatíveis (ex.: Gemini .../v1beta/openai) já incluem o
     // prefixo de versão; só falta o caminho do recurso.
     return base.endsWith("/chat/completions") ? base : `${base}/chat/completions`;
@@ -223,7 +223,7 @@ const resolveApiUrl = () => {
 };
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
+  if (!ENV.llmApiKey) {
     throw new Error(
       "Nenhuma chave de LLM configurada. Defina GOOGLE_API_KEY (ou BUILT_IN_FORGE_API_KEY) no .env"
     );
@@ -415,7 +415,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${ENV.llmApiKey}`,
     },
     body: JSON.stringify(payload),
   });
@@ -445,12 +445,12 @@ export type ModelsResponse = {
 export async function listLLMModels(): Promise<ModelsResponse> {
   assertApiKey();
 
-  const url = ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
+  const url = ENV.llmApiUrl && ENV.llmApiUrl.trim().length > 0
+    ? `${ENV.llmApiUrl.replace(/\/$/, "")}/v1/models`
     : "https://forge.manus.im/v1/models";
 
   const response = await fetchWithBackoff(url, {
-    headers: { authorization: `Bearer ${ENV.forgeApiKey}` },
+    headers: { authorization: `Bearer ${ENV.llmApiKey}` },
   });
 
   if (!response.ok) {

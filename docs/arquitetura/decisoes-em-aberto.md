@@ -96,14 +96,172 @@ Só o A14, do jeito que está escrito, consome mais do que os 16 dias restantes.
 
 ---
 
-## Decisão técnica adiada de propósito
+## D6 — Qual banco de dados e onde hospedar
 
-**A stack.** Não faz sentido escolher antes de saber o que sobrou do código do Manus.
-Se o site puder ser aproveitado, a escolha já está feita pelo que existe; se tudo
-precisar ser refeito, ela é livre.
+**Trava:** nada trava por falta de resposta de terceiros. Só depende de orçamento.
+**Estava adiada até sabermos o que sobrou do Manus. Sobrou tudo, e roda.**
 
-Este documento foi escrito para não depender dessa escolha: o modelo de dados vale
-para qualquer coisa sobre Postgres, e os fluxos valem para qualquer linguagem.
+O código recuperado é um processo Express único que serve a API tRPC e o front-end
+juntos, com Drizzle sobre MySQL. Não é protótipo: 42 tabelas em `mysqlTable`, mais
+11 que existem no banco sem definição Drizzle nenhuma (o módulo SIVC inteiro,
+`national_leaders`, `user_vault`), e 3 migrações aplicadas.
+
+O conflito é conhecido: `modelo-de-dados.md` foi escrito assumindo Postgres. A
+pergunta não é qual banco é melhor em abstrato — é quem cede, com 16 dias no
+relógio e duas etapas grandes não iniciadas.
+
+### MySQL x Postgres: o custo de migrar, medido no código
+
+Não é trocar um import. Foi contado arquivo por arquivo:
+
+| O que muda | Quantidade | Por quê |
+|---|---|---|
+| Tabelas reescritas para `pgTable` | 42 | dialeto |
+| Tabelas sem Drizzle, DDL à mão | 11 | o `drizzle-kit` não gera o que não conhece — o SIVC não nasceria |
+| `mysqlEnum` → `pgEnum` no topo | 21, sendo 11 com nome colidente | em Postgres o enum é tipo global, não inline |
+| `.onUpdateNow()` | 7 colunas | não existe em Postgres — vira trigger |
+| `insertId` / `$returningId()` | 8 | formato de resultado do mysql2 |
+| `onDuplicateKeyUpdate` → `onConflictDoUpdate` | 4, um deles no login | `ON CONFLICT` exige nomear a chave, e `users` tem duas |
+| `db.execute` devolvendo tupla `[rows]` | 22 | em Postgres devolve `{ rows }` — **compila igual e devolve outra coisa** |
+| SQL cru com identificador camelCase | 19 statements | Postgres cria `"userId"` sensível a caixa; `WHERE userId` quebra em execução |
+| `like()` sensível a acento | 9 buscas | hoje "sao paulo" acha "São Paulo"; em Postgres deixa de achar |
+
+**Estimativa: 6 a 10 dias úteis, sem rede de proteção** — são 19 arquivos de teste
+e só um encosta no banco. As três quebras mais caras (o `[rows]`, o upsert do login
+e a busca sem acento) não são pegas pelo compilador: aparecem em produção.
+
+Atualizar o documento custa **meio dia**, pode ser feito por quem não está codando,
+e o DDL autoritativo já existe pronto em `drizzle/0000_clear_adam_destine.sql`.
+A assimetria é de dez para um.
+
+**E os cinco requisitos da lista?** Quatro não dependem do banco:
+
+| Requisito | Depende do banco? |
+|---|---|
+| Busca em linguagem natural | **Não.** O cosseno roda em JavaScript (`server/memory-service.ts:42`), sobre no máximo 800 vetores de 768 dimensões por usuária, e `memory_documents` está vazia. O gargalo real é a reindexação disparada a cada busca, em laço serial contra o Gemini — o pgvector não toca nisso. |
+| Transcrição de áudio | **Não.** É chamada HTTP ao Gemini. |
+| Histórico auditável | **Não.** `audit_logs` roda igual nos dois. |
+| Funcionar no celular | **Não.** É trabalho de front-end. |
+| Privacidade aplicada **no banco** | **Aqui sim.** RLS de verdade só existe em Postgres. |
+
+Sobre o último, dois fatos mudam a conta. **Isso não está atendido hoje em banco
+nenhum**: são cerca de 150 cláusulas `WHERE ownerId = ?` espalhadas pela aplicação,
+e não existe uma linha de `CREATE POLICY`. E **migrar não entrega RLS, só torna
+possível** — implementar de verdade exige cada requisição rodar sob identidade de
+banco própria, o que soma 3 a 5 dias **depois** dos 6 a 10.
+
+O que existe hoje filtra no `WHERE`, executado pelo banco: linha alheia não sai do
+servidor. O que falta em relação a RLS é defesa contra alguém esquecer um `WHERE` —
+e isso se compra por meio dia, com uma camada que exige `ownerId` na assinatura e um
+teste que varre as queries. Sem trocar de banco.
+
+### Onde hospedar o banco
+
+Preços consultados em 25/08/2026 nas páginas oficiais.
+
+| Opção | Protocolo | Plano gratuito | Região BR | Custo | Migração |
+|---|---|---|---|---|---|
+| **Railway MySQL** | MySQL | incluso no Hobby | Não | dentro dos US$ 5-12/mês do app | **nenhuma** |
+| **Aiven MySQL** | MySQL | 1 GB, nó único | nos pagos; no grátis não confirmado | US$ 0 ou 5/mês | **nenhuma** |
+| **TiDB Cloud Starter** | MySQL | 5 GiB + 50M RUs/mês | **não** | US$ 0 | **nenhuma** |
+| PlanetScale | MySQL | **acabou em 04/2024** | não confirmado | US$ 39/mês | nenhuma |
+| Neon | Postgres | 0,5 GB, dorme em 5 min | sim | US$ 0 | 6-10 dias |
+| Supabase | Postgres | 500 MB, **pausa após 1 semana parado** | sim | US$ 25/mês; PITR custa +US$ 100 | 6-10 dias |
+
+Duas pegadinhas que importam: o TiDB **recusa novas conexões** quando a cota estoura
+— o login para de funcionar até virar o mês. O Aiven no grátis pode desligar serviço
+sem atividade, o que já justifica ir direto ao plano de US$ 5.
+
+### Onde hospedar a aplicação
+
+Duas restrições do próprio código eliminam metade da lista antes do preço.
+`server/routers/meetings.ts` recebe o áudio como base64 de até 14 milhões de
+caracteres em **uma** requisição, e transcreve com LLM **dentro dela** — um request
+pode durar minutos. E é um processo único servindo API e front juntos.
+
+| Opção | Deploy | Dorme? | MySQL junto | Custo real | Esforço |
+|---|---|---|---|---|---|
+| **Railway Hobby** | GitHub, automático | não | **sim, 1 clique** | US$ 7-12/mês | **~meio dia** |
+| Render | GitHub, automático | o grátis hiberna e leva ~1 min para voltar | não, só Postgres | US$ 8-10/mês | meio dia + banco à parte |
+| Fly.io | Dockerfile + CLI | opcional | não | US$ 7-12/mês | 1-2 dias |
+| Cloud Run | container + IAM | escala a zero | não | ~US$ 87/mês se ficar quente | 2-4 dias |
+| **Vercel** | — | — | — | — | **inviável:** corpo de requisição limitado a 4,5 MB, todo upload de reunião vira erro 413 |
+| VPS (Hetzner, Lightsail) | manual | não | você instala | EUR 4,49 a US$ 7/mês | 1-3 dias + manutenção eterna |
+
+O VPS é o melhor preço por recurso e o pior encaixe: ninguém no time é engenheiro de
+infraestrutura, e uma noite depurando nginx é uma noite que não foi para a entrega.
+
+Nenhum serviço gerenciado dessa lista tem região no Brasil, exceto Fly.io e Cloud
+Run. Isso custa cerca de 130 ms por requisição a partir dos Estados Unidos —
+invisível neste app.
+
+### Armazenamento de arquivos
+
+**O upload está quebrado hoje, e não é por causa da hospedagem.** `server/storage.ts`
+falava com o Forge do Manus, que saiu do ar. Isso derruba quatro caminhos: gravação
+de reunião, documentos de deal room, documentos do SIVC e geração de imagem. O
+cliente precisa ser reescrito de qualquer forma — e o `@aws-sdk/client-s3` já está
+instalado, sem ser usado em lugar nenhum.
+
+| Opção | Preço | Egresso | Grátis |
+|---|---|---|---|
+| **Cloudflare R2** | US$ 0,015/GB/mês | **US$ 0** | 10 GB/mês |
+| Backblaze B2 | ~US$ 0,007/GB/mês | grátis até 3x o armazenado | 10 GB |
+| AWS S3 | a partir de US$ 0,023/GB | US$ 0,09/GB | — |
+
+### "Funcionar no celular"
+
+Hoje é site responsivo e nada além: sem `manifest.json`, sem service worker. Um
+**PWA** atende o pedido de "app" dentro do prazo — ícone na tela inicial, tela cheia,
+e a gravação já funciona por `MediaRecorder` no navegador. É trabalho de front-end,
+algumas horas. App nativo só seria necessário para gravar em segundo plano ou push
+confiável no iOS, e consumiria as duas etapas que ainda não começaram.
+
+### Perguntas que dependem de decisão de pessoa
+
+1. **Qual o orçamento mensal para infraestrutura?** Tudo aqui cabe em US$ 10-20.
+   Se o teto for zero, existe caminho (TiDB grátis + Render grátis), mas a demo
+   abre com cerca de um minuto de tela branca depois de um período parado.
+2. **A cliente aceita PWA como "app"?** Se exigir presença na App Store e na Play
+   Store, isso não cabe até 10/09 e vira decisão separada — precisa ser perguntado
+   esta semana.
+3. **Existe exigência contratual de dado hospedado no Brasil?** A LGPD não obriga,
+   mas se a cliente pedir por escrito a resposta muda para Aiven São Paulo + Fly.io.
+4. **Quem cria as contas, e em qual cartão?** Railway e Cloudflare pedem cadastro.
+   Sem isso o deploy trava por um dia útil.
+
+**O que dá para fazer sem resposta nenhuma:** subir Railway com MySQL gerenciado,
+ligar o R2 e separar as variáveis de ambiente.
+**O que trava de verdade:** só a pergunta 2, porque muda escopo, não infraestrutura.
+
+### Dois itens que valem mais que este debate
+
+- **`pnpm db:push` não recria o banco do zero.** As 11 tabelas sem definição Drizzle
+  não nasceriam numa instalação nova — o SIVC inteiro sumiria. É bug de
+  reprodutibilidade que já existe em MySQL e independe desta decisão.
+- **A gravação de reunião só funciona em host que tolere requisição de minutos.**
+  Confirmar o limite de tempo **antes** de contar essa etapa como pronta: o padrão
+  de 30 ou 60 segundos de várias plataformas a inviabiliza sem erro revelador.
+
+**Recomendação técnica:** manter MySQL e atualizar `modelo-de-dados.md` com o DDL que
+já existe em `drizzle/`, porque migrar custa 6 a 10 dias e não entrega uma tela nova;
+hospedar em **Railway Hobby com o MySQL gerenciado do próprio Railway e Cloudflare R2
+para arquivos**, a única combinação que sobe o código como está, sem migração, sem
+hibernação e em cerca de meio dia. Registrar que a decisão se revisita depois de
+10/09 se a cliente exigir isolamento garantido pelo banco em auditoria — aí Postgres
+com RLS custa 6 a 10 dias **mais** 3 a 5, e isso precisa estar escrito antes de
+alguém prometer prazo.
+
+---
+
+## Decisão técnica que estava adiada — agora é a D6
+
+**A stack.** Não fazia sentido escolher antes de saber o que sobrou do código do
+Manus. Sobrou, e roda: a escolha já está feita pelo que existe, e o que resta
+decidir virou a **D6** acima.
+
+O modelo de dados foi escrito assumindo Postgres, e o código recuperado é MySQL.
+A D6 mede esse custo e recomenda qual dos dois cede.
 
 O que a stack escolhida precisa entregar:
 
