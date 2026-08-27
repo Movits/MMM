@@ -31,7 +31,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # enablement liga o Pages na primeira execução, usando a permissão
+      # pages:write do próprio fluxo — dispensa o passo manual em Settings.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
