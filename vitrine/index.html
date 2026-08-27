@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MMM — Mulheres que Movem o Mundo</title>
+<meta name="description" content="CRM inteligente de networking: a IA cruza o que cada contato possui com o que cada contato procura para gerar oportunidades de negócio." />
+<meta property="og:title" content="MMM — Mulheres que Movem o Mundo" />
+<meta property="og:description" content="CRM inteligente de networking para mulheres empreendedoras e líderes de negócios." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #060b14;
+    --gold: #f5a623;
+    --gold-soft: #ffd166;
+    --line: rgba(255,255,255,.06);
+    --line-strong: rgba(255,255,255,.14);
+    --muted: rgba(255,255,255,.45);
+    --faint: rgba(255,255,255,.3);
+    --ease: cubic-bezier(.23,1,.32,1);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: #fff;
+    font-family: Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+  a { color: inherit; }
+  .wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    background: rgba(6,11,20,.85);
+    backdrop-filter: blur(20px);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; padding-bottom: 14px; }
+  .logo { font-weight: 800; font-size: 20px; letter-spacing: -.02em; text-decoration: none; }
+  .logo .g { color: var(--gold); }
+  .tag {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600;
+    color: var(--gold); border: 1px solid rgba(245,166,35,.25); background: rgba(245,166,35,.08);
+    padding: 3px 9px; border-radius: 999px; margin-left: 10px; vertical-align: 3px;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--gold); color: #060e1a; font-weight: 700; font-size: 14px;
+    padding: 10px 18px; border-radius: 12px; text-decoration: none;
+    transition: background .2s var(--ease), transform .16s var(--ease);
+  }
+  .btn:hover { background: #e09520; }
+  .btn:active { transform: scale(.97); }
+  .btn-ghost {
+    background: transparent; color: rgba(255,255,255,.6);
+    border: 1px solid var(--line-strong); font-weight: 500;
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,.04); color: #fff; }
+
+  .hero { padding: 80px 0 96px; position: relative; overflow: hidden; }
+  .hero::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 60% 50% at 72% 42%, rgba(245,166,35,.08) 0%, transparent 70%);
+  }
+  .hero .grid { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(255,255,255,.09); background: rgba(255,255,255,.03);
+    color: rgba(255,255,255,.6); font-size: 12px; font-weight: 500;
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 26px;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); display: inline-block; }
+  h1 { font-size: clamp(34px, 5vw, 56px); line-height: 1.05; letter-spacing: -.03em; font-weight: 800; margin: 0 0 20px; }
+  h1 .g { color: var(--gold); }
+  .lede { color: var(--muted); font-size: 17px; max-width: 30em; margin: 0 0 34px; }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .shot { position: relative; }
+  .shot::before {
+    content: ""; position: absolute; inset: -24px; border-radius: 40px;
+    background: rgba(245,166,35,.06); filter: blur(48px); pointer-events: none;
+  }
+  .shot img {
+    position: relative; width: 100%; height: auto; display: block;
+    border-radius: 24px; border: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 32px 64px rgba(0,0,0,.5);
+  }
+
+  section { padding: 84px 0; border-top: 1px solid rgba(255,255,255,.04); }
+  .label { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 14px; }
+  .label span { color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: .25em; text-transform: uppercase; }
+  .label i { height: 1px; width: 32px; background: rgba(245,166,35,.4); }
+  h2 { font-size: clamp(26px, 3.4vw, 38px); letter-spacing: -.025em; font-weight: 800; margin: 0 0 12px; text-align: center; }
+  .sub { color: var(--muted); text-align: center; margin: 0 auto 48px; max-width: 34em; }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .card {
+    border: 1px solid var(--line); background: rgba(255,255,255,.02);
+    border-radius: 22px; padding: 28px;
+    transition: border-color .3s var(--ease), background .3s var(--ease);
+  }
+  .card:hover { border-color: rgba(245,166,35,.3); background: rgba(245,166,35,.03); }
+  .ic {
+    width: 42px; height: 42px; border-radius: 14px; margin-bottom: 18px;
+    border: 1px solid rgba(255,255,255,.07); background: rgba(255,255,255,.03);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ic svg { width: 19px; height: 19px; stroke: var(--gold); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .card h3 { font-size: 16px; font-weight: 700; margin: 0 0 8px; letter-spacing: -.01em; }
+  .card p { color: var(--faint); font-size: 14px; margin: 0; line-height: 1.65; }
+
+  .stack { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; max-width: 860px; margin: 0 auto; }
+  .chip {
+    border: 1px solid var(--line); background: rgba(255,255,255,.02);
+    border-radius: 16px; padding: 18px 20px;
+  }
+  .chip b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--faint); font-weight: 600; margin-bottom: 6px; }
+  .chip span { font-size: 14px; color: rgba(255,255,255,.8); }
+
+  .docs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; max-width: 880px; margin: 0 auto; }
+  .doc {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    border: 1px solid var(--line); background: rgba(255,255,255,.02);
+    border-radius: 16px; padding: 18px 22px; text-decoration: none;
+    transition: border-color .25s var(--ease), background .25s var(--ease);
+  }
+  .doc:hover { border-color: var(--line-strong); background: rgba(255,255,255,.04); }
+  .doc b { display: block; font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .doc small { color: var(--faint); font-size: 12.5px; }
+  .doc i { color: var(--gold); font-style: normal; font-size: 18px; flex-shrink: 0; }
+
+  .note {
+    max-width: 760px; margin: 0 auto; border-radius: 22px; padding: 30px 34px;
+    border: 1px solid rgba(245,166,35,.22); background: rgba(245,166,35,.04);
+  }
+  .note h3 { margin: 0 0 10px; font-size: 16px; font-weight: 700; color: var(--gold-soft); letter-spacing: -.01em; }
+  .note p { margin: 0 0 10px; color: rgba(255,255,255,.6); font-size: 14.5px; }
+  .note p:last-child { margin-bottom: 0; }
+  .note a { color: var(--gold-soft); }
+
+  footer { border-top: 1px solid rgba(255,255,255,.05); padding: 36px 0; }
+  footer .wrap { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  footer p { margin: 0; color: rgba(255,255,255,.25); font-size: 13px; }
+  footer a { color: rgba(255,255,255,.4); text-decoration: none; font-size: 13px; }
+  footer a:hover { color: rgba(255,255,255,.75); }
+
+  @media (max-width: 900px) {
+    .hero .grid { grid-template-columns: 1fr; gap: 40px; }
+    .cards { grid-template-columns: 1fr; }
+    .docs { grid-template-columns: 1fr; }
+    .hero { padding: 56px 0 68px; }
+    section { padding: 64px 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="logo" href="#top">MMM<span class="g">OS</span><span class="tag">vitrine</span></a>
+    <a class="btn btn-ghost" href="https://github.com/Movits/MMM">Ver o código</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap grid">
+    <div>
+      <div class="pill"><span class="dot"></span> Mulheres que Movem o Mundo</div>
+      <h1>Cada contato guarda uma <span class="g">oportunidade</span>. A IA encontra qual.</h1>
+      <p class="lede">
+        Um CRM de networking em que cada usuária mantém sua base privada de relacionamentos
+        estratégicos. A inteligência artificial cruza o que cada contato <strong>possui</strong>
+        com o que cada contato <strong>procura</strong> — e devolve a conexão que faz sentido,
+        com o motivo explicado.
+      </p>
+      <div class="cta-row">
+        <a class="btn" href="https://github.com/Movits/MMM">Repositório no GitHub →</a>
+        <a class="btn btn-ghost" href="#documentacao">Ler a arquitetura</a>
+      </div>
+    </div>
+    <div class="shot">
+      <img src="hero-women.svg" alt="Três mulheres executivas de terno diante de uma metrópole ao anoitecer" />
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="label"><i></i><span>O que a plataforma faz</span><i></i></div>
+    <h2>Seis módulos, um objetivo</h2>
+    <p class="sub">Conectar quem tem o que oferecer a quem precisa exatamente daquilo.</p>
+    <div class="cards">
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8L4 8.8h6.1z"/></svg></div>
+        <h3>Matches por IA</h3>
+        <p>O perfil é analisado em cinco dimensões e recebe um score de compatibilidade, com uma explicação de por que aquela conexão faz sentido.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></div>
+        <h3>Oportunidades</h3>
+        <p>Sociedade, investimento, mentoria e parceria — cada proposta passa por uma análise automática que sugere a documentação necessária.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 118 0v3"/></svg></div>
+        <h3>Deal Rooms</h3>
+        <p>Sala de negociação privada, liberada só depois das duas partes assinarem o termo de confidencialidade.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/></svg></div>
+        <h3>Rede particular</h3>
+        <p>Base de contatos privada, com o registro de onde e como cada pessoa foi conhecida, e um assistente que enriquece o cadastro conversando.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 013 3v6a3 3 0 01-6 0V5a3 3 0 013-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1M12 18v4"/></svg></div>
+        <h3>Assistente de reuniões</h3>
+        <p>Gravação, transcrição e extração do que foi dito — com sugestão de novos contatos a partir dos nomes que apareceram na conversa.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3>Verificação e governança</h3>
+        <p>Identidade conferida por documentos, níveis Bronze, Prata e Ouro, e um painel de validação das oportunidades publicadas.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="label"><i></i><span>Como é construído</span><i></i></div>
+    <h2>A stack</h2>
+    <p class="sub">Tipos que atravessam o front e o back sem duplicação, e interface em dez idiomas.</p>
+    <div class="stack">
+      <div class="chip"><b>Frontend</b><span>React 19 · Vite · Tailwind</span></div>
+      <div class="chip"><b>API</b><span>tRPC 11 sobre Express</span></div>
+      <div class="chip"><b>Banco</b><span>MySQL via Drizzle ORM</span></div>
+      <div class="chip"><b>IA</b><span>Endpoint compatível com OpenAI</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="documentacao">
+  <div class="wrap">
+    <div class="label"><i></i><span>Documentação</span><i></i></div>
+    <h2>O desenho do sistema</h2>
+    <p class="sub">Escrito para não depender da plataforma onde o código nasceu.</p>
+    <div class="docs">
+      <a class="doc" href="https://github.com/Movits/MMM/blob/main/docs/arquitetura/README.md">
+        <div><b>Arquitetura</b><small>Visão geral, camadas e princípios</small></div><i>→</i>
+      </a>
+      <a class="doc" href="https://github.com/Movits/MMM/blob/main/docs/arquitetura/modelo-de-dados.md">
+        <div><b>Modelo de dados</b><small>Entidades e DDL completo</small></div><i>→</i>
+      </a>
+      <a class="doc" href="https://github.com/Movits/MMM/blob/main/docs/arquitetura/fluxos.md">
+        <div><b>Fluxos</b><small>Assistente de Reuniões e Smart Match</small></div><i>→</i>
+      </a>
+      <a class="doc" href="https://github.com/Movits/MMM/blob/main/docs/arquitetura/privacidade.md">
+        <div><b>Privacidade</b><small>Os três níveis de acesso</small></div><i>→</i>
+      </a>
+      <a class="doc" href="https://github.com/Movits/MMM/blob/main/docs/arquitetura/decisoes-em-aberto.md">
+        <div><b>Decisões em aberto</b><small>O que trava implementação</small></div><i>→</i>
+      </a>
+      <a class="doc" href="https://github.com/Movits/MMM/blob/main/docs/recuperacao-do-manus.md">
+        <div><b>Recuperação do código</b><small>O que mudou ao sair do Manus</small></div><i>→</i>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="note">
+      <h3>Esta página é uma vitrine, não a aplicação</h3>
+      <p>
+        O GitHub Pages entrega apenas arquivos prontos ao navegador — ele não executa
+        servidor nem banco de dados. Como login, matches por IA, cofre e upload de
+        arquivos dependem das duas coisas, a aplicação em si não roda aqui.
+      </p>
+      <p>
+        O endereço definitivo entra nesta página assim que a hospedagem for definida.
+        A comparação de alternativas está na decisão <strong>D6</strong>, dentro de
+        <a href="https://github.com/Movits/MMM/blob/main/docs/arquitetura/decisoes-em-aberto.md">decisões em aberto</a>.
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p><strong style="color:rgba(255,255,255,.6)">MMM</strong><span style="color:#f5a623">OS</span> — Mulheres que Movem o Mundo</p>
+    <p>Projeto em desenvolvimento</p>
+    <a href="https://github.com/Movits/MMM">github.com/Movits/MMM</a>
+  </div>
+</footer>
+
+</body>
+</html>
