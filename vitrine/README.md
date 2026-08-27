@@ -17,6 +17,10 @@ Só uma vez, e são dois cliques:
 Pronto. O fluxo em `.github/workflows/pages.yml` publica sozinho a cada mudança em
 `vitrine/`, e o site fica em **https://movits.github.io/MMM/**.
 
+Esse passo não dá para automatizar: foi tentado com o parâmetro `enablement` da
+ação `configure-pages`, e o token do fluxo recebe *Resource not accessible by
+integration*. Criar o site exige acesso de administrador de verdade.
+
 Para publicar sem esperar uma alteração: aba **Actions** → *Publicar vitrine no
 GitHub Pages* → **Run workflow**.
 
