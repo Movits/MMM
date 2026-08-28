@@ -43,6 +43,9 @@ Thumbs.db
 backups/
 dumps/
 
+# Configuração pessoal do Claude Code
+.claude/settings.local.json
+
 # Dumps de banco — o dump do MMM contém dados pessoais reais
 *.sql
 *.sql.gz

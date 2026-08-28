@@ -1,4 +1,4 @@
-# Arquitetura — MMM (Mulheres que Movem o Mundo)
+# Arquitetura
 
 > Documento de arquitetura, escrito em 25/08/2026 a partir das 13 seções de escopo
 > enviadas pela Glenda em 06/08/2026 e das notas da reunião de 05/08/2026.
@@ -11,14 +11,14 @@ saiu de lá. Este documento existe para que o desenho do sistema não dependa di
 - **Se o código voltar**, ele é o checklist para revisar o que existe.
 - **Se não voltar**, ele é a planta para reconstruir.
 
-Ele foi escrito de propósito **sem escolher uma stack**. O modelo de dados vale para
-qualquer coisa em cima de Postgres, e os fluxos valem para qualquer linguagem.
+Não escolhe stack: o modelo de dados vale para qualquer coisa em cima de Postgres, e
+os fluxos valem para qualquer linguagem.
 
 ## Índice
 
 | Documento | Conteúdo |
 |---|---|
-| [modelo-de-dados.md](./modelo-de-dados.md) | As entidades, o DDL completo e as notas de modelagem |
+| [modelo-de-dados.md](./modelo-de-dados.md) | As entidades, o DDL e as notas de modelagem |
 | [fluxos.md](./fluxos.md) | Assistente de Reuniões, Smart Match e o funil do corretor |
 | [privacidade.md](./privacidade.md) | Os três níveis de acesso como regra de banco, não de tela |
 | [decisoes-em-aberto.md](./decisoes-em-aberto.md) | O que trava implementação e precisa de decisão |
@@ -29,43 +29,38 @@ qualquer coisa em cima de Postgres, e os fluxos valem para qualquer linguagem.
 
 ### 1. Privacidade é estrutura, não tela
 
-O escopo da Glenda define três níveis: privado, compartilhado com Usuário Ouro, e
-público no ecossistema. E é específica sobre o terceiro:
+O escopo define três níveis de acesso (privado, Usuário Ouro, público no
+ecossistema) e é explícito sobre o terceiro:
 
 > Público no ecossistema MMM: informações disponíveis para todos os membros da
 > plataforma; nesta hipótese não pode aparecer os dados pessoais do contato, só as
 > oportunidades.
 
-Isso **não pode** ser um campo escondido no front-end. Se o servidor devolve o
-telefone e a tela apenas não o exibe, o dado está exposto — qualquer pessoa vê
-abrindo as ferramentas do navegador. O nível público precisa ser uma **consulta
-diferente**, que nunca seleciona as colunas pessoais.
-
-Ver [privacidade.md](./privacidade.md).
+Se o servidor devolve o dado e a tela apenas não o exibe, o dado está exposto. Cada
+nível precisa ser uma regra no banco e uma consulta própria. O desenho completo está
+em [privacidade.md](./privacidade.md).
 
 ### 2. O Match só funciona sobre lista controlada
 
-O exemplo da Glenda é "contato A possui mina de terras raras, contato B procura
-fornecedor de terras raras". Isso só casa automaticamente se as duas pontas
-apontarem para **o mesmo item de uma lista compartilhada**.
+O exemplo do escopo: contato A possui mina de terras raras, contato B procura
+fornecedor de terras raras. Isso só casa automaticamente se as duas pontas apontarem
+para o mesmo item de uma lista compartilhada.
 
-Com texto livre, `terras raras`, `terra rara`, `Terras Raras` e `rare earth` são
-quatro coisas diferentes e o cruzamento não encontra nada. Por isso existe a tabela
+Com texto livre, `terras raras`, `terra rara` e `rare earth` são três coisas
+diferentes e o cruzamento não encontra nada. Por isso existe a tabela
 `taxonomia_item` e por isso `contato_atributo` referencia ela.
 
-O texto livre continua existindo — as notas do Gabriel pedem isso (A5) — mas fica
-guardado num campo separado, fora do cruzamento, e alimenta a revisão periódica da
-lista.
+O texto livre continua existindo (ajuste A5), mas fica num campo separado, fora do
+cruzamento, e alimenta a revisão periódica da lista.
 
 ### 3. Nada que a IA extrair entra sozinho
 
 A etapa 3 manda a IA ler o áudio de uma reunião e sugerir contatos. Toda informação
-extraída carrega **de onde veio**: o trecho da transcrição, a posição e a confiança.
-E nada vira contato sem o usuário confirmar.
+extraída carrega a origem (o trecho da transcrição, a posição e a confiança), e nada
+vira contato sem o usuário confirmar.
 
-Isso não é capricho. Um modelo de linguagem produz texto plausível com muita
-facilidade — inclusive um telefone que ninguém falou. Guardar a origem é o que
-permite conferir, e exigir confirmação é o que impede o erro de virar dado.
+Modelos de linguagem geram texto plausível, inclusive dados que ninguém falou. A
+origem permite conferir; a confirmação impede que o erro vire cadastro.
 
 ---
 
@@ -127,5 +122,6 @@ E os ajustes da reunião de 05/08:
 | A8 (presencial) | `perfil_membro.modalidades` |
 | A9 (replicar bloco na página do que busca) | `contato_atributo.direcao` |
 | A11 (contrato de comissão) | `documento_versao` + `consentimento` |
+| A12 (destaque de produto) | sem entidade definida; o desenho depende da decisão D4 |
 | A13 (bloquear contato direto) | `oportunidade_parte` + auditoria |
-| A14 (dinheiro pela plataforma) | **fora deste documento** — ver decisoes-em-aberto.md |
+| A14 (dinheiro pela plataforma) | fora deste documento; ver decisoes-em-aberto.md |
