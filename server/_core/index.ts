@@ -228,7 +228,14 @@ async function startServer() {
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+
+  // Em produção a porta é imposta pela plataforma (Railway, Render, Fly) e o
+  // roteador só entrega tráfego nela. Cair para outra porta faria o container
+  // subir "com sucesso" e não responder nada, então aqui falhar é melhor.
+  const port =
+    process.env.NODE_ENV === "production"
+      ? preferredPort
+      : await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);

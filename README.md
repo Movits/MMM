@@ -23,6 +23,7 @@ descreve para onde o projeto vai, e nem tudo que está desenhado já existe no c
 | [docs/arquitetura/privacidade.md](./docs/arquitetura/privacidade.md) | Os três níveis de acesso |
 | [docs/arquitetura/decisoes-em-aberto.md](./docs/arquitetura/decisoes-em-aberto.md) | O que trava implementação |
 | [docs/recuperacao-do-manus.md](./docs/recuperacao-do-manus.md) | Como o código foi recuperado e o que mudou |
+| [docs/deploy.md](./docs/deploy.md) | Como colocar no ar, e por que não no GitHub Pages |
 
 As specs por etapa (perfil estratégico, contextos, enriquecimento, assistente de
 reuniões, rede privada) estão soltas em `docs/`, como vieram do Manus.
@@ -100,6 +101,10 @@ A aplicação precisa de um servidor Node e de um MySQL. Hospedagens de arquivos
 estáticos (GitHub Pages e afins) não conseguem rodá-la, porque login, IA, cofre e
 uploads dependem de chaves que nunca podem ir para o navegador. Railway, Render,
 Fly.io, Cloud Run ou um VPS resolvem.
+
+O repositório traz um `Dockerfile` pronto. O passo a passo, a lista de variáveis
+de ambiente e o que continua quebrado depois do deploy estão em
+[docs/deploy.md](./docs/deploy.md).
 
 O histórico de versões da documentação está no [CHANGELOG](./CHANGELOG.md).
 

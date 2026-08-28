@@ -1,5 +1,19 @@
 # Histórico da documentação
 
+## v1.2 (28/08/2026)
+
+Preparação do deploy.
+
+- `Dockerfile` e `.dockerignore`: imagem de produção em dois estágios, serve
+  para Railway, Render, Fly.io ou VPS.
+- `docs/deploy.md`: por que o GitHub Pages não roda este app, passo a passo do
+  Railway, tabela de variáveis de ambiente separando as que impedem o boot das
+  que quebram em uso, e o que continua quebrado depois de publicado.
+- `server/_core/index.ts`: em produção a porta passa a ser exatamente a da
+  variável `PORT`. O código caía para outra porta quando a preferida estava
+  ocupada, o que num container faria o processo subir sem receber tráfego.
+- `package.json`: campo `engines` com Node 20 ou superior.
+
 ## v1.1 (25/08/2026)
 
 Revisão geral após painel de revisão (estilo, relevância e técnica). Traz também a
