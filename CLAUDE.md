@@ -34,9 +34,12 @@ pnpm format            # prettier --write .
 - `DATABASE_URL`, `JWT_SECRET` e `VAULT_ENCRYPTION_KEY` são obrigatórias: o servidor
   se recusa a iniciar sem elas (`requireSecret()` em `server/_core/env.ts`). Não há
   valores padrão de propósito.
-- Sem `RESEND_API_KEY` e `ANTHROPIC_API_KEY`, exatamente dois testes falham (as
-  verificações dessas credenciais). É o estado esperado em ambiente local sem as
-  chaves.
+- Parte dos testes depende do `.env`, não do código. Num clone sem `.env`, 6
+  falham: 3 do Gemini (`GOOGLE_API_KEY`), as checagens de credencial do Resend e
+  da Anthropic, e 1 de `critical.test.ts` que precisa de banco (`getDb()` nulo).
+  Com banco e Gemini configurados, restam só as 2 checagens de
+  `RESEND_API_KEY`/`ANTHROPIC_API_KEY` — o estado registrado em
+  `docs/recuperacao-do-manus.md`. Falha fora desse conjunto é regressão.
 
 ## Arquitetura
 
