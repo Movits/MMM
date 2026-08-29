@@ -33,6 +33,46 @@ código como está, com MySQL gerenciado no mesmo lugar e sem hibernação.
 
 ---
 
+## Subir de graça: Render + Aiven
+
+Caminho escolhido em 29/08/2026 para a versão de teste, enquanto não há decisão
+sobre hospedagem paga. Nenhum dos dois pede cartão.
+
+O banco fica no **Aiven** porque o plano gratuito do Render oferece PostgreSQL, e
+o MMM fala MySQL pelo driver `mysql2`.
+
+1. **Banco.** aiven.io → *Create service* → **MySQL** → plano **Free**. Leva uns
+   dois minutos para ficar de pé. Copie a *Service URI* do painel.
+
+2. **Ajustar a URI.** O Aiven entrega algo terminando em `?ssl-mode=REQUIRED`,
+   que é sintaxe do cliente de linha de comando. O `mysql2` ignora esse
+   parâmetro e tenta conectar sem TLS, que o Aiven recusa, com um erro que não
+   explica a causa. Troque o final por:
+   ```
+   ?ssl={"rejectUnauthorized":false}
+   ```
+   Isso criptografa a conexão mas não valida o certificado. Serve para o
+   ambiente de teste. Para produção, use a CA que o Aiven disponibiliza.
+
+3. **Criar as tabelas**, com a URI já ajustada:
+   ```bash
+   DATABASE_URL='mysql://...' node scripts/criar-banco.mjs
+   ```
+
+4. **Aplicação.** render.com → *New* → *Web Service* → conectar `Movits/MMM` →
+   runtime **Docker**. Ele acha o `Dockerfile` sozinho e injeta a `PORT`, que o
+   servidor respeita em produção (`server/_core/index.ts:230`).
+
+5. **Variáveis**, na tabela da próxima seção. A `DATABASE_URL` é a mesma do
+   passo 2.
+
+6. Depois do primeiro deploy, copiar o endereço `*.onrender.com` e voltar em
+   *Environment* para apontar `FRONTEND_URL` para ele.
+
+**O custo do plano gratuito:** o serviço dorme depois de um tempo sem acesso, e
+a primeira visita seguinte demora de 30 a 60 segundos. Vale avisar quem for
+testar, senão parece que está fora do ar.
+
 ## Subir no Railway
 
 O repositório já tem `Dockerfile`, então o Railway não precisa adivinhar nada.
@@ -44,14 +84,21 @@ O repositório já tem `Dockerfile`, então o Railway não precisa adivinhar nad
 3. **Add MySQL** no mesmo projeto. O Railway cria a variável `DATABASE_URL` e
    já a injeta no serviço do app.
 4. **Preencher as variáveis** da tabela abaixo em Variables.
-5. **Rodar as migrações uma vez**, da sua máquina, apontando para o banco do
-   Railway:
+5. **Criar as tabelas uma vez**, da sua máquina, apontando para o banco novo:
    ```bash
-   DATABASE_URL="<a URL do MySQL do Railway>" pnpm db:push
+   DATABASE_URL="<a URL do MySQL>" node scripts/criar-banco.mjs
    ```
-   Isso não recria tudo: 11 tabelas do banco original não têm definição no
-   Drizzle, entre elas o módulo SIVC inteiro. Está registrado na D6 e continua
-   em aberto.
+   **Não use `pnpm db:push`.** Ele está quebrado: o histórico em `drizzle/meta`
+   parou na migração `0002`, com 15 tabelas, enquanto o `drizzle/schema.ts` tem
+   48. O comando pergunta, uma a uma, se cada tabela nova é criação ou
+   renomeação de `ai_analyses`, `messages`, `security_notifications` ou
+   `user_vault` — que estão no histórico e sumiram do código. Exige terminal
+   interativo, e uma resposta errada gera `DROP`.
+
+   O script aplica `scripts/schema-completo.sql`, que é o schema inteiro. Dá
+   para rodar de novo sem perigo: tabela que já existe é pulada.
+
+   Refazer o histórico de migrações continua pendente.
 6. **Generate Domain** em Settings → Networking. Sai um endereço
    `*.up.railway.app`. Esse é o link da Glenda.
 7. **Voltar em Variables** e apontar `FRONTEND_URL` para esse domínio, senão os
@@ -63,9 +110,13 @@ O repositório já tem `Dockerfile`, então o Railway não precisa adivinhar nad
 
 | Variável | De onde vem |
 |---|---|
-| `DATABASE_URL` | criada pelo Railway ao adicionar o MySQL |
+| `DATABASE_URL` | a URI do banco, com o `ssl` já ajustado |
 | `JWT_SECRET` | você gera: `openssl rand -base64 48` |
-| `VAULT_ENCRYPTION_KEY` | você gera: `openssl rand -base64 48` |
+
+`VAULT_ENCRYPTION_KEY` **não** impede o servidor de iniciar: sem ela,
+`server/matching.ts:12` cai para o `JWT_SECRET`. Ainda assim, defina-a. Se o
+cofre for cifrado com o `JWT_SECRET` e um dia esse segredo for rotacionado por
+motivo de segurança, o conteúdo do cofre se torna ilegível.
 
 A recusa é proposital, em `server/_core/env.ts:20`. A versão do Manus caía para
 um valor padrão embutido no código, o que significa que qualquer pessoa com o
