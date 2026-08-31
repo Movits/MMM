@@ -5,6 +5,7 @@ import { cosineSimilarity, normalizeVector } from "./memory-service";
 import { getDb } from "./db";
 import { sendEmail } from "./_core/email";
 import { embedWithGemini } from "./gemini";
+import { analisarTermo, saoConcorrentes } from "@shared/direcao-do-termo";
 
 const SEMANTIC_THRESHOLD = 0.7;
 const SAVE_THRESHOLD = 50;
@@ -29,7 +30,25 @@ export function slugifyMatchTag(value: string) {
 }
 
 export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore = 0) {
+  // Etapa 11: o cruzamento não pode ser feito por palavra parecida. "Exportar
+  // vinho" e "importar vinho" são quase o mesmo texto e são o negócio; duas
+  // pontas que querem exportar são concorrentes. A regra vem antes de tudo:
+  // nenhum outro critério pode reapresentar quem foi barrado aqui.
+  if (saoConcorrentes(asset.label, need.label)) {
+    return { score: 0, type: "semantic" as const, bloqueio: "concorrentes" as const };
+  }
+
   if (asset.slug && asset.slug === need.slug) return { score: 100, type: "exact" as const };
+
+  // O outro lado da mesma regra. Tirado o verbo, sobra o objeto — e é o objeto
+  // que as duas pontas têm em comum. "Exportar vinho" e "importar vinho" viram
+  // as duas "vinho": mesmo objeto, direções opostas, negócio. Sem isto a regra
+  // só saberia barrar, e o par que ela existe para encontrar continuaria valendo
+  // os 60 da categoria.
+  const objetoAsset = analisarTermo(asset.label).objeto;
+  const objetoNeed = analisarTermo(need.label).objeto;
+  if (objetoAsset && objetoAsset === objetoNeed) return { score: 100, type: "exact" as const };
+
   const categoriaAsset = slugifyMatchTag(asset.category ?? "");
   const categoriaNeed = slugifyMatchTag(need.category ?? "");
   if (categoriaAsset && categoriaNeed && categoriaAsset === categoriaNeed) return { score: 60, type: "category" as const };
@@ -38,7 +57,9 @@ export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore 
   // casa tudo com tudo. Medido em 31/08/2026 numa rede de 10 contatos — ao subir
   // para 50, os 45 pares possíveis viraram match, incluindo "Armazenagem
   // refrigerada" com "Terrenos com outorga". Reativar exige calibrar o limiar
-  // com dados reais antes, não mexer nesta linha.
+  // com dados reais antes, não mexer nesta linha. A regra da etapa 11 reforça
+  // este desligamento: parecença de texto é justamente o que confunde "exportar"
+  // com "importar", e é por parecença que o critério semântico decide.
   if (semanticScore > SEMANTIC_THRESHOLD) return { score: 45, type: "semantic" as const };
   return { score: 0, type: "semantic" as const };
 }

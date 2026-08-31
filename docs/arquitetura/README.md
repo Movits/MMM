@@ -53,6 +53,35 @@ diferentes e o cruzamento não encontra nada. Por isso existe a tabela
 O texto livre continua existindo (ajuste A5), mas fica num campo separado, fora do
 cruzamento, e alimenta a revisão periódica da lista.
 
+### 2b. Parecença de palavra não é negócio — direção oposta é
+
+"Exportar vinho" e "importar vinho" são quase o mesmo texto. Qualquer critério que
+meça semelhança entre as duas põe esse par no topo — e o par oposto, que é onde
+existe negócio, no mesmo balaio de duas exportadoras, que são concorrentes e nunca
+devem ser apresentadas uma à outra.
+
+**A direção nunca sai da semelhança do texto.** Ela vem do campo — `contato_atributo`
+possui contra procura — e, quando a pessoa escreve um verbo, dela. Os dois podem se
+contradizer: quem digita "procuro exportar vinho" está oferecendo, ainda que o texto
+esteja no campo de procura, porque é assim que se fala. Nesse conflito a palavra
+manda, e a regra tem duas metades que só funcionam juntas:
+
+| ponta A | ponta B | resultado |
+|---|---|---|
+| possui *exportar* vinho | procura *exportar* vinho | **barrado** — concorrentes |
+| possui *exportar* vinho | procura *importar* vinho | **100** — mesmo objeto, direções opostas |
+| possui vinho | procura *importar* vinho | 100 — uma ponta neutra, comportamento de sempre |
+
+A implementação está em [`shared/direcao-do-termo.ts`](../../shared/direcao-do-termo.ts)
+e entra em `scoreMatch` **antes de qualquer outro critério**: nenhum outro pode
+reapresentar quem foi barrado. As restrições da lista de verbos (só verbo, só na
+cabeça do termo, só quando inequívoco) estão documentadas no próprio arquivo, e
+existem porque a versão frouxa quebra matches legítimos que já funcionam.
+
+É também o motivo de o critério semântico continuar desligado
+(`server/match-service.ts`): ele decide justamente por parecença, que é o que
+confunde "exportar" com "importar".
+
 ### 3. Nada que a IA extrair entra sozinho
 
 A etapa 3 manda a IA ler o áudio de uma reunião e sugerir contatos. Toda informação

@@ -11,8 +11,10 @@
 //   DATABASE_URL='mysql://...' node scripts/semear-rede-de-teste.mjs email@da.usuaria
 //   DATABASE_URL='mysql://...' node scripts/semear-rede-de-teste.mjs email@da.usuaria --limpar
 //
-// Os dados são desenhados para exercitar os três tipos de cruzamento:
-// tag exata (100), mesma categoria (60) e similaridade semântica (45).
+// Os dados são desenhados para exercitar os três tipos de cruzamento — tag exata
+// (100), mesma categoria (60) e similaridade semântica (45) — e mais a regra da
+// direção da etapa 11: duas pontas que querem exportar são concorrentes e nunca
+// se encontram, enquanto "exportar" contra "importar" é o par de maior valor.
 
 import mysql from "mysql2/promise";
 
@@ -70,6 +72,27 @@ const CONTATOS = [
   { nome: "Vitória Camargo", cargo: "Diretora de Novos Negócios", empresa: "Camargo Energia", cidade: "Brasília",
     possui: [["Projetos de energia solar", "Energia"]],
     procura: [["Terrenos com outorga", "Energia"]] },
+
+  // As três seguintes existem para demonstrar a regra da direção (etapa 11).
+  // Serra e Andina querem as duas EXPORTAR vinho — são concorrentes, e o motor
+  // nunca as apresenta uma à outra, ainda que os textos sejam idênticos. Serra e
+  // Lisboa dizem coisas opostas, "exportar" contra "importar", e é justamente aí
+  // que existe negócio: esse par sai em 100.
+  //
+  // Repare que a Andina escreveu "Exportar vinho" no campo do que PROCURA. Não é
+  // erro de quem cadastrou: é assim que se fala — a necessidade sai redigida como
+  // objetivo. É essa contradição entre o campo e a palavra que a regra resolve.
+  { nome: "Helena Bertolucci", cargo: "Diretora Comercial", empresa: "Vinícola Serra Gaúcha", cidade: "Bento Gonçalves",
+    possui: [["Exportar vinho", "Comércio exterior"]],
+    procura: [["Armazenagem refrigerada", "Logística"]] },
+
+  { nome: "Constanza Duarte", cargo: "Sócia", empresa: "Bodega Andina", cidade: "Porto Alegre",
+    possui: [],
+    procura: [["Exportar vinho", "Comércio exterior"]] },
+
+  { nome: "Inês Salgueiro", cargo: "Diretora de Compras", empresa: "Importadora Lisboa", cidade: "Lisboa",
+    possui: [["Rede de distribuição na Europa", "Comércio exterior"]],
+    procura: [["Importar vinho", "Comércio exterior"]] },
 ];
 
 const conexao = await mysql.createConnection(process.env.DATABASE_URL);
