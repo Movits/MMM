@@ -59,7 +59,11 @@ for (const a of aceites) {
 // ─────────────────────────────────────────────────────────────────────────────
 titulo(3, "A TRAVA DISCRIMINA? (chamando a função real do servidor)");
 
-const comAceite = aceites.find(a => !a.revokedAt)?.userId;
+// Precisa ser um aceite NA VERSÃO VIGENTE: revogar mexe só nas linhas dela, e
+// exercitar sobre aceite de versão antiga não muda nada — as setas do
+// relatório mentiriam. A primeira versão desta linha pegava o primeiro aceite
+// não revogado de qualquer versão, e foi exatamente o que aconteceu.
+const comAceite = aceites.find(a => !a.revokedAt && documento && a.docId === documento.id)?.userId;
 const semAceite = Array.from(pessoas.keys()).find(id => !aceites.some(a => a.userId === id && !a.revokedAt)) ?? 999_999;
 
 for (const [rotulo, uid] of [["quem aceitou", comAceite], ["quem NÃO aceitou", semAceite]] as const) {
@@ -115,6 +119,8 @@ if (!exercitar) {
 titulo(5, "EXERCITANDO: REVOGAR -> BARRAR -> REACEITAR -> LIBERAR");
 if (comAceite === undefined || !documento) { console.log("  Sem consentimento ativo para exercitar."); process.exit(0); }
 
+console.log(`  exercitando com ${pessoas.get(comAceite)?.name ?? comAceite}, que tem aceite na versão vigente
+`);
 console.log(`  antes            hasValidConsent -> ${t(await hasValidConsent(comAceite, "termo_smart_match"))}`);
 
 await db.update(consents).set({ revokedAt: new Date() })
