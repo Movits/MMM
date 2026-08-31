@@ -6,7 +6,7 @@ CREATE TABLE `ai_match_suggestions` (
 	`pair_low_contact_id` bigint NOT NULL,
 	`pair_high_contact_id` bigint NOT NULL,
 	`match_score` int NOT NULL,
-	`match_type` enum('exact','category','semantic') NOT NULL,
+	`match_type` enum('mutual','exact','category','semantic') NOT NULL,
 	`matched_assets` json NOT NULL,
 	`matched_needs` json NOT NULL,
 	`reason_text` text NOT NULL,

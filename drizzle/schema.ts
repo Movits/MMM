@@ -1008,7 +1008,9 @@ export const aiMatchSuggestions = mysqlTable("ai_match_suggestions", {
   pairLowContactId: bigint("pair_low_contact_id", { mode: "number" }).notNull(),
   pairHighContactId: bigint("pair_high_contact_id", { mode: "number" }).notNull(),
   matchScore: int("match_score").notNull(),
-  matchType: mysqlEnum("match_type", ["exact", "category", "semantic"]).notNull(),
+  // "mutual" é o par que se completa nos dois sentidos: cada contato tem o que o
+  // outro procura. É a conexão mais forte que o cruzamento sabe encontrar.
+  matchType: mysqlEnum("match_type", ["mutual", "exact", "category", "semantic"]).notNull(),
   matchedAssets: jsonCompat("matched_assets").$type<Array<{ slug: string; label: string }>>().notNull(),
   matchedNeeds: jsonCompat("matched_needs").$type<Array<{ slug: string; label: string }>>().notNull(),
   reasonText: text("reason_text").notNull(),
