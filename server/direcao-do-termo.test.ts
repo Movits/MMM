@@ -43,6 +43,93 @@ describe("Etapa 11 — direção mora no campo, nunca na palavra parecida", () =
   });
 });
 
+describe("Etapa 11 — palavras que só anunciam, e não são a coisa", () => {
+  it("tira da frente o marcador e revela o objeto", () => {
+    // Encontrado em produção: "Terras raras" contra "procura terras raras"
+    // dava 60, porque o objeto de um era `terras-raras` e o do outro
+    // `procura-terras-raras`. É a mesma coisa dita de dois jeitos.
+    expect(analisarTermo("procura terras raras").objeto).toBe("terras-raras");
+    expect(analisarTermo("Terras raras").objeto).toBe("terras-raras");
+    expect(analisarTermo("possui terras").objeto).toBe("terras");
+    expect(analisarTermo("precisa de terras").objeto).toBe("terras");
+  });
+
+  it("marcador NÃO é verbo de direção, e por isso nunca acusa concorrência", () => {
+    // Uma recrutadora que OFERECE "Procura de talentos" e uma empresa que
+    // PROCURA "Procura de talentos" são o negócio, não concorrentes. Se
+    // "procura" marcasse direção, as duas seriam lidas como demanda e o motor
+    // deixaria de apresentar exatamente quem devia.
+    expect(analisarTermo("Procura de talentos").direcao).toBe("neutro");
+    expect(saoConcorrentes("Procura de talentos", "Procura de talentos")).toBe(false);
+    expect(scoreMatch(possui("Procura de talentos", "RH"), possui("Procura de talentos", "RH")).score).toBe(100);
+  });
+
+  it("verbo de direção depois do marcador é quem manda", () => {
+    // "Procuro exportar vinho" é oferta: quem escreveu disse o que pretende
+    // fazer, e o marcador só anunciava que vinha alguma coisa.
+    expect(analisarTermo("procuro exportar vinho")).toEqual({ direcao: "oferta", objeto: "vinho", verbo: "exportar" });
+    expect(analisarTermo("procura importar vinho")).toEqual({ direcao: "demanda", objeto: "vinho", verbo: "importar" });
+  });
+
+  it("a regra do vinho continua valendo com marcador na frente", () => {
+    expect(scoreMatch(possui("Exportar vinho"), possui("procura importar vinho")).score).toBe(100);
+    expect(scoreMatch(possui("Exportar vinho"), possui("procura exportar vinho")))
+      .toHaveProperty("bloqueio", "concorrentes");
+  });
+
+  it("marcador sozinho não vira objeto vazio", () => {
+    // Descascar até não sobrar nada faria "Procura" casar com "Possui", e com
+    // qualquer outro termo igualmente descascado até o osso.
+    expect(analisarTermo("Procura").objeto).toBe("procura");
+    expect(analisarTermo("Possui").objeto).toBe("possui");
+    expect(scoreMatch(possui("Possui", "A"), possui("Procura", "B")).score).toBe(0);
+  });
+});
+
+describe("Etapa 11 — lugar não é produto", () => {
+  // Achados numa revisão adversarial: todos davam 100, o score máximo, que até
+  // então era reservado a quem tem literalmente a mesma coisa. Em comércio
+  // exterior o complemento do termo quase sempre é o destino, não a mercadoria,
+  // então o erro não era raro — era o caso comum. E 100 passa de
+  // EMAIL_THRESHOLD, então o par ainda saía por e-mail como oportunidade.
+  const pares: [string, string][] = [
+    ["Exportação para a China", "Importação da China"],
+    ["Distribuição no Nordeste", "Compras no Nordeste"],
+    ["Exportação para o Mercosul", "Compras no Mercosul"],
+    ["Venda para o varejo", "Compra no varejo"],
+    ["Exportação em grande volume", "Importação em grande volume"],
+  ];
+
+  it.each(pares)("%s x %s não vira 100: não têm produto em comum", (ativo, necessidade) => {
+    expect(scoreMatch(possui(ativo), possui(necessidade)).score).toBeLessThan(100);
+  });
+
+  it("preposição de lugar impede a extração do objeto", () => {
+    // "para", "em", "no" apresentam destino ou canal. O genitivo apresenta a
+    // coisa — e continua funcionando.
+    expect(analisarTermo("Exportação para a China").objeto).toBe("exportacao-para-a-china");
+    expect(analisarTermo("Exportação de vinho").objeto).toBe("vinho");
+  });
+
+  it("o par que a regra existe para achar continua em 100", () => {
+    expect(scoreMatch(possui("Exportar vinho"), possui("Importar vinho")).score).toBe(100);
+    expect(scoreMatch(possui("Exportação de vinho"), possui("Vinho")).score).toBe(100);
+  });
+});
+
+describe("Etapa 11 — o critério semântico está desligado, e isso tem consequência", () => {
+  it("nem a similaridade máxima possível chega a virar sugestão", () => {
+    // TRIPWIRE. Este teste falha de propósito no dia em que alguém religar o
+    // critério semântico — e é aí que se deve reler o termo de consentimento:
+    // enquanto ele está desligado, `docs/termos/termo-smart-match.md` afirma
+    // que nenhum dado sai da plataforma, e o recálculo nem chama o provedor de
+    // embeddings. Religar sem republicar o termo transforma o documento numa
+    // afirmação falsa. Se você chegou aqui de propósito, atualize os dois.
+    expect(scoreMatch(possui("Câmaras frias em Santos", "Logística"),
+                      possui("Terrenos licenciados", "Imóveis"), 1).score).toBeLessThan(50);
+  });
+});
+
 describe("Etapa 11 — a regra dentro do motor de match", () => {
   it("nunca apresenta duas pontas que querem a mesma coisa", () => {
     // A Bodega escreveu no campo de PROCURA, mas o texto diz "exportar": ela
