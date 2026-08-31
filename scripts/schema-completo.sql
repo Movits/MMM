@@ -811,7 +811,7 @@ CREATE INDEX `sivc_ver_user_idx` ON `sivc_verifications` (`userId`);--> statemen
 CREATE INDEX `group_createdBy_idx` ON `strategic_groups` (`createdBy`);--> statement-breakpoint
 CREATE INDEX `device_userId_idx` ON `trusted_devices` (`userId`);--> statement-breakpoint
 CREATE INDEX `profile_userId_idx` ON `user_profiles` (`userId`);--> statement-breakpoint
-CREATE INDEX `profile_country_idx` ON `user_profiles` (`country`);
+CREATE INDEX `profile_country_idx` ON `user_profiles` (`country`);--> statement-breakpoint
 -- ============================================================
 -- CONSENTIMENTO E DOCUMENTOS — etapa 11, etapa 13 e ajuste A11
 -- ============================================================
@@ -828,8 +828,7 @@ CREATE TABLE IF NOT EXISTS `document_versions` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `doc_ver_type_version_unique` (`type`,`version`),
   UNIQUE KEY `doc_ver_current_unique` (`currentType`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS `consents` (
   `id` int NOT NULL AUTO_INCREMENT,
   `userId` int NOT NULL,
@@ -838,7 +837,13 @@ CREATE TABLE IF NOT EXISTS `consents` (
   `revokedAt` timestamp NULL DEFAULT NULL,
   `ipAddress` varchar(45) DEFAULT NULL,
   `userAgent` text DEFAULT NULL,
+  -- No máximo um consentimento ATIVO por par (usuária, versão). Mesmo truque da
+  -- coluna gerada acima: vale a chave enquanto não revogado e vira NULL depois,
+  -- e NULLs não colidem no único. Um UNIQUE (userId, documentVersionId) simples
+  -- proibiria revogar e aceitar de novo, que é fluxo legítimo.
+  `activeKey` varchar(80) AS (CASE WHEN `revokedAt` IS NULL THEN CONCAT(`userId`, ':', `documentVersionId`) ELSE NULL END) VIRTUAL,
   PRIMARY KEY (`id`),
   KEY `consent_user_idx` (`userId`),
-  KEY `consent_document_idx` (`documentVersionId`)
+  KEY `consent_document_idx` (`documentVersionId`),
+  UNIQUE KEY `consent_active_unique` (`activeKey`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
