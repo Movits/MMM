@@ -42,7 +42,11 @@ export const intelligentMatchesRouter = router({
     return matches.map(match => ({ ...match, contactA: names.get(match.contactAId), contactB: names.get(match.contactBId) }));
   }),
 
+  // Esta lista existe só para alimentar a tela do cruzamento. Sem a trava, quem
+  // recusou o termo ainda obtinha nome e empresa de toda a rede privada chamando
+  // a API direto — o cliente já não pedia, mas o servidor respondia.
   contacts: protectedProcedure.query(async ({ ctx }) => {
+    await assertSmartMatchConsent(ctx.user.id);
     const db = await getDb(); if (!db) throw new Error("Banco indisponível.");
     return db.select({ id: privateContacts.id, fullName: privateContacts.fullName, company: privateContacts.company }).from(privateContacts).where(eq(privateContacts.ownerId, ctx.user.openId));
   }),
@@ -66,7 +70,11 @@ export const intelligentMatchesRouter = router({
     return recalculatePrivateMatches(ctx.user.openId, ctx.user.email);
   }),
 
+  // Aceitar ou dispensar é agir sobre o resultado do cruzamento; sem autorização
+  // vigente não se mexe nele. Vale principalmente para quem revogou: os matches
+  // antigos continuam no banco, e sem esta linha ainda era possível operá-los.
   updateStatus: protectedProcedure.input(z.object({ id: z.string().uuid(), status: z.enum(["viewed", "accepted", "dismissed"]) })).mutation(async ({ ctx, input }) => {
+    await assertSmartMatchConsent(ctx.user.id);
     const db = await getDb(); if (!db) throw new Error("Banco indisponível."); const timestamp = Date.now();
     const patch = input.status === "viewed" ? { status: input.status, viewedAt: timestamp, updatedAt: timestamp } : input.status === "accepted" ? { status: input.status, acceptedAt: timestamp, updatedAt: timestamp } : { status: input.status, dismissedAt: timestamp, updatedAt: timestamp };
     await db.update(aiMatchSuggestions).set(patch).where(and(eq(aiMatchSuggestions.id, input.id), eq(aiMatchSuggestions.ownerId, ctx.user.openId)));
