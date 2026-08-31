@@ -56,9 +56,30 @@ export const intelligentMatchesRouter = router({
     return matches.map(match => ({ ...match, contactA: names.get(match.contactAId), contactB: names.get(match.contactBId) }));
   }),
 
+  // Devolve, junto com cada contato, o que já foi registrado para ele. A tela
+  // precisa disso para que "o que possui" e "o que procura" mostrem coisas
+  // diferentes: sem isso, trocar de aba não mudava nada no que aparecia, e as
+  // duas viravam a mesma tela na cabeça de quem estava usando.
+  //
+  // Vem tudo de uma vez em vez de uma consulta por contato selecionado: é a
+  // agenda particular de uma pessoa, não um catálogo, e assim trocar de contato
+  // ou de aba não espera servidor.
   contacts: smartMatchProcedure.query(async ({ ctx }) => {
     const db = await getDb(); if (!db) throw new Error("Banco indisponível.");
-    return db.select({ id: privateContacts.id, fullName: privateContacts.fullName, company: privateContacts.company }).from(privateContacts).where(eq(privateContacts.ownerId, ctx.user.openId));
+    const [contatos, possui, procura] = await Promise.all([
+      db.select({ id: privateContacts.id, fullName: privateContacts.fullName, company: privateContacts.company })
+        .from(privateContacts).where(eq(privateContacts.ownerId, ctx.user.openId)),
+      db.select({ id: contactAssets.id, contactId: contactAssets.contactId, label: contactAssets.tagLabel, category: contactAssets.category })
+        .from(contactAssets).where(eq(contactAssets.ownerId, ctx.user.openId)),
+      db.select({ id: contactNeeds.id, contactId: contactNeeds.contactId, label: contactNeeds.tagLabel, category: contactNeeds.category })
+        .from(contactNeeds).where(eq(contactNeeds.ownerId, ctx.user.openId)),
+    ]);
+    const porContato = <T extends { contactId: number }>(itens: T[], id: number) => itens.filter(i => i.contactId === id);
+    return contatos.map(contato => ({
+      ...contato,
+      possui: porContato(possui, contato.id),
+      procura: porContato(procura, contato.id),
+    }));
   }),
 
   addAsset: smartMatchProcedure.input(matchItem).mutation(async ({ ctx, input }) => {

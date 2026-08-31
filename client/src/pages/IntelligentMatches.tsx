@@ -61,9 +61,29 @@ export default function IntelligentMatches() {
 
   function refresh() {
     utils.intelligentMatches.list.invalidate();
+    utils.intelligentMatches.contacts.invalidate();
     setTagLabel(""); setCategory("");
     toast.success(kind === "asset" ? "Ativo adicionado e matches recalculados." : "Necessidade adicionada e matches recalculados.");
   }
+  /**
+   * Trocar de aba limpa o que foi digitado, mas mantém o contato escolhido.
+   *
+   * As duas abas dividiam todo o estado: trocar não mexia em nada na tela além
+   * da pílula, e as duas viravam a mesma coisa aos olhos de quem usava. Limpar
+   * o texto é o sinal visível de que a troca aconteceu. O contato fica porque
+   * registrar o que alguém possui e logo depois o que procura é o caminho
+   * normal — apagá-lo obrigaria a escolher de novo a cada troca.
+   */
+  function trocarModo(novo: EntryKind) {
+    if (novo === kind) return;
+    setKind(novo);
+    setTagLabel("");
+    setCategory("");
+  }
+
+  const contatoEscolhido = contacts.find(c => String(c.id) === contactId);
+  const jaRegistrados = contatoEscolhido ? (kind === "asset" ? contatoEscolhido.possui : contatoEscolhido.procura) : [];
+
   function submitEntry(event: React.FormEvent) {
     event.preventDefault();
     if (!contactId || !tagLabel.trim()) return toast.error("Escolha o contato e descreva o item.");
@@ -80,7 +100,102 @@ export default function IntelligentMatches() {
       </div>
       {loadingConsent ? <p className="py-24 text-center text-white/45">Carregando…</p> : !authorized ? <SmartMatchConsent onAccepted={() => utils.consent.status.invalidate()}/> : <>
       <section className="mb-7 rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5"><div className="flex gap-3"><Lightbulb className="mt-0.5 shrink-0 text-amber-300" size={20}/><p className="text-sm leading-6 text-amber-100/80">Cadastre o que cada contato possui e o que procura. O MMM cruza tags exatas, categorias e significados semelhantes para sugerir a melhor conexão.</p></div></section>
-      <section className="mb-8 rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="mb-4 flex flex-wrap gap-2"><button onClick={() => setKind("asset")} className={`rounded-full px-4 py-2 text-sm ${kind === "asset" ? "bg-emerald-400 text-[#08121f] font-bold" : "border border-white/15 text-white/65"}`}>O que possui</button><button onClick={() => setKind("need")} className={`rounded-full px-4 py-2 text-sm ${kind === "need" ? "bg-sky-300 text-[#08121f] font-bold" : "border border-white/15 text-white/65"}`}>O que procura</button></div><form onSubmit={submitEntry} className="grid gap-3 md:grid-cols-4"><select value={contactId} onChange={event => setContactId(event.target.value)} className="rounded-xl border border-white/15 bg-[#0b1725] px-3 py-3 text-white"><option className="bg-white text-[#2D3E50]" value="">Selecione um contato</option>{contacts.map(contact => <option className="bg-white text-[#2D3E50]" key={contact.id} value={contact.id}>{contact.fullName}{contact.company ? ` (${contact.company})` : ""}</option>)}</select><input value={tagLabel} onChange={event => setTagLabel(event.target.value)} placeholder={kind === "asset" ? "Ex.: Investimento em mineração" : "Ex.: Fornecedores de minério"} className="rounded-xl border border-white/15 bg-white/5 px-3 py-3 outline-none focus:border-amber-300"/><input value={category} onChange={event => setCategory(event.target.value)} placeholder="Categoria opcional" className="rounded-xl border border-white/15 bg-white/5 px-3 py-3 outline-none focus:border-amber-300"/><button disabled={createAsset.isPending || createNeed.isPending} className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-300/50 px-3 py-3 font-semibold text-amber-200 hover:bg-amber-300/10 disabled:opacity-50"><Plus size={17}/> Adicionar</button></form></section>
+      {/*
+        O modo (possui / procura) decide o que o botão Adicionar faz, e modo
+        escondido é armadilha: quem não percebe em qual está grava a informação
+        no lado errado, e o cruzamento passa a casar coisa que não existe. Por
+        isso o modo aparece em três lugares que mudam juntos — a aba, a frase
+        acima do formulário e o texto do botão — e a lista do que já está
+        registrado muda junto, que é o que faz as duas abas terem conteúdo
+        diferente de verdade.
+      */}
+      <section className={`mb-8 rounded-2xl border p-5 transition-colors ${kind === "asset" ? "border-emerald-400/30 bg-emerald-400/[0.04]" : "border-sky-300/30 bg-sky-300/[0.04]"}`}>
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => trocarModo("asset")}
+            className={`rounded-full px-4 py-2 text-sm transition-colors ${kind === "asset" ? "bg-emerald-400 font-bold text-[#08121f]" : "border border-white/15 text-white/65 hover:border-white/30"}`}
+          >
+            O que possui
+          </button>
+          <button
+            type="button"
+            onClick={() => trocarModo("need")}
+            className={`rounded-full px-4 py-2 text-sm transition-colors ${kind === "need" ? "bg-sky-300 font-bold text-[#08121f]" : "border border-white/15 text-white/65 hover:border-white/30"}`}
+          >
+            O que procura
+          </button>
+        </div>
+
+        <p className="mb-3 text-sm text-white/55">
+          {contatoEscolhido
+            ? <>Registrando o que <strong className="text-white/85">{contatoEscolhido.fullName}</strong>{" "}
+                <strong className={kind === "asset" ? "text-emerald-300" : "text-sky-300"}>
+                  {kind === "asset" ? "tem a oferecer" : "está procurando"}
+                </strong>.</>
+            : <>Escolha um contato para registrar o que ele{" "}
+                <strong className={kind === "asset" ? "text-emerald-300" : "text-sky-300"}>
+                  {kind === "asset" ? "tem a oferecer" : "está procurando"}
+                </strong>.</>}
+        </p>
+
+        <form onSubmit={submitEntry} className="grid gap-3 md:grid-cols-4">
+          <select
+            value={contactId}
+            onChange={event => setContactId(event.target.value)}
+            className="rounded-xl border border-white/15 bg-[#0b1725] px-3 py-3 text-white"
+          >
+            <option className="bg-white text-[#2D3E50]" value="">Selecione um contato</option>
+            {contacts.map(contact => (
+              <option className="bg-white text-[#2D3E50]" key={contact.id} value={contact.id}>
+                {contact.fullName}{contact.company ? ` (${contact.company})` : ""}
+              </option>
+            ))}
+          </select>
+          <input
+            value={tagLabel}
+            onChange={event => setTagLabel(event.target.value)}
+            placeholder={kind === "asset" ? "Ex.: Armazenagem refrigerada" : "Ex.: Compradores no exterior"}
+            className={`rounded-xl border border-white/15 bg-white/5 px-3 py-3 outline-none ${kind === "asset" ? "focus:border-emerald-400" : "focus:border-sky-300"}`}
+          />
+          <input
+            value={category}
+            onChange={event => setCategory(event.target.value)}
+            placeholder="Categoria opcional"
+            className={`rounded-xl border border-white/15 bg-white/5 px-3 py-3 outline-none ${kind === "asset" ? "focus:border-emerald-400" : "focus:border-sky-300"}`}
+          />
+          <button
+            disabled={createAsset.isPending || createNeed.isPending}
+            className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 font-bold text-[#08121f] transition-colors disabled:opacity-50 ${kind === "asset" ? "bg-emerald-400 hover:bg-emerald-300" : "bg-sky-300 hover:bg-sky-200"}`}
+          >
+            <Plus size={17}/> {kind === "asset" ? "Adicionar ao que possui" : "Adicionar ao que procura"}
+          </button>
+        </form>
+
+        {contatoEscolhido && (
+          <div className="mt-4 border-t border-white/10 pt-3">
+            <p className="mb-2 text-xs text-white/40">
+              {contatoEscolhido.fullName} {kind === "asset" ? "já oferece" : "já procura"}:
+            </p>
+            {jaRegistrados.length === 0 ? (
+              <p className="text-xs text-white/35">
+                Nada registrado ainda {kind === "asset" ? "no que possui" : "no que procura"}.
+              </p>
+            ) : (
+              <ul className="flex flex-wrap gap-2">
+                {jaRegistrados.map(item => (
+                  <li
+                    key={item.id}
+                    className={`rounded-full border px-3 py-1 text-xs ${kind === "asset" ? "border-emerald-400/30 text-emerald-200/80" : "border-sky-300/30 text-sky-200/80"}`}
+                  >
+                    {item.label}{item.category ? <span className="text-white/35"> · {item.category}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </section>
       {isLoading ? <p className="py-16 text-center text-white/45">Carregando oportunidades…</p> : !matches.length ? <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center"><Sparkles className="mx-auto mb-4 text-amber-300" size={34}/><h2 className="text-xl font-semibold">Nenhuma oportunidade ainda</h2><p className="mt-2 text-white/45">Adicione ao menos um ativo e uma necessidade em contatos diferentes para gerar conexões.</p></div> : <div className="grid gap-4">{matches.map(match => <article key={match.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="flex flex-col justify-between gap-4 md:flex-row"><div><div className="mb-2 flex flex-wrap items-center gap-2"><span className="rounded-full bg-amber-300 px-3 py-1 text-sm font-bold text-[#08121f]">{match.matchScore}% de compatibilidade</span><span className={`rounded-full px-3 py-1 text-xs ${match.matchType === "mutual" ? "border border-emerald-400/50 bg-emerald-400/10 font-semibold text-emerald-300" : "border border-white/15 text-white/60"}`}>{seloDoMatch(match)}</span></div><h2 className="text-lg font-semibold">{match.contactA?.name ?? "Contato A"} <span className="text-white/35">→</span> {match.contactB?.name ?? "Contato B"}</h2><p className="mt-2 text-sm text-white/65">{match.reasonText}</p><p className="mt-3 text-xs text-white/40">Ativo: {match.matchedAssets.map(item => item.label).join(", ")} · Necessidade: {match.matchedNeeds.map(item => item.label).join(", ")}</p></div>{match.status === "pending" || match.status === "viewed" ? <div className="flex shrink-0 flex-wrap gap-2 self-start"><button onClick={() => updateStatus.mutate({ id: match.id, status: "accepted" })} className="rounded-lg bg-emerald-400 px-3 py-2 text-sm font-bold text-[#08121f]"><Check size={15} className="mr-1 inline"/> Aceitar</button><button onClick={() => updateStatus.mutate({ id: match.id, status: "dismissed" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65"><X size={15} className="mr-1 inline"/> Dispensar</button></div> : <span className="text-sm text-white/45">{match.status === "accepted" ? "Conexão aceita" : "Dispensada"}</span>}</div></article>)}</div>}
       {!consent?.pendingText && (
         <section className="mt-10 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
