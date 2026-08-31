@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, inArray } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { goldProcedure } from "./_procedures";
 import { invokeLLM } from "../_core/llm";
@@ -13,7 +13,7 @@ import {
   createNotification,
 } from "../db";
 import { createAuditLog } from "../security";
-import { opportunityMatches, opportunities as opportunitiesTable } from "../../drizzle/schema";
+import { opportunityMatches, opportunities as opportunitiesTable, users } from "../../drizzle/schema";
 
 // ============================================================
 // OPORTUNIDADES — CORE DA PLATAFORMA FRAUEN
@@ -36,6 +36,7 @@ export const opportunitiesRouter = router({
         ...input,
         // Prata só vê oportunidades não confidenciais
         isConfidential: isGold ? undefined : false,
+        viewerUserId: ctx.user.id,
       });
       return opps;
     }),
@@ -174,6 +175,32 @@ Retorne um JSON estruturado com os campos: complianceLevel, explanation, riskAna
       });
 
       await createAuditLog({ userId: ctx.user.id, action: "OPPORTUNITY_CREATE", resource: "opportunities", resourceId: String(id), status: "success", riskLevel: "low" });
+
+      // A fila de validação era invisível: nada avisava a moderação de que uma
+      // oportunidade nova esperava análise, e ela ficava parada indefinidamente.
+      if (status === "pending") {
+        try {
+          const db = await getDb();
+          if (db) {
+            const moderadoras = await db
+              .select({ id: users.id })
+              .from(users)
+              .where(inArray(users.role, ["president", "admin"]));
+            for (const mod of moderadoras) {
+              if (mod.id === ctx.user.id) continue;
+              await createNotification({
+                userId: mod.id,
+                type: "system",
+                title: "Nova oportunidade aguardando análise",
+                body: `"${input.title.slice(0, 120)}" foi publicada e espera validação no painel.`,
+                actionUrl: "/president",
+              });
+            }
+          }
+        } catch (e) {
+          console.error("[Opportunities] Falha ao notificar a moderação:", e);
+        }
+      }
 
       return { id, complianceLevel, complianceExplanation, suggestedDocuments, status };
     }),

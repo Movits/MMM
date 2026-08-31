@@ -101,11 +101,18 @@ export const matchingRouter = router({
   // Disparar alertas para nova oportunidade publicada com alta compatibilidade (>= 80%)
   checkAndNotifyHighCompatibility: protectedProcedure
     .input(z.object({ opportunityId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input }) => notifyHighCompatibilityForOpportunity(input.opportunityId)),
+});
+
+// Fora do router para a aprovação da moderação também disparar os alertas: a
+// versão anterior só rodava no create, condicionada a status "active" — que o
+// create nunca produz (toda oportunidade nasce "pending").
+export async function notifyHighCompatibilityForOpportunity(opportunityId: number) {
+  {
       const db = await getDb();
       if (!db) return { notified: 0 };
 
-      const [opp] = await db.select().from(opportunities).where(eq(opportunities.id, input.opportunityId)).limit(1);
+      const [opp] = await db.select().from(opportunities).where(eq(opportunities.id, opportunityId)).limit(1);
       if (!opp || opp.status !== "active") return { notified: 0 };
 
       const profiles = await db
@@ -176,5 +183,5 @@ export const matchingRouter = router({
         notified++;
       }
       return { notified };
-    }),
-});
+  }
+}

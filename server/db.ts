@@ -121,11 +121,24 @@ export async function listOpportunities(filters: {
   search?: string;
   limit?: number;
   offset?: number;
+  /** Quem está olhando a lista. Presente, a autora também vê as próprias
+   *  oportunidades ainda em análise ("pending") — sem isso, publicar parecia
+   *  engolir a oportunidade, porque a lista só mostrava as ativas. */
+  viewerUserId?: number;
 }) {
   const db = await getDb();
   if (!db) return [];
   const conditions: any[] = [];
-  conditions.push(eq(opportunities.status, (filters.status ?? "active") as any));
+  if (filters.status === undefined && filters.viewerUserId !== undefined) {
+    conditions.push(
+      or(
+        eq(opportunities.status, "active"),
+        and(eq(opportunities.status, "pending"), eq(opportunities.publishedBy, filters.viewerUserId)),
+      ),
+    );
+  } else {
+    conditions.push(eq(opportunities.status, (filters.status ?? "active") as any));
+  }
   if (filters.type) conditions.push(eq(opportunities.type, filters.type as any));
   if (filters.sector) conditions.push(eq(opportunities.sector, filters.sector));
   if (filters.country) conditions.push(eq(opportunities.country, filters.country));
