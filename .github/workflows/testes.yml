@@ -1,0 +1,96 @@
+name: Testes
+
+# Roda em toda PR e em tudo que entra na main.
+#
+# Existe por causa de um defeito real: o bloco da etapa 11 entrou em
+# scripts/schema-completo.sql sem o separador `--> statement-breakpoint`, e um
+# banco criado do zero passou a nascer sem as tabelas do consentimento. Não
+# apareceu em teste nenhum porque o banco de desenvolvimento tinha sido
+# consertado à mão ao longo do trabalho — quem verifica contra o próprio
+# ambiente remendado não verifica coisa nenhuma.
+#
+# Por isso o passo mais importante daqui não é `pnpm test`: é criar o banco do
+# zero, do jeito que o docs/deploy.md manda, contra um MariaDB limpo. Se o
+# schema não aplicar, a PR fica vermelha antes de alguém revisar.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Uma execução por branch; empurrar de novo cancela a anterior, que já não
+# interessa a ninguém.
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Tipos, banco do zero e testes
+    runs-on: ubuntu-latest
+
+    services:
+      # Banco de verdade, e não um dublê: parte da suíte fala com o banco, e o
+      # schema precisa ser exercitado contra o motor real. Sem serviço, esses
+      # testes falhariam por falta de banco e o time aprenderia a ignorar
+      # vermelho — que é pior do que não ter CI.
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: mmm_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=24
+
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/mmm_ci
+      # Só para o processo subir nos testes; não é segredo de nada.
+      JWT_SECRET: segredo-de-integracao-continua-sem-valor
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      # O passo que teria pego o defeito da etapa 11. `criar-banco.mjs` sai com
+      # código 1 se qualquer comando do schema falhar.
+      - name: Criar o banco do zero
+        run: node scripts/criar-banco.mjs
+
+      # Um banco recém-criado já deve nascer em dia: se este passo tiver algo a
+      # fazer, é porque o schema e a migração discordam.
+      - name: Conferir que o banco novo já nasce em dia
+        run: |
+          saida=$(node scripts/migrar-banco-etapa-11.mjs)
+          echo "$saida"
+          echo "$saida" | grep -q "Nada a fazer" || {
+            echo "::error::Banco recém-criado precisou de migração — schema-completo.sql e migrar-banco-etapa-11.mjs discordam."
+            exit 1
+          }
+
+      - name: Tipos
+        run: pnpm check
+
+      - name: Testes
+        run: pnpm test
+
+      # O Dockerfile empacota o resultado disto. Quebra de build não aparece no
+      # typecheck: só no build.
+      - name: Build
+        run: pnpm build
