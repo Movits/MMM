@@ -212,7 +212,7 @@ export default function NewOpportunity() {
                 <SelectTrigger className="bg-white/5 border-white/10 text-white">
                   <SelectValue placeholder="Selecione o tipo..." />
                 </SelectTrigger>
-                <SelectContent className="bg-[#0d1628] border-white/10">
+                <SelectContent className="bg-[#0d1628] border-white/10 text-white">
                   <SelectItem value="offer">📦 Oferta — produto, serviço ou commodity</SelectItem>
                   <SelectItem value="demand">📈 Demanda — busca de fornecedores</SelectItem>
                   <SelectItem value="investment">💰 Investimento — projeto que busca capital</SelectItem>
@@ -317,7 +317,7 @@ export default function NewOpportunity() {
                   <SelectTrigger className="bg-white/5 border-white/10 text-white">
                     <SelectValue placeholder="Selecionar..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0d1628] border-white/10 max-h-60">
+                  <SelectContent className="bg-[#0d1628] border-white/10 max-h-60 text-white">
                     {sortTextAlphabetically(SECTORS).map((s) => (
                       <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}
@@ -330,7 +330,7 @@ export default function NewOpportunity() {
                   <SelectTrigger className="bg-white/5 border-white/10 text-white">
                     <SelectValue placeholder="Selecionar..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0d1628] border-white/10 max-h-60">
+                  <SelectContent className="bg-[#0d1628] border-white/10 max-h-60 text-white">
                     {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: country.name }))).map((c) => (
                       <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
                     ))}

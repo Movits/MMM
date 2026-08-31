@@ -172,8 +172,8 @@ function SelectInput({ label, value, onChange, options, placeholder }: {
       <label className="block text-sm font-medium text-white/70 mb-2">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
         className="w-full bg-[#0d1b2a] border border-white/15 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#f5a623]/60 transition-all duration-200 text-sm">
-        <option value="">{placeholder || "..."}</option>
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        <option className="bg-white text-[#2D3E50]" value="">{placeholder || "..."}</option>
+        {options.map(o => <option className="bg-white text-[#2D3E50]" key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>
   );

@@ -364,7 +364,7 @@ export default function Profile() {
                     if (next === "individual") setCompanyCnpj("");
                   }}>
                     <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"><SelectValue placeholder={t("profile.business.personTypePlaceholder")} /></SelectTrigger>
-                    <SelectContent className="bg-[#0d1530] border-white/10">
+                    <SelectContent className="bg-[#0d1530] border-white/10 text-white">
                       {sortOptionsAlphabetically([
                         { value: "individual", label: t("profile.business.individual") },
                         { value: "legal_entity", label: t("profile.business.legalEntity") },
@@ -393,7 +393,7 @@ export default function Profile() {
                     <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50">
                       <SelectValue placeholder="Selecione o país" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0d1530] border-white/10">
+                    <SelectContent className="bg-[#0d1530] border-white/10 text-white">
                       {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: country.name })), i18n.language).map(c => (
                         <SelectItem key={c.code} value={c.code} className="text-white hover:bg-white/10 focus:bg-white/10">{c.name}</SelectItem>
                       ))}
@@ -412,7 +412,7 @@ export default function Profile() {
                     <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50">
                       <SelectValue placeholder={t("profile.gender.placeholder")} />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0d1530] border-white/10">
+                    <SelectContent className="bg-[#0d1530] border-white/10 text-white">
                       {sortOptionsAlphabetically([
                         { value: "male", label: t("profile.gender.male") },
                         { value: "female", label: t("profile.gender.female") },
@@ -431,7 +431,7 @@ export default function Profile() {
                     <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.business.companySize")}</label>
                     <Select value={companySize} onValueChange={value => setCompanySize(value as typeof companySize)}>
                       <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"><SelectValue placeholder={t("profile.business.companySizePlaceholder")} /></SelectTrigger>
-                      <SelectContent className="bg-[#0d1530] border-white/10">
+                      <SelectContent className="bg-[#0d1530] border-white/10 text-white">
                         {personType === "mei" ? (
                           <SelectItem value="mei" className="text-white">{t("profile.business.sizeMei")}</SelectItem>
                         ) : (

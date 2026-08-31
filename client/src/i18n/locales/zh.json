@@ -442,7 +442,7 @@
     "connectionAccepted": "🤝 联系已接受！你们现在已连接。",
     "connectionDeclined": "请求已拒绝。",
     "newMatches": "✨ 找到 {{count}} 个新匹配！",
-    "analysisDone": "分析完成。完善您的资料以改善结果。",
+    "analysisDone": "分析完成:这次没有新的匹配。新成员和更新的资料会带来新的连接。",
     "distribution": "兼容性分布",
     "distributionDesc": "您的匹配按分数范围的分布情况",
     "analyzing": "分析中...",

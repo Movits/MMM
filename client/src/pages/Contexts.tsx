@@ -132,8 +132,8 @@ function ContextForm({ initial, types, onSave, onClose, loading }: {
             <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Tipo de Contexto</label>
             <select value={form.contextTypeId} onChange={e => set("contextTypeId", e.target.value)}
               className="w-full bg-white/5 border border-white/10 text-white rounded-md px-3 py-2 text-sm focus:border-amber-500/50 focus:outline-none">
-              <option value="">Selecione um tipo...</option>
-              {types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              <option className="bg-white text-[#2D3E50]" value="">Selecione um tipo...</option>
+              {types.map(t => <option className="bg-white text-[#2D3E50]" key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
