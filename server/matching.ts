@@ -5,7 +5,7 @@ import {
   userProfiles, users, matches,
   type UserProfile,
 } from "../drizzle/schema";
-import { eq, ne, and, desc, notInArray } from "drizzle-orm";
+import { eq, ne, and, desc } from "drizzle-orm";
 import crypto from "crypto";
 
 // ─── Encryption helpers (for sensitive data) ─────────────────
@@ -287,15 +287,13 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
   const myProfile = await getUserProfile(userId);
   if (!myProfile) return 0;
 
-  // Get all other active users with profiles (excluding already matched)
+  // Todas as outras usuárias ativas. NÃO se exclui quem já casou: a regeneração
+  // re-scora todo mundo e grava por upsert contra a chave única
+  // (userId, matchedUserId). Antes havia aqui uma subconsulta de "já casei" com
+  // `ne(matchedUserId, null)` — que em SQL é sempre falso, devolvia zero linhas,
+  // e o insert puro duplicava o conjunto inteiro a cada clique.
   const db = await getDb();
   if (!db) return 0;
-
-  const existingMatchUserIds = await db.select({ matchedUserId: matches.matchedUserId })
-    .from(matches)
-    .where(and(eq(matches.userId, userId), ne(matches.matchedUserId, null as never)));
-
-  const excludeIds = [userId, ...existingMatchUserIds.map((m: { matchedUserId: number | null }) => m.matchedUserId).filter(Boolean) as number[]];
 
   const candidates = await db.select({
     userId: userProfiles.userId,
@@ -334,7 +332,7 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
     .from(userProfiles)
     .innerJoin(users, eq(users.id, userProfiles.userId))
     .where(and(
-      notInArray(userProfiles.userId, excludeIds),
+      ne(userProfiles.userId, userId),
       eq(users.isActive, true),
     ))
     .limit(50);
@@ -353,9 +351,11 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
       aiInsight = await generateMatchInsight(myProfile as UserProfile, candidate as UserProfile, scores);
     }
 
-    await db.insert(matches).values({
-      userId,
-      matchedUserId: candidate.userId as number,
+    // Upsert contra a chave única (userId, matchedUserId): re-analisar atualiza o
+    // score de quem já existe em vez de duplicar. O `set` de propósito NÃO toca
+    // userSeen, userDismissed nem createdAt — é o que preserva a decisão da
+    // usuária, e o que impede um dispensado de voltar como linha nova.
+    const scoreValues = {
       overallScore: scores.overall,
       specialtyScore: scores.specialty,
       objectivesScore: scores.objectives,
@@ -364,7 +364,10 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
       valuesScore: scores.values,
       aiInsight,
       aiGeneratedAt: aiInsight ? new Date() : null,
-    });
+    };
+    await db.insert(matches)
+      .values({ userId, matchedUserId: candidate.userId as number, ...scoreValues })
+      .onDuplicateKeyUpdate({ set: scoreValues });
 
     matchesCreated++;
   }
