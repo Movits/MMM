@@ -113,8 +113,6 @@ export default function NewOpportunity() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, description, type, sector]);
 
-  const notifyCompatibleMutation = trpc.matching.checkAndNotifyHighCompatibility.useMutation();
-
   const createMutation = trpc.opportunities.create.useMutation({
     onSuccess: (result) => {
       setAiResult({
@@ -126,17 +124,35 @@ export default function NewOpportunity() {
       });
       if (result.complianceLevel === "red") {
         toast.error("Oportunidade bloqueada pela análise de compliance. Verifique as diretrizes da plataforma.");
+      } else if (result.status === "pending") {
+        // Toda oportunidade nasce em análise; dizer "publicada" fazia parecer
+        // que ela tinha sumido, porque a lista pública só mostra as aprovadas.
+        toast.success("Oportunidade enviada para análise!", {
+          description: "Ela já aparece para você na lista com o selo Em análise e fica pública assim que a moderação aprovar.",
+        });
+        setTimeout(() => navigate(`/opportunities`), 2200);
       } else {
         toast.success("Oportunidade publicada com sucesso!");
-        // Disparar alertas de alta compatibilidade para usuárias com >= 80% de match
-        if (result.id && result.status === "active") {
-          notifyCompatibleMutation.mutate({ opportunityId: result.id });
-        }
         setTimeout(() => navigate(`/opportunities`), 1500);
       }
     },
     onError: (err) => toast.error(err.message),
   });
+
+  // Sugestões simples por tipo, para reduzir tag inventada e vocabulário
+  // fragmentado (tudo minúsculo, mesmo formato que handleAddTag grava).
+  const SUGGESTED_TAGS: Record<string, string[]> = {
+    offer: ["produto", "serviço", "consultoria", "exportação"],
+    demand: ["fornecedor", "orçamento", "prazo curto", "recorrente"],
+    investment: ["aporte", "sociedade", "expansão", "capital de giro"],
+    partnership: ["parceria", "co-branding", "distribuição", "representação"],
+    distribution: ["logística", "revenda", "atacado", "varejo"],
+    other: ["networking", "mentoria", "evento", "projeto social"],
+  };
+  const suggestedForType = (SUGGESTED_TAGS[type] ?? [])
+    .concat(sector ? [sector.toLowerCase()] : [])
+    .filter(s => !tags.includes(s))
+    .slice(0, 5);
 
   const handleAddTag = () => {
     const t = tagInput.trim().toLowerCase();
@@ -301,7 +317,7 @@ export default function NewOpportunity() {
                         ))}
                       </div>
                       <p className="text-white/30 text-xs mt-2.5 italic">
-                        Você poderá anexar esses documentos após publicar a oportunidade.
+                        Guarde esses documentos: a moderação pode pedi-los durante a análise da sua oportunidade.
                       </p>
                     </div>
                   </div>
@@ -356,6 +372,18 @@ export default function NewOpportunity() {
                   <Tag size={14} />
                 </Button>
               </div>
+              {suggestedForType.length > 0 && tags.length < 10 && (
+                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                  <span className="text-white/30 text-xs">Sugestões:</span>
+                  {suggestedForType.map((sug) => (
+                    <button key={sug} type="button"
+                      className="text-xs px-2 py-0.5 rounded-full border border-white/15 text-white/50 hover:border-amber-500/40 hover:text-amber-300 transition-colors"
+                      onClick={() => setTags([...tags, sug])}>
+                      + {sug}
+                    </button>
+                  ))}
+                </div>
+              )}
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {tags.map((tag) => (

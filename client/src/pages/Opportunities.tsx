@@ -132,10 +132,17 @@ function OpportunityCard({ opp, isGold, isSaved = false, onToggleSave, onDelete 
   });
   const level = opp.complianceLevel ?? "pending";
   const borderClass = COMPLIANCE_BORDER[level] ?? "hover:border-amber-500/40";
+  const emAnalise = opp.status === "pending";
 
   return (
     <Link href={`/opportunities/${opp.id}`}>
-      <div className={`group relative bg-white/5 border border-white/10 rounded-2xl p-5 ${borderClass} hover:bg-white/8 transition-all duration-200 cursor-pointer card-lift`}>
+      <div className={`group relative bg-white/5 border border-white/10 rounded-2xl p-5 ${borderClass} hover:bg-white/8 transition-all duration-200 cursor-pointer card-lift ${emAnalise ? "opacity-80" : ""}`}>
+        {emAnalise && (
+          <div className="mb-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/15 border border-yellow-500/30">
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"/>
+            <span className="text-yellow-300 text-xs font-semibold">Em análise — visível só para você</span>
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
