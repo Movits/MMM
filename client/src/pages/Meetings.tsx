@@ -5,6 +5,7 @@ import { ArrowLeft, Check, CircleAlert, Clock3, FileText, Loader2, Mic, Pause, P
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { LANGUAGES } from "@/i18n";
+import { AppHeader } from "@/components/AppHeader";
 
 const MAX_DURATION = 10 * 60;
 
@@ -228,9 +229,9 @@ export default function Meetings() {
     return <MeetingDetail meetingId={meetingId} onBack={() => setScreen("list")} />;
   }
 
-  return <main className="min-h-screen text-white px-4 py-8 md:px-8 bg-transparent">
+  return <><AppHeader title="Reuniões" backTo="/dashboard"/>
+  <main className="min-h-screen text-white px-4 py-8 md:px-8 bg-transparent">
     <div className="max-w-6xl mx-auto">
-      <button onClick={() => navigate("/dashboard")} className="inline-flex items-center gap-2 text-sm text-white/55 hover:text-white mb-6"><ArrowLeft size={16}/> Dashboard</button>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div><p className="text-amber-300 text-sm font-semibold tracking-wide">PRIVADO E SEGURO</p><h1 className="text-3xl md:text-4xl font-bold mt-1">Assistente de Reuniões</h1><p className="text-white/55 mt-2 max-w-2xl">Grave reuniões curtas com consentimento, revise a transcrição e confirme os contatos sugeridos.</p></div>
         <button onClick={() => setScreen("new")} className="inline-flex justify-center items-center gap-2 rounded-xl bg-[#f5a623] text-[#08121f] font-bold px-5 py-3 hover:bg-[#ffc04d]"><Plus size={18}/> Nova reunião</button>
@@ -238,7 +239,7 @@ export default function Meetings() {
       <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100/80 mb-7"><CircleAlert size={17} className="inline mr-2"/>Somente grave com consentimento de todas as pessoas. O áudio é privado e programado para expirar após 30 dias.</div>
       {isLoading ? <div className="py-20 text-center text-white/45"><Loader2 className="animate-spin inline mr-2"/>Carregando reuniões…</div> : !meetings?.length ? <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center"><Mic className="mx-auto text-amber-300 mb-4" size={34}/><h2 className="font-semibold text-xl">Nenhuma reunião registrada</h2><p className="text-white/45 mt-2">Inicie uma gravação para gerar transcrição e sugestões de contato.</p></div> : <div className="grid gap-3">{meetings.map(meeting => <button key={meeting.id} onClick={() => { setMeetingId(meeting.id); setScreen("detail"); }} className="text-left rounded-2xl border border-white/10 bg-white/[0.035] hover:bg-white/[0.07] p-5 transition-colors"><div className="flex items-center justify-between gap-4"><div><h2 className="font-semibold">{meeting.title}</h2><p className="text-xs text-white/45 mt-1">{new Date(meeting.createdAt).toLocaleString("pt-BR")}</p></div><span className={`border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(meeting.status)}</span></div></button>)}</div>}
     </div>
-  </main>;
+  </main></>;
 }
 
 function MeetingRecorder(props: { title: string; setTitle: (value: string) => void; consent: boolean; setConsent: (value: boolean) => void; recording: boolean; elapsed: number; processing: boolean; microphoneIssue: string | null; audioInput: React.RefObject<HTMLInputElement | null>; capturedAudio: { url: string; durationSeconds: number } | null; onProcessCaptured: () => void; onDiscardCaptured: () => void; onStart: () => void; onStop: () => void; onUpload: (file: File) => void; onBack: () => void }) {

@@ -1,0 +1,179 @@
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
+import {
+  ArrowLeft, Briefcase, Brain, ChevronDown, Crown, LogOut,
+  MapPin, Menu as MenuIcon, Mic, ShieldCheck, Sparkles, Users,
+} from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { NotificationBell } from "@/components/NotificationBell";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import { LANGUAGES } from "@/i18n";
+
+// Header único da área logada. Antes, cada página montava o seu: eram 16
+// variações com 5 cores de fundo, 3 ícones de "voltar" e 4 páginas sem header
+// nenhum — e o menu de navegação global só existia no Dashboard, obrigando a
+// voltar lá para trocar de área. O logo aponta para /dashboard de propósito:
+// apontar para a landing fazia quem clicasse nele "sair" do app sem querer.
+
+const MENU_ITEMS = [
+  { href: "/opportunities", icon: Briefcase, label: "Oportunidades", desc: "Propostas e negócios ativos" },
+  { href: "/verification", icon: ShieldCheck, label: "Verificação", desc: "Identidade e selo SIVC" },
+  { href: "/network", icon: Users, label: "Minha Rede", desc: "Sua base particular de contatos" },
+  { href: "/contexts", icon: MapPin, label: "Contextos", desc: "Onde e como conheceu cada pessoa" },
+  { href: "/meetings", icon: Mic, label: "Reuniões", desc: "Gravações e transcrições" },
+  { href: "/memory", icon: Brain, label: "Memória IA", desc: "Pergunte ao seu histórico" },
+  { href: "/intelligent-matches", icon: Sparkles, label: "Matches Inteligentes", desc: "Conexões entre seus contatos" },
+];
+
+function LangSelectorMini() {
+  const { i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const current = LANGUAGES.find(l => l.code === i18n.language) ?? LANGUAGES[0];
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1 text-xs text-white/40 hover:text-white/70 transition-colors px-2 py-1.5 rounded-lg hover:bg-white/5">
+        <span>{current.flag}</span>
+        <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8L5 7z" /></svg>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-50 bg-[#0d1b2e] border border-white/20 rounded-xl shadow-2xl overflow-hidden min-w-[140px]">
+            {LANGUAGES.map(lang => (
+              <button key={lang.code}
+                onClick={() => { i18n.changeLanguage(lang.code); setOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors text-left ${
+                  lang.code === i18n.language ? "bg-[#f5a623]/20 text-[#f5a623]" : "text-white/60 hover:bg-white/10 hover:text-white"
+                }`}>
+                <span>{lang.flag}</span><span>{lang.label}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function GlobalMenu() {
+  const { user, logout } = useAuth();
+  const [, navigate] = useLocation();
+  const { t } = useTranslation();
+  const logoutMutation = trpc.auth.logout.useMutation({
+    onSuccess: () => { logout(); navigate("/"); },
+  });
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="group flex items-center gap-2 text-sm font-medium text-white/80 border border-white/10 pl-3 pr-2.5 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] hover:border-[#f5a623]/40 hover:text-white transition-all duration-200 active:scale-[0.97] data-[state=open]:border-[#f5a623]/50 data-[state=open]:bg-white/[0.06] data-[state=open]:text-white">
+          <MenuIcon className="w-4 h-4 text-[#f5a623]" />
+          <span className="hidden sm:inline">Menu</span>
+          <ChevronDown className="w-3.5 h-3.5 text-white/40 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" sideOffset={10}
+        className="w-72 rounded-2xl border-white/10 bg-[#0a1424]/95 backdrop-blur-2xl text-white shadow-2xl shadow-black/60 p-2">
+        <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-widest text-white/35 px-3 pt-2 pb-1">
+          Navegação
+        </DropdownMenuLabel>
+        {MENU_ITEMS.map(item => (
+          <DropdownMenuItem key={item.href} asChild
+            className="rounded-xl px-3 py-2.5 cursor-pointer focus:bg-white/[0.07] focus:text-white data-[highlighted]:bg-white/[0.07]">
+            <Link href={item.href}>
+              <span className="flex items-center gap-3 w-full">
+                <span className="w-9 h-9 rounded-lg bg-white/[0.05] border border-white/[0.06] flex items-center justify-center shrink-0">
+                  <item.icon className="w-4 h-4 text-white/70" />
+                </span>
+                <span className="flex flex-col min-w-0">
+                  <span className="text-sm font-medium text-white leading-tight">{item.label}</span>
+                  <span className="text-[11px] text-white/35 leading-tight truncate">{item.desc}</span>
+                </span>
+              </span>
+            </Link>
+          </DropdownMenuItem>
+        ))}
+        {(user?.role === "president" || user?.role === "gold" || user?.role === "admin") && (
+          <>
+            <DropdownMenuSeparator className="bg-white/[0.07] my-2" />
+            <DropdownMenuItem asChild
+              className="rounded-xl px-3 py-2.5 cursor-pointer focus:bg-amber-400/10 data-[highlighted]:bg-amber-400/10">
+              <Link href="/president">
+                <span className="flex items-center gap-3 w-full">
+                  <span className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#f5a623]/25 to-[#ffd166]/10 border border-amber-400/25 flex items-center justify-center shrink-0">
+                    <Crown className="w-4 h-4 text-amber-400" />
+                  </span>
+                  <span className="flex flex-col min-w-0">
+                    <span className="text-sm font-semibold text-amber-300 leading-tight">Painel Ouro</span>
+                    <span className="text-[11px] text-amber-200/40 leading-tight truncate">Governança e validações</span>
+                  </span>
+                </span>
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
+        <DropdownMenuSeparator className="bg-white/[0.07] my-2" />
+        <DropdownMenuItem
+          onClick={() => logoutMutation.mutate()}
+          className="rounded-xl px-3 py-2.5 cursor-pointer text-white/50 focus:bg-red-500/10 focus:text-red-300 data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-300">
+          <span className="flex items-center gap-3 w-full">
+            <span className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0">
+              <LogOut className="w-4 h-4" />
+            </span>
+            <span className="text-sm font-medium leading-tight">{t("dashboard.logout")}</span>
+          </span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function AppHeader({ title, backTo, actions }: {
+  /** Título da página, opcional, exibido ao lado do voltar. */
+  title?: string;
+  /** Rota do botão voltar; sem ela o botão não aparece. */
+  backTo?: string;
+  /** Ações específicas da página (botões extras), à esquerda do menu. */
+  actions?: React.ReactNode;
+}) {
+  const { user } = useAuth();
+
+  return (
+    <nav className="border-b border-white/[0.06] px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-40 bg-[#060e1a]/95 backdrop-blur-2xl">
+      <div className="flex items-center gap-3 min-w-0">
+        <Link href="/dashboard">
+          <span className="text-xl font-black cursor-pointer tracking-tight">
+            <span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span>
+          </span>
+        </Link>
+        {backTo && (
+          <Link href={backTo}>
+            <span className="flex items-center gap-1 text-white/40 hover:text-white text-sm cursor-pointer transition-colors">
+              <ArrowLeft size={15} />
+            </span>
+          </Link>
+        )}
+        {title && <h1 className="text-white font-semibold text-sm sm:text-base truncate">{title}</h1>}
+      </div>
+      <div className="flex items-center gap-2 sm:gap-3">
+        {actions}
+        <GlobalMenu />
+        <NotificationBell />
+        <LangSelectorMini />
+        <Link href="/profile">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-[#060e1a] font-black text-sm cursor-pointer hover:scale-105 transition-transform ring-2 ring-transparent hover:ring-[#f5a623]/40"
+            style={{ background: "linear-gradient(135deg, #f5a623, #ffd166)" }} title="Meu Perfil">
+            {(user?.name || "U")[0].toUpperCase()}
+          </div>
+        </Link>
+      </div>
+    </nav>
+  );
+}

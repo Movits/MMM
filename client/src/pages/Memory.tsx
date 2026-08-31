@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft, BrainCircuit, Database, ExternalLink, FileText, Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { AppHeader } from "@/components/AppHeader";
 
 const SUGGESTIONS = [
   "Quais contatos conheci em eventos de tecnologia?",
@@ -36,9 +37,9 @@ export default function Memory() {
     search.mutate({ query: clean });
   }
 
-  return <main className="min-h-screen px-4 py-8 md:px-8 text-white bg-transparent">
+  return <><AppHeader title="Memória IA" backTo="/dashboard"/>
+  <main className="min-h-screen px-4 py-8 md:px-8 text-white bg-transparent">
     <div className="max-w-5xl mx-auto">
-      <button onClick={() => navigate("/dashboard")} className="inline-flex items-center gap-2 text-sm text-white/55 hover:text-white mb-6"><ArrowLeft size={16}/> Dashboard</button>
       <section className="rounded-3xl border border-amber-400/20 bg-[radial-gradient(circle_at_top_right,rgba(245,166,35,.15),transparent_38%),rgba(8,18,31,.82)] p-6 md:p-9 overflow-hidden relative">
         <div className="absolute -right-14 -top-14 h-52 w-52 rounded-full border border-amber-300/10" />
         <div className="relative"><p className="text-amber-300 text-xs font-bold tracking-[.18em]">MEMÓRIA INTELIGENTE</p><h1 className="text-3xl md:text-4xl font-bold mt-2">Pergunte à sua rede em linguagem natural</h1><p className="max-w-2xl mt-3 text-white/60">Encontre contatos, contextos e conversas privadas sem precisar lembrar palavras exatas. As respostas usam apenas o conteúdo da sua conta.</p>
@@ -52,5 +53,5 @@ export default function Memory() {
       {search.isPending && <section className="mt-6 rounded-2xl border border-white/10 bg-white/[.035] p-10 text-center"><BrainCircuit className="mx-auto animate-pulse text-amber-300" size={34}/><h2 className="mt-4 font-semibold">Consultando sua memória privada…</h2><p className="mt-2 text-sm text-white/45">Buscando relações de significado em contatos, contextos e reuniões.</p></section>}
       {search.data && <section className="mt-6 space-y-5"><div className="rounded-2xl border border-amber-400/20 bg-amber-400/[.06] p-5"><div className="flex items-center gap-2 text-amber-300"><Sparkles size={18}/><h2 className="font-semibold">Resposta fundamentada</h2></div><p className="mt-3 whitespace-pre-wrap leading-7 text-white/85">{search.data.answer}</p></div><div><h2 className="text-lg font-semibold mb-3">Fontes privadas utilizadas</h2>{search.data.hits.length ? <div className="grid md:grid-cols-2 gap-3">{search.data.hits.map((hit, index) => <article key={hit.id} className="rounded-2xl border border-white/10 bg-white/[.035] p-5"><div className="flex items-start justify-between gap-3"><div><span className="text-xs text-amber-300">[{index + 1}] {typeLabel[hit.sourceType] ?? hit.sourceType}</span><h3 className="font-semibold mt-1">{hit.title}</h3></div><span className="text-xs text-white/40">{Math.round(hit.score * 100)}% relevante</span></div><p className="mt-3 text-sm leading-6 text-white/55 line-clamp-4">{hit.content}</p>{typeof hit.metadata.href === "string" && <button onClick={() => navigate(hit.metadata.href as string)} className="mt-4 inline-flex items-center gap-1 text-sm text-amber-300 hover:text-amber-200">Abrir fonte <ExternalLink size={14}/></button>}</article>)}</div> : <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-white/45"><FileText className="mx-auto mb-3" size={25}/>Nenhuma fonte encontrada.</div>}</div></section>}
     </div>
-  </main>;
+  </main></>;
 }

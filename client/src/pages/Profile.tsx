@@ -245,9 +245,11 @@ export default function Profile() {
             Voltar ao Dashboard
           </span>
         </Link>
-        <span className="text-xl font-black">
-          <span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span>
-        </span>
+        <Link href="/dashboard">
+          <span className="text-xl font-black cursor-pointer">
+            <span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span>
+          </span>
+        </Link>
         {editing ? (
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setEditing(false)} className="text-white/40 hover:text-white/70">
