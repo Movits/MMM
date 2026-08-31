@@ -140,7 +140,7 @@ function OpportunityCard({ opp, isGold, isSaved = false, onToggleSave, onDelete 
         {emAnalise && (
           <div className="mb-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/15 border border-yellow-500/30">
             <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"/>
-            <span className="text-yellow-300 text-xs font-semibold">Em análise — visível só para você</span>
+            <span className="text-yellow-300 text-xs font-semibold">Em análise, visível só para você</span>
           </div>
         )}
         {/* Header */}
@@ -403,10 +403,10 @@ export default function Opportunities() {
         {/* Stats rápidas */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
-            { label: "Ativas", value: opps?.length ?? "—", icon: <TrendingUp size={14} /> },
-            { label: "Confiáveis", value: opps?.filter((o: any) => o.complianceLevel === "green").length ?? "—", icon: <ShieldCheck size={14} /> },
-            { label: "Investimento", value: opps?.filter((o: any) => o.type === "investment").length ?? "—", icon: <DollarSign size={14} /> },
-            { label: "Parcerias", value: opps?.filter((o: any) => o.type === "partnership").length ?? "—", icon: <Users size={14} /> },
+            { label: "Ativas", value: opps?.length ?? "-", icon: <TrendingUp size={14} /> },
+            { label: "Confiáveis", value: opps?.filter((o: any) => o.complianceLevel === "green").length ?? "-", icon: <ShieldCheck size={14} /> },
+            { label: "Investimento", value: opps?.filter((o: any) => o.type === "investment").length ?? "-", icon: <DollarSign size={14} /> },
+            { label: "Parcerias", value: opps?.filter((o: any) => o.type === "partnership").length ?? "-", icon: <Users size={14} /> },
           ].map((s, i) => (
             <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-2">
               <span className="text-amber-400">{s.icon}</span>

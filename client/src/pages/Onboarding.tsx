@@ -826,7 +826,7 @@ export default function Onboarding() {
                     { label: t("onboarding.review.location"), value: `${form.city}, ${form.country}`, icon: "📍" },
                     ...(form.gender ? [{ label: t("profile.gender.label"), value: t(`profile.gender.${form.gender}`), icon: "⚥" }] : []),
                     { label: t("onboarding.review.specialty"), value: normalizePrimarySpecialties(form.primarySpecialties, form.customSpecialty).map(k => t("onboarding.specialties." + k, { defaultValue: k })).join(", "), icon: "⚡" },
-                    { label: t("onboarding.misc.company"), value: form.company || form.currentCompany || "—", icon: "🏢" },
+                    { label: t("onboarding.misc.company"), value: form.company || form.currentCompany || "-", icon: "🏢" },
                     { label: t("onboarding.review.seeking"), value: form.seekingTypes.slice(0, 2).map(k => t("onboarding.seeking." + k, { defaultValue: k })).join(", ") + (form.seekingTypes.length > 2 ? "..." : ""), icon: "🎯" },
                     ...(form.currentResources ? [{ label: t("onboarding.fields.currentResources"), value: form.currentResources, icon: "✦" }] : []),
                     { label: t("onboarding.review.sector"), value: form.sector, icon: "🌐" },
@@ -837,7 +837,7 @@ export default function Onboarding() {
                         <span className="text-lg">{item.icon}</span>
                         <span className="text-xs text-white/40">{item.label}</span>
                       </div>
-                      <div className="text-sm font-medium text-white truncate">{item.value || "—"}</div>
+                      <div className="text-sm font-medium text-white truncate">{item.value || "-"}</div>
                     </div>
                   ))}
                 </div>

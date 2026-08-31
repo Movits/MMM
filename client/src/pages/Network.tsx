@@ -189,7 +189,7 @@ function ContactForm({ initial, onSave, onClose, loading }: {
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <div>
             <h2 className="font-bold text-white">{initial?.id ? "Editar Contato" : "Novo Contato"}</h2>
-            <p className="text-xs text-white/40 mt-0.5">Etapa {step} de {STEPS.length} — {STEPS[step - 1]}</p>
+            <p className="text-xs text-white/40 mt-0.5">Etapa {step} de {STEPS.length}: {STEPS[step - 1]}</p>
           </div>
           <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors p-1">
             <X size={18} />

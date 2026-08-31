@@ -176,7 +176,7 @@ export default function DealRoom() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white/40 text-xs">{p.label}</p>
-                <p className="text-white text-sm font-medium truncate">{p.person?.name || "—"}</p>
+                <p className="text-white text-sm font-medium truncate">{p.person?.name || "-"}</p>
               </div>
               <div className="flex-shrink-0">
                 {p.accepted ? (
@@ -240,7 +240,7 @@ export default function DealRoom() {
                 <p className="text-white/40 border-t border-white/10 pt-3">
                   Oportunidade: <strong className="text-white/60">{opp?.title}</strong><br />
                   Deal Room ID: #{roomId}<br />
-                  Data de criação: {room.createdAt ? new Date(room.createdAt).toLocaleDateString("pt-BR") : "—"}
+                  Data de criação: {room.createdAt ? new Date(room.createdAt).toLocaleDateString("pt-BR") : "-"}
                 </p>
               </div>
 
@@ -395,7 +395,7 @@ export default function DealRoom() {
                 <p className={`text-xs ${isDragOver ? 'text-amber-400' : 'text-white/30'}`}>
                   {isDragOver ? 'Solte para enviar' : 'Arraste arquivos aqui ou clique para selecionar'}
                 </p>
-                <p className="text-white/20 text-xs mt-0.5">PDF, Word, Excel, imagens, ZIP — máx. 16MB por arquivo</p>
+                <p className="text-white/20 text-xs mt-0.5">PDF, Word, Excel, imagens, ZIP (máx. 16MB por arquivo)</p>
               </div>
 
               {documents.length === 0 ? (

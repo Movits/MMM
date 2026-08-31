@@ -229,11 +229,11 @@ export default function NewOpportunity() {
                   <SelectValue placeholder="Selecione o tipo..." />
                 </SelectTrigger>
                 <SelectContent className="bg-[#0d1628] border-white/10 text-white">
-                  <SelectItem value="offer">📦 Oferta — produto, serviço ou commodity</SelectItem>
-                  <SelectItem value="demand">📈 Demanda — busca de fornecedores</SelectItem>
-                  <SelectItem value="investment">💰 Investimento — projeto que busca capital</SelectItem>
-                  <SelectItem value="partnership">🤝 Parceria — colaboração estratégica</SelectItem>
-                  <SelectItem value="distribution">🌍 Distribuição — busca de distribuidoras</SelectItem>
+                  <SelectItem value="offer">📦 Oferta: produto, serviço ou commodity</SelectItem>
+                  <SelectItem value="demand">📈 Demanda: busca de fornecedores</SelectItem>
+                  <SelectItem value="investment">💰 Investimento: projeto que busca capital</SelectItem>
+                  <SelectItem value="partnership">🤝 Parceria: colaboração estratégica</SelectItem>
+                  <SelectItem value="distribution">🌍 Distribuição: busca de distribuidoras</SelectItem>
                   <SelectItem value="other">💡 Outro</SelectItem>
                 </SelectContent>
               </Select>
@@ -269,7 +269,7 @@ export default function NewOpportunity() {
                     <>
                       <span style={{ color: risk.color }}>{risk.icon}</span>
                       <span className="text-xs font-semibold" style={{ color: risk.color }}>
-                        Análise Prévia — {risk.label}
+                        Análise Prévia: {risk.label}
                       </span>
                     </>
                   ) : null}
@@ -473,10 +473,10 @@ export default function NewOpportunity() {
                 <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">Escala de Confiabilidade</h3>
                 <div className="space-y-2">
                   {[
-                    { color: "#22c55e", label: "🟢 Verde", desc: "Acima de 80% — Alta confiabilidade" },
-                    { color: "#eab308", label: "🟡 Amarelo", desc: "50–79% — Boa documentação" },
-                    { color: "#f97316", label: "🟠 Laranja", desc: "20–49% — Necessita validação" },
-                    { color: "#ef4444", label: "🔴 Vermelho", desc: "Abaixo de 20% — Baixa confiabilidade" },
+                    { color: "#22c55e", label: "🟢 Verde", desc: "Acima de 80%: alta confiabilidade" },
+                    { color: "#eab308", label: "🟡 Amarelo", desc: "50–79%: boa documentação" },
+                    { color: "#f97316", label: "🟠 Laranja", desc: "20–49%: precisa de validação" },
+                    { color: "#ef4444", label: "🔴 Vermelho", desc: "Abaixo de 20%: baixa confiabilidade" },
                   ].map((item, i) => (
                     <div key={i} className="flex items-start gap-2 text-xs">
                       <span className="font-medium" style={{ color: item.color }}>{item.label}</span>

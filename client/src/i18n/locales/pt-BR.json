@@ -14,7 +14,7 @@
     "headline2": "oportunidades",
     "headline3": "certas",
     "headline4": "para você",
-    "subtitle": "Diga-nos quem você é, o que busca e o que tem a oferecer. Nossa inteligência artificial analisa o seu perfil de forma profunda para conectar você a líderes e oportunidades de alta compatibilidade real — indo muito além de simples palavras-chave.",
+    "subtitle": "Diga quem você é, o que busca e o que tem a oferecer. A nossa inteligência artificial analisa o seu perfil a fundo e conecta você a líderes e oportunidades com compatibilidade de verdade, muito além de palavras-chave.",
     "cta": "Criar meu perfil →",
     "ctaSecondary": "Ver como funciona"
   },
@@ -120,7 +120,7 @@
   },
   "onboarding": {
     "title": "Complete seu perfil",
-    "subtitle": "IA que conecta mulheres extraordinárias",
+    "subtitle": "Diga quem você é, o que busca e o que tem a oferecer. A nossa inteligência artificial analisa o seu perfil a fundo e conecta você a líderes e oportunidades com compatibilidade de verdade, muito além de palavras-chave.",
     "step": "Etapa {{current}} de {{total}}",
     "next": "Próximo",
     "back": "Voltar",
@@ -276,8 +276,8 @@
       "mba": "MBA"
     },
     "errorSave": "Não foi possível salvar seu perfil.",
-    "hintBio": "Seja autêntica — a IA usa isso para entender sua essência",
-    "hintGoal": "Seja específica — isso ajuda a IA a encontrar conexões para agora",
+    "hintBio": "Seja autêntica. A IA usa isso para entender a sua essência.",
+    "hintGoal": "Quanto mais específica, melhores as conexões que a IA encontra agora.",
     "successMsg": "🎉 Perfil criado com sucesso! Redirecionando para o seu dashboard...",
     "errorMsg": "Não foi possível salvar seu perfil.",
     "maxValues": "Máximo de 4 valores selecionados",
@@ -299,10 +299,10 @@
       "selectPlaceholder": "Selecione...",
       "age": "Sua idade",
       "agePlaceholder": "Ex: 32",
-      "ageHint": "Opcional — ajuda a encontrar conexões mais alinhadas",
+      "ageHint": "Opcional. Ajuda a encontrar conexões mais alinhadas.",
       "bio": "Quem é você em uma frase?",
       "bioPlaceholder": "Ex: Empreendedora serial com 10 anos em fintechs, buscando meu próximo projeto de impacto...",
-      "bioHint": "Seja autêntica — a IA usa isso para entender sua essência",
+      "bioHint": "Seja autêntica. A IA usa isso para entender a sua essência.",
       "primarySpecialty": "Quais são suas principais áreas de atuação? *",
       "specialtySelectionCount": "({{count}} selecionadas)",
       "specialtyLimit": "Você pode escolher até 3 áreas de especialidade.",
@@ -323,10 +323,10 @@
       "selectAll": "(selecione todos que se aplicam)",
       "shortTermGoal": "Objetivo de curto prazo (próximos 12 meses)",
       "shortTermGoalPlaceholder": "Ex: Lançar meu SaaS B2B e atingir os primeiros R$ 50k MRR...",
-      "shortTermGoalHint": "Seja específica — isso ajuda a IA a encontrar conexões para agora",
+      "shortTermGoalHint": "Quanto mais específica, melhores as conexões que a IA encontra agora.",
       "longTermGoal": "Objetivo de longo prazo (3–5 anos)",
       "longTermGoalPlaceholder": "Ex: Construir uma empresa de tecnologia com impacto social...",
-      "longTermGoalHint": "Visão de futuro — conecta você a pessoas com trajetórias alinhadas",
+      "longTermGoalHint": "A sua visão de futuro conecta você a pessoas com trajetórias parecidas.",
       "currentResources": "O que você tem hoje?",
       "currentResourcesPlaceholder": "Conte seus recursos, ativos, experiências ou rede disponível",
       "currentResourcesHint": "Ex.: equipe, empresa, ativos, conhecimento ou contatos.",
@@ -338,7 +338,7 @@
       "availableForTravel": "Disponível para viagens",
       "availableForTravelDesc": "Reuniões presenciais",
       "incomeRange": "Faixa de renda mensal *",
-      "incomePrivacy": "Dado criptografado — nunca exibido publicamente",
+      "incomePrivacy": "Este dado fica criptografado e nunca aparece publicamente.",
       "investmentCapacity": "Capacidade de investimento disponível",
       "lookingForInvestment": "Estou buscando investimento para meu negócio",
       "lookingForInvestmentDesc": "Conecta você a investidoras ativas na plataforma",
@@ -551,7 +551,7 @@
   "aiEngine": {
     "label": "Motor de IA",
     "title": "Conexões que fazem sentido real",
-    "desc": "Nossa IA analisa 5 dimensões do seu perfil — especialidade, objetivos, renda, localização e valores — e gera um score de compatibilidade de 0 a 100 para cada par. Você ainda recebe um insight personalizado explicando por que aquela conexão faz sentido para você.",
+    "desc": "O sistema compara os perfis em seis critérios (especialidade, objetivos, renda, localização, valores e capacidade de investimento) e calcula um índice de compatibilidade de 0 a 100 para cada par. Nas conexões mais fortes, a IA escreve um insight explicando por que aquela parceria faz sentido para você.",
     "variables": "Mais de 50 variáveis analisadas por par de mulheres",
     "dim1": "Sua principal especialidade",
     "dim2": "O que você busca",
@@ -575,7 +575,7 @@
     "silver": {
       "title": "Membro Prata",
       "desc": "Todas as mulheres que se cadastram na plataforma entram como Membros Prata. Acesso completo ao sistema de matching, oportunidades públicas e conexões com outras mulheres da rede.",
-      "access": "Acesso por cadastro — sem custo, sem seleção"
+      "access": "Acesso por cadastro, sem custo e sem seleção"
     },
     "gold": {
       "badge": "Reconhecimento",
@@ -591,7 +591,7 @@
     "bronze": {
       "title": "Membro Bronze",
       "desc": "Recém-chegadas à plataforma. Acesso às oportunidades públicas, matching básico e comunidade MMM. O ponto de partida para crescer na rede.",
-      "access": "Acesso por cadastro — nível inicial de todas as membras"
+      "access": "Acesso por cadastro: é o nível inicial de todas as membras"
     }
   },
   "profile": {
