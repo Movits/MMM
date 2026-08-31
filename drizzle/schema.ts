@@ -14,6 +14,7 @@ import {
   tinyint,
 } from "drizzle-orm/mysql-core";
 import { decimal } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
 
 // ============================================================
 // TABELA PRINCIPAL DE USUÁRIOS
@@ -1029,3 +1030,53 @@ export type SivcCheck = typeof sivcChecks.$inferSelect;
 export type SivcDocument = typeof sivcDocuments.$inferSelect;
 export type PresidentValidation = typeof presidentValidations.$inferSelect;
 export type NationalLeader = typeof nationalLeaders.$inferSelect;
+
+// ============================================================
+// CONSENTIMENTO E DOCUMENTOS — etapa 11, etapa 13 e ajuste A11
+// ============================================================
+// Versionar o documento é o que transforma consentimento em prova: "fulana
+// aceitou" sem versão não diz o que ela aceitou. Por isso o texto vive aqui,
+// e não no código — o texto jurídico entra como uma linha nova quando ficar
+// pronto, sem exigir deploy.
+export const documentVersions = mysqlTable("document_versions", {
+  id:          varchar("id", { length: 36 }).primaryKey(),
+  type:        mysqlEnum("type", [
+                 "termo_smart_match",
+                 "acordo_intermediacao",
+                 "contrato_comissao",
+                 "termo_gravacao",
+               ]).notNull(),
+  version:     int("version").notNull(),
+  text:        text("text").notNull(),
+  publishedAt: timestamp("publishedAt").defaultNow().notNull(),
+  isCurrent:   boolean("isCurrent").default(false).notNull(),
+  // No máximo uma versão vigente por tipo. O Postgres faria com índice parcial;
+  // no MySQL a coluna gerada resolve: vale o tipo enquanto vigente e NULL depois,
+  // e NULLs não colidem em índice único.
+  currentType: varchar("currentType", { length: 32 }).generatedAlwaysAs(
+                 sql`(CASE WHEN \`isCurrent\` THEN \`type\` ELSE NULL END)`,
+                 { mode: "virtual" },
+               ),
+}, (table) => ({
+  typeVersionUnique: uniqueIndex("doc_ver_type_version_unique").on(table.type, table.version),
+  currentUnique:     uniqueIndex("doc_ver_current_unique").on(table.currentType),
+}));
+
+// Revogar nunca apaga a linha: preenche revokedAt. A consulta do Smart Match
+// avalia a condição na hora, então revogar tem efeito imediato, sem rotina de
+// limpeza.
+export const consents = mysqlTable("consents", {
+  id:                int("id").autoincrement().primaryKey(),
+  userId:            int("userId").notNull(),
+  documentVersionId: varchar("documentVersionId", { length: 36 }).notNull(),
+  grantedAt:         timestamp("grantedAt").defaultNow().notNull(),
+  revokedAt:         timestamp("revokedAt"),
+  ipAddress:         varchar("ipAddress", { length: 45 }),
+  userAgent:         text("userAgent"),
+}, (table) => ({
+  userIdx:     index("consent_user_idx").on(table.userId),
+  documentIdx: index("consent_document_idx").on(table.documentVersionId),
+}));
+
+export type DocumentVersion = typeof documentVersions.$inferSelect;
+export type Consent = typeof consents.$inferSelect;

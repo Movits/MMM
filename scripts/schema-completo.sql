@@ -812,3 +812,33 @@ CREATE INDEX `group_createdBy_idx` ON `strategic_groups` (`createdBy`);--> state
 CREATE INDEX `device_userId_idx` ON `trusted_devices` (`userId`);--> statement-breakpoint
 CREATE INDEX `profile_userId_idx` ON `user_profiles` (`userId`);--> statement-breakpoint
 CREATE INDEX `profile_country_idx` ON `user_profiles` (`country`);
+-- ============================================================
+-- CONSENTIMENTO E DOCUMENTOS — etapa 11, etapa 13 e ajuste A11
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `document_versions` (
+  `id` varchar(36) NOT NULL,
+  `type` enum('termo_smart_match','acordo_intermediacao','contrato_comissao','termo_gravacao') NOT NULL,
+  `version` int NOT NULL,
+  `text` text NOT NULL,
+  `publishedAt` timestamp NOT NULL DEFAULT current_timestamp(),
+  `isCurrent` boolean NOT NULL DEFAULT false,
+  -- Uma única versão vigente por tipo. O Postgres usaria índice parcial; aqui a
+  -- coluna gerada vira NULL quando não vigente, e NULLs não colidem no único.
+  `currentType` varchar(32) AS (CASE WHEN `isCurrent` THEN `type` ELSE NULL END) VIRTUAL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `doc_ver_type_version_unique` (`type`,`version`),
+  UNIQUE KEY `doc_ver_current_unique` (`currentType`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `consents` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `userId` int NOT NULL,
+  `documentVersionId` varchar(36) NOT NULL,
+  `grantedAt` timestamp NOT NULL DEFAULT current_timestamp(),
+  `revokedAt` timestamp NULL DEFAULT NULL,
+  `ipAddress` varchar(45) DEFAULT NULL,
+  `userAgent` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `consent_user_idx` (`userId`),
+  KEY `consent_document_idx` (`documentVersionId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

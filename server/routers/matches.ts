@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import crypto from "node:crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -5,8 +6,20 @@ import { aiMatchSuggestions, contactAssets, contactNeeds, privateContacts } from
 import { getDb } from "../db";
 import { recalculatePrivateMatches, slugifyMatchTag } from "../match-service";
 import { protectedProcedure, router } from "../_core/trpc";
+import { hasValidConsent } from "./consent";
 
 const matchItem = z.object({ contactId: z.number().int().positive(), tagLabel: z.string().trim().min(2).max(200), category: z.string().trim().max(120).optional(), description: z.string().trim().max(2000).optional() });
+
+// Etapa 11: o cruzamento só roda com o termo do Smart Match aceito e não
+// revogado. Recusar não pode derrubar o resto do app — só desliga o
+// cruzamento, por isso a trava fica aqui e não no procedimento protegido.
+async function assertSmartMatchConsent(userId: number) {
+  if (await hasValidConsent(userId, "termo_smart_match")) return;
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message: "SMART_MATCH_CONSENT_REQUIRED",
+  });
+}
 
 async function assertOwnedContact(ownerId: string, contactId: number) {
   const db = await getDb();
@@ -18,6 +31,7 @@ async function assertOwnedContact(ownerId: string, contactId: number) {
 
 export const intelligentMatchesRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
+    await assertSmartMatchConsent(ctx.user.id);
     const db = await getDb();
     if (!db) throw new Error("Banco indisponível.");
     const [matches, contacts] = await Promise.all([
@@ -34,18 +48,23 @@ export const intelligentMatchesRouter = router({
   }),
 
   addAsset: protectedProcedure.input(matchItem).mutation(async ({ ctx, input }) => {
+    await assertSmartMatchConsent(ctx.user.id);
     const { db } = await assertOwnedContact(ctx.user.openId, input.contactId); const timestamp = Date.now();
     await db.insert(contactAssets).values({ ownerId: ctx.user.openId, contactId: input.contactId, tagSlug: slugifyMatchTag(input.tagLabel), tagLabel: input.tagLabel, category: input.category || null, description: input.description || null, createdAt: timestamp, updatedAt: timestamp });
     return recalculatePrivateMatches(ctx.user.openId, ctx.user.email);
   }),
 
   addNeed: protectedProcedure.input(matchItem).mutation(async ({ ctx, input }) => {
+    await assertSmartMatchConsent(ctx.user.id);
     const { db } = await assertOwnedContact(ctx.user.openId, input.contactId); const timestamp = Date.now();
     await db.insert(contactNeeds).values({ ownerId: ctx.user.openId, contactId: input.contactId, tagSlug: slugifyMatchTag(input.tagLabel), tagLabel: input.tagLabel, category: input.category || null, description: input.description || null, createdAt: timestamp, updatedAt: timestamp });
     return recalculatePrivateMatches(ctx.user.openId, ctx.user.email);
   }),
 
-  recalculate: protectedProcedure.mutation(async ({ ctx }) => recalculatePrivateMatches(ctx.user.openId, ctx.user.email)),
+  recalculate: protectedProcedure.mutation(async ({ ctx }) => {
+    await assertSmartMatchConsent(ctx.user.id);
+    return recalculatePrivateMatches(ctx.user.openId, ctx.user.email);
+  }),
 
   updateStatus: protectedProcedure.input(z.object({ id: z.string().uuid(), status: z.enum(["viewed", "accepted", "dismissed"]) })).mutation(async ({ ctx, input }) => {
     const db = await getDb(); if (!db) throw new Error("Banco indisponível."); const timestamp = Date.now();
