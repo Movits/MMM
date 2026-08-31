@@ -169,6 +169,19 @@ const INTEREST_SYNONYMS: Record<string, string> = {
   imoveis: "Imobiliário", imóveis: "Imobiliário", imobiliario: "Imobiliário", real_estate: "Imobiliário",
 };
 
+// Perfis criados a partir de 31/08 guardam a CHAVE da opção ("engineering") em
+// vez do rótulo traduzido, para o match funcionar entre idiomas. A exibição
+// traduz de volta; texto livre e dados antigos passam intactos.
+const OPTION_NAMESPACES = ["specialties", "sectors", "seeking", "values", "languages"];
+function optionLabel(t: (k: string, o?: Record<string, unknown>) => string, valor?: string | null): string {
+  if (!valor) return "";
+  for (const ns of OPTION_NAMESPACES) {
+    const traduzido = t(`onboarding.${ns}.${valor}`, { defaultValue: "" });
+    if (traduzido) return traduzido;
+  }
+  return valor;
+}
+
 function normalizeInterest(raw: string): string {
   const key = raw.toLowerCase().trim().replace(/\s+/g, "_");
   return INTEREST_SYNONYMS[key] || INTEREST_SYNONYMS[raw.toLowerCase().trim()] || raw;
@@ -253,8 +266,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
   // Combina seekingTypes + businessInterests, normaliza sinônimos, remove duplicatas
   // Perfis novos guardam CHAVES (ex. "investor"); perfis antigos, o texto
   // traduzido. Traduz a chave quando houver tradução e cai no valor cru.
-  const keyToLabel = (k: string) =>
-    t("onboarding.seeking." + k, { defaultValue: t("onboarding.sectors." + k, { defaultValue: k }) });
+  const keyToLabel = (k: string) => optionLabel(t, k);
   const allInterests = Array.from(new Set(
     [...seekingTypes, ...businessInterests].map(k => normalizeInterest(keyToLabel(k)))
   )).slice(0, 5);
@@ -305,7 +317,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
             </div>
             <div className="text-xs text-white/40 mt-0.5 flex items-center gap-1">
               <span className="text-[10px]">📍</span>
-              {match.sector || match.primarySpecialty}
+              {match.sector || optionLabel(t, match.primarySpecialty)}
               {(match.sector || match.primarySpecialty) && (match.city) && " · "}
               {match.city}{match.country && `, ${match.country}`}
             </div>
@@ -343,7 +355,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
             {values.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-2">
                 {values.map((v: string) => (
-                  <span key={v} className="px-2.5 py-0.5 rounded-full bg-[#f5a623]/10 border border-[#f5a623]/20 text-xs text-[#f5a623]">{v}</span>
+                  <span key={v} className="px-2.5 py-0.5 rounded-full bg-[#f5a623]/10 border border-[#f5a623]/20 text-xs text-[#f5a623]">{optionLabel(t, v)}</span>
                 ))}
               </div>
             )}
@@ -977,7 +989,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-bold">{conn.displayName}</div>
-                    <div className="text-sm text-white/40">{conn.primarySpecialty} · {conn.city}</div>
+                    <div className="text-sm text-white/40">{optionLabel(t, conn.primarySpecialty)} · {conn.city}</div>
                     {conn.message && <div className="text-xs text-white/25 mt-1 truncate">"{conn.message}"</div>}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -1026,7 +1038,7 @@ export default function Dashboard() {
                       <div className="flex-1">
                         <h2 className="text-xl font-black">{profile.displayName}</h2>
                         <div className="text-white/40 text-sm">{profile.currentRole}{profile.currentRole && profile.city && " · "}{profile.city}</div>
-                        <div className="text-xs text-white/25 mt-0.5">{profile.primarySpecialty}</div>
+                        <div className="text-xs text-white/25 mt-0.5">{optionLabel(t, profile.primarySpecialty)}</div>
                       </div>
                         <div className="text-right">
                         <div className="text-3xl font-black text-[#f5a623]">{profile.profileCompleteness}%</div>
@@ -1050,7 +1062,7 @@ export default function Dashboard() {
 
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       {[
-                        { label: t("onboarding.specialty"), value: profile.primarySpecialty, icon: "⚡" },
+                        { label: t("onboarding.specialty"), value: optionLabel(t, profile.primarySpecialty), icon: "⚡" },
                         { label: t("onboarding.sector"), value: profile.sector, icon: "🌐" },
                         { label: t("onboarding.experience"), value: profile.experienceYears ? `${profile.experienceYears} ${t("dashboard.years")}` : null, icon: "📅" },
                         { label: t("onboarding.workStyle"), value: profile.workStyle, icon: "💼" },
