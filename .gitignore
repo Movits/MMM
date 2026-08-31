@@ -64,3 +64,6 @@ todo.md
 # Logs da plataforma de origem
 .manus-logs/
 *.log
+
+# pastas de trabalho temporario de ferramentas de revisao
+.tmp-*/
