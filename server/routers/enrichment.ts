@@ -1,4 +1,6 @@
 import { TRPCError } from "@trpc/server";
+import { hasValidConsent } from "./consent";
+import { recalculatePrivateMatches } from "../match-service";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import {
@@ -174,6 +176,25 @@ FORMATO DE SAÍDA (JSON obrigatório):
       if (!ok) throw new TRPCError({ code: "NOT_FOUND", message: "SUGGESTION_NOT_FOUND" });
       const sug = await getEnrichmentSuggestion(input.suggestionId, ctx.user.openId);
       if (!sug) return { success: true, status: "applied", nextQuestion: null, sessionComplete: false };
+
+      // A resposta acabou de virar "o que possui" ou "o que procura": recalcular
+      // aqui é o que fecha o circuito automático — a pessoa conversa, o item
+      // entra, o match nasce, sem passar pela tela de matches.
+      //
+      // Etapa 11: o recálculo é CRUZAMENTO, e cruzamento exige o termo aceito.
+      // Sem consentimento vigente, a resposta fica gravada no contato (isso é
+      // dado da agenda, não cruzamento) e o recálculo acontece quando a pessoa
+      // autorizar e clicar em atualizar. Falha de recálculo não desfaz o aceite
+      // da sugestão: o dado dela já está seguro.
+      if (sug.fieldType === "assets" || sug.fieldType === "needs") {
+        try {
+          if (await hasValidConsent(ctx.user.id, "termo_smart_match")) {
+            await recalculatePrivateMatches(ctx.user.openId, ctx.user.email);
+          }
+        } catch (erro) {
+          console.warn("[Enriquecimento] Recálculo adiado:", erro instanceof Error ? erro.message : erro);
+        }
+      }
 
       const advanced = await advanceEnrichmentSession(sug.sessionId, ctx.user.openId, false);
       const nextStep = getEnrichmentStep(advanced?.questionsAnswered ?? ENRICHMENT_STEPS.length);

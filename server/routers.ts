@@ -12,6 +12,7 @@ import { presidentRouter } from "./routers/president";
 import { matchingRouter } from "./routers/matching";
 import { faqRouter } from "./routers/faq";
 import { statsRouter } from "./routers/stats";
+import { consentRouter } from "./routers/consent";
 import { networkRouter } from "./routers/network";
 import { contextsRouter } from "./routers/contexts";
 import { enrichmentRouter } from "./routers/enrichment";
@@ -40,6 +41,7 @@ export const appRouter = router({
   matching: matchingRouter,
   faq: faqRouter,
   stats: statsRouter,
+  consent: consentRouter,
   network: networkRouter,
   contexts: contextsRouter,
   enrichment: enrichmentRouter,

@@ -88,17 +88,20 @@ O repositório já tem `Dockerfile`, então o Railway não precisa adivinhar nad
    ```bash
    DATABASE_URL="<a URL do MySQL>" node scripts/criar-banco.mjs
    ```
-   **Não use `pnpm db:push`.** Ele está quebrado: o histórico em `drizzle/meta`
-   parou na migração `0002`, com 15 tabelas, enquanto o `drizzle/schema.ts` tem
-   48. O comando pergunta, uma a uma, se cada tabela nova é criação ou
-   renomeação de `ai_analyses`, `messages`, `security_notifications` ou
-   `user_vault` — que estão no histórico e sumiram do código. Exige terminal
-   interativo, e uma resposta errada gera `DROP`.
+   O script aplica as migrações de `drizzle/` e anota o que rodou na tabela
+   `_migracoes`. Dá para rodar de novo sem perigo: o que já foi aplicado não
+   roda outra vez.
 
-   O script aplica `scripts/schema-completo.sql`, que é o schema inteiro. Dá
-   para rodar de novo sem perigo: tabela que já existe é pulada.
+   **Banco que já existia antes do sistema de migração:** o `migrar.mjs` confere
+   coluna a coluna antes de adotar. Se o banco estiver desviado, ele recusa e
+   lista cada desvio; `node scripts/nivelar-banco.mjs --aplicar` gera os ALTERs
+   a partir do próprio baseline (nunca apaga nada) e aí a adoção passa.
 
-   Refazer o histórico de migrações continua pendente.
+   **Para mudar o schema daqui em diante:** edite `drizzle/schema.ts`, rode
+   `pnpm db:generate` (nasce a migração em `drizzle/`) e `pnpm db:migrate`
+   (aplica). Nunca edite SQL de migração à mão — foi mantendo um SQL à mão que
+   um banco novo passou a nascer sem as tabelas do consentimento. O CI cria um
+   banco do zero e confere que schema e migrações concordam.
 6. **Generate Domain** em Settings → Networking. Sai um endereço
    `*.up.railway.app`. Esse é o link da Glenda.
 7. **Voltar em Variables** e apontar `FRONTEND_URL` para esse domínio, senão os

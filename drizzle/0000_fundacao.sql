@@ -6,7 +6,7 @@ CREATE TABLE `ai_match_suggestions` (
 	`pair_low_contact_id` bigint NOT NULL,
 	`pair_high_contact_id` bigint NOT NULL,
 	`match_score` int NOT NULL,
-	`match_type` enum('exact','category','semantic') NOT NULL,
+	`match_type` enum('mutual','exact','category','semantic') NOT NULL,
 	`matched_assets` json NOT NULL,
 	`matched_needs` json NOT NULL,
 	`reason_text` text NOT NULL,
@@ -45,6 +45,19 @@ CREATE TABLE `connections` (
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `connections_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `consents` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`userId` int NOT NULL,
+	`documentVersionId` varchar(36) NOT NULL,
+	`grantedAt` timestamp NOT NULL DEFAULT (now()),
+	`revokedAt` timestamp,
+	`ipAddress` varchar(45),
+	`userAgent` text,
+	`activeKey` varchar(80) GENERATED ALWAYS AS ((CASE WHEN `revokedAt` IS NULL THEN CONCAT(`userId`, ':', `documentVersionId`) ELSE NULL END)) VIRTUAL,
+	CONSTRAINT `consents_id` PRIMARY KEY(`id`),
+	CONSTRAINT `consent_active_unique` UNIQUE(`activeKey`)
 );
 --> statement-breakpoint
 CREATE TABLE `contact_assets` (
@@ -199,6 +212,19 @@ CREATE TABLE `direct_messages` (
 	`readAt` timestamp,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	CONSTRAINT `direct_messages_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `document_versions` (
+	`id` varchar(36) NOT NULL,
+	`type` enum('termo_smart_match','acordo_intermediacao','contrato_comissao','termo_gravacao') NOT NULL,
+	`version` int NOT NULL,
+	`text` text NOT NULL,
+	`publishedAt` timestamp NOT NULL DEFAULT (now()),
+	`isCurrent` boolean NOT NULL DEFAULT false,
+	`currentType` varchar(32) GENERATED ALWAYS AS ((CASE WHEN `isCurrent` THEN `type` ELSE NULL END)) VIRTUAL,
+	CONSTRAINT `document_versions_id` PRIMARY KEY(`id`),
+	CONSTRAINT `doc_ver_type_version_unique` UNIQUE(`type`,`version`),
+	CONSTRAINT `doc_ver_current_unique` UNIQUE(`currentType`)
 );
 --> statement-breakpoint
 CREATE TABLE `enrichment_messages` (
@@ -741,6 +767,8 @@ CREATE INDEX `audit_action_idx` ON `audit_logs` (`action`);--> statement-breakpo
 CREATE INDEX `audit_createdAt_idx` ON `audit_logs` (`createdAt`);--> statement-breakpoint
 CREATE INDEX `conn_requester_idx` ON `connections` (`requesterId`);--> statement-breakpoint
 CREATE INDEX `conn_recipient_idx` ON `connections` (`recipientId`);--> statement-breakpoint
+CREATE INDEX `consent_user_idx` ON `consents` (`userId`);--> statement-breakpoint
+CREATE INDEX `consent_document_idx` ON `consents` (`documentVersionId`);--> statement-breakpoint
 CREATE INDEX `contact_assets_owner_contact_idx` ON `contact_assets` (`owner_id`,`contact_id`);--> statement-breakpoint
 CREATE INDEX `contact_assets_owner_slug_idx` ON `contact_assets` (`owner_id`,`tag_slug`);--> statement-breakpoint
 CREATE INDEX `contact_assets_owner_category_idx` ON `contact_assets` (`owner_id`,`category`);--> statement-breakpoint

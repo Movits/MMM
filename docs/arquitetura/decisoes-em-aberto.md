@@ -236,9 +236,11 @@ ligar o R2 e separar as variáveis de ambiente.
 
 ### Dois itens que valem mais que este debate
 
-- **`pnpm db:push` não recria o banco do zero.** As 11 tabelas sem definição Drizzle
-  não nasceriam numa instalação nova; o SIVC inteiro sumiria. É bug de
-  reprodutibilidade que já existe em MySQL e independe desta decisão.
+- ~~**`pnpm db:push` não recria o banco do zero.**~~ **Resolvido em 31/08/2026:**
+  as tabelas do SIVC ganharam definição Drizzle, o histórico de migrações foi
+  refundado (baseline `0000_fundacao`, 50 tabelas) e `db:push` deixou de
+  existir — o fluxo é `pnpm db:generate` + `pnpm db:migrate`, e o CI cria um
+  banco do zero a cada PR para provar que continua funcionando.
 - **A gravação de reunião só funciona em host que tolere requisição de minutos.**
   Confirmar o limite de tempo **antes** de contar essa etapa como pronta: o padrão
   de 30 ou 60 segundos de várias plataformas a inviabiliza sem erro revelador.
@@ -268,9 +270,26 @@ de código, e mudam políticas de acesso já desenhadas:
    dados completos dele, como vê os de nível `ouro`? Se sim, a política inclui os
    dois níveis; se não, registrar que público é menos visível que ouro para quem tem
    acesso Ouro.
-3. **Consentimento sobrevive à troca de versão do termo?** Quando sai uma versão
-   nova do termo de Smart Match, o consentimento dado na versão antiga continua
-   valendo, ou o cruzamento para até o usuário aceitar de novo?
+3. ~~**Consentimento sobrevive à troca de versão do termo?**~~ **DECIDIDO em
+   31/08/2026 (Nicolas): não sobrevive.** O cruzamento pausa até a pessoa aceitar a
+   versão nova.
+
+   A razão é que a alternativa enfraquece a prova. Quem aceitou a versão 1 não leu a
+   versão 2, e registrar que aceitou um texto que nunca viu esvazia justamente o que
+   o versionamento existe para garantir — "fulana aceitou" só vale como prova se
+   disser o que ela aceitou.
+
+   O custo é atrito: toda publicação faz todo mundo ver a tela de novo. Ele é
+   mitigado, não eliminado — a tela passa a dizer "O termo foi atualizado", informa
+   qual versão a pessoa tinha aceitado e garante que contatos e conexões já aceitas
+   continuam onde estavam. Sem isso o retorno da tela pareceria falha do sistema.
+
+   Fica em aberto, para quando houver volume: distinguir mudança de substância de
+   correção de vírgula, para que a segunda não force novo aceite. Exige um campo no
+   documento marcando qual é qual, e alguém decidindo na hora de publicar.
+
+   Implementado em `server/routers/consent.ts` (o filtro por `documentVersionId`) e
+   `client/src/components/SmartMatchConsent.tsx` (o aviso).
 
 ---
 

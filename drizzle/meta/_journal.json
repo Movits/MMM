@@ -5,22 +5,15 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1781550491629,
-      "tag": "0000_clear_adam_destine",
+      "when": 1788202263769,
+      "tag": "0000_fundacao",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "5",
-      "when": 1783997983543,
-      "tag": "0001_robust_toro",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1784074531129,
-      "tag": "0002_watery_magus",
+      "when": 1788209293107,
+      "tag": "0001_indice-unico-de-match",
       "breakpoints": true
     }
   ]

@@ -62,7 +62,7 @@ Requisitos: Node.js 20+, pnpm e um MySQL acessível.
 ```bash
 pnpm install
 cp .env.example .env   # preencha as variáveis
-pnpm db:push           # cria as tabelas
+pnpm db:migrate        # cria as tabelas
 pnpm dev               # http://localhost:3000
 ```
 
