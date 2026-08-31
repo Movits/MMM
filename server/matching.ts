@@ -109,6 +109,14 @@ export async function getUserProfile(userId: number) {
     currentCompany: userProfiles.currentCompany,
     sector: userProfiles.sector,
     seekingTypes: userProfiles.seekingTypes,
+    // O perfil estratégico (etapa 2): sem estes dois campos aqui, a dimensão de
+    // complementaridade recebia undefined para `myProfile` e ficava sempre
+    // neutra. O trio de investimento tinha o mesmo problema e vai junto.
+    whatIHave: userProfiles.whatIHave,
+    whatINeed: userProfiles.whatINeed,
+    investmentCapacity: userProfiles.investmentCapacity,
+    lookingForInvestment: userProfiles.lookingForInvestment,
+    investmentAmountSeeking: userProfiles.investmentAmountSeeking,
     businessInterests: userProfiles.businessInterests,
     preferredCompanySize: userProfiles.preferredCompanySize,
     openToRemote: userProfiles.openToRemote,
@@ -124,6 +132,30 @@ export async function getUserProfile(userId: number) {
   return profile || null;
 }
 
+// O que cada ativo ("o que possui") satisfaz nas necessidades ("o que procura").
+// Os dois campos vêm de listas diferentes no onboarding (WHAT_I_HAVE_OPTIONS /
+// WHAT_I_NEED_OPTIONS) e só compartilham 3 ids, então a ponte é explícita. Ids
+// desconhecidos simplesmente não cobrem nada — degrada suave, nunca quebra.
+// Espelha o formato do SECTOR_ADJACENCY, logo abaixo.
+const HAVE_SATISFIES_NEED: Record<string, string[]> = {
+  industria: ["fornecedores", "compradores"],
+  fazenda: ["fornecedores", "compradores"],
+  commodities: ["fornecedores", "compradores"],
+  laboratorio: ["fornecedores", "consultoria", "parceiros"],
+  tecnologia: ["tecnologia", "consultoria"],
+  investidores: ["investidores", "financiamento", "parceiros"],
+  acesso_governamental: ["licencas", "consultoria", "parceiros"],
+  licencas: ["licencas", "consultoria"],
+  imoveis: ["fornecedores", "parceiros"],
+  logistica: ["distribuidores", "fornecedores"],
+  canais_comerciais: ["distribuidores", "compradores"],
+};
+
+/** Quantas necessidades de `need` algum ativo de `have` satisfaz. */
+function coversNeeds(have: string[], need: string[]): number {
+  return need.filter(n => have.some(h => h === n || HAVE_SATISFIES_NEED[h]?.includes(n))).length;
+}
+
 // ─── Calculate compatibility score between two profiles ──────
 export function calculateCompatibilityScore(
   a: UserProfile,
@@ -132,6 +164,7 @@ export function calculateCompatibilityScore(
   overall: number;
   specialty: number;
   objectives: number;
+  complementarity: number;
   sector: number;
   investment: number;
   location: number;
@@ -173,7 +206,33 @@ export function calculateCompatibilityScore(
     }
   }
 
-  // Objectives score — complementarity is key
+  // Complementaridade estratégica (etapa 2) — o coração do match.
+  //
+  // O sinal certo NÃO é as duas quererem a mesma coisa (isso é concorrência, o
+  // mesmo erro que a regra da direção da etapa 11 corrigiu), e sim uma TER o que
+  // a outra PROCURA. Como "o que possui" e "o que procura" usam vocabulários
+  // diferentes (só 3 ids coincidem), a interseção crua não serve: é preciso um
+  // mapa curado do que um ativo satisfaz — no espírito da lista controlada da
+  // arquitetura, e espelhando o SECTOR_ADJACENCY acima.
+  const aHave = (a.whatIHave as string[]) || [], aNeed = (a.whatINeed as string[]) || [];
+  const bHave = (b.whatIHave as string[]) || [], bNeed = (b.whatINeed as string[]) || [];
+  const aCoversB = coversNeeds(aHave, bNeed);   // ativos de A atendem necessidades de B
+  const bCoversA = coversNeeds(bHave, aNeed);   // ativos de B atendem necessidades de A
+  const totalCoverage = aCoversB + bCoversA;
+  let complementarityScore: number;
+  if (aHave.length + aNeed.length === 0 || bHave.length + bNeed.length === 0) {
+    complementarityScore = 50;                                            // sem perfil estratégico → neutro
+  } else if (aCoversB > 0 && bCoversA > 0) {
+    complementarityScore = Math.min(100, 75 + 10 * (totalCoverage - 2));  // mútuo: cada uma tem o que a outra precisa
+  } else if (totalCoverage > 0) {
+    complementarityScore = Math.min(70, 45 + 15 * totalCoverage);         // uma via
+  } else {
+    complementarityScore = 20;                                           // tem dado, sem encaixe: sem sinergia ou concorrência
+  }
+
+  // Mantido para compat com o tipo de retorno e a coluna objectivesScore, mas
+  // com peso ZERO no overall — medir overlap de seekingTypes premiava querer a
+  // mesma coisa. A complementaridade tomou o lugar dele.
   const aSeeks = (a.seekingTypes as string[]) || [];
   const bSeeks = (b.seekingTypes as string[]) || [];
   const seekingOverlap = aSeeks.filter(s => bSeeks.includes(s)).length;
@@ -220,9 +279,12 @@ export function calculateCompatibilityScore(
     : 50;
 
   // Weighted overall score
-  // objectives (30%) + sector (20%) + investment (20%) + specialty (15%) + values (10%) + location (5%)
+  // complementaridade (30%) + sector (20%) + investment (20%) + specialty (15%)
+  //   + values (10%) + location (5%). Os 30% eram de `objectives`, que media
+  //   overlap de objetivo (concorrência); passaram para a complementaridade,
+  //   que é o que a etapa 2 promete. `objectives` continua no retorno com peso 0.
   const overall = Math.round(
-    objectivesScore * 0.30 +
+    complementarityScore * 0.30 +
     sectorScore * 0.20 +
     investmentScore * 0.20 +
     specialtyScore * 0.15 +
@@ -234,6 +296,7 @@ export function calculateCompatibilityScore(
     overall,
     specialty: Math.round(specialtyScore),
     objectives: Math.round(objectivesScore),
+    complementarity: Math.round(complementarityScore),
     sector: Math.round(sectorScore),
     investment: Math.round(investmentScore),
     location: Math.round(locationScore),
@@ -312,6 +375,8 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
     currentCompany: userProfiles.currentCompany,
     sector: userProfiles.sector,
     seekingTypes: userProfiles.seekingTypes,
+    whatIHave: userProfiles.whatIHave,
+    whatINeed: userProfiles.whatINeed,
     businessInterests: userProfiles.businessInterests,
     preferredCompanySize: userProfiles.preferredCompanySize,
     openToRemote: userProfiles.openToRemote,
