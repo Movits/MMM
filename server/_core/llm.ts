@@ -219,7 +219,14 @@ const resolveApiUrl = () => {
     // prefixo de versão; só falta o caminho do recurso.
     return base.endsWith("/chat/completions") ? base : `${base}/chat/completions`;
   }
-  return "https://forge.manus.im/v1/chat/completions";
+  // O fallback antigo era o forge.manus.im — que morreu com o Manus. Chamar um
+  // host morto vira um erro de rede obscuro minutos depois; falhar aqui, com
+  // nome de variável, é diagnosticável em segundos. Todo chamador de invokeLLM
+  // já trata exceção (é o mesmo caminho de "sem chave configurada").
+  throw new Error(
+    "LLM_API_URL não definida. Aponte para um endpoint compatível com a API da " +
+      "OpenAI — ex.: https://generativelanguage.googleapis.com/v1beta/openai",
+  );
 };
 
 const assertApiKey = () => {
@@ -448,9 +455,11 @@ export type ModelsResponse = {
 export async function listLLMModels(): Promise<ModelsResponse> {
   assertApiKey();
 
-  const url = ENV.llmApiUrl && ENV.llmApiUrl.trim().length > 0
-    ? `${ENV.llmApiUrl.replace(/\/$/, "")}/v1/models`
-    : "https://forge.manus.im/v1/models";
+  if (!ENV.llmApiUrl || ENV.llmApiUrl.trim().length === 0) {
+    // Mesmo motivo do resolveApiUrl acima: o fallback era o forge morto.
+    throw new Error("LLM_API_URL não definida.");
+  }
+  const url = `${ENV.llmApiUrl.replace(/\/$/, "")}/v1/models`;
 
   const response = await fetchWithBackoff(url, {
     headers: { authorization: `Bearer ${ENV.llmApiKey}` },
