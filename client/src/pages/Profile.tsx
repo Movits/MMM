@@ -59,7 +59,7 @@ const WHAT_I_HAVE_OPTIONS = [
   { id: "tecnologia", label: "Tecnologia", icon: "💻" },
   { id: "investidores", label: "Rede de Investidores", icon: "💰" },
   { id: "acesso_governamental", label: "Acesso Governamental", icon: "🏛️" },
-  { id: "commodities", label: "Commodities", icon: "📦" },
+  { id: "commodities", label: "Matérias-primas (commodities)", icon: "📦" },
   { id: "licencas", label: "Licenças & Certificações", icon: "📋" },
   { id: "imoveis", label: "Imóveis", icon: "🏢" },
   { id: "logistica", label: "Logística", icon: "🚚" },
@@ -248,7 +248,7 @@ export default function Profile() {
         <Link href="/dashboard">
           <span className="flex items-center gap-2 text-white/50 hover:text-white transition-colors cursor-pointer text-sm">
             <ArrowLeft size={16} />
-            Voltar ao Dashboard
+            Voltar para a página inicial
           </span>
         </Link>
         <Link href="/dashboard">
@@ -474,7 +474,7 @@ export default function Profile() {
               <div>
                 <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">Sobre você</label>
                 <Textarea value={bio} onChange={e => setBio(e.target.value)}
-                  placeholder="Conte brevemente sobre sua trajetória e o que você representa no ecossistema..."
+                  placeholder="Conte um pouco da sua história e do seu negócio..."
                   rows={3}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50 resize-none" />
               </div>

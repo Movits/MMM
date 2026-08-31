@@ -27,7 +27,7 @@ const MENU_ITEMS = [
   { href: "/contexts", icon: MapPin, label: "Contextos", desc: "Onde e como conheceu cada pessoa" },
   { href: "/meetings", icon: Mic, label: "Reuniões", desc: "Gravações e transcrições" },
   { href: "/memory", icon: Brain, label: "Memória IA", desc: "Pergunte ao seu histórico" },
-  { href: "/intelligent-matches", icon: Sparkles, label: "Matches Inteligentes", desc: "Conexões entre seus contatos" },
+  { href: "/intelligent-matches", icon: Sparkles, label: "Conexões Inteligentes", desc: "Sugestões entre os seus contatos" },
 ];
 
 function LangSelectorMini() {

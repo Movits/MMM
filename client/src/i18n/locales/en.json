@@ -344,7 +344,9 @@
       "lookingForInvestmentDesc": "Connects you to active investors on the platform",
       "workStyle": "Preferred work style *",
       "values": "Your core values",
-      "languages": "Languages you speak"
+      "languages": "Languages you speak",
+      "customSector": "Seu setor não está na lista?",
+      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
     },
     "companySize": {
       "micro": "Micro (1–9)",

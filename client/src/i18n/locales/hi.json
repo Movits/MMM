@@ -344,7 +344,9 @@
       "lookingForInvestmentDesc": "आपको प्लेटफ़ॉर्म पर सक्रिय निवेशकों से जोड़ता है",
       "workStyle": "पसंदीदा कार्य शैली *",
       "values": "आपके मूल मूल्य",
-      "languages": "आप जो भाषाएं बोलती हैं"
+      "languages": "आप जो भाषाएं बोलती हैं",
+      "customSector": "Seu setor não está na lista?",
+      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
     },
     "companySize": {
       "micro": "सूक्ष्म (1–9)",

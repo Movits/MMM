@@ -260,7 +260,7 @@ export default function SIVCVerification() {
               <span className="text-amber-500">: Verificação de Identidade</span>
             </h1>
             <p className="text-zinc-400 text-sm max-w-md mx-auto">
-              Sistema Inteligente de Verificação e Classificação. Comprove sua identidade e desbloqueie recursos exclusivos do ecossistema MMM.
+              Envie seus documentos para comprovar quem você é. Com o selo de verificada, as outras empresárias confiam mais em você e você desbloqueia recursos exclusivos.
             </p>
           </div>
 
@@ -274,7 +274,7 @@ export default function SIVCVerification() {
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 text-center">
               <div className="text-3xl mb-2">🥈</div>
               <h3 className="font-bold text-amber-400 mb-1">Prata</h3>
-              <p className="text-xs text-zinc-400">Identidade verificada + score ≥ 80% nos documentos obrigatórios</p>
+              <p className="text-xs text-zinc-400">Identidade verificada e nota de pelo menos 80% nos documentos obrigatórios</p>
             </div>
           </div>
 
@@ -290,7 +290,7 @@ export default function SIVCVerification() {
                 { icon: "🏢", label: "Corporativo", desc: "CNPJ, Contrato Social, Certidão da Junta", mandatory: false },
                 { icon: "💰", label: "Financeiro", desc: "Balanço, DRE, Open Finance", mandatory: false },
                 { icon: "🎓", label: "Acadêmico", desc: "Diplomas, Certificados, Histórico Escolar", mandatory: false },
-                { icon: "🔍", label: "Background Check", desc: "Certidões, Sanções, Presença Digital", mandatory: false },
+                { icon: "🔍", label: "Antecedentes", desc: "Certidões, Sanções, Presença Digital", mandatory: false },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-3">
                   <span className="text-lg">{item.icon}</span>
@@ -377,7 +377,7 @@ export default function SIVCVerification() {
             <div className="flex flex-wrap gap-3 justify-center md:justify-start">
               <div className="flex items-center gap-1.5 text-xs text-zinc-400">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                Score geral: <strong className="text-white">{Math.round(score)}%</strong>
+                Nota geral: <strong className="text-white">{Math.round(score)}%</strong>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-zinc-400">
                 {mandatoryPassed ? (

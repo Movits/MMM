@@ -344,7 +344,9 @@
       "lookingForInvestmentDesc": "يربطك بالمستثمرات النشطات على المنصة",
       "workStyle": "أسلوب العمل المفضل *",
       "values": "قيمك الأساسية",
-      "languages": "اللغات التي تتحدثينها"
+      "languages": "اللغات التي تتحدثينها",
+      "customSector": "Seu setor não está na lista?",
+      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
     },
     "companySize": {
       "micro": "صغيرة جدًا (1–9)",

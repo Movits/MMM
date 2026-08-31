@@ -109,11 +109,11 @@ const FAQ_ITEMS = [
     a: "São três: Bronze, Prata e Ouro. Toda conta nova começa no Bronze e já pode montar a base de contatos, participar de reuniões e explorar as oportunidades públicas. O Prata vem com a verificação de identidade. O Ouro é o nível de maior confiança e abre as oportunidades confidenciais.",
   },
   {
-    q: "Como funciona o NDA na Deal Room?",
-    a: "Antes de qualquer conversa dentro da Deal Room, as duas partes assinam um acordo de confidencialidade dentro da própria plataforma. A sala só é liberada depois das duas assinaturas, e tudo que for trocado ali fica protegido pelo acordo.",
+    q: "Como funciona o acordo de confidencialidade (NDA) na Deal Room?",
+    a: "A Deal Room é a sala privada onde vocês negociam dentro da plataforma. Antes de qualquer conversa ali, as duas partes assinam um acordo de confidencialidade. A sala só é liberada depois das duas assinaturas, e tudo que for trocado ali fica protegido pelo acordo.",
   },
   {
-    q: "Como funciona o processo de Deal Room?",
+    q: "Como funciona a Deal Room, a sala privada de negociação?",
     a: "Você demonstra interesse em uma oportunidade e, quando a outra parte aceita, a plataforma cria uma sala privada para vocês duas. Lá dentro ficam o chat e os documentos do negócio, tudo condicionado ao NDA assinado. A ideia é sair da conversa solta e ir para um espaço com regra clara.",
   },
   {
@@ -122,10 +122,10 @@ const FAQ_ITEMS = [
   },
   {
     q: "Quais oportunidades posso encontrar na plataforma?",
-    a: "De vários tipos: ofertas de produtos e serviços, demandas de quem procura fornecedor, busca de investimento, parcerias comerciais e canais de distribuição. Todas passam por uma análise de compliance no momento da publicação e por validação da moderação antes de ficarem públicas.",
+    a: "De vários tipos: ofertas de produtos e serviços, demandas de quem procura fornecedor, busca de investimento, parcerias comerciais e canais de distribuição. Antes de aparecer para as outras membras, toda oportunidade passa por uma checagem automática das regras da plataforma e pela aprovação da nossa equipe.",
   },
   {
-    q: "Como a IA faz o match entre perfis e oportunidades?",
+    q: "Como a IA encontra as combinações entre perfis e oportunidades?",
     a: "O sistema compara os perfis em dimensões como especialidade, setor, objetivos, localização, valores e capacidade de investimento, e calcula um índice de compatibilidade. Para as conexões mais fortes, a IA escreve uma explicação de por que aquela parceria faz sentido, para você decidir com contexto.",
   },
 ];
@@ -148,7 +148,7 @@ function FAQSection() {
     try {
       const res = await faqMutation.mutateAsync({ question: customQ });
       setCustomAnswer(typeof res.answer === 'string' ? res.answer : String(res.answer));
-    } catch { setCustomAnswer("Não foi possível processar sua pergunta. Tente novamente."); }
+    } catch { setCustomAnswer("Não conseguimos responder agora. Tente de novo em instantes."); }
     setCustomLoading(false);
   };
 
