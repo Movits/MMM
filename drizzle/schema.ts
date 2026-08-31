@@ -555,6 +555,117 @@ export const privateContacts = mysqlTable("private_contacts", {
 // ============================================================
 // TIPOS EXPORTADOS
 // ============================================================
+// ============================================================
+// SIVC — Sistema de Verificação de Identidade e Credenciais
+//
+// Estas tabelas existiam apenas em SQL escrito à mão dentro de
+// server/routers/sivc.ts. Sem definição aqui, `pnpm db:push` não as cria e
+// um banco novo sobe com o módulo inteiro quebrado — foi o que apareceu ao
+// preparar o deploy. As colunas foram reconstruídas a partir das queries.
+//
+// Os campos de status usam varchar em vez de mysqlEnum de propósito: os
+// valores gravados vêm do OCR e de constantes do router, e um enum
+// incompleto rejeitaria a escrita em produção.
+// ============================================================
+
+export const sivcVerifications = mysqlTable("sivc_verifications", {
+  id:               int("id").autoincrement().primaryKey(),
+  userId:           int("userId").notNull(),
+  status:           varchar("status", { length: 32 }).default("in_progress").notNull(),
+  level:            varchar("level", { length: 32 }),
+  overallScore:     int("overallScore").default(0),
+  mandatoryPassed:  boolean("mandatoryPassed").default(false),
+  consentGrantedAt: timestamp("consentGrantedAt"),
+  createdAt:        timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index("sivc_ver_user_idx").on(table.userId),
+}));
+
+export const sivcConsents = mysqlTable("sivc_consents", {
+  id:          int("id").autoincrement().primaryKey(),
+  userId:      int("userId").notNull(),
+  consentType: varchar("consentType", { length: 64 }).notNull(),
+  ipAddress:   varchar("ipAddress", { length: 45 }),
+  payloadJson: json("payloadJson"),
+  createdAt:   timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index("sivc_con_user_idx").on(table.userId),
+}));
+
+// O índice único é obrigatório, não decorativo: o router faz
+// INSERT ... ON DUPLICATE KEY UPDATE nesta tripla. Sem ele, cada
+// atualização de um campo criaria uma linha nova em vez de sobrescrever.
+export const sivcChecks = mysqlTable("sivc_checks", {
+  id:              int("id").autoincrement().primaryKey(),
+  verificationId:  int("verificationId").notNull(),
+  module:          varchar("module", { length: 64 }).notNull(),
+  field:           varchar("field", { length: 64 }).notNull(),
+  declaredValue:   text("declaredValue"),
+  verifiedValue:   text("verifiedValue"),
+  status:          varchar("status", { length: 32 }).default("unverified").notNull(),
+  confidenceScore: int("confidenceScore").default(0),
+  weight:          int("weight").default(1),
+  isMandatory:     boolean("isMandatory").default(false),
+  source:          varchar("source", { length: 64 }),
+  auditLog:        json("auditLog"),
+  createdAt:       timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  checkUnq: uniqueIndex("sivc_chk_unq").on(table.verificationId, table.module, table.field),
+}));
+
+export const sivcDocuments = mysqlTable("sivc_documents", {
+  id:              int("id").autoincrement().primaryKey(),
+  verificationId:  int("verificationId").notNull(),
+  userId:          int("userId").notNull(),
+  module:          varchar("module", { length: 64 }).notNull(),
+  docType:         varchar("docType", { length: 64 }).notNull(),
+  fileKey:         varchar("fileKey", { length: 500 }).notNull(),
+  url:             text("url"),
+  mimeType:        varchar("mimeType", { length: 100 }),
+  sizeBytes:       bigint("sizeBytes", { mode: "number" }),
+  ocrStatus:       varchar("ocrStatus", { length: 32 }).default("processing").notNull(),
+  ocrText:         text("ocrText"),
+  extractedData:   json("extractedData"),
+  confidenceScore: int("confidenceScore").default(0),
+  createdAt:       timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  verIdx: index("sivc_doc_ver_idx").on(table.verificationId),
+}));
+
+// ============================================================
+// GOVERNANÇA — validação da presidência e líderes regionais
+// Mesma situação das tabelas do SIVC: só existiam em SQL cru, em
+// server/routers/president.ts.
+// ============================================================
+
+// Uma validação por oportunidade: o router faz upsert por opportunityId.
+export const presidentValidations = mysqlTable("president_validations", {
+  id:            int("id").autoincrement().primaryKey(),
+  opportunityId: int("opportunityId").notNull(),
+  validatedBy:   int("validatedBy").notNull(),
+  status:        varchar("status", { length: 32 }).notNull(),
+  note:          text("note"),
+  createdAt:     timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  oppUnq: uniqueIndex("pres_val_opp_unq").on(table.opportunityId),
+}));
+
+export const nationalLeaders = mysqlTable("national_leaders", {
+  id:           int("id").autoincrement().primaryKey(),
+  userId:       int("userId").notNull(),
+  nominatedBy:  int("nominatedBy").notNull(),
+  region:       varchar("region", { length: 120 }).notNull(),
+  specialty:    varchar("specialty", { length: 200 }),
+  isActive:     boolean("isActive").default(true).notNull(),
+  revokedAt:    timestamp("revokedAt"),
+  revokedBy:    int("revokedBy"),
+  revokeReason: text("revokeReason"),
+  createdAt:    timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  activeIdx: index("nat_lead_active_idx").on(table.isActive),
+  userIdx:   index("nat_lead_user_idx").on(table.userId),
+}));
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type UserProfile = typeof userProfiles.$inferSelect;
@@ -912,3 +1023,9 @@ export type MemoryDocument = typeof memoryDocuments.$inferSelect;
 export type ContactAsset = typeof contactAssets.$inferSelect;
 export type ContactNeed = typeof contactNeeds.$inferSelect;
 export type AiMatchSuggestion = typeof aiMatchSuggestions.$inferSelect;
+export type SivcVerification = typeof sivcVerifications.$inferSelect;
+export type SivcConsent = typeof sivcConsents.$inferSelect;
+export type SivcCheck = typeof sivcChecks.$inferSelect;
+export type SivcDocument = typeof sivcDocuments.$inferSelect;
+export type PresidentValidation = typeof presidentValidations.$inferSelect;
+export type NationalLeader = typeof nationalLeaders.$inferSelect;
