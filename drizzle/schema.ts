@@ -424,6 +424,11 @@ export const matches = mysqlTable("matches", {
   userIdIdx: index("match_userId_idx").on(table.userId),
   matchedUserIdIdx: index("match_matchedUserId_idx").on(table.matchedUserId),
   scoreIdx: index("match_score_idx").on(table.overallScore),
+  // Um match entre duas usuárias é único. Sem isto, cada "Reanalisar matches"
+  // reinseria o conjunto inteiro (o insert não tinha upsert e nada no banco
+  // segurava a duplicata), e quem tinha sido dispensado voltava como linha nova.
+  // A regeneração agora faz upsert contra esta chave.
+  matchPairUnq: uniqueIndex("match_user_matched_unq").on(table.userId, table.matchedUserId),
 }));
 
 // ============================================================
