@@ -99,7 +99,7 @@ export const consentRouter = router({
     .query(async ({ ctx, input }) => {
       const document = await getCurrentDocument(input.type);
       if (!document) {
-        return { document: null, accepted: true, acceptedAt: null, pendingText: true };
+        return { document: null, accepted: true, acceptedAt: null, pendingText: true, previousVersion: null };
       }
 
       const db = await exigirBanco();
@@ -113,6 +113,20 @@ export const consentRouter = router({
         ))
         .limit(1);
 
+      // Se ela não aceitou a versão vigente, pode ter aceitado uma anterior. Sem
+      // isto a tela pede autorização de novo sem dizer por quê, e quem já tinha
+      // autorizado conclui que o sistema esqueceu — ou que ela perdeu o acesso.
+      let previousVersion: number | null = null;
+      if (!consent) {
+        const [anterior] = await db
+          .select({ version: documentVersions.version })
+          .from(consents)
+          .innerJoin(documentVersions, eq(documentVersions.id, consents.documentVersionId))
+          .where(and(eq(consents.userId, ctx.user.id), eq(documentVersions.type, input.type)))
+          .orderBy(desc(consents.grantedAt))
+          .limit(1);
+        previousVersion = anterior?.version ?? null;
+      }
 
       return {
         document: {
@@ -125,6 +139,7 @@ export const consentRouter = router({
         accepted: Boolean(consent),
         acceptedAt: consent?.grantedAt ?? null,
         pendingText: false,
+        previousVersion,
       };
     }),
 

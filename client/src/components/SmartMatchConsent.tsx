@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShieldCheck, Loader2 } from "lucide-react";
+import { ShieldCheck, Loader2, History } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 import { trpc } from "@/lib/trpc";
@@ -27,6 +27,12 @@ export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
 
   const texto = data?.document?.text ?? "";
 
+  // Quem já autorizou uma versão anterior não está começando do zero: o texto é
+  // que mudou. Sem dizer isso, a tela reaparece sem explicação e quem já tinha
+  // autorizado conclui que o sistema esqueceu, ou que perdeu o acesso.
+  const versaoAnterior = data?.previousVersion ?? null;
+  const textoMudou = versaoAnterior !== null && versaoAnterior !== data?.document?.version;
+
   return (
     <div className="mx-auto max-w-2xl rounded-3xl border border-amber-300/25 bg-amber-300/[0.04] p-7 md:p-9">
       <div className="mb-5 flex items-center gap-3">
@@ -34,12 +40,26 @@ export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
           <ShieldCheck className="text-amber-300" size={21}/>
         </div>
         <div>
-          <h2 className="text-lg font-bold">Autorização necessária</h2>
+          <h2 className="text-lg font-bold">
+            {textoMudou ? "O termo foi atualizado" : "Autorização necessária"}
+          </h2>
           <p className="text-sm text-white/45">
             Versão {data?.document?.version} do termo do Cruzamento Inteligente
           </p>
         </div>
       </div>
+
+      {textoMudou && (
+        <div className="mb-5 flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+          <History className="mt-0.5 shrink-0 text-amber-300/80" size={17}/>
+          <p className="text-sm text-white/65">
+            Você havia autorizado a <strong className="text-white/85">versão {versaoAnterior}</strong>.
+            O texto mudou, e a autorização anterior não cobre a redação nova — por isso o
+            cruzamento está pausado até você aceitar esta versão. Seus contatos e suas
+            conexões já aceitas continuam onde estavam.
+          </p>
+        </div>
+      )}
 
       <div className={`prose prose-invert prose-sm max-w-none overflow-y-auto rounded-2xl border border-white/10 bg-[#0b1725]/60 p-5 transition-all ${reading ? "max-h-none" : "max-h-64"}`}>
         <Streamdown>{texto}</Streamdown>
@@ -58,7 +78,7 @@ export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f5a623] px-6 py-3 font-bold text-[#08121f] transition-colors hover:bg-[#e09520] disabled:opacity-50"
         >
           {accept.isPending ? <Loader2 className="animate-spin" size={17}/> : <ShieldCheck size={17}/>}
-          Autorizar o cruzamento
+          {textoMudou ? "Aceitar a nova versão" : "Autorizar o cruzamento"}
         </button>
         <p className="text-xs text-white/40">
           Você pode revogar quando quiser, e o restante da plataforma continua funcionando.
