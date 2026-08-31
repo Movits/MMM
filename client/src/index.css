@@ -516,7 +516,11 @@
   /* ===== ABSTRACT BACKGROUND ===== */
   /* Fundo abstrato: formas retangulares translúcidas em azul-escuro profundo */
   :root {
-    --abstract-bg-url: url("https://d2xsxph8kpxj0f.cloudfront.net/310519663410557659/M2AGtkvDSSG3DSYigzCwJn/abstract-bg-dark-blue-NgN3J8CRKuCEukGkXxHCcP.webp");
+    /* O asset original vivia no CloudFront do Manus e expirou (403).
+       Gradientes locais reproduzem o efeito de formas translúcidas. */
+    --abstract-bg-url: linear-gradient(135deg, rgba(30,58,109,0.35) 0%, transparent 45%),
+      linear-gradient(315deg, rgba(13,40,80,0.5) 0%, transparent 55%),
+      radial-gradient(ellipse at 70% 20%, rgba(59,130,246,0.12), transparent 60%);
   }
 
   /* Classe utilitária para aplicar o fundo abstrato em qualquer wrapper */

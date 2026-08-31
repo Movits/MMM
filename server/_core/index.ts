@@ -2,6 +2,7 @@ import "dotenv/config";
 import express, { type Request, type Response, type NextFunction } from "express";
 import { createServer } from "http";
 import helmet from "helmet";
+import compression from "compression";
 import rateLimit from "express-rate-limit";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -146,6 +147,10 @@ async function startServer() {
       hidePoweredBy: true,
     })
   );
+
+  // Gzip nas respostas. O Render não comprime no proxy: sem isto, os ~900 KB
+  // de JS+CSS viajavam crus para cada visitante.
+  app.use(compression());
 
   // Headers de segurança adicionais
   app.use(securityHeadersMiddleware);

@@ -1,5 +1,4 @@
 import crypto from "crypto";
-import Anthropic from "@anthropic-ai/sdk";
 import { and, eq, inArray } from "drizzle-orm";
 import {
   contexts,
@@ -9,10 +8,8 @@ import {
 } from "../drizzle/schema";
 import { getDb } from "./db";
 import { embedWithGemini } from "./gemini";
+import { invokeLLM } from "./_core/llm";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-const ANSWER_MODEL = "claude-3-5-sonnet-latest";
 const MAX_DOCUMENTS_PER_OWNER = 800;
 const MAX_QUERY_LENGTH = 1000;
 
@@ -193,13 +190,21 @@ export async function answerFromMemory(query: string, hits: SearchHit[]) {
     return "Não encontrei informações privadas suficientes na sua memória para responder a isso.";
   }
   const context = hits.map((hit, index) => `[${index + 1}] ${hit.title}\n${hit.content.slice(0, 2500)}`).join("\n\n");
-  const response = await anthropic.messages.create({
-    model: ANSWER_MODEL,
+  // invokeLLM usa o mesmo provedor do resto do app (LLM_API_URL/LLM_API_KEY).
+  // A versão anterior dependia do SDK da Anthropic com ANTHROPIC_API_KEY, que
+  // não existe no ambiente: a resposta falhava mesmo com a busca funcionando.
+  const response = await invokeLLM({
     max_tokens: 700,
-    system: "Você é a Memória Inteligente do MMM. Responda em português somente com base no contexto privado fornecido. Nunca invente fatos. Se a evidência não for suficiente, diga isso claramente. Cite as fontes pelo número entre colchetes ao final de cada afirmação relevante.",
-    messages: [{ role: "user", content: `Pergunta: ${query}\n\nContexto privado:\n${context}` }],
+    messages: [
+      { role: "system", content: "Você é a Memória Inteligente do MMM. Responda em português somente com base no contexto privado fornecido. Nunca invente fatos. Se a evidência não for suficiente, diga isso claramente. Cite as fontes pelo número entre colchetes ao final de cada afirmação relevante." },
+      { role: "user", content: `Pergunta: ${query}
+
+Contexto privado:
+${context}` },
+    ],
   });
-  return response.content.filter(block => block.type === "text").map(block => block.text).join("\n").trim();
+  const text = response.choices?.[0]?.message?.content;
+  return (typeof text === "string" ? text : "").trim() || "Não consegui gerar uma resposta agora. Tente novamente em instantes.";
 }
 
 export async function searchAndAnswer(ownerId: string, query: string) {

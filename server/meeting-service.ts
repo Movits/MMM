@@ -87,7 +87,6 @@ export function decodeMeetingAudio(base64: string, mimeType: string) {
 
 export async function extractMeetingData(transcript: string): Promise<MeetingExtraction> {
   const response = await invokeLLM({
-    model: "gpt-5-mini",
     messages: [
       {
         role: "system",
@@ -174,7 +173,6 @@ export async function translatePrivateMeetingTranscript(ownerId: string, meeting
   if (cached) return { language: normalizedLanguage, text: cached.translatedText, cached: true };
 
   const response = await invokeLLM({
-    model: "gpt-5-mini",
     messages: [
       { role: "system", content: `Traduza a transcrição a seguir para ${targetLanguage}. Preserve nomes próprios, empresas, números, telefones, e-mails e a estrutura dos parágrafos. Não resuma, não explique e não adicione informações.` },
       { role: "user", content: transcript.transcript.slice(0, 48_000) },

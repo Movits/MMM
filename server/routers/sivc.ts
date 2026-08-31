@@ -155,7 +155,6 @@ async function performOCR(fileUrl: string, docType: string, declaredData: Record
 }> {
   try {
     const response = await invokeLLM({
-      model: "gpt-4o",
       messages: [
         {
           role: "system",

@@ -3,13 +3,11 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { CheckCircle } from "lucide-react";
+import { BrainCircuit, CheckCircle } from "lucide-react";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
 import { formatCnpj } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
 
-const ONBOARDING_BG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663410557659/M2AGtkvDSSG3DSYigzCwJn/mmm-onboarding-bg-mcfimdUuePtBJ9UjkHJM2G.webp";
-const AI_BRAIN = "https://d2xsxph8kpxj0f.cloudfront.net/310519663410557659/M2AGtkvDSSG3DSYigzCwJn/mmm-ai-brain-R4DfF6UJK4ZAyunzXxH2AV.webp";
 
 // ─── Tags "O que tenho" ───────────────────────────────────────────────────────
 const WHAT_I_HAVE_OPTIONS = [
@@ -399,9 +397,9 @@ export default function Onboarding() {
     <div className="min-h-screen bg-transparent flex">
       {/* LEFT PANEL */}
       <div className="hidden lg:flex flex-col w-80 xl:w-96 bg-[#0a1628] border-r border-white/5 p-8 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <img src={ONBOARDING_BG} alt="" className="w-full h-full object-cover"/>
-        </div>
+        {/* Os assets do CloudFront do Manus expiraram (403); o painel usa um
+            gradiente local no lugar da imagem de fundo. */}
+        <div className="absolute inset-0 opacity-40" style={{ background: "radial-gradient(ellipse at 20% 15%, rgba(245,166,35,0.18), transparent 55%), radial-gradient(ellipse at 85% 80%, rgba(59,130,246,0.14), transparent 50%)" }}/>
         <div className="relative z-10 mb-12">
           <span className="text-2xl font-black"><span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span></span>
         </div>
@@ -423,7 +421,7 @@ export default function Onboarding() {
           })}
         </div>
         <div className="relative z-10 mt-8 flex justify-center">
-          <img src={AI_BRAIN} alt="AI" className="w-32 h-32 object-contain opacity-60"
+          <BrainCircuit aria-hidden className="w-24 h-24 text-[#f5a623] opacity-60"
             style={{ filter: "drop-shadow(0 0 20px rgba(245,166,35,0.3))", animation: "pulse-glow 3s ease-in-out infinite" }}/>
         </div>
         <p className="relative z-10 text-center text-xs text-white/30 mt-4">
@@ -842,7 +840,7 @@ export default function Onboarding() {
 
                 <div className="p-5 rounded-xl bg-[#f5a623]/10 border border-[#f5a623]/30">
                   <div className="flex items-center gap-3 mb-3">
-                    <img src={AI_BRAIN} alt="AI" className="w-8 h-8 object-contain"/>
+                    <BrainCircuit aria-hidden className="w-8 h-8 text-[#f5a623]"/>
                     <span className="font-bold text-[#f5a623] text-sm">{t("onboarding.aiAnalysis.title")}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs text-white/60">

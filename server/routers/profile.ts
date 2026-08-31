@@ -5,6 +5,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { isValidCnpj, normalizeCnpj } from "../../shared/business-registration";
 import { getDb, getUserProfile, upsertUserProfile } from "../db";
 import { users, userProfiles } from "../../drizzle/schema";
+import { toPublicUser } from "../auth";
 
 // ============================================================
 // PERFIL DO USUÁRIO
@@ -12,7 +13,7 @@ import { users, userProfiles } from "../../drizzle/schema";
 export const profileRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
     const profile = await getUserProfile(ctx.user.id);
-    return { user: ctx.user, profile };
+    return { user: toPublicUser(ctx.user), profile };
   }),
 
  update: protectedProcedure

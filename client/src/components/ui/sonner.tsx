@@ -1,12 +1,13 @@
-import { useTheme } from "next-themes";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
+// Tema fixo: o app é single-theme light (ThemeContext próprio, switchable=false).
+// A versão anterior lia useTheme() do next-themes, cujo provider nunca é montado —
+// o sonner caía em "system" e, com o SO em dark, pintava a descrição do toast
+// quase branca sobre o popover branco do tema light.
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="light"
       className="toaster group"
       style={
         {
