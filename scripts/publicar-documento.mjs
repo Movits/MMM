@@ -5,10 +5,18 @@
 // anterior continua no banco, porque é ela que dá sentido aos consentimentos
 // já registrados — "fulana aceitou" sem versão não diz o que ela aceitou.
 //
-// Uso:
-//   DATABASE_URL='mysql://...' node scripts/publicar-documento.mjs termo_smart_match caminho/do/texto.md
+// PUBLICAR UMA VERSÃO NOVA DESLIGA O RECURSO PARA QUEM JÁ TINHA AUTORIZADO.
+// O consentimento vale para a versão que foi aceita, e só para ela; a versão
+// nova ninguém aceitou ainda. Isso é correto — o texto mudou, o aceite anterior
+// não cobre o texto novo — mas não pode ser surpresa. Por isso o script conta
+// quantas pessoas serão afetadas e exige confirmação antes de mexer.
 //
-// Sem o caminho do arquivo, publica o texto provisório embutido abaixo.
+// Uso:
+//   node scripts/publicar-documento.mjs <tipo> <arquivo.md>              publica o arquivo
+//   node scripts/publicar-documento.mjs <tipo> <arquivo.md> --simular    só mostra o que faria
+//   node scripts/publicar-documento.mjs <tipo> --texto-provisorio        publica o rascunho embutido
+//
+// Contra banco que não seja local, exige também --confirmo-producao.
 
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -54,16 +62,42 @@ Ficam registrados a data da autorização, a versão deste documento e o endere�
 de origem do acesso, como prova de que a autorização foi concedida por você.
 `;
 
-const tipo = process.argv[2];
-const caminho = process.argv[3];
+const argumentos = process.argv.slice(2);
+const opcoes = argumentos.filter(a => a.startsWith("--"));
+const [tipo, caminho] = argumentos.filter(a => !a.startsWith("--"));
 
-if (!TIPOS.includes(tipo)) {
-  console.error(`Tipo inválido. Use um destes: ${TIPOS.join(", ")}`);
-  process.exit(1);
+const simular = opcoes.includes("--simular");
+const usarProvisorio = opcoes.includes("--texto-provisorio");
+const confirmouProducao = opcoes.includes("--confirmo-producao");
+
+const morrer = mensagem => { console.error(mensagem); process.exit(1); };
+
+if (!TIPOS.includes(tipo)) morrer(`Tipo inválido. Use um destes: ${TIPOS.join(", ")}`);
+if (!process.env.DATABASE_URL) morrer("Defina DATABASE_URL.");
+
+// O rascunho embutido não pode sair por omissão. Antes, esquecer o caminho do
+// arquivo publicava texto provisório como se fosse o termo definitivo — e o
+// comando de esquecer é mais curto que o de acertar.
+if (!caminho && !usarProvisorio) {
+  morrer(
+    "Falta o arquivo com o texto.\n" +
+    "  Para publicar um arquivo:   node scripts/publicar-documento.mjs " + tipo + " caminho/do/texto.md\n" +
+    "  Para publicar o rascunho:   node scripts/publicar-documento.mjs " + tipo + " --texto-provisorio",
+  );
 }
-if (!process.env.DATABASE_URL) {
-  console.error("Defina DATABASE_URL.");
-  process.exit(1);
+if (caminho && usarProvisorio) morrer("Escolha um: o arquivo ou --texto-provisorio, não os dois.");
+
+const url = new URL(process.env.DATABASE_URL);
+const ehLocal = ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+if (!ehLocal && !confirmouProducao && !simular) {
+  morrer(
+    `O banco é ${url.hostname}, que não é local.\n` +
+    "Publicar aqui desliga o cruzamento de quem já autorizou até que cada uma aceite o texto novo.\n" +
+    "Rode com --simular para ver o efeito, ou acrescente --confirmo-producao para seguir.",
+  );
+}
+if (!ehLocal && usarProvisorio && !simular) {
+  morrer(`Recusado: --texto-provisorio contra ${url.hostname}. Rascunho não vira termo em produção.`);
 }
 
 const texto = caminho ? await readFile(caminho, "utf8") : TEXTO_PROVISORIO;
@@ -76,6 +110,32 @@ try {
   );
   const versao = Number(maior.maior) + 1;
 
+  const [[vigente]] = await conexao.query(
+    "SELECT id, version FROM document_versions WHERE type = ? AND isCurrent = TRUE",
+    [tipo],
+  );
+
+  // Quantas pessoas perdem o acesso ao recurso no instante em que isto rodar.
+  const [[afetadas]] = vigente
+    ? await conexao.query(
+        "SELECT COUNT(*) AS n FROM consents WHERE documentVersionId = ? AND revokedAt IS NULL",
+        [vigente.id],
+      )
+    : [[{ n: 0 }]];
+
+  console.log(`banco:    ${url.hostname}${ehLocal ? " (local)" : "  <- NÃO É LOCAL"}`);
+  console.log(`tipo:     ${tipo}`);
+  console.log(`origem:   ${caminho ?? "texto provisório embutido"}`);
+  console.log(`tamanho:  ${texto.length} caracteres`);
+  console.log(`vigente:  ${vigente ? `versão ${vigente.version}` : "nenhuma"}`);
+  console.log(`nova:     versão ${versao}`);
+  console.log(`impacto:  ${afetadas.n} pessoa(s) com autorização ativa vão precisar aceitar de novo`);
+
+  if (simular) {
+    console.log("\n--simular: nada foi gravado.");
+    process.exit(0);
+  }
+
   // Tirar a anterior de vigência antes de inserir a nova: o índice único sobre
   // a coluna gerada recusaria duas vigentes do mesmo tipo.
   await conexao.beginTransaction();
@@ -86,8 +146,11 @@ try {
   );
   await conexao.commit();
 
-  console.log(`Publicada a versão ${versao} de ${tipo}, agora vigente.`);
-  if (!caminho) {
+  console.log(`\nPublicada a versão ${versao} de ${tipo}, agora vigente.`);
+  if (Number(afetadas.n) > 0) {
+    console.log(`${afetadas.n} pessoa(s) verão a tela de autorização na próxima visita, com aviso de que o texto mudou.`);
+  }
+  if (usarProvisorio) {
     console.log("Texto provisório — substituir pela redação jurídica quando estiver pronta.");
   }
 } catch (erro) {
