@@ -33,7 +33,7 @@
     },
     "step2": {
       "title": "A IA analisa tudo",
-      "desc": "Nosso motor de inteligência artificial processa seu perfil em 5 dimensões e compara com todas as outras mulheres da plataforma."
+      "desc": "Nosso motor de inteligência artificial analisa seu perfil em seis critérios e compara com todas as outras mulheres da plataforma."
     },
     "step3": {
       "title": "Conecte-se",
@@ -430,7 +430,7 @@
     "connections": "Conexões",
     "profile": "Meu Perfil",
     "noMatches": "Pronta para sua próxima grande conexão?",
-    "noMatchesDesc": "Nossa IA vai analisar seu perfil em 5 dimensões e encontrar as mulheres com maior compatibilidade real com você.",
+    "noMatchesDesc": "Nossa IA analisa seu perfil em seis critérios e encontra as mulheres com maior compatibilidade real com você.",
     "compatibility": "Score Médio",
     "topMatches": "Top Matches (80%+)",
     "connect": "Demonstrar Interesse",

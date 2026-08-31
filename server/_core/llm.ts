@@ -373,8 +373,10 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   // para o provedor configurado no .env. O default garante que o payload sempre
   // leve um modelo: a API OpenAI-compatível do Gemini rejeita requisições sem o
   // campo `model` com 400 — foi o que derrubou FAQ, matches e compliance em
-  // produção quando LLM_MODEL não estava definida.
-  const resolvedModel = process.env.LLM_MODEL || model || "gemini-flash-latest";
+  // produção quando LLM_MODEL não estava definida. Modelo concreto, não o alias
+  // gemini-flash-latest: o alias resolve para um modelo com cota gratuita de 20
+  // requisições por dia, que esgota em minutos de uso real.
+  const resolvedModel = process.env.LLM_MODEL || model || "gemini-3.5-flash";
   payload.model = resolvedModel;
 
   if (tools && tools.length > 0) {

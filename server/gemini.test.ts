@@ -18,7 +18,7 @@ describe("Gemini provider", () => {
     try {
       const result = await transcribeWithGemini({ audio: Buffer.from("audio"), mimeType: "audio/mpeg", language: "pt-BR" });
       expect(result.text).toBe("Transcrição de teste");
-      expect(requestedUrl).toContain("models/gemini-flash-latest:generateContent");
+      expect(requestedUrl).toContain("models/gemini-3.5-flash:generateContent");
     } finally {
       globalThis.fetch = originalFetch;
     }
