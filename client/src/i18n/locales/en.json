@@ -33,7 +33,7 @@
     },
     "step2": {
       "title": "AI analyzes everything",
-      "desc": "Our artificial intelligence engine processes your profile across 5 dimensions and compares it with all other women on the platform."
+      "desc": "Our artificial intelligence engine processes your profile across 6 dimensions and compares it with all other women on the platform."
     },
     "step3": {
       "title": "Connect",
@@ -430,7 +430,7 @@
     "connections": "Connections",
     "profile": "My Profile",
     "noMatches": "Ready for your next great connection?",
-    "noMatchesDesc": "Our AI will analyze your profile in 5 dimensions and find women with the highest real compatibility with you.",
+    "noMatchesDesc": "Our AI will analyze your profile in 6 dimensions and find women with the highest real compatibility with you.",
     "compatibility": "Average Score",
     "connect": "Express Interest",
     "dismiss": "Match hidden. Generate new matches anytime.",

@@ -421,7 +421,7 @@ export default function Home() {
                   </div>
                   <div>
                     <div className="text-white font-bold text-sm leading-none">Match por IA</div>
-                    <div className="text-white/40 text-[11px] mt-1.5">Análise em 5 dimensões</div>
+                    <div className="text-white/40 text-[11px] mt-1.5">Análise em seis critérios</div>
                   </div>
                 </div>
               </div>

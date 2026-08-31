@@ -4,7 +4,7 @@ const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 const EMBEDDING_MODEL = "gemini-embedding-001";
 // Alias ativo listado pela API Gemini; evita o modelo 2.5 Flash descontinuado
 // para novas chaves e recebe as atualizações compatíveis da família Flash.
-const AUDIO_MODEL = "gemini-flash-latest";
+const AUDIO_MODEL = "gemini-3.5-flash";
 
 function getGeminiKey() {
   // Mesma cadeia de fallback do resto do app (LLM_API_KEY > chaves legadas >
