@@ -607,11 +607,11 @@ export default function AdminPanel() {
                               }}
                               className={`text-xs px-2 py-1 rounded border bg-[#0A1F3F] cursor-pointer ${getRoleBadge(u.role)}`}
                             >
-                              <option value="bronze">Bronze — Recém-chegada</option>
-                              <option value="silver">Prata — Membro</option>
-                              <option value="gold">Ouro — Reconhecimento Institucional</option>
-                              <option value="admin">Admin — Suporte Técnico</option>
-                              <option value="president">Ouro — Governança</option>
+                              <option className="bg-white text-[#2D3E50]" value="bronze">Bronze — Recém-chegada</option>
+                              <option className="bg-white text-[#2D3E50]" value="silver">Prata — Membro</option>
+                              <option className="bg-white text-[#2D3E50]" value="gold">Ouro — Reconhecimento Institucional</option>
+                              <option className="bg-white text-[#2D3E50]" value="admin">Admin — Suporte Técnico</option>
+                              <option className="bg-white text-[#2D3E50]" value="president">Ouro — Governança</option>
                             </select>
                           </div>
                         </td>

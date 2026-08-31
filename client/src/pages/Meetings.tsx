@@ -301,7 +301,7 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
           <p className="mt-1 text-sm text-amber-100/70">Escolha o idioma da pessoa estrangeira para gerar uma versão traduzida da transcrição.</p>
           <label className="mt-3 flex flex-col gap-2 text-sm text-white/75 sm:flex-row sm:items-center">Idioma de destino
             <select value={translationLanguage} onChange={event => setTranslationLanguage(event.target.value)} className="rounded-lg bg-[#0b1725] border border-white/15 px-3 py-2 text-white">
-              {LANGUAGES.map(language => <option key={language.code} value={language.code}>{language.flag} {language.label}</option>)}
+              {LANGUAGES.map(language => <option className="bg-white text-[#2D3E50]" key={language.code} value={language.code}>{language.flag} {language.label}</option>)}
             </select>
           </label>
         </div>

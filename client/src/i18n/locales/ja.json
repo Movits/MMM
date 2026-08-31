@@ -442,7 +442,7 @@
     "connectionAccepted": "🤝 つながりが承認されました！あなたたちは今つながっています。",
     "connectionDeclined": "リクエストが拒否されました。",
     "newMatches": "✨ {{count}}件の新しいマッチが見つかりました！",
-    "analysisDone": "分析完了。結果を改善するためにプロフィールを完成させてください。",
+    "analysisDone": "分析完了:今回は新しいマッチはありません。新しいメンバーやプロフィール更新が新しいつながりを生みます。",
     "distribution": "相性の分布",
     "distributionDesc": "マッチがスコア範囲別にどのように分布しているか",
     "analyzing": "分析中...",

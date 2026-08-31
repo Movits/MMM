@@ -363,7 +363,7 @@ export default function Opportunities() {
               <SelectTrigger className="w-40 bg-white/5 border-white/10 text-white h-9 text-sm">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
-              <SelectContent className="bg-[#0d1628] border-white/10">
+              <SelectContent className="bg-[#0d1628] border-white/10 text-white">
                 <SelectItem value="all">Todos os tipos</SelectItem>
                 <SelectItem value="offer">Oferta</SelectItem>
                 <SelectItem value="demand">Demanda</SelectItem>
@@ -376,7 +376,7 @@ export default function Opportunities() {
               <SelectTrigger className="w-44 bg-white/5 border-white/10 text-white h-9 text-sm">
                 <SelectValue placeholder="Compliance" />
               </SelectTrigger>
-              <SelectContent className="bg-[#0d1628] border-white/10">
+              <SelectContent className="bg-[#0d1628] border-white/10 text-white">
                 <SelectItem value="all">Todos os níveis</SelectItem>
                 <SelectItem value="green">✅ Confiável</SelectItem>
                 <SelectItem value="yellow">⚠️ Atenção</SelectItem>

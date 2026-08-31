@@ -92,6 +92,21 @@ export async function getUserProfile(userId: number) {
   return rows[0] ?? null;
 }
 
+// Os mesmos 10 campos da antiga saveUserProfile (matching.ts), que ficou órfã
+// quando o onboarding passou a usar este upsert — desde então o Dashboard
+// mostrava "0% Perfil completo" para todo mundo.
+export function computeProfileCompleteness(profile: Record<string, unknown> | null | undefined) {
+  if (!profile) return 0;
+  const fields = [
+    profile.displayName, profile.city, profile.primarySpecialty,
+    profile.sector, profile.seekingTypes, profile.incomeRange,
+    profile.workStyle, profile.bio, profile.experienceYears,
+    profile.values,
+  ];
+  const filled = fields.filter(f => f !== null && f !== undefined && f !== "" && !(Array.isArray(f) && f.length === 0)).length;
+  return Math.round((filled / fields.length) * 100);
+}
+
 export async function upsertUserProfile(userId: number, data: Record<string, unknown>) {
   const db = await getDb();
   if (!db) return;
@@ -100,6 +115,11 @@ export async function upsertUserProfile(userId: number, data: Record<string, unk
     await db.update(userProfiles).set({ ...data, updatedAt: new Date() } as any).where(eq(userProfiles.userId, userId));
   } else {
     await db.insert(userProfiles).values({ userId, ...data } as any);
+  }
+  const atual = await getUserProfile(userId);
+  const completeness = computeProfileCompleteness(atual as Record<string, unknown> | null);
+  if (atual && (atual as any).profileCompleteness !== completeness) {
+    await db.update(userProfiles).set({ profileCompleteness: completeness } as any).where(eq(userProfiles.userId, userId));
   }
 }
 

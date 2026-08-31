@@ -516,14 +516,26 @@ function RecommendedOpportunities() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!recommendedQuery.isLoading && (!recommendedQuery.data || recommendedQuery.data.length === 0) && (
+      {/* Erro da consulta: não é culpa do perfil da usuária */}
+      {!recommendedQuery.isLoading && recommendedQuery.isError && (
+        <div className="bg-[#0d1530] border border-white/8 rounded-2xl p-8 text-center">
+          <div className="text-4xl mb-3">📡</div>
+          <p className="text-white/40 text-sm">Não foi possível carregar as recomendações agora. Tente novamente em instantes.</p>
+          <button onClick={() => recommendedQuery.refetch()}
+            className="mt-4 px-5 py-2 rounded-xl text-xs font-semibold border border-[#f5a623]/30 text-[#f5a623] hover:bg-[#f5a623]/8 transition-colors">
+            Tentar de novo
+          </button>
+        </div>
+      )}
+
+      {/* Lista realmente vazia */}
+      {!recommendedQuery.isLoading && !recommendedQuery.isError && (!recommendedQuery.data || recommendedQuery.data.length === 0) && (
         <div className="bg-[#0d1530] border border-white/8 rounded-2xl p-8 text-center">
           <div className="text-4xl mb-3">🔭</div>
-          <p className="text-white/40 text-sm">Complete seu perfil para receber recomendações personalizadas de IA</p>
-          <Link href="/profile">
+          <p className="text-white/40 text-sm">Nenhuma recomendação por enquanto. Novas oportunidades publicadas na rede aparecem aqui.</p>
+          <Link href="/opportunities">
             <button className="mt-4 px-5 py-2 rounded-xl text-xs font-semibold border border-[#f5a623]/30 text-[#f5a623] hover:bg-[#f5a623]/8 transition-colors">
-              Completar Perfil
+              Explorar oportunidades
             </button>
           </Link>
         </div>

@@ -440,7 +440,7 @@
     "connectionAccepted": "🤝 Conexão aceita! Vocês agora estão conectadas.",
     "connectionDeclined": "Solicitação recusada.",
     "newMatches": "✨ {{count}} novo(s) match(es) encontrado(s)!",
-    "analysisDone": "Análise concluída. Complete seu perfil para melhorar os resultados.",
+    "analysisDone": "Análise concluída: nenhum match novo desta vez. Novas usuárias e perfis atualizados geram novas conexões.",
     "distribution": "Distribuição de Compatibilidade",
     "distributionDesc": "Como seus matches estão distribuídos por faixa de score",
     "analyzing": "Analisando...",
