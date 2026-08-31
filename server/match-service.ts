@@ -33,12 +33,45 @@ async function embed(text: string) {
   return normalizeVector(await embedWithGemini(text, "SEMANTIC_SIMILARITY"));
 }
 
-async function semanticScore(asset: { tagLabel: string; description: string | null }, need: { tagLabel: string; description: string | null }) {
-  const [assetEmbedding, needEmbedding] = await Promise.all([
-    embed(`${asset.tagLabel}. ${asset.description ?? ""}`),
-    embed(`${need.tagLabel}. ${need.description ?? ""}`),
-  ]);
-  return cosineSimilarity(assetEmbedding, needEmbedding);
+/**
+ * Embeddings de uma rodada. O laço compara cada ativo com cada necessidade,
+ * então sem cache o mesmo texto seria enviado ao Gemini uma vez por par —
+ * dezenas de chamadas idênticas por recálculo.
+ */
+type SemanticContext = { cache: Map<string, number[]>; disponivel: boolean };
+
+async function embedCached(texto: string, contexto: SemanticContext) {
+  const emCache = contexto.cache.get(texto);
+  if (emCache) return emCache;
+  const vetor = await embed(texto);
+  contexto.cache.set(texto, vetor);
+  return vetor;
+}
+
+/**
+ * Similaridade semântica é o terceiro critério, usado só quando tag e categoria
+ * não casam. Se o provedor de embeddings estiver fora do ar ou sem cota, o
+ * recálculo continua sem ele: os matches por tag exata e por categoria não
+ * dependem de IA e não podem ser perdidos junto. Uma falha desliga o critério
+ * para o resto da rodada, em vez de repetir a chamada a cada par.
+ */
+async function semanticScore(
+  asset: { tagLabel: string; description: string | null },
+  need: { tagLabel: string; description: string | null },
+  contexto: SemanticContext,
+) {
+  if (!contexto.disponivel) return 0;
+  try {
+    const [assetEmbedding, needEmbedding] = await Promise.all([
+      embedCached(`${asset.tagLabel}. ${asset.description ?? ""}`, contexto),
+      embedCached(`${need.tagLabel}. ${need.description ?? ""}`, contexto),
+    ]);
+    return cosineSimilarity(assetEmbedding, needEmbedding);
+  } catch (erro) {
+    contexto.disponivel = false;
+    console.warn("[Match] Similaridade semântica indisponível nesta rodada:", erro instanceof Error ? erro.message : erro);
+    return 0;
+  }
 }
 
 export async function recalculatePrivateMatches(ownerId: string, ownerEmail?: string | null) {
@@ -53,6 +86,7 @@ export async function recalculatePrivateMatches(ownerId: string, ownerEmail?: st
   if (new Set(assets.map(asset => asset.contactId)).size === 0 || new Set(needs.map(need => need.contactId)).size === 0) return { created: 0, updated: 0, total: 0 };
 
   const contactName = new Map(contacts.map(contact => [contact.id, contact.fullName]));
+  const semantico: SemanticContext = { cache: new Map(), disponivel: true };
   const bestByPair = new Map<string, Candidate>();
   for (const asset of assets) {
     for (const need of needs) {
@@ -60,7 +94,7 @@ export async function recalculatePrivateMatches(ownerId: string, ownerEmail?: st
       const baseAsset: MatchReason = { slug: asset.tagSlug, label: asset.tagLabel, category: asset.category };
       const baseNeed: MatchReason = { slug: need.tagSlug, label: need.tagLabel, category: need.category };
       let result = scoreMatch(baseAsset, baseNeed);
-      if (!result.score) result = scoreMatch(baseAsset, baseNeed, await semanticScore(asset, need));
+      if (!result.score) result = scoreMatch(baseAsset, baseNeed, await semanticScore(asset, need, semantico));
       if (result.score < SAVE_THRESHOLD) continue;
       const aName = contactName.get(asset.contactId) ?? "Este contato";
       const bName = contactName.get(need.contactId) ?? "outro contato";
