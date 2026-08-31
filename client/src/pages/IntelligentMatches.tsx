@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Check, Lightbulb, Plus, RefreshCw, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Check, History, Lightbulb, Plus, RefreshCw, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { AppHeader } from "@/components/AppHeader";
@@ -39,6 +39,8 @@ export default function IntelligentMatches() {
   // antes de bater na porta fechada, para não mostrar erro onde cabe um convite.
   const { data: consent, isLoading: loadingConsent } = trpc.consent.status.useQuery({ type: "termo_smart_match" });
   const authorized = consent?.accepted ?? false;
+  const [verHistorico, setVerHistorico] = useState(false);
+  const { data: historico = [] } = trpc.consent.history.useQuery(undefined, { enabled: authorized });
   const { data: matches = [], isLoading } = trpc.intelligentMatches.list.useQuery(undefined, { enabled: authorized });
   const { data: contacts = [] } = trpc.intelligentMatches.contacts.useQuery(undefined, { enabled: authorized });
   const revoke = trpc.consent.revoke.useMutation({
@@ -95,6 +97,40 @@ export default function IntelligentMatches() {
           <p className="mt-2 text-xs text-white/35">
             Desliga só o cruzamento. Contatos, oportunidades e reuniões continuam funcionando.
           </p>
+
+          {/*
+            O registro é metade do sentido de guardar consentimento: revogar
+            preenche a data e nunca apaga a linha, justamente para que o
+            histórico mostre que houve autorização no período em que os dados
+            foram usados. Guardar essa prova e não mostrá-la a quem ela protege
+            deixava o trabalho pela metade.
+          */}
+          {historico.length > 0 && (
+            <div className="mt-5 border-t border-white/10 pt-4">
+              <button
+                onClick={() => setVerHistorico(!verHistorico)}
+                className="flex items-center gap-1.5 text-xs text-white/45 transition-colors hover:text-white/70"
+              >
+                <History size={13}/>
+                {verHistorico ? "Ocultar" : "Ver"} o registro das autorizações ({historico.length})
+              </button>
+
+              {verHistorico && (
+                <ul className="mt-3 space-y-2">
+                  {historico.map(registro => (
+                    <li key={registro.id} className="flex flex-wrap items-baseline gap-x-2 text-xs text-white/45">
+                      <span className={registro.revokedAt ? "text-white/35" : "text-emerald-300/70"}>
+                        {registro.revokedAt ? "revogada" : "ativa"}
+                      </span>
+                      <span className="text-white/55">versão {registro.version}</span>
+                      <span>aceita em {new Date(registro.grantedAt).toLocaleString()}</span>
+                      {registro.revokedAt && <span>· revogada em {new Date(registro.revokedAt).toLocaleString()}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </section>
       )}
       </>}
