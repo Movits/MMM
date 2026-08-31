@@ -123,7 +123,7 @@ export default function NewOpportunity() {
         status: result.status,
       });
       if (result.complianceLevel === "red") {
-        toast.error("Oportunidade bloqueada pela análise de compliance. Verifique as diretrizes da plataforma.");
+        toast.error("Sua oportunidade não pôde ser publicada. A análise automática encontrou um problema. Revise o texto, confira as diretrizes ao lado e tente novamente.");
       } else if (result.status === "pending") {
         // Toda oportunidade nasce em análise; dizer "publicada" fazia parecer
         // que ela tinha sumido, porque a lista pública só mostra as aprovadas.
@@ -132,7 +132,7 @@ export default function NewOpportunity() {
         });
         setTimeout(() => navigate(`/opportunities`), 2200);
       } else {
-        toast.success("Oportunidade publicada com sucesso!");
+        toast.success("Recebemos sua oportunidade! Ela fica pública assim que a análise for concluída.");
         setTimeout(() => navigate(`/opportunities`), 1500);
       }
     },
@@ -198,7 +198,7 @@ export default function NewOpportunity() {
           </div>
           <div className="flex items-center gap-1.5 text-xs text-amber-400/70">
             <Sparkles size={12} />
-            <span>Compliance IA ativo</span>
+            <span>Análise automática de segurança ativa</span>
           </div>
         </div>
       </div>
@@ -243,7 +243,7 @@ export default function NewOpportunity() {
             <div>
               <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Descrição detalhada *</label>
               <Textarea
-                placeholder="Descreva sua oportunidade com detalhes: o que você oferece ou busca, volume, condições, diferenciais, público-alvo, etc. Quanto mais detalhes, melhor a análise de compliance da IA."
+                placeholder="Conte o que você oferece ou busca: quantidade, condições, diferenciais e para quem é. Quanto mais detalhes, mais rápida e justa a análise."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={5000}
@@ -263,7 +263,7 @@ export default function NewOpportunity() {
                   {isAnalyzing ? (
                     <>
                       <Loader2 size={14} className="text-amber-400 animate-spin" />
-                      <span className="text-amber-400 text-xs font-semibold">IA de Compliance analisando...</span>
+                      <span className="text-amber-400 text-xs font-semibold">Analisando a segurança da sua oportunidade...</span>
                     </>
                   ) : risk ? (
                     <>
@@ -357,7 +357,7 @@ export default function NewOpportunity() {
 
             {/* Tags */}
             <div>
-              <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Tags (máx. 10)</label>
+              <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Palavras-chave (até 10)</label>
               <div className="flex gap-2 mb-2">
                 <Input
                   placeholder="Adicionar tag..."
@@ -423,7 +423,7 @@ export default function NewOpportunity() {
               {isLoading ? (
                 <><div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />Analisando com IA...</>
               ) : (
-                <><Sparkles size={16} />Publicar com análise IA</>
+                <><Sparkles size={16} />Enviar para análise e publicação</>
               )}
             </Button>
 
@@ -443,7 +443,7 @@ export default function NewOpportunity() {
               <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
                 <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <Sparkles size={12} className="text-amber-400" />
-                  Sistema de Compliance IA
+                  Como funciona a análise automática
                 </h3>
                 <div className="space-y-3 text-xs text-white/50 leading-relaxed">
                   <p>A IA analisa em <strong className="text-white/70">tempo real</strong> enquanto você preenche o formulário:</p>
@@ -452,7 +452,7 @@ export default function NewOpportunity() {
                       { step: "1", text: "Identifica riscos preliminares", color: "#f97316" },
                       { step: "2", text: "Sugere documentos específicos para o nicho", color: "#eab308" },
                       { step: "3", text: "Faz pergunta dinâmica de comprovação", color: "#22c55e" },
-                      { step: "4", text: "Calcula Frauen Trust Score (0-100%)", color: "#3b82f6" },
+                      { step: "4", text: "Calcula sua nota de confiança, de 0 a 100", color: "#3b82f6" },
                     ].map((item) => (
                       <div key={item.step} className="flex items-start gap-2">
                         <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5"
@@ -520,7 +520,7 @@ export default function NewOpportunity() {
                   <div className="mt-4 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
                     <div className="flex items-center gap-1.5 text-green-400 text-xs">
                       <CheckCircle size={12} />
-                      <span>Oportunidade publicada com sucesso!</span>
+                      <span>Recebemos sua oportunidade! Ela fica pública assim que a análise for concluída.</span>
                     </div>
                   </div>
                 )}

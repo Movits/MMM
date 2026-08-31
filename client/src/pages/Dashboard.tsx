@@ -371,7 +371,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
           </button>
           <button onClick={() => setExpanded(e => !e)}
             className="px-3 py-2.5 rounded-xl text-xs font-medium border border-white/15 text-white/50 hover:border-white/30 hover:text-white transition-all duration-200">
-            {expanded ? "▲" : "Scores"}
+            {expanded ? "▲" : "Ver detalhes"}
           </button>
           <button onClick={() => onDismiss(match.matchId)}
             className="px-3 py-2.5 rounded-xl text-white/25 hover:text-white/60 hover:bg-white/5 transition-all duration-200 text-sm">✕</button>
@@ -696,7 +696,7 @@ function DealRoomsTab() {
       {displayRooms.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-5xl mb-4">🔐</div>
-          <h3 className="text-xl font-black mb-2">{viewAll ? "Nenhuma Deal Room na plataforma" : "Nenhum Deal Room ainda"}</h3>
+          <h3 className="text-xl font-black mb-2">{viewAll ? "Nenhuma sala de negociação na plataforma" : "Nenhuma sala de negociação ainda"}</h3>
           <p className="text-white/40 text-sm max-w-sm mx-auto mb-6">
             {viewAll ? "Ainda não há salas de negociação criadas na plataforma." : "Quando você demonstrar interesse em uma oportunidade, a sala de negociação privada aparecerá aqui."}
           </p>
@@ -711,11 +711,11 @@ function DealRoomsTab() {
       ) : (
         <>
           <p className="text-white/40 text-xs mb-2">
-            {viewAll ? `${displayRooms.length} sala(s) na plataforma` : "Salas de negociação privadas com NDA ativo"}
+            {viewAll ? `${displayRooms.length} sala(s) na plataforma` : "Salas de conversa privadas. Tudo o que for dito nelas é protegido por um termo de sigilo assinado pelas duas partes."}
           </p>
           {displayRooms.map((room: any) => {
             const statusColor = room.status === "active" ? "#22c55e" : room.status === "awaiting_nda" ? "#eab308" : "#9ca3af";
-            const statusLabel = room.status === "active" ? "Ativa" : room.status === "awaiting_nda" ? "Aguardando NDA" : "Encerrada";
+            const statusLabel = room.status === "active" ? "Ativa" : room.status === "awaiting_nda" ? "Aguardando termo de sigilo" : "Encerrada";
             return (
               <Link key={room.id} href={`/deal-room/${room.id}`}>
                 <div className="bg-[#0d1530] border border-white/8 hover:border-amber-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-200 hover:bg-[#0d1530]/80">
@@ -735,7 +735,7 @@ function DealRoomsTab() {
                     </div>
                   </div>
                   {room.status === "awaiting_nda" && (
-                    <p className="text-amber-400/60 text-xs mt-2">⚠️ Aguardando assinatura do NDA para ativar a sala</p>
+                    <p className="text-amber-400/60 text-xs mt-2">⚠️ Falta assinar o termo de sigilo. Entre na sala para assinar e liberar a conversa.</p>
                   )}
                 </div>
               </Link>
@@ -839,7 +839,7 @@ export default function Dashboard() {
           {pendingConnections.length > 0 && (
             <button onClick={() => switchTab("connections")}
               className="text-xs text-[#f5a623] border border-[#f5a623]/30 px-3 py-1.5 rounded-full bg-[#f5a623]/5 hover:bg-[#f5a623]/10 transition-colors animate-pulse">
-              {pendingConnections.length} pendente{pendingConnections.length > 1 ? "s" : ""}
+              {pendingConnections.length} convite{pendingConnections.length > 1 ? "s" : ""} para responder
             </button>
           )}
 
@@ -901,7 +901,7 @@ export default function Dashboard() {
                 : tab === "connections"
                   ? `${t("dashboard.connections")}${connections.length > 0 ? ` (${connections.length})` : ""}`
                   : tab === "dealrooms"
-                  ? "🔐 Deal Rooms"
+                  ? "🔐 Salas de Negociação"
                   : t("dashboard.profile")}
             </button>
           ))}

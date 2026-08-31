@@ -374,7 +374,7 @@ export default function Opportunities() {
             </Select>
             <Select value={complianceLevel} onValueChange={setComplianceLevel}>
               <SelectTrigger className="w-44 bg-white/5 border-white/10 text-white h-9 text-sm">
-                <SelectValue placeholder="Compliance" />
+                <SelectValue placeholder="Nível de confiança" />
               </SelectTrigger>
               <SelectContent className="bg-[#0d1628] border-white/10 text-white">
                 <SelectItem value="all">Todos os níveis</SelectItem>
@@ -395,7 +395,7 @@ export default function Opportunities() {
             <Star size={18} className="text-amber-400 flex-shrink-0" />
             <div>
               <p className="text-amber-300 text-sm font-semibold">Oportunidades exclusivas disponíveis</p>
-              <p className="text-amber-300/60 text-xs">Membros com Status Ouro têm acesso a oportunidades confidenciais e podem ver quem demonstrou interesse.</p>
+              <p className="text-amber-300/60 text-xs">Membras com Status Ouro também veem as oportunidades confidenciais e quem demonstrou interesse nelas.</p>
             </div>
           </div>
         )}
@@ -433,7 +433,7 @@ export default function Opportunities() {
                   <Bookmark size={24} className="text-white/20" />
                 </div>
                 <p className="text-white/40 text-sm">Nenhuma oportunidade salva ainda</p>
-                <p className="text-white/25 text-xs mt-1">Clique no ♥ nos cards para salvar oportunidades</p>
+                <p className="text-white/25 text-xs mt-1">Toque no coração de uma oportunidade para salvar e encontrar aqui depois</p>
                 <Button size="sm" variant="ghost" className="mt-4 text-amber-400 hover:text-amber-300" onClick={() => setShowSaved(false)}>
                   Ver todas as oportunidades
                 </Button>

@@ -344,7 +344,9 @@
       "lookingForInvestmentDesc": "プラットフォームのアクティブな投資家とつながります",
       "workStyle": "希望する働き方 *",
       "values": "あなたの核心的価値観",
-      "languages": "話せる言語"
+      "languages": "話せる言語",
+      "customSector": "Seu setor não está na lista?",
+      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
     },
     "companySize": {
       "micro": "マイクロ (1–9)",

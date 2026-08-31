@@ -17,7 +17,7 @@ const WHAT_I_HAVE_OPTIONS = [
   { id: "tecnologia", label: "Tecnologia", icon: "💻" },
   { id: "investidores", label: "Rede de Investidores", icon: "💰" },
   { id: "acesso_governamental", label: "Acesso Governamental", icon: "🏛️" },
-  { id: "commodities", label: "Commodities", icon: "📦" },
+  { id: "commodities", label: "Matérias-primas (commodities)", icon: "📦" },
   { id: "licencas", label: "Licenças & Certificações", icon: "📋" },
   { id: "imoveis", label: "Imóveis", icon: "🏢" },
   { id: "logistica", label: "Logística", icon: "🚚" },
@@ -709,7 +709,7 @@ export default function Onboarding() {
                     options={sortOptionsAlphabetically(SECTORS.map(s => ({ value: s.label, label: s.label })), i18n.language)} placeholder={t("onboarding.fields.selectPlaceholder")}/>
                   {form.sector === OTHER_SECTOR_LABEL && (
                     <div className="mt-3">
-                      <TextInput label={t("onboarding.fields.customSpecialty")} value={form.customSector}
+                      <TextInput label={t("onboarding.fields.customSector")} value={form.customSector}
                         onChange={v => set("customSector", v)}
                         placeholder={t("onboarding.fields.customSpecialtyPlaceholder")}/>
                     </div>

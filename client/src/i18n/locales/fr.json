@@ -344,7 +344,9 @@
       "lookingForInvestmentDesc": "Vous connecte aux investisseuses actives sur la plateforme",
       "workStyle": "Style de travail préféré *",
       "values": "Vos valeurs principales",
-      "languages": "Langues parlées"
+      "languages": "Langues parlées",
+      "customSector": "Seu setor não está na lista?",
+      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
     },
     "companySize": {
       "micro": "Micro (1–9)",

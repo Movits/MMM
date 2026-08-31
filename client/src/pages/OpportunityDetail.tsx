@@ -306,7 +306,7 @@ export default function OpportunityDetail() {
             {/* FTS Card */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
               <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-4">
-                Frauen Trust Score
+                Nota de confiança
               </h3>
               <div className="flex flex-col items-center gap-3">
                 <FTSBadge

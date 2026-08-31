@@ -20,7 +20,7 @@ type ItemDoMatch = { slug: string; label: string; category?: string | null };
 export function seloDoMatch(match: { matchType: string; matchedAssets: ItemDoMatch[]; matchedNeeds: ItemDoMatch[] }) {
   if (match.matchType === "mutual") return "↔ Conexão mútua";
   if (match.matchType === "category") return "Mesma categoria";
-  if (match.matchType !== "exact") return "Similaridade semântica";
+  if (match.matchType !== "exact") return "Significados parecidos";
 
   const porDirecaoOposta = match.matchedAssets.some(ativo =>
     match.matchedNeeds.some(necessidade => {
@@ -63,7 +63,7 @@ export default function IntelligentMatches() {
     utils.intelligentMatches.list.invalidate();
     utils.intelligentMatches.contacts.invalidate();
     setTagLabel(""); setCategory("");
-    toast.success(kind === "asset" ? "Ativo adicionado e matches recalculados." : "Necessidade adicionada e matches recalculados.");
+    toast.success(kind === "asset" ? "Pronto! Salvamos a oferta e atualizamos as sugestões." : "Pronto! Salvamos a necessidade e atualizamos as sugestões.");
   }
   /**
    * Trocar de aba limpa o que foi digitado, mas mantém o contato escolhido.
@@ -91,12 +91,12 @@ export default function IntelligentMatches() {
     if (kind === "asset") createAsset.mutate(input); else createNeed.mutate(input);
   }
 
-  return <><AppHeader title="Matches Inteligentes" backTo="/dashboard"/>
+  return <><AppHeader title="Conexões Inteligentes" backTo="/dashboard"/>
   <main className="min-h-screen bg-transparent px-4 py-8 text-white md:px-8">
     <div className="mx-auto max-w-6xl">
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-        <div><p className="text-xs font-semibold tracking-wide text-amber-300">REDE PRIVADA</p><h1 className="mt-1 text-3xl font-bold md:text-4xl">Matches Inteligentes</h1><p className="mt-2 max-w-2xl text-white/55">Encontre oportunidades de conexão entre os seus próprios contatos. Nada é compartilhado com outras usuárias.</p></div>
-        {authorized && <button disabled={recalculate.isPending} onClick={() => recalculate.mutate()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f5a623] px-5 py-3 font-bold text-[#08121f] disabled:opacity-50"><RefreshCw size={18} className={recalculate.isPending ? "animate-spin" : ""}/> Atualizar matches</button>}
+        <div><p className="text-xs font-semibold tracking-wide text-amber-300">REDE PRIVADA</p><h1 className="mt-1 text-3xl font-bold md:text-4xl">Conexões Inteligentes</h1><p className="mt-2 max-w-2xl text-white/55">Encontre oportunidades de conexão entre os seus próprios contatos. Nada é compartilhado com outras usuárias.</p></div>
+        {authorized && <button disabled={recalculate.isPending} onClick={() => recalculate.mutate()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f5a623] px-5 py-3 font-bold text-[#08121f] disabled:opacity-50"><RefreshCw size={18} className={recalculate.isPending ? "animate-spin" : ""}/> Atualizar sugestões</button>}
       </div>
       {/*
         Falha ao carregar o status NÃO pode virar tela de aceite. Sem isto,
@@ -115,7 +115,7 @@ export default function IntelligentMatches() {
           </button>
         </div>
       : !authorized ? <SmartMatchConsent onAccepted={() => utils.consent.status.invalidate()}/> : <>
-      <section className="mb-7 rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5"><div className="flex gap-3"><Lightbulb className="mt-0.5 shrink-0 text-amber-300" size={20}/><p className="text-sm leading-6 text-amber-100/80">Cadastre o que cada contato possui e o que procura. O MMM cruza tags exatas, categorias e significados semelhantes para sugerir a melhor conexão.</p></div></section>
+      <section className="mb-7 rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5"><div className="flex gap-3"><Lightbulb className="mt-0.5 shrink-0 text-amber-300" size={20}/><p className="text-sm leading-6 text-amber-100/80">Anote o que cada contato tem a oferecer e o que está procurando. O MMM compara essas informações e sugere quem pode ajudar quem.</p></div></section>
       {/*
         O modo (possui / procura) decide o que o botão Adicionar faz, e modo
         escondido é armadilha: quem não percebe em qual está grava a informação
@@ -212,7 +212,7 @@ export default function IntelligentMatches() {
           </div>
         )}
       </section>
-      {isLoading ? <p className="py-16 text-center text-white/45">Carregando oportunidades…</p> : !matches.length ? <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center"><Sparkles className="mx-auto mb-4 text-amber-300" size={34}/><h2 className="text-xl font-semibold">Nenhuma oportunidade ainda</h2><p className="mt-2 text-white/45">Adicione ao menos um ativo e uma necessidade em contatos diferentes para gerar conexões.</p></div> : <div className="grid gap-4">{matches.map(match => <article key={match.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="flex flex-col justify-between gap-4 md:flex-row"><div><div className="mb-2 flex flex-wrap items-center gap-2"><span className="rounded-full bg-amber-300 px-3 py-1 text-sm font-bold text-[#08121f]">{match.matchScore}% de compatibilidade</span><span className={`rounded-full px-3 py-1 text-xs ${match.matchType === "mutual" ? "border border-emerald-400/50 bg-emerald-400/10 font-semibold text-emerald-300" : "border border-white/15 text-white/60"}`}>{seloDoMatch(match)}</span></div><h2 className="text-lg font-semibold">{match.contactA?.name ?? "Contato A"} <span className="text-white/35">→</span> {match.contactB?.name ?? "Contato B"}</h2><p className="mt-2 text-sm text-white/65">{match.reasonText}</p><p className="mt-3 text-xs text-white/40">Ativo: {match.matchedAssets.map(item => item.label).join(", ")} · Necessidade: {match.matchedNeeds.map(item => item.label).join(", ")}</p></div>{match.status === "pending" || match.status === "viewed" ? <div className="flex shrink-0 flex-wrap gap-2 self-start"><button onClick={() => updateStatus.mutate({ id: match.id, status: "accepted" })} className="rounded-lg bg-emerald-400 px-3 py-2 text-sm font-bold text-[#08121f]"><Check size={15} className="mr-1 inline"/> Aceitar</button><button onClick={() => updateStatus.mutate({ id: match.id, status: "dismissed" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65"><X size={15} className="mr-1 inline"/> Dispensar</button></div> : <span className="text-sm text-white/45">{match.status === "accepted" ? "Conexão aceita" : "Dispensada"}</span>}</div></article>)}</div>}
+      {isLoading ? <p className="py-16 text-center text-white/45">Carregando oportunidades…</p> : !matches.length ? <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center"><Sparkles className="mx-auto mb-4 text-amber-300" size={34}/><h2 className="text-xl font-semibold">Nenhuma oportunidade ainda</h2><p className="mt-2 text-white/45">Cadastre acima o que um contato oferece e o que outro procura. As sugestões de conexão vão aparecer aqui.</p></div> : <div className="grid gap-4">{matches.map(match => <article key={match.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="flex flex-col justify-between gap-4 md:flex-row"><div><div className="mb-2 flex flex-wrap items-center gap-2"><span className="rounded-full bg-amber-300 px-3 py-1 text-sm font-bold text-[#08121f]">{match.matchScore}% de compatibilidade</span><span className={`rounded-full px-3 py-1 text-xs ${match.matchType === "mutual" ? "border border-emerald-400/50 bg-emerald-400/10 font-semibold text-emerald-300" : "border border-white/15 text-white/60"}`}>{seloDoMatch(match)}</span></div><h2 className="text-lg font-semibold">{match.contactA?.name ?? "Contato A"} <span className="text-white/35">→</span> {match.contactB?.name ?? "Contato B"}</h2><p className="mt-2 text-sm text-white/65">{match.reasonText}</p><p className="mt-3 text-xs text-white/40">Oferece: {match.matchedAssets.map(item => item.label).join(", ")} · Procura: {match.matchedNeeds.map(item => item.label).join(", ")}</p></div>{match.status === "pending" || match.status === "viewed" ? <div className="flex shrink-0 flex-wrap gap-2 self-start"><button onClick={() => updateStatus.mutate({ id: match.id, status: "accepted" })} className="rounded-lg bg-emerald-400 px-3 py-2 text-sm font-bold text-[#08121f]"><Check size={15} className="mr-1 inline"/> Aceitar</button><button onClick={() => updateStatus.mutate({ id: match.id, status: "dismissed" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65"><X size={15} className="mr-1 inline"/> Dispensar</button></div> : <span className="text-sm text-white/45">{match.status === "accepted" ? "Conexão aceita" : "Dispensada"}</span>}</div></article>)}</div>}
       {!consent?.pendingText && (
         <section className="mt-10 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
           <p className="text-sm text-white/55">

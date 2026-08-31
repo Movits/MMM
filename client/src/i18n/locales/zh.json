@@ -344,7 +344,9 @@
       "lookingForInvestmentDesc": "将您与平台上的活跃投资者联系起来",
       "workStyle": "偏好的工作方式 *",
       "values": "您的核心价值观",
-      "languages": "您会说的语言"
+      "languages": "您会说的语言",
+      "customSector": "Seu setor não está na lista?",
+      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
     },
     "companySize": {
       "micro": "微型 (1–9)",
