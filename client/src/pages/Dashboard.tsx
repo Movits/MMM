@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/i18n";
 import { NotificationBell } from "@/components/NotificationBell";
+import { GlobalMenu } from "@/components/AppHeader";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -800,7 +801,8 @@ export default function Dashboard() {
 
       {/* ─── NAVBAR ─── */}
       <nav className="border-b border-white/[0.06] px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-40 bg-[#060e1a]/90 backdrop-blur-2xl">
-        <Link href="/">
+        {/* O logo levava para a landing e tirava a usuária do app sem querer. */}
+        <Link href="/dashboard">
           <span className="text-xl font-black cursor-pointer tracking-tight">
             <span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span>
           </span>
@@ -813,77 +815,7 @@ export default function Dashboard() {
             </button>
           )}
 
-          {/* ─── MENU EM LISTA ─── */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="group flex items-center gap-2 text-sm font-medium text-white/80 border border-white/10 pl-3 pr-2.5 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] hover:border-[#f5a623]/40 hover:text-white transition-all duration-200 active:scale-[0.97] data-[state=open]:border-[#f5a623]/50 data-[state=open]:bg-white/[0.06] data-[state=open]:text-white">
-                <MenuIcon className="w-4 h-4 text-[#f5a623]" />
-                <span className="hidden sm:inline">Menu</span>
-                <ChevronDown className="w-3.5 h-3.5 text-white/40 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={10}
-              className="w-72 rounded-2xl border-white/10 bg-[#0a1424]/95 backdrop-blur-2xl text-white shadow-2xl shadow-black/60 p-2">
-              <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-widest text-white/35 px-3 pt-2 pb-1">
-                Navegação
-              </DropdownMenuLabel>
-              {[
-                { href: "/opportunities", icon: Briefcase, label: t("dashboard.opportunities") || "Oportunidades", desc: "Propostas e negócios ativos" },
-                { href: "/verification", icon: ShieldCheck, label: "Verificação", desc: "Identidade e selo SIVC" },
-                { href: "/network", icon: Users, label: "Minha Rede", desc: "Sua base particular de contatos" },
-                { href: "/contexts", icon: MapPin, label: "Contextos", desc: "Onde e como conheceu cada pessoa" },
-                { href: "/meetings", icon: Mic, label: "Reuniões", desc: "Gravações e transcrições" },
-                { href: "/memory", icon: Brain, label: "Memória IA", desc: "Pergunte ao seu histórico" },
-                { href: "/intelligent-matches", icon: Sparkles, label: "Matches Inteligentes", desc: "Conexões entre seus contatos" },
-              ].map(item => (
-                <DropdownMenuItem key={item.href} asChild
-                  className="rounded-xl px-3 py-2.5 cursor-pointer focus:bg-white/[0.07] focus:text-white data-[highlighted]:bg-white/[0.07]">
-                  <Link href={item.href}>
-                    <span className="flex items-center gap-3 w-full">
-                      <span className="w-9 h-9 rounded-lg bg-white/[0.05] border border-white/[0.06] flex items-center justify-center shrink-0">
-                        <item.icon className="w-4 h-4 text-white/70" />
-                      </span>
-                      <span className="flex flex-col min-w-0">
-                        <span className="text-sm font-medium text-white leading-tight">{item.label}</span>
-                        <span className="text-[11px] text-white/35 leading-tight truncate">{item.desc}</span>
-                      </span>
-                    </span>
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-              {(user?.role === "president" || user?.role === "gold" || user?.role === "admin") && (
-                <>
-                  <DropdownMenuSeparator className="bg-white/[0.07] my-2" />
-                  <DropdownMenuItem asChild
-                    className="rounded-xl px-3 py-2.5 cursor-pointer focus:bg-amber-400/10 data-[highlighted]:bg-amber-400/10">
-                    <Link href="/president">
-                      <span className="flex items-center gap-3 w-full">
-                        <span className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#f5a623]/25 to-[#ffd166]/10 border border-amber-400/25 flex items-center justify-center shrink-0">
-                          <Crown className="w-4 h-4 text-amber-400" />
-                        </span>
-                        <span className="flex flex-col min-w-0">
-                          <span className="text-sm font-semibold text-amber-300 leading-tight">Painel Ouro</span>
-                          <span className="text-[11px] text-amber-200/40 leading-tight truncate">Governança e validações</span>
-                        </span>
-                      </span>
-                    </Link>
-                  </DropdownMenuItem>
-                </>
-              )}
-              <DropdownMenuSeparator className="bg-white/[0.07] my-2" />
-              <DropdownMenuItem
-                onClick={() => logoutMutation.mutate()}
-                className="rounded-xl px-3 py-2.5 cursor-pointer text-white/50 focus:bg-red-500/10 focus:text-red-300 data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-300">
-                <span className="flex items-center gap-3 w-full">
-                  <span className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0">
-                    <LogOut className="w-4 h-4" />
-                  </span>
-                  <span className="text-sm font-medium leading-tight">{t("dashboard.logout")}</span>
-                </span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <GlobalMenu />
 
           <NotificationBell />
           <LangSelectorMini />

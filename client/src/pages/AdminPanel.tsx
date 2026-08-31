@@ -212,7 +212,7 @@ export default function AdminPanel() {
             <Shield className="w-7 h-7 text-[#D4AF37]" />
             <div>
               <button
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/dashboard")}
                 style={playfairStyle}
                 className="text-xl font-bold text-white hover:text-[#D4AF37] transition-colors"
               >

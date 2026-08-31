@@ -262,9 +262,10 @@ export default function Home() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.05] bg-[#060b14]/80 backdrop-blur-2xl">
         <div className="flex items-center justify-between px-6 md:px-12 py-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="text-xl font-extrabold tracking-tight">
+            <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              className="text-xl font-extrabold tracking-tight cursor-pointer" aria-label="Voltar ao topo">
               <span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span>
-            </span>
+            </a>
             <span className="text-[10px] uppercase tracking-wider bg-[#f5a623]/10 text-[#f5a623] border border-[#f5a623]/20 px-2 py-0.5 rounded-full font-semibold">{t("nav.beta")}</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/50">
@@ -683,17 +684,19 @@ export default function Home() {
       {/* ─── FOOTER ─── */}
       <footer className="border-t border-white/[0.05] py-10">
         <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-white/25 text-sm">
-          <div className="font-extrabold">
+          <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            className="font-extrabold cursor-pointer" aria-label="Voltar ao topo">
             <span className="text-white/70">MMM</span><span className="text-[#f5a623]">OS</span>
-          </div>
+          </a>
           <div className="text-center">
             <div className="text-white/40 text-xs mb-1">{t("footer.tagline")}</div>
             <div>© 2026 MMM OS. {t("footer.rights")}</div>
           </div>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-white/60 transition-colors">{t("footer.privacy")}</a>
-            <a href="#" className="hover:text-white/60 transition-colors">{t("footer.terms")}</a>
-            <a href="#" className="hover:text-white/60 transition-colors">{t("footer.contact")}</a>
+            {/* O link de contato volta quando houver e-mail ou WhatsApp
+                institucional definido pela cliente. */}
+            <Link href="/privacidade" className="hover:text-white/60 transition-colors">{t("footer.privacy")}</Link>
+            <Link href="/termos" className="hover:text-white/60 transition-colors">{t("footer.terms")}</Link>
           </div>
         </div>
       </footer>

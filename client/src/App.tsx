@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import InactivityGuard from "./components/InactivityGuard";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { PageTransition } from "./components/PageTransition";
+import { PrivacyPage, TermsPage } from "@/pages/LegalPage";
 
 // Lazy loading de todas as páginas para melhor performance
 const Home = lazy(() => import("./pages/Home"));
@@ -60,6 +61,10 @@ function Router() {
 
         {/* Página de erro OAuth - domínio não autorizado */}
         <Route path={"/oauth-error"} component={OAuthError} />
+
+        {/* Páginas legais: placeholders até os textos jurídicos da cliente */}
+        <Route path={"/privacidade"} component={PrivacyPage} />
+        <Route path={"/termos"} component={TermsPage} />
 
         {/* Autenticação própria */}
         <Route path={"/login"} component={Login} />

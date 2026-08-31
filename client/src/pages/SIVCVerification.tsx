@@ -12,6 +12,7 @@ import {
   Clock, AlertCircle, XCircle, ChevronRight, Lock, Star, Award,
   Eye, Loader2, Info, ChevronDown, ChevronUp
 } from "lucide-react";
+import { AppHeader } from "@/components/AppHeader";
 
 // ─── Helpers de UI ────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -247,6 +248,7 @@ export default function SIVCVerification() {
   if (!hasVerification) {
     return (
       <div className="min-h-screen bg-transparent text-white">
+        <AppHeader title="Verificação" backTo="/dashboard"/>
         <div className="max-w-2xl mx-auto px-4 py-12">
           {/* Header */}
           <div className="text-center mb-10">
@@ -354,6 +356,7 @@ export default function SIVCVerification() {
 
   return (
     <div className="min-h-screen bg-transparent text-white">
+        <AppHeader title="Verificação" backTo="/dashboard"/>
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header com score */}
         <div className="flex flex-col md:flex-row items-center gap-6 mb-8 p-6 rounded-2xl border border-zinc-800 bg-zinc-900">
