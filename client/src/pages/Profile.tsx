@@ -188,7 +188,13 @@ export default function Profile() {
       utils.profile.get.invalidate();
       setEditing(false);
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      // Erros de validação do zod chegam como JSON serializado; mostrar só a
+      // primeira mensagem em vez do array cru.
+      let msg = err.message;
+      try { const issues = JSON.parse(err.message); if (Array.isArray(issues) && issues[0]?.message) msg = issues[0].message; } catch { /* mensagem simples */ }
+      toast.error(msg);
+    },
   });
 
   const handleSave = () => {

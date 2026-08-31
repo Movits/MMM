@@ -131,8 +131,8 @@
     "specialty": "Sua principal especialidade",
     "sector": "Setor de atuação",
     "seeking": {
-      "strategic_partner": "Sócia estratégica",
-      "strategic_partner_desc": "Alguém para construir junto",
+      "strategic_partner": "Sócia ou parceira de negócios",
+      "strategic_partner_desc": "Para construir, vender ou distribuir junto",
       "investor": "Investidora",
       "investor_desc": "Capital para crescer",
       "mentor": "Mentora",
@@ -145,8 +145,8 @@
       "job_desc": "Oportunidade profissional",
       "advisor": "Advisor",
       "advisor_desc": "Conselho especializado",
-      "be_mentor": "Ser mentora",
-      "be_mentor_desc": "Compartilhar experiência"
+      "be_mentor": "Quero também mentorar",
+      "be_mentor_desc": "Tenho experiência para compartilhar com outras mulheres"
     },
     "values": {
       "innovation": "Inovação",
@@ -628,7 +628,7 @@
       "sizeLarge": "Grande empresa",
       "cnpj": "CNPJ",
       "cnpjPlaceholder": "00.000.000/0000-00",
-      "cnpjHint": "Informe somente se houver.",
+      "cnpjHint": "Obrigatório para MEI e pessoa jurídica.",
       "cnpjInvalid": "Informe um CNPJ válido."
     }
   }

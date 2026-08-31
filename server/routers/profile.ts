@@ -9,6 +9,15 @@ import { users, userProfiles } from "../../drizzle/schema";
 // ============================================================
 // PERFIL DO USUÁRIO
 // ============================================================
+
+// Aceita "meusite.com.br" e completa o protocolo. Antes, z.string().url()
+// puro rejeitava a mutation INTEIRA quando a usuária colava a URL sem
+// https:// — nenhum campo era salvo e o erro saía como zod cru.
+const urlFlexivel = z.preprocess(
+  v => (typeof v === "string" && v.trim() && !/^https?:\/\//i.test(v.trim()) ? "https://" + v.trim() : v),
+  z.string().url("Informe uma URL válida (ex.: https://seusite.com.br)").optional().or(z.literal(""))
+);
+
 export const profileRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
     const profile = await getUserProfile(ctx.user.id);
@@ -23,8 +32,8 @@ export const profileRouter = router({
      country: z.string().length(2).optional(),
      sectors: z.array(z.string()).optional(),
      languages: z.array(z.string()).optional(),
-     linkedinUrl: z.string().url().optional().or(z.literal("")),
-     websiteUrl: z.string().url().optional().or(z.literal("")),
+     linkedinUrl: urlFlexivel,
+     websiteUrl: urlFlexivel,
      avatarUrl: z.string().optional(),
      company: z.string().max(200).optional(),
      position: z.string().max(200).optional(),
@@ -45,9 +54,16 @@ export const profileRouter = router({
       if (input.companyCnpj && !isValidCnpj(input.companyCnpj)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Informe um CNPJ válido." });
       }
-      const businessData = input.personType === "individual"
-        ? { ...input, companySize: null, companyCnpj: null }
-        : { ...input, companyCnpj: input.companyCnpj ? normalizeCnpj(input.companyCnpj) : undefined };
+      // Quem se declara MEI ou pessoa jurídica tem CNPJ por definição (A7).
+      if ((input.personType === "mei" || input.personType === "legal_entity") && !input.companyCnpj) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o CNPJ: ele é obrigatório para MEI e pessoa jurídica." });
+      }
+      // `position` é coluna de users, não de user_profiles — mandá-la ao
+      // upsert derrubava o UPDATE inteiro com "Unknown column".
+      const { position: _position, ...updateData } = input;
+      const businessData = updateData.personType === "individual"
+        ? { ...updateData, companySize: null, companyCnpj: null }
+        : { ...updateData, companyCnpj: updateData.companyCnpj ? normalizeCnpj(updateData.companyCnpj) : undefined };
       await upsertUserProfile(ctx.user.id, businessData);
       // Atualizar company/position na tabela users também
       const db = await getDb();
@@ -107,6 +123,9 @@ export const profileRouter = router({
     .mutation(async ({ ctx, input }) => {
       if (input.companyCnpj && !isValidCnpj(input.companyCnpj)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Informe um CNPJ válido." });
+      }
+      if ((input.personType === "mei" || input.personType === "legal_entity") && !input.companyCnpj) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o CNPJ: ele é obrigatório para MEI e pessoa jurídica." });
       }
       const { company, position, jobTitle, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed, personType, companySize, companyCnpj, ...profileData } = input;
       await upsertUserProfile(ctx.user.id, profileData);
