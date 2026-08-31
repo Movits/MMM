@@ -236,9 +236,11 @@ ligar o R2 e separar as variáveis de ambiente.
 
 ### Dois itens que valem mais que este debate
 
-- **`pnpm db:push` não recria o banco do zero.** As 11 tabelas sem definição Drizzle
-  não nasceriam numa instalação nova; o SIVC inteiro sumiria. É bug de
-  reprodutibilidade que já existe em MySQL e independe desta decisão.
+- ~~**`pnpm db:push` não recria o banco do zero.**~~ **Resolvido em 31/08/2026:**
+  as tabelas do SIVC ganharam definição Drizzle, o histórico de migrações foi
+  refundado (baseline `0000_fundacao`, 50 tabelas) e `db:push` deixou de
+  existir — o fluxo é `pnpm db:generate` + `pnpm db:migrate`, e o CI cria um
+  banco do zero a cada PR para provar que continua funcionando.
 - **A gravação de reunião só funciona em host que tolere requisição de minutos.**
   Confirmar o limite de tempo **antes** de contar essa etapa como pronta: o padrão
   de 30 ou 60 segundos de várias plataformas a inviabiliza sem erro revelador.

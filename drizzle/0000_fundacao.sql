@@ -47,6 +47,19 @@ CREATE TABLE `connections` (
 	CONSTRAINT `connections_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+CREATE TABLE `consents` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`userId` int NOT NULL,
+	`documentVersionId` varchar(36) NOT NULL,
+	`grantedAt` timestamp NOT NULL DEFAULT (now()),
+	`revokedAt` timestamp,
+	`ipAddress` varchar(45),
+	`userAgent` text,
+	`activeKey` varchar(80) GENERATED ALWAYS AS ((CASE WHEN `revokedAt` IS NULL THEN CONCAT(`userId`, ':', `documentVersionId`) ELSE NULL END)) VIRTUAL,
+	CONSTRAINT `consents_id` PRIMARY KEY(`id`),
+	CONSTRAINT `consent_active_unique` UNIQUE(`activeKey`)
+);
+--> statement-breakpoint
 CREATE TABLE `contact_assets` (
 	`id` bigint AUTO_INCREMENT NOT NULL,
 	`owner_id` varchar(128) NOT NULL,
@@ -199,6 +212,19 @@ CREATE TABLE `direct_messages` (
 	`readAt` timestamp,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	CONSTRAINT `direct_messages_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `document_versions` (
+	`id` varchar(36) NOT NULL,
+	`type` enum('termo_smart_match','acordo_intermediacao','contrato_comissao','termo_gravacao') NOT NULL,
+	`version` int NOT NULL,
+	`text` text NOT NULL,
+	`publishedAt` timestamp NOT NULL DEFAULT (now()),
+	`isCurrent` boolean NOT NULL DEFAULT false,
+	`currentType` varchar(32) GENERATED ALWAYS AS ((CASE WHEN `isCurrent` THEN `type` ELSE NULL END)) VIRTUAL,
+	CONSTRAINT `document_versions_id` PRIMARY KEY(`id`),
+	CONSTRAINT `doc_ver_type_version_unique` UNIQUE(`type`,`version`),
+	CONSTRAINT `doc_ver_current_unique` UNIQUE(`currentType`)
 );
 --> statement-breakpoint
 CREATE TABLE `enrichment_messages` (
@@ -741,6 +767,8 @@ CREATE INDEX `audit_action_idx` ON `audit_logs` (`action`);--> statement-breakpo
 CREATE INDEX `audit_createdAt_idx` ON `audit_logs` (`createdAt`);--> statement-breakpoint
 CREATE INDEX `conn_requester_idx` ON `connections` (`requesterId`);--> statement-breakpoint
 CREATE INDEX `conn_recipient_idx` ON `connections` (`recipientId`);--> statement-breakpoint
+CREATE INDEX `consent_user_idx` ON `consents` (`userId`);--> statement-breakpoint
+CREATE INDEX `consent_document_idx` ON `consents` (`documentVersionId`);--> statement-breakpoint
 CREATE INDEX `contact_assets_owner_contact_idx` ON `contact_assets` (`owner_id`,`contact_id`);--> statement-breakpoint
 CREATE INDEX `contact_assets_owner_slug_idx` ON `contact_assets` (`owner_id`,`tag_slug`);--> statement-breakpoint
 CREATE INDEX `contact_assets_owner_category_idx` ON `contact_assets` (`owner_id`,`category`);--> statement-breakpoint
@@ -811,39 +839,4 @@ CREATE INDEX `sivc_ver_user_idx` ON `sivc_verifications` (`userId`);--> statemen
 CREATE INDEX `group_createdBy_idx` ON `strategic_groups` (`createdBy`);--> statement-breakpoint
 CREATE INDEX `device_userId_idx` ON `trusted_devices` (`userId`);--> statement-breakpoint
 CREATE INDEX `profile_userId_idx` ON `user_profiles` (`userId`);--> statement-breakpoint
-CREATE INDEX `profile_country_idx` ON `user_profiles` (`country`);--> statement-breakpoint
--- ============================================================
--- CONSENTIMENTO E DOCUMENTOS — etapa 11, etapa 13 e ajuste A11
--- ============================================================
-CREATE TABLE IF NOT EXISTS `document_versions` (
-  `id` varchar(36) NOT NULL,
-  `type` enum('termo_smart_match','acordo_intermediacao','contrato_comissao','termo_gravacao') NOT NULL,
-  `version` int NOT NULL,
-  `text` text NOT NULL,
-  `publishedAt` timestamp NOT NULL DEFAULT current_timestamp(),
-  `isCurrent` boolean NOT NULL DEFAULT false,
-  -- Uma única versão vigente por tipo. O Postgres usaria índice parcial; aqui a
-  -- coluna gerada vira NULL quando não vigente, e NULLs não colidem no único.
-  `currentType` varchar(32) AS (CASE WHEN `isCurrent` THEN `type` ELSE NULL END) VIRTUAL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `doc_ver_type_version_unique` (`type`,`version`),
-  UNIQUE KEY `doc_ver_current_unique` (`currentType`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;--> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `consents` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `userId` int NOT NULL,
-  `documentVersionId` varchar(36) NOT NULL,
-  `grantedAt` timestamp NOT NULL DEFAULT current_timestamp(),
-  `revokedAt` timestamp NULL DEFAULT NULL,
-  `ipAddress` varchar(45) DEFAULT NULL,
-  `userAgent` text DEFAULT NULL,
-  -- No máximo um consentimento ATIVO por par (usuária, versão). Mesmo truque da
-  -- coluna gerada acima: vale a chave enquanto não revogado e vira NULL depois,
-  -- e NULLs não colidem no único. Um UNIQUE (userId, documentVersionId) simples
-  -- proibiria revogar e aceitar de novo, que é fluxo legítimo.
-  `activeKey` varchar(80) AS (CASE WHEN `revokedAt` IS NULL THEN CONCAT(`userId`, ':', `documentVersionId`) ELSE NULL END) VIRTUAL,
-  PRIMARY KEY (`id`),
-  KEY `consent_user_idx` (`userId`),
-  KEY `consent_document_idx` (`documentVersionId`),
-  UNIQUE KEY `consent_active_unique` (`activeKey`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX `profile_country_idx` ON `user_profiles` (`country`);

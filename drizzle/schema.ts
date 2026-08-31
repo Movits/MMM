@@ -576,7 +576,7 @@ export const privateContacts = mysqlTable("private_contacts", {
 // SIVC — Sistema de Verificação de Identidade e Credenciais
 //
 // Estas tabelas existiam apenas em SQL escrito à mão dentro de
-// server/routers/sivc.ts. Sem definição aqui, `pnpm db:push` não as cria e
+// server/routers/sivc.ts. Sem definição aqui, a migração gerada não as cria e
 // um banco novo sobe com o módulo inteiro quebrado — foi o que apareceu ao
 // preparar o deploy. As colunas foram reconstruídas a partir das queries.
 //
