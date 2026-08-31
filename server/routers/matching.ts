@@ -118,6 +118,7 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
       const profiles = await db
         .select({
           userId: userProfiles.userId,
+          whatIHave: userProfiles.whatIHave,
           whatINeed: userProfiles.whatINeed,
           sector: userProfiles.sector,
           seekingTypes: userProfiles.seekingTypes,
@@ -129,8 +130,11 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
         .limit(200);
 
       const oppContext = `Título: "${opp.title}" | Setor: ${opp.sector || "N/A"} | Tipo: ${opp.type} | Tags: ${JSON.stringify(opp.tags || [])} | Descrição: "${(opp.description || "").substring(0, 300)}"`;
+      // "tenho" entra junto com "preciso": uma oportunidade que BUSCA algo casa
+      // com quem OFERECE esse algo. Antes só "preciso" ia ao alerta, então quem
+      // poderia suprir a oportunidade nunca era avisada — metade do cruzamento.
       const profilesContext = profiles.map((p, i) =>
-        `[${i}] userId:${p.userId} setor:${p.sector || "N/A"} preciso:${JSON.stringify(p.whatINeed || [])} interesse:${JSON.stringify(p.interestSectors || [])}`
+        `[${i}] userId:${p.userId} setor:${p.sector || "N/A"} tenho:${JSON.stringify(p.whatIHave || [])} preciso:${JSON.stringify(p.whatINeed || [])} interesse:${JSON.stringify(p.interestSectors || [])}`
       ).join("\n");
 
       const aiResp = await invokeLLM({
