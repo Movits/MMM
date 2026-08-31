@@ -30,7 +30,9 @@ export function slugifyMatchTag(value: string) {
 
 export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore = 0) {
   if (asset.slug && asset.slug === need.slug) return { score: 100, type: "exact" as const };
-  if (asset.category && need.category && asset.category === need.category) return { score: 60, type: "category" as const };
+  const categoriaAsset = slugifyMatchTag(asset.category ?? "");
+  const categoriaNeed = slugifyMatchTag(need.category ?? "");
+  if (categoriaAsset && categoriaNeed && categoriaAsset === categoriaNeed) return { score: 60, type: "category" as const };
   // 45 fica DE PROPÓSITO abaixo de SAVE_THRESHOLD (50), o que mantém o critério
   // semântico desligado. Não é esquecimento: com SEMANTIC_THRESHOLD em 0.7, ele
   // casa tudo com tudo. Medido em 31/08/2026 numa rede de 10 contatos — ao subir
