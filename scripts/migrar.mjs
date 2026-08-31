@@ -15,15 +15,18 @@
 //
 // TRÊS SITUAÇÕES, decididas sozinhas:
 //
-//   banco vazio            -> aplica tudo, começando pelo baseline
-//   banco antigo, completo -> ADOTA o baseline (anota sem executar) e aplica só
-//                             o que veio depois. Bancos criados na era dos
-//                             scripts à mão já têm as 50 tabelas; rodar o
-//                             baseline neles falharia em cada CREATE.
-//   banco antigo, faltando -> PARA e lista o que falta. Adoção às cegas
-//                             esconderia exatamente o buraco que este sistema
-//                             existe para impedir. Para pôr um banco velho em
-//                             dia antes de adotar: scripts/migrar-banco-etapa-11.mjs.
+//   banco vazio             -> aplica tudo, começando pelo baseline
+//   banco antigo, em dia    -> ADOTA o baseline (anota sem executar) e aplica só
+//                              o que veio depois. Bancos criados na era dos
+//                              scripts à mão já têm as tabelas; rodar o baseline
+//                              neles falharia em cada CREATE. "Em dia" é conferido
+//                              coluna a coluna e enum a enum, não só por tabela:
+//                              o banco de desenvolvimento estava 10 colunas atrás
+//                              com todas as 50 tabelas presentes.
+//   banco antigo, desviado  -> PARA e lista cada desvio. Adoção às cegas
+//                              esconderia exatamente o buraco que este sistema
+//                              existe para impedir. Para pôr em dia:
+//                              scripts/nivelar-banco.mjs --aplicar.
 //
 // Por que uma tabela própria (`_migracoes`) e não a do drizzle-kit: o histórico
 // antigo do drizzle morreu com 15 tabelas contra 50 do schema, e a tabela dele
@@ -38,6 +41,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import mysql from "mysql2/promise";
+import { lerBaseline, compararComBanco } from "./baseline.mjs";
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const PASTA = join(AQUI, "..", "drizzle");
@@ -72,27 +76,43 @@ export async function migrar(databaseUrl, { relatarApenas = false } = {}) {
 
     // ── adoção: banco de antes do sistema de migração ────────────────────────
     if (!aplicadas.size) {
-      const baseline = await readFile(join(PASTA, `${tags[0]}.sql`), "utf8");
-      const tabelasDoBaseline = [...baseline.matchAll(/CREATE TABLE `([a-z0-9_]+)`/gi)].map(m => m[1]);
-      const [existentes] = await conexao.query(
-        "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME IN (?)",
-        [banco, tabelasDoBaseline],
+      const baseline = await lerBaseline();
+      const [algumaTabela] = await conexao.query(
+        "SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME IN (?)",
+        [banco, [...baseline.tabelas.keys()]],
       );
-      const jaExistem = new Set(existentes.map(l => l.TABLE_NAME));
 
-      if (jaExistem.size === tabelasDoBaseline.length) {
-        console.log(`Banco já tem as ${tabelasDoBaseline.length} tabelas do baseline: adotando ${tags[0]} sem executar.`);
-        if (!relatarApenas) await conexao.query("INSERT INTO `_migracoes` (tag) VALUES (?)", [tags[0]]);
-        aplicadas.add(tags[0]);
-      } else if (jaExistem.size > 0) {
-        const faltam = tabelasDoBaseline.filter(t => !jaExistem.has(t));
-        console.error(
-          `Banco pela metade: tem ${jaExistem.size} das ${tabelasDoBaseline.length} tabelas do baseline ` +
-          `e não tem registro de migração.\nFaltam: ${faltam.join(", ")}\n\n` +
-          "Adotar o baseline agora esconderia esse buraco. Ponha o banco em dia primeiro\n" +
-          "(scripts/migrar-banco-etapa-11.mjs cobre os casos conhecidos) e rode de novo.",
-        );
-        return { ok: false, aplicadas: 0 };
+      if (Number(algumaTabela[0].n) > 0) {
+        // Existir tabela não basta: um banco da era dos scripts à mão pode
+        // estar colunas atrás do baseline — o de desenvolvimento estava 10 —
+        // e adotá-lo assim carimba como "em dia" um banco que não é. A adoção
+        // exige que TODAS as tabelas, colunas e enums do baseline batam.
+        const desvios = await compararComBanco(baseline, async (sql, params) => {
+          const [linhas] = await conexao.query(sql, params);
+          return linhas;
+        }, banco);
+
+        if (desvios.total > 0) {
+          console.error(`Banco existente diverge do baseline em ${desvios.total} ponto(s):`);
+          for (const t of desvios.tabelasFaltando) console.error(`  tabela faltando: ${t}`);
+          for (const c of desvios.colunasFaltando) console.error(`  coluna faltando: ${c.tabela}.${c.coluna}`);
+          for (const e of desvios.enumsDiferentes) console.error(`  enum diferente:  ${e.tabela}.${e.coluna} (faltam: ${e.faltam.join(", ") || "—"}${e.sobram.length ? `; sobram: ${e.sobram.join(", ")}` : ""})`);
+          for (const i of desvios.indicesFaltando) console.error(`  índice faltando: ${i.nome} em ${i.tabela}`);
+          for (const u of desvios.unicosFaltando) console.error(`  único faltando:  ${u.nome} em ${u.tabela}`);
+          console.error(
+            "\nAdotar o baseline agora esconderia esses buracos. Nivele primeiro:\n" +
+            "  DATABASE_URL='...' node scripts/nivelar-banco.mjs --aplicar\n" +
+            "e rode este script de novo.",
+          );
+          return { ok: false, aplicadas: 0 };
+        }
+
+        for (const e of desvios.enumsComSobras) {
+          console.log(`aviso: ${e.tabela}.${e.coluna} tem valores além do baseline (${e.sobram.join(", ")}) — compatível, seguindo.`);
+        }
+        console.log(`Banco já bate com o baseline (tabelas, colunas e enums): adotando ${baseline.tag} sem executar.`);
+        if (!relatarApenas) await conexao.query("INSERT INTO `_migracoes` (tag) VALUES (?)", [baseline.tag]);
+        aplicadas.add(baseline.tag);
       }
       // nenhuma tabela: banco vazio, o baseline roda como migração comum
     }

@@ -92,10 +92,10 @@ O repositório já tem `Dockerfile`, então o Railway não precisa adivinhar nad
    `_migracoes`. Dá para rodar de novo sem perigo: o que já foi aplicado não
    roda outra vez.
 
-   **Banco que já existia antes do sistema de migração:** rode primeiro
-   `node scripts/migrar-banco-etapa-11.mjs --aplicar` para pô-lo em dia; na
-   primeira rodada o `migrar.mjs` reconhece as tabelas e adota o baseline sem
-   recriar nada.
+   **Banco que já existia antes do sistema de migração:** o `migrar.mjs` confere
+   coluna a coluna antes de adotar. Se o banco estiver desviado, ele recusa e
+   lista cada desvio; `node scripts/nivelar-banco.mjs --aplicar` gera os ALTERs
+   a partir do próprio baseline (nunca apaga nada) e aí a adoção passa.
 
    **Para mudar o schema daqui em diante:** edite `drizzle/schema.ts`, rode
    `pnpm db:generate` (nasce a migração em `drizzle/`) e `pnpm db:migrate`

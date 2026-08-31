@@ -88,14 +88,15 @@ jobs:
       - name: Criar o banco do zero
         run: node scripts/criar-banco.mjs
 
-      # Um banco recém-criado já deve nascer em dia: se este passo tiver algo a
-      # fazer, é porque o schema e a migração discordam.
-      - name: Conferir que o banco novo já nasce em dia
+      # Um banco recém-criado já deve bater com o baseline coluna a coluna: se o
+      # nivelador achar o que fazer, o baseline está em desacordo consigo mesmo
+      # ou o leitor dele quebrou.
+      - name: Banco novo já nasce nivelado
         run: |
-          saida=$(node scripts/migrar-banco-etapa-11.mjs)
+          saida=$(node scripts/nivelar-banco.mjs)
           echo "$saida"
-          echo "$saida" | grep -q "Nada a fazer" || {
-            echo "::error::Banco recém-criado precisou de migração — o baseline de drizzle/ e migrar-banco-etapa-11.mjs discordam."
+          echo "$saida" | grep -q "Nada a nivelar" || {
+            echo "::error::Banco recém-criado precisaria de nivelamento — baseline inconsistente ou leitor quebrado."
             exit 1
           }
 
