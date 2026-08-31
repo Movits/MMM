@@ -6,8 +6,11 @@ export const ENV = {
   ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
   isProduction: process.env.NODE_ENV === "production",
   // LLM: qualquer endpoint compatível com a API da OpenAI. Fora do Manus, a
-  // chave do Google Gemini cobre as chamadas.
-  llmApiUrl: process.env.LLM_API_URL || process.env.BUILT_IN_FORGE_API_URL || "",
+  // chave do Google Gemini cobre as chamadas. SEM fallback para
+  // BUILT_IN_FORGE_API_URL de propósito: era assim que configurar o storage
+  // errado contaminava o endpoint da IA — as duas coisas nunca mais dividem
+  // variável.
+  llmApiUrl: process.env.LLM_API_URL || "",
   llmApiKey: process.env.LLM_API_KEY || process.env.BUILT_IN_FORGE_API_KEY || process.env.GOOGLE_API_KEY || "",
   // Storage, data API e heartbeat continuam falando o protocolo do Forge, que
   // saiu do ar junto com o Manus. Sem substituto configurado eles falham com

@@ -140,13 +140,26 @@ código conseguia assinar uma sessão válida.
 
 ## O que continua quebrado depois do deploy
 
-**Upload de arquivo.** `server/storage.ts` falava com o Forge do Manus, que saiu
-do ar. Isso derruba quatro caminhos: gravação de reunião, documentos do deal
-room, documentos do SIVC e geração de imagem. Precisa ser reescrito para S3 ou
-Cloudflare R2. O `@aws-sdk/client-s3` já está instalado e sem uso.
+**Upload de arquivo — RESOLVIDO no código, falta configurar.**
+`server/storage.ts` foi reescrito sobre a API do S3, que AWS S3, Cloudflare R2,
+Backblaze B2 e MinIO falam igualmente: a decisão D6 escolhe o provedor, o
+código não muda. Preencher no ambiente:
 
-Enquanto isso não for feito, esses fluxos falham com mensagem própria em vez de
-erro obscuro, o que é o comportamento correto mas continua sendo falha.
+```
+STORAGE_BUCKET=            nome do bucket
+STORAGE_ACCESS_KEY_ID=     credencial
+STORAGE_SECRET_ACCESS_KEY= credencial
+STORAGE_ENDPOINT=          só fora da AWS (ex.: https://<conta>.r2.cloudflarestorage.com)
+```
+
+Sem as variáveis, os quatro caminhos que dependem de arquivo (gravação de
+reunião, documentos do deal room, documentos do SIVC, geração de imagem) falham
+com mensagem que nomeia as variáveis certas.
+
+A rota que serve os arquivos (`/manus-storage/*`) passou a exigir **sessão e
+posse**: gravação só para a dona, SIVC só para a dona, deal room para as partes
+(ou Ouro+, espelhando a política atual), e prefixo desconhecido é negado. Antes
+ela redirecionava qualquer requisição anônima para a URL assinada.
 
 **Gravação de reunião.** `server/routers/meetings.ts` recebe o áudio como base64
 de até 15 MB em uma requisição e transcreve com LLM dentro dela. Um request pode
