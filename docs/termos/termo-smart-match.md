@@ -13,10 +13,10 @@ para cada um o que ele tem a oferecer e o que ele procura. O Cruzamento
 Inteligente compara esses registros **entre os seus próprios contatos** e mostra
 a você onde um tem o que o outro procura.
 
-A comparação é feita de três formas: pelo termo cadastrado, pela categoria, e
-pelo sentido do que foi escrito. Quando duas pontas querem a mesma coisa — duas
-que exportam, por exemplo — elas não são apresentadas uma à outra: o sistema
-entende que ali há concorrência, não negócio.
+A comparação é feita de duas formas: pelo termo cadastrado e pela categoria.
+Quando duas pontas querem a mesma coisa — duas que exportam, por exemplo — elas
+não são apresentadas uma à outra: o sistema entende que ali há concorrência,
+não negócio.
 
 ## O que você está autorizando
 
@@ -26,24 +26,23 @@ telas do recurso funciona.
 
 ## Para onde os dados vão
 
-Esta é a parte que mais importa saber antes de decidir.
+**Hoje, para lugar nenhum fora da plataforma.** O cruzamento é feito inteiramente
+dentro do sistema, comparando o que está registrado na sua própria agenda.
 
-Para comparar o sentido de termos que não são idênticos, o sistema envia a
-**descrição do que cada contato possui e procura** para o serviço de
-inteligência artificial do Google (Gemini), que devolve uma representação
-numérica usada na comparação.
+Existe no sistema um terceiro critério, que compararia o *sentido* de termos
+escritos de formas diferentes com auxílio de inteligência artificial. Ele está
+**desligado**, e enquanto estiver desligado nenhum dado da sua agenda é enviado
+a serviço nenhum de terceiros.
 
-O que é enviado:
+Se ele for ligado no futuro, isto passará a valer e este documento será
+publicado em versão nova, que você poderá ler e decidir de novo antes de o
+cruzamento voltar a funcionar:
 
-- o termo cadastrado (por exemplo, "armazenagem refrigerada");
-- a descrição livre, quando você tiver escrito uma.
-
-O que **não** é enviado: nome, empresa, cargo, telefone, e-mail, país ou
-qualquer outro dado que identifique o contato. O Google recebe o assunto,
-nunca de quem se trata.
-
-Esse envio acontece durante o recálculo dos cruzamentos. Se o serviço estiver
-indisponível, o cruzamento continua funcionando pelos outros dois critérios.
+- **o que seria enviado:** o termo cadastrado (por exemplo, "armazenagem
+  refrigerada") e a descrição livre, quando houver;
+- **para onde:** o serviço de inteligência artificial do Google (Gemini);
+- **o que não seria enviado:** nome, empresa, cargo, telefone, e-mail, país ou
+  qualquer outro dado que identifique o contato.
 
 ## O que não acontece
 
@@ -79,8 +78,7 @@ oportunidades, reuniões e mensagens não dependem desta autorização.
 Você pode revogar quando quiser, e vale a partir do momento em que é feita.
 Revogando:
 
-- nenhuma sugestão nova é gerada, e nenhum dado seu volta a ser enviado ao
-  serviço de inteligência artificial;
+- nenhuma sugestão nova é gerada;
 - as sugestões geradas antes deixam de ser acessíveis;
 - seus contatos e tudo que você registrou sobre eles permanecem intactos.
 

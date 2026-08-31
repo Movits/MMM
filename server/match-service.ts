@@ -11,6 +11,23 @@ const SEMANTIC_THRESHOLD = 0.7;
 const SAVE_THRESHOLD = 50;
 const EMAIL_THRESHOLD = 70;
 
+/**
+ * O score do critério semântico, e se ele está ligado.
+ *
+ * 45 fica abaixo de SAVE_THRESHOLD de propósito (o porquê está em scoreMatch),
+ * o que significa que nenhuma similaridade — nem 1.0, o máximo possível — vira
+ * sugestão. A comparação abaixo torna isso explícito, e é o que impede o pior
+ * efeito colateral: enquanto o critério estiver desligado, o texto do que cada
+ * contato possui e procura NÃO sai daqui para o provedor de embeddings. Antes
+ * saía a cada recálculo, para não gerar nada — inclusive para os pares que a
+ * regra da direção acabara de barrar como concorrentes.
+ *
+ * Religar é subir SEMANTIC_SCORE acima de SAVE_THRESHOLD; a chamada volta
+ * sozinha, sem ninguém precisar lembrar desta linha.
+ */
+const SEMANTIC_SCORE = 45;
+const SEMANTIC_ENABLED = SEMANTIC_SCORE >= SAVE_THRESHOLD;
+
 export type MatchReason = { slug: string; label: string; category?: string | null };
 export type MatchType = "mutual" | "exact" | "category" | "semantic";
 
@@ -60,7 +77,7 @@ export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore 
   // com dados reais antes, não mexer nesta linha. A regra da etapa 11 reforça
   // este desligamento: parecença de texto é justamente o que confunde "exportar"
   // com "importar", e é por parecença que o critério semântico decide.
-  if (semanticScore > SEMANTIC_THRESHOLD) return { score: 45, type: "semantic" as const };
+  if (semanticScore > SEMANTIC_THRESHOLD) return { score: SEMANTIC_SCORE, type: "semantic" as const };
   return { score: 0, type: "semantic" as const };
 }
 
@@ -132,7 +149,12 @@ export async function recalculatePrivateMatches(ownerId: string, ownerEmail?: st
       const baseAsset: MatchReason = { slug: asset.tagSlug, label: asset.tagLabel, category: asset.category };
       const baseNeed: MatchReason = { slug: need.tagSlug, label: need.tagLabel, category: need.category };
       let result = scoreMatch(baseAsset, baseNeed);
-      if (!result.score) result = scoreMatch(baseAsset, baseNeed, await semanticScore(asset, need, semantico));
+      // Só chama o provedor de embeddings se a resposta puder mudar alguma
+      // coisa. Com o critério desligado não pode, e mandar o texto para fora
+      // seria transferência de dado sem finalidade.
+      if (!result.score && SEMANTIC_ENABLED) {
+        result = scoreMatch(baseAsset, baseNeed, await semanticScore(asset, need, semantico));
+      }
       if (result.score < SAVE_THRESHOLD) continue;
 
       const lowId = Math.min(asset.contactId, need.contactId);
