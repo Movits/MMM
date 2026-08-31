@@ -370,11 +370,12 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   };
 
   // LLM_MODEL redireciona todos os modelos herdados do proxy Manus (gpt-*, etc.)
-  // para o provedor configurado no .env.
-  const resolvedModel = process.env.LLM_MODEL || model;
-  if (resolvedModel) {
-    payload.model = resolvedModel;
-  }
+  // para o provedor configurado no .env. O default garante que o payload sempre
+  // leve um modelo: a API OpenAI-compatível do Gemini rejeita requisições sem o
+  // campo `model` com 400 — foi o que derrubou FAQ, matches e compliance em
+  // produção quando LLM_MODEL não estava definida.
+  const resolvedModel = process.env.LLM_MODEL || model || "gemini-flash-latest";
+  payload.model = resolvedModel;
 
   if (tools && tools.length > 0) {
     payload.tools = tools;

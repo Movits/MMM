@@ -1,3 +1,5 @@
+import { ENV } from "./_core/env";
+
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 const EMBEDDING_MODEL = "gemini-embedding-001";
 // Alias ativo listado pela API Gemini; evita o modelo 2.5 Flash descontinuado
@@ -5,8 +7,11 @@ const EMBEDDING_MODEL = "gemini-embedding-001";
 const AUDIO_MODEL = "gemini-flash-latest";
 
 function getGeminiKey() {
-  const key = process.env.GOOGLE_API_KEY;
-  if (!key) throw new Error("GOOGLE_API_KEY não configurada.");
+  // Mesma cadeia de fallback do resto do app (LLM_API_KEY > chaves legadas >
+  // GOOGLE_API_KEY). Ler só GOOGLE_API_KEY quebrava embeddings e transcrição em
+  // produção, onde a chave é configurada como LLM_API_KEY.
+  const key = ENV.llmApiKey;
+  if (!key) throw new Error("Chave do LLM não configurada. Defina LLM_API_KEY (ou GOOGLE_API_KEY) no ambiente.");
   return key;
 }
 
