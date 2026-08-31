@@ -859,7 +859,7 @@ export default function Dashboard() {
               ? <><span className="text-[#f5a623] font-semibold">{stats.unseen} novo{stats.unseen > 1 ? 's' : ''} match{stats.unseen > 1 ? 'es' : ''}</span> esperando pela sua atenção</>
               : stats?.total && stats.total > 0
                 ? `${stats.total} oportunidade${stats.total > 1 ? 's' : ''} compatível${stats.total > 1 ? 'is' : ''} encontrada${stats.total > 1 ? 's' : ''} para você`
-                : 'Bem-vindo ao MMM OS — gere seus primeiros matches abaixo'}
+                : 'Bem-vinda ao MMM OS! Gere seus primeiros matches abaixo'}
           </p>
         </div>
 

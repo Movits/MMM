@@ -148,7 +148,7 @@ function GoldTab() {
       <SectionHeader
         icon={Star}
         title="Gestão do Selo Ouro"
-        subtitle="Conceda ou revogue o Selo de Exclusividade Institucional. Não pode ser comprado — apenas concedido manualmente."
+        subtitle="Conceda ou revogue o Selo de Exclusividade Institucional. Ele não pode ser comprado: só é concedido manualmente."
       />
 
       {/* Membras Ouro Ativas */}
@@ -167,7 +167,7 @@ function GoldTab() {
                     <Star size={14} className="text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-white">{g.userName || "—"}</p>
+                    <p className="text-sm font-semibold text-white">{g.userName || "-"}</p>
                     <p className="text-xs text-white/40">{g.userEmail}</p>
                   </div>
                 </div>
@@ -187,7 +187,7 @@ function GoldTab() {
 
       {/* Conceder Ouro */}
       <div>
-        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Conceder Selo Ouro — Membras Prata</h3>
+        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Conceder Selo Ouro a Membras Prata</h3>
         <div className="relative mb-3">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
           <Input
@@ -713,21 +713,21 @@ function ComplianceTab() {
             <CheckCircle size={16} className="text-emerald-400" />
             <span className="text-xs text-emerald-400/70 font-medium">Oportunidades Ativas</span>
           </div>
-          <div className="text-3xl font-black text-emerald-400">{stats?.activeOpportunities ?? "—"}</div>
+          <div className="text-3xl font-black text-emerald-400">{stats?.activeOpportunities ?? "-"}</div>
         </div>
         <div className="p-5 rounded-2xl bg-amber-400/8 border border-amber-400/20">
           <div className="flex items-center gap-2 mb-2">
             <Clock size={16} className="text-amber-400" />
             <span className="text-xs text-amber-400/70 font-medium">Pendentes de Validação</span>
           </div>
-          <div className="text-3xl font-black text-amber-400">{stats?.pendingOpportunities ?? "—"}</div>
+          <div className="text-3xl font-black text-amber-400">{stats?.pendingOpportunities ?? "-"}</div>
         </div>
         <div className="p-5 rounded-2xl bg-red-400/8 border border-red-400/20">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle size={16} className="text-red-400" />
             <span className="text-xs text-red-400/70 font-medium">Alertas Vermelhos (IA)</span>
           </div>
-          <div className="text-3xl font-black text-red-400">{stats?.redFlagOpportunities ?? "—"}</div>
+          <div className="text-3xl font-black text-red-400">{stats?.redFlagOpportunities ?? "-"}</div>
         </div>
       </div>
 
@@ -735,7 +735,7 @@ function ComplianceTab() {
       {redFlags && Array.isArray(redFlags) && redFlags.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-red-400/70 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <AlertTriangle size={13} /> Oportunidades com Baixa Confiabilidade — Ação Recomendada
+            <AlertTriangle size={13} /> Oportunidades com Baixa Confiabilidade: Ação Recomendada
           </h3>
           <div className="space-y-2">
             {(redFlags as Array<{ id: number; title: string; frauenTrustScore: number | null; sector: string | null }>).map((opp) => (
@@ -775,10 +775,10 @@ function ComplianceTab() {
         <h3 className="text-sm font-semibold text-white mb-4">Legenda do Sistema de Compliance (IA)</h3>
         <div className="space-y-3">
           {[
-            { color: "bg-emerald-400", label: "Verde — Altamente documentado", desc: "Oportunidade com documentação completa e verificável. Score acima de 80%." },
-            { color: "bg-amber-400", label: "Amarelo — Boa documentação, precisa complementar", desc: "Score entre 50-79%. Documentação parcial, mas com boa base de confiança." },
-            { color: "bg-orange-400", label: "Laranja — Pouco documentado, necessita validação", desc: "Score entre 20-49%. Requer atenção e documentação adicional antes de avançar." },
-            { color: "bg-red-500", label: "Vermelho — Baixa confiabilidade", desc: "Score abaixo de 20%. Sinalizada pela IA como de alto risco. Revisão presidencial recomendada." },
+            { color: "bg-emerald-400", label: "Verde: altamente documentado", desc: "Oportunidade com documentação completa e verificável. Score acima de 80%." },
+            { color: "bg-amber-400", label: "Amarelo: boa documentação, precisa complementar", desc: "Score entre 50-79%. Documentação parcial, mas com boa base de confiança." },
+            { color: "bg-orange-400", label: "Laranja: pouco documentado, precisa de validação", desc: "Score entre 20-49%. Pede atenção e documentação adicional antes de avançar." },
+            { color: "bg-red-500", label: "Vermelho: baixa confiabilidade", desc: "Score abaixo de 20%. Sinalizada pela IA como de alto risco. Revisão presidencial recomendada." },
           ].map((item, i) => (
             <div key={i} className="flex items-start gap-3">
               <div className={`w-3 h-3 rounded-full ${item.color} mt-1 flex-shrink-0`} />
@@ -845,7 +845,7 @@ export default function PresidentPanel() {
               </div>
               <div>
                 <h1 className="text-sm font-bold text-white">Painel Ouro</h1>
-                <p className="text-xs text-amber-400/70">MMM — Backoffice Institucional</p>
+                <p className="text-xs text-amber-400/70">MMM · Backoffice Institucional</p>
               </div>
             </div>
           </div>

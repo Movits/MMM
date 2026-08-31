@@ -287,10 +287,10 @@ export default function AdminPanel() {
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {[
-                { label: "Total de Usuários", value: stats?.totalUsers ?? "—", icon: Users, color: "text-blue-400", bg: "bg-blue-900/20" },
-                { label: "Sessões Ativas", value: stats?.activeSessions ?? "—", icon: Wifi, color: "text-green-400", bg: "bg-green-900/20" },
-                { label: "Alertas Pendentes", value: stats?.unresolvedSecurityEvents ?? "—", icon: AlertTriangle, color: "text-orange-400", bg: "bg-orange-900/20" },
-                { label: "Logs Hoje", value: stats?.todayAuditLogs ?? "—", icon: FileText, color: "text-purple-400", bg: "bg-purple-900/20" },
+                { label: "Total de Usuários", value: stats?.totalUsers ?? "-", icon: Users, color: "text-blue-400", bg: "bg-blue-900/20" },
+                { label: "Sessões Ativas", value: stats?.activeSessions ?? "-", icon: Wifi, color: "text-green-400", bg: "bg-green-900/20" },
+                { label: "Alertas Pendentes", value: stats?.unresolvedSecurityEvents ?? "-", icon: AlertTriangle, color: "text-orange-400", bg: "bg-orange-900/20" },
+                { label: "Logs Hoje", value: stats?.todayAuditLogs ?? "-", icon: FileText, color: "text-purple-400", bg: "bg-purple-900/20" },
               ].map((stat, idx) => (
                 <div key={idx} className={`bg-[#0A1F3F] border border-[#D4AF37]/20 rounded-xl p-5 relative overflow-hidden`}>
                   <div className={`absolute inset-0 ${stat.bg} opacity-30`}></div>
@@ -394,14 +394,14 @@ export default function AdminPanel() {
                       className="w-full flex items-center gap-3 px-4 py-3 bg-orange-900/20 border border-orange-700/50 text-orange-400 rounded-lg hover:bg-orange-900/40 transition-colors text-sm"
                     >
                       <Wifi className="w-4 h-4" />
-                      Gerenciar Sessões Ativas ({stats?.activeSessions ?? "—"})
+                      Gerenciar Sessões Ativas ({stats?.activeSessions ?? "-"})
                     </button>
                     <button
                       onClick={() => setActiveTab("security")}
                       className="w-full flex items-center gap-3 px-4 py-3 bg-red-900/20 border border-red-700/50 text-red-400 rounded-lg hover:bg-red-900/40 transition-colors text-sm"
                     >
                       <AlertTriangle className="w-4 h-4" />
-                      Ver Alertas Pendentes ({stats?.unresolvedSecurityEvents ?? "—"})
+                      Ver Alertas Pendentes ({stats?.unresolvedSecurityEvents ?? "-"})
                     </button>
                   </div>
                 </div>
@@ -500,7 +500,7 @@ export default function AdminPanel() {
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-1">
                               <Globe className="w-3 h-3 text-gray-500" />
-                              <span className="font-mono text-xs text-gray-400">{session.ipAddress || "—"}</span>
+                              <span className="font-mono text-xs text-gray-400">{session.ipAddress || "-"}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -513,13 +513,13 @@ export default function AdminPanel() {
                             <div className="flex items-center gap-1">
                               <Clock className="w-3 h-3 text-gray-500" />
                               <span className="text-xs text-gray-400">
-                                {session.lastActivityAt ? new Date(session.lastActivityAt as string | Date).toLocaleString("pt-BR") : "—"}
+                                {session.lastActivityAt ? new Date(session.lastActivityAt as string | Date).toLocaleString("pt-BR") : "-"}
                               </span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
                             <span className={`text-xs ${isExpiringSoon ? "text-orange-400" : "text-gray-400"}`}>
-                              {expiresAt?.toLocaleString("pt-BR") ?? "—"}
+                              {expiresAt?.toLocaleString("pt-BR") ?? "-"}
                             </span>
                           </td>
                           <td className="px-6 py-4">
@@ -587,8 +587,8 @@ export default function AdminPanel() {
                       <tr key={u.id} className="border-b border-[#D4AF37]/10 hover:bg-[#D4AF37]/5 transition-colors">
                         <td className="px-6 py-4">
                           <div>
-                            <div className="font-medium text-white">{u.name || "—"}</div>
-                            <div className="text-xs text-gray-400">{u.email || "—"}</div>
+                            <div className="font-medium text-white">{u.name || "-"}</div>
+                            <div className="text-xs text-gray-400">{u.email || "-"}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -607,11 +607,11 @@ export default function AdminPanel() {
                               }}
                               className={`text-xs px-2 py-1 rounded border bg-[#0A1F3F] cursor-pointer ${getRoleBadge(u.role)}`}
                             >
-                              <option className="bg-white text-[#2D3E50]" value="bronze">Bronze — Recém-chegada</option>
-                              <option className="bg-white text-[#2D3E50]" value="silver">Prata — Membro</option>
-                              <option className="bg-white text-[#2D3E50]" value="gold">Ouro — Reconhecimento Institucional</option>
-                              <option className="bg-white text-[#2D3E50]" value="admin">Admin — Suporte Técnico</option>
-                              <option className="bg-white text-[#2D3E50]" value="president">Ouro — Governança</option>
+                              <option className="bg-white text-[#2D3E50]" value="bronze">Bronze (recém-chegada)</option>
+                              <option className="bg-white text-[#2D3E50]" value="silver">Prata (membro)</option>
+                              <option className="bg-white text-[#2D3E50]" value="gold">Ouro (reconhecimento institucional)</option>
+                              <option className="bg-white text-[#2D3E50]" value="admin">Admin (suporte técnico)</option>
+                              <option className="bg-white text-[#2D3E50]" value="president">Ouro (governança)</option>
                             </select>
                           </div>
                         </td>
@@ -737,13 +737,13 @@ export default function AdminPanel() {
                           <span className="font-mono text-xs text-green-400">{log.action}</span>
                         </td>
                         <td className="px-6 py-3 text-sm text-gray-300">{log.userName || `ID:${log.userId}` || "Sistema"}</td>
-                        <td className="px-6 py-3 text-xs text-gray-400">{log.resource || "—"}</td>
+                        <td className="px-6 py-3 text-xs text-gray-400">{log.resource || "-"}</td>
                         <td className="px-6 py-3">
                           <span className={`text-xs px-2 py-0.5 rounded ${getRiskColor(log.riskLevel)}`}>
                             {log.riskLevel}
                           </span>
                         </td>
-                        <td className="px-6 py-3 text-xs font-mono text-gray-400">{log.ipAddress || "—"}</td>
+                        <td className="px-6 py-3 text-xs font-mono text-gray-400">{log.ipAddress || "-"}</td>
                         <td className="px-6 py-3 text-xs text-gray-400">
                           {new Date(log.createdAt).toLocaleString("pt-BR")}
                         </td>
@@ -804,7 +804,7 @@ export default function AdminPanel() {
                         </div>
                         <div className="text-xs text-gray-400 mt-0.5">
                           {event.userName || `Usuário ID: ${event.userId}` || "Desconhecido"} •
-                          IP: {event.ipAddress || "—"} •
+                          IP: {event.ipAddress || "-"} •
                           {new Date(event.createdAt).toLocaleString("pt-BR")}
                         </div>
                         {(event as any).details && (
@@ -849,7 +849,7 @@ export default function AdminPanel() {
           </div>
         )}
         {/* ====================================================
-            OPORTUNIDADES — MODERAÇÃO
+            OPORTUNIDADES · MODERAÇÃO
         ==================================================== */}
         {activeTab === "opportunities" && (
           <div>

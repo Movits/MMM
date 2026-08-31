@@ -257,7 +257,7 @@ export default function SIVCVerification() {
             </div>
             <h1 className="text-3xl font-black mb-2">
               <span className="text-white">SIVC</span>
-              <span className="text-amber-500"> — Verificação de Identidade</span>
+              <span className="text-amber-500">: Verificação de Identidade</span>
             </h1>
             <p className="text-zinc-400 text-sm max-w-md mx-auto">
               Sistema Inteligente de Verificação e Classificação. Comprove sua identidade e desbloqueie recursos exclusivos do ecossistema MMM.

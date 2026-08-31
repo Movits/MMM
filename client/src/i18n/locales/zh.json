@@ -14,7 +14,7 @@
     "headline2": "成长。",
     "headline3": "征服。",
     "headline4": "您的未来从这里开始。",
-    "subtitle": "告诉我们您是谁、您在寻找什么以及您能提供什么。我们的人工智能深度分析您的档案，将您与高度真实兼容性的领导者和机遇相连接——远远超越简单的关键词匹配。",
+    "subtitle": "告诉我们您是谁、您在寻找什么以及您能提供什么。我们的人工智能深度分析您的档案，将您与高度真实兼容性的领导者和机遇相连接::远远超越简单的关键词匹配。",
     "cta": "创建我的档案 →",
     "ctaSecondary": "了解更多"
   },
@@ -276,8 +276,8 @@
       "mba": "MBA"
     },
     "errorSave": "无法保存您的个人资料。",
-    "hintBio": "请真实填写 — AI 用它来理解您的本质",
-    "hintGoal": "请具体填写 — 这帮助 AI 找到当前的联系",
+    "hintBio": "请真实填写: AI 用它来理解您的本质",
+    "hintGoal": "请具体填写: 这帮助 AI 找到当前的联系",
     "successMsg": "🎉 档案创建成功！正在跳转到您的仪表板...",
     "errorMsg": "无法保存您的档案。",
     "maxValues": "最多选择4个价值观",
@@ -299,10 +299,10 @@
       "selectPlaceholder": "请选择...",
       "age": "您的年龄",
       "agePlaceholder": "例如：32",
-      "ageHint": "可选 — 有助于找到更匹配的联系",
+      "ageHint": "可选: 有助于找到更匹配的联系",
       "bio": "用一句话描述您自己？",
       "bioPlaceholder": "例如：连续创业者，在金融科技领域有10年经验...",
-      "bioHint": "真实表达 — AI用此了解您的本质",
+      "bioHint": "真实表达: AI用此了解您的本质",
       "primarySpecialty": "您的主要专业领域有哪些？*",
       "specialtySelectionCount": "（已选择 {{count}}）",
       "specialtyLimit": "您最多可以选择 3 个专业领域。",
@@ -323,10 +323,10 @@
       "selectAll": "（选择所有适用项）",
       "shortTermGoal": "短期目标（未来12个月）",
       "shortTermGoalPlaceholder": "例如：推出我的B2B SaaS产品...",
-      "shortTermGoalHint": "具体说明 — 这帮助AI找到当前的联系",
+      "shortTermGoalHint": "具体说明: 这帮助AI找到当前的联系",
       "longTermGoal": "长期目标（3–5年）",
       "longTermGoalPlaceholder": "例如：建立一家有社会影响力的科技公司...",
-      "longTermGoalHint": "未来愿景 — 将您与轨迹一致的人联系起来",
+      "longTermGoalHint": "未来愿景: 将您与轨迹一致的人联系起来",
       "currentResources": "您目前拥有什么？",
       "currentResourcesPlaceholder": "请说明您的资源、资产、经验或可用人脉",
       "currentResourcesHint": "例如：团队、公司、资产、知识或联系人。",
@@ -338,7 +338,7 @@
       "availableForTravel": "可以出差",
       "availableForTravelDesc": "面对面会议",
       "incomeRange": "月收入范围 *",
-      "incomePrivacy": "加密数据 — 绝不公开显示",
+      "incomePrivacy": "加密数据: 绝不公开显示",
       "investmentCapacity": "可用投资能力",
       "lookingForInvestment": "我在为我的业务寻找投资",
       "lookingForInvestmentDesc": "将您与平台上的活跃投资者联系起来",
@@ -551,7 +551,7 @@
   "aiEngine": {
     "label": "AI引擎",
     "title": "真正有意义的连接",
-    "desc": "我们的AI分析您个人资料的5个维度——专业、目标、收入、位置和价值观——并为每对用户生成0到100的兼容性评分。您还会收到个性化洞察，解释为什么这个连接对您有意义。",
+    "desc": "我们的AI分析您个人资料的5个维度::专业、目标、收入、位置和价值观::并为每对用户生成0到100的兼容性评分。您还会收到个性化洞察，解释为什么这个连接对您有意义。",
     "variables": "每对女性分析超过50个变量",
     "dim1": "您的主要专业",
     "dim2": "您正在寻找什么",
@@ -575,7 +575,7 @@
     "silver": {
       "title": "银牌会员",
       "desc": "所有在平台注册的女性都以银牌会员身份加入。完全访问匹配系统、公开机会以及与网络中其他女性的连接。",
-      "access": "通过注册访问——无费用，无筛选"
+      "access": "通过注册访问::无费用，无筛选"
     },
     "gold": {
       "badge": "认可",
@@ -591,7 +591,7 @@
     "bronze": {
       "title": "铜牌会员",
       "desc": "平台新成员。可访问公开机会、基础匹配和MMM社区。这是在网络中成长的起点。",
-      "access": "通过注册获得访问权限 — 所有会员的初始级别"
+      "access": "通过注册获得访问权限: 所有会员的初始级别"
     }
   },
   "profile": {

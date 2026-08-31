@@ -51,12 +51,12 @@ export default function Connections() {
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-700/20 border border-amber-500/30 flex items-center justify-center mx-auto mb-6">
             <Lock className="w-10 h-10 text-amber-400" />
           </div>
-          <h2 className="text-2xl font-bold text-amber-400 mb-3">Acesso Restrito — Status Ouro</h2>
+          <h2 className="text-2xl font-bold text-amber-400 mb-3">Acesso Restrito ao Status Ouro</h2>
           <p className="text-gray-400 mb-6 leading-relaxed">
-            As Conexões Estratégicas são exclusivas para membras com Status Ouro — um reconhecimento institucional concedido por mérito pelas membras Ouro da plataforma.
+            As Conexões Estratégicas são exclusivas para membras com Status Ouro, um reconhecimento institucional concedido por mérito pelas membras Ouro da plataforma.
           </p>
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 text-left">
-            <p className="text-amber-300 text-sm font-medium mb-2">O que você terá acesso:</p>
+            <p className="text-amber-300 text-sm font-medium mb-2">O que você passa a acessar:</p>
             <ul className="text-gray-400 text-sm space-y-1">
               <li>• Mensagens diretas com outras líderes</li>
               <li>• Grupos estratégicos por setor e país</li>
@@ -95,7 +95,7 @@ export default function Connections() {
                 <Crown className="w-5 h-5 text-amber-400" />
                 Conexões Estratégicas
               </h1>
-              <p className="text-xs text-amber-400">Status Ouro — Acesso Exclusivo</p>
+              <p className="text-xs text-amber-400">Acesso exclusivo do Status Ouro</p>
             </div>
           </div>
           <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">

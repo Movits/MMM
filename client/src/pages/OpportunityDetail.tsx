@@ -376,9 +376,9 @@ export default function OpportunityDetail() {
               <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider">Informações</h3>
               {[
                 { label: "Tipo", value: TYPE_LABELS[opp.type] ?? opp.type },
-                { label: "Setor", value: opp.sector ?? "—" },
-                { label: "País", value: opp.country ?? "—" },
-                { label: "Região", value: opp.region ?? "—" },
+                { label: "Setor", value: opp.sector ?? "-" },
+                { label: "País", value: opp.country ?? "-" },
+                { label: "Região", value: opp.region ?? "-" },
                 { label: "Status", value: opp.status === "active" ? "✅ Ativa" : opp.status === "pending" ? "⏳ Pendente" : opp.status },
               ].map((item, i) => (
                 <div key={i} className="flex items-center justify-between text-xs">
@@ -401,7 +401,7 @@ export default function OpportunityDetail() {
               </div>
               <div>
                 <h2 className="text-white font-bold text-lg">Termo de Confidencialidade</h2>
-                <p className="text-white/40 text-xs">NDA — Aceite Digital Obrigatório</p>
+                <p className="text-white/40 text-xs">NDA com aceite digital obrigatório</p>
               </div>
             </div>
 

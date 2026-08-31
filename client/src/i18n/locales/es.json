@@ -14,7 +14,7 @@
     "headline2": "extraordinarias",
     "headline3": "y potencia tu red",
     "headline4": "profesional",
-    "subtitle": "Díganos quién es usted, qué busca y qué tiene para ofrecer. Nuestra inteligencia artificial analiza su perfil en profundidad para conectarla con líderes y oportunidades de alta compatibilidad real — yendo mucho más allá de simples palabras clave.",
+    "subtitle": "Díganos quién es usted, qué busca y qué tiene para ofrecer. Nuestra inteligencia artificial analiza su perfil en profundidad para conectarla con líderes y oportunidades de alta compatibilidad real: yendo mucho más allá de simples palabras clave.",
     "cta": "Crear mi perfil →",
     "ctaSecondary": "Ver cómo funciona"
   },
@@ -276,8 +276,8 @@
       "mba": "MBA"
     },
     "errorSave": "No se pudo guardar tu perfil.",
-    "hintBio": "Sé auténtica — la IA usa esto para entender tu esencia",
-    "hintGoal": "Sé específica — esto ayuda a la IA a encontrar conexiones para ahora",
+    "hintBio": "Sé auténtica: la IA usa esto para entender tu esencia",
+    "hintGoal": "Sé específica: esto ayuda a la IA a encontrar conexiones para ahora",
     "successMsg": "🎉 ¡Perfil creado! Redirigiendo a tu panel...",
     "errorMsg": "No se pudo guardar tu perfil.",
     "maxValues": "Máximo 4 valores seleccionados",
@@ -299,10 +299,10 @@
       "selectPlaceholder": "Seleccionar...",
       "age": "Tu edad",
       "agePlaceholder": "Ej: 32",
-      "ageHint": "Opcional — ayuda a encontrar conexiones más alineadas",
+      "ageHint": "Opcional: ayuda a encontrar conexiones más alineadas",
       "bio": "¿Quién eres en una frase?",
       "bioPlaceholder": "Ej: Emprendedora serial con 10 años en fintech, buscando mi próximo proyecto de impacto...",
-      "bioHint": "Sé auténtica — la IA usa esto para entender tu esencia",
+      "bioHint": "Sé auténtica: la IA usa esto para entender tu esencia",
       "primarySpecialty": "¿Cuáles son tus principales áreas de especialidad? *",
       "specialtySelectionCount": "({{count}} seleccionadas)",
       "specialtyLimit": "Puedes elegir hasta 3 áreas de especialidad.",
@@ -323,10 +323,10 @@
       "selectAll": "(selecciona todo lo que aplique)",
       "shortTermGoal": "Objetivo a corto plazo (próximos 12 meses)",
       "shortTermGoalPlaceholder": "Ej: Lanzar mi SaaS B2B y alcanzar los primeros $50k MRR...",
-      "shortTermGoalHint": "Sé específica — esto ayuda a la IA a encontrar conexiones para ahora",
+      "shortTermGoalHint": "Sé específica: esto ayuda a la IA a encontrar conexiones para ahora",
       "longTermGoal": "Objetivo a largo plazo (3–5 años)",
       "longTermGoalPlaceholder": "Ej: Construir una empresa de tecnología con impacto social...",
-      "longTermGoalHint": "Visión de futuro — te conecta con personas de trayectorias alineadas",
+      "longTermGoalHint": "Visión de futuro: te conecta con personas de trayectorias alineadas",
       "currentResources": "¿Qué tienes hoy?",
       "currentResourcesPlaceholder": "Describe tus recursos, activos, experiencias o red disponible",
       "currentResourcesHint": "Por ejemplo: equipo, empresa, activos, conocimiento o contactos.",
@@ -338,7 +338,7 @@
       "availableForTravel": "Disponible para viajes",
       "availableForTravelDesc": "Reuniones presenciales",
       "incomeRange": "Rango de ingresos mensuales *",
-      "incomePrivacy": "Dato cifrado — nunca se muestra públicamente",
+      "incomePrivacy": "Dato cifrado: nunca se muestra públicamente",
       "investmentCapacity": "Capacidad de inversión disponible",
       "lookingForInvestment": "Estoy buscando inversión para mi negocio",
       "lookingForInvestmentDesc": "Te conecta con inversoras activas en la plataforma",
@@ -551,7 +551,7 @@
   "aiEngine": {
     "label": "Motor de IA",
     "title": "Conexiones que tienen sentido real",
-    "desc": "Nuestra IA analiza 5 dimensiones de tu perfil — especialidad, objetivos, ingresos, ubicación y valores — y genera una puntuación de compatibilidad del 0 al 100 para cada par. También recibes un insight personalizado explicando por qué esa conexión tiene sentido para ti.",
+    "desc": "Nuestra IA analiza 5 dimensiones de tu perfil: especialidad, objetivos, ingresos, ubicación y valores: y genera una puntuación de compatibilidad del 0 al 100 para cada par. También recibes un insight personalizado explicando por qué esa conexión tiene sentido para ti.",
     "variables": "Más de 50 variables analizadas por par de mujeres",
     "dim1": "Tu especialidad principal",
     "dim2": "Lo que buscas",
@@ -575,7 +575,7 @@
     "silver": {
       "title": "Miembro Plata",
       "desc": "Todas las mujeres que se registran en la plataforma entran como Miembros Plata. Acceso completo al sistema de matching, oportunidades públicas y conexiones con otras mujeres de la red.",
-      "access": "Acceso por registro — sin costo, sin selección"
+      "access": "Acceso por registro: sin costo, sin selección"
     },
     "gold": {
       "badge": "Reconocimiento",
@@ -591,7 +591,7 @@
     "bronze": {
       "title": "Miembro Bronce",
       "desc": "Recién llegadas a la plataforma. Acceso a oportunidades públicas, matching básico y la comunidad MMM. El punto de partida para crecer en la red.",
-      "access": "Acceso por registro — nivel inicial de todas las miembras"
+      "access": "Acceso por registro: nivel inicial de todas las miembras"
     }
   },
   "profile": {
