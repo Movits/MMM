@@ -1,4 +1,4 @@
-# MMMM (Mulheres que Movem o Mundo)
+# MMM (Mulheres que Movem o Mundo)
 
 CRM inteligente de networking: cada usuária mantém sua base privada de
 relacionamentos estratégicos, e a IA cruza **o que cada contato possui** com **o que
