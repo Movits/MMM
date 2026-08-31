@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { drizzle } from "drizzle-orm/mysql2";
+import { getTableConfig } from "drizzle-orm/mysql-core";
+import { consents } from "../drizzle/schema";
 
 process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
 
@@ -142,5 +144,27 @@ describe("Etapa 11 — as respostas de hasValidConsent", () => {
 
     await expect(hasValidConsent(1, "termo_smart_match")).rejects.toThrow(BancoIndisponivel);
     expect(consultas).toHaveLength(0);
+  });
+});
+
+describe("Etapa 11 — a unicidade que o código não consegue garantir sozinho", () => {
+  it("o schema declara o índice único do consentimento ativo", () => {
+    // Entre a conferência e o insert de `accept` cabe outra requisição: dois
+    // cliques simultâneos gravavam duas linhas. Só uma restrição do banco
+    // resolve corrida. Medido com 10 inserções concorrentes: 1 grava, 9 são
+    // recusadas pelo índice.
+    const unicos = getTableConfig(consents).indexes.filter(i => i.config.unique).map(i => i.config.name);
+    expect(unicos).toContain("consent_active_unique");
+  });
+
+  it("a chave da unicidade some quando o consentimento é revogado", () => {
+    // É o que preserva revogar-e-aceitar-de-novo. Um UNIQUE simples sobre
+    // (userId, documentVersionId) proibiria esse fluxo, que o termo promete.
+    const coluna = getTableConfig(consents).columns.find(c => c.name === "activeKey");
+    expect(coluna).toBeDefined();
+    const expressao = JSON.stringify(coluna?.generated?.as);
+    expect(expressao).toContain("revokedAt");
+    expect(expressao).toContain("IS NULL");
+    expect(expressao).toContain("documentVersionId");
   });
 });

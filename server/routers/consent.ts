@@ -86,6 +86,12 @@ export async function hasValidConsent(userId: number, type: DocumentType) {
   return Boolean(consent);
 }
 
+/** MySQL avisa a colisão do índice único assim; é o sinal de "já existe". */
+function ehDuplicidade(erro: unknown) {
+  const alvo = erro as { code?: string; errno?: number } | null;
+  return alvo?.code === "ER_DUP_ENTRY" || alvo?.errno === 1062;
+}
+
 export const consentRouter = router({
   /** Texto vigente do documento e a situação da usuária diante dele. */
   status: protectedProcedure
@@ -106,6 +112,7 @@ export const consentRouter = router({
           isNull(consents.revokedAt),
         ))
         .limit(1);
+
 
       return {
         document: {
@@ -131,17 +138,26 @@ export const consentRouter = router({
 
       const db = await exigirBanco();
 
-      // Aceitar de novo o que já está aceito não cria uma segunda linha.
+      // Aceitar de novo o que já está aceito não pode criar uma segunda linha.
+      // A verificação aqui poupa a ida ao banco no caso comum, mas quem GARANTE
+      // a unicidade é o índice `consent_active_unique`: entre esta consulta e o
+      // insert cabe outro clique, e dois cliques simultâneos passavam os dois.
       if (await hasValidConsent(ctx.user.id, input.type)) {
         return { success: true, documentVersionId: document.id };
       }
 
-      await db.insert(consents).values({
-        userId: ctx.user.id,
-        documentVersionId: document.id,
-        ipAddress: getRequestIp(ctx.req.headers["x-forwarded-for"], ctx.req.socket?.remoteAddress),
-        userAgent: ctx.req.headers["user-agent"] ?? null,
-      });
+      try {
+        await db.insert(consents).values({
+          userId: ctx.user.id,
+          documentVersionId: document.id,
+          ipAddress: getRequestIp(ctx.req.headers["x-forwarded-for"], ctx.req.socket?.remoteAddress),
+          userAgent: ctx.req.headers["user-agent"] ?? null,
+        });
+      } catch (erro) {
+        // A corrida perdida cai aqui: a outra requisição já gravou este mesmo
+        // consentimento. O resultado que a usuária pediu aconteceu.
+        if (!ehDuplicidade(erro)) throw erro;
+      }
 
       return { success: true, documentVersionId: document.id };
     }),

@@ -1091,9 +1091,20 @@ export const consents = mysqlTable("consents", {
   revokedAt:         timestamp("revokedAt"),
   ipAddress:         varchar("ipAddress", { length: 45 }),
   userAgent:         text("userAgent"),
+  // No máximo UM consentimento ativo por par (usuária, versão). Mesmo truque da
+  // coluna gerada usado acima: vale a chave enquanto não revogado e vira NULL
+  // depois, e NULLs não colidem em índice único.
+  //
+  // Um `UNIQUE (userId, documentVersionId)` simples seria errado: proibiria
+  // revogar e aceitar de novo, que é um fluxo legítimo e previsto no termo.
+  activeKey:         varchar("activeKey", { length: 80 }).generatedAlwaysAs(
+                       sql`(CASE WHEN \`revokedAt\` IS NULL THEN CONCAT(\`userId\`, ':', \`documentVersionId\`) ELSE NULL END)`,
+                       { mode: "virtual" },
+                     ),
 }, (table) => ({
   userIdx:     index("consent_user_idx").on(table.userId),
   documentIdx: index("consent_document_idx").on(table.documentVersionId),
+  activeUnique: uniqueIndex("consent_active_unique").on(table.activeKey),
 }));
 
 export type DocumentVersion = typeof documentVersions.$inferSelect;
