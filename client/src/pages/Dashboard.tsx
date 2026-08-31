@@ -251,8 +251,12 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
   const values = Array.isArray(match.values) ? match.values as string[] : [];
 
   // Combina seekingTypes + businessInterests, normaliza sinônimos, remove duplicatas
+  // Perfis novos guardam CHAVES (ex. "investor"); perfis antigos, o texto
+  // traduzido. Traduz a chave quando houver tradução e cai no valor cru.
+  const keyToLabel = (k: string) =>
+    t("onboarding.seeking." + k, { defaultValue: t("onboarding.sectors." + k, { defaultValue: k }) });
   const allInterests = Array.from(new Set(
-    [...seekingTypes, ...businessInterests].map(normalizeInterest)
+    [...seekingTypes, ...businessInterests].map(k => normalizeInterest(keyToLabel(k)))
   )).slice(0, 5);
 
   useEffect(() => {
