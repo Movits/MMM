@@ -13,7 +13,7 @@ import { trpc } from "@/lib/trpc";
  */
 export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
   const [reading, setReading] = useState(false);
-  const { data, isLoading } = trpc.consent.status.useQuery({ type: "termo_smart_match" });
+  const { data, isLoading, isError } = trpc.consent.status.useQuery({ type: "termo_smart_match" });
   const accept = trpc.consent.accept.useMutation({
     onSuccess: () => { toast.success("Autorização registrada."); onAccepted(); },
     onError: error => toast.error(error.message || "Não foi possível registrar a autorização."),
@@ -25,7 +25,22 @@ export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
     </div>;
   }
 
+  // Sem o texto na mão não se pede aceite. Quem clicaria estaria concordando
+  // com um documento que a tela nunca mostrou, e a linha gravada em `consents`
+  // — com IP, versão e user-agent — atestaria uma concordância que não houve.
+  // A página que hospeda este componente também trata o erro; a guarda fica
+  // aqui porque quem decide isso é quem exibe o botão.
   const texto = data?.document?.text ?? "";
+  if (isError || !texto) {
+    return (
+      <div className="mx-auto max-w-2xl rounded-3xl border border-white/15 px-6 py-16 text-center">
+        <p className="text-white/70">Não foi possível carregar o termo de autorização.</p>
+        <p className="mt-2 text-sm text-white/40">
+          Nada foi alterado. Tente abrir esta página de novo daqui a pouco.
+        </p>
+      </div>
+    );
+  }
 
   // Quem já autorizou uma versão anterior não está começando do zero: o texto é
   // que mudou. Sem dizer isso, a tela reaparece sem explicação e quem já tinha

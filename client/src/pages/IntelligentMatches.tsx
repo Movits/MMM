@@ -37,7 +37,7 @@ export default function IntelligentMatches() {
   const utils = trpc.useUtils();
   // Etapa 11: sem o termo aceito, o servidor recusa o cruzamento. A tela pergunta
   // antes de bater na porta fechada, para não mostrar erro onde cabe um convite.
-  const { data: consent, isLoading: loadingConsent } = trpc.consent.status.useQuery({ type: "termo_smart_match" });
+  const { data: consent, isLoading: loadingConsent, isError: consentFalhou } = trpc.consent.status.useQuery({ type: "termo_smart_match" });
   const authorized = consent?.accepted ?? false;
   const [verHistorico, setVerHistorico] = useState(false);
   const { data: historico = [] } = trpc.consent.history.useQuery(undefined, { enabled: authorized });
@@ -98,7 +98,23 @@ export default function IntelligentMatches() {
         <div><p className="text-xs font-semibold tracking-wide text-amber-300">REDE PRIVADA</p><h1 className="mt-1 text-3xl font-bold md:text-4xl">Matches Inteligentes</h1><p className="mt-2 max-w-2xl text-white/55">Encontre oportunidades de conexão entre os seus próprios contatos. Nada é compartilhado com outras usuárias.</p></div>
         {authorized && <button disabled={recalculate.isPending} onClick={() => recalculate.mutate()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f5a623] px-5 py-3 font-bold text-[#08121f] disabled:opacity-50"><RefreshCw size={18} className={recalculate.isPending ? "animate-spin" : ""}/> Atualizar matches</button>}
       </div>
-      {loadingConsent ? <p className="py-24 text-center text-white/45">Carregando…</p> : !authorized ? <SmartMatchConsent onAccepted={() => utils.consent.status.invalidate()}/> : <>
+      {/*
+        Falha ao carregar o status NÃO pode virar tela de aceite. Sem isto,
+        `authorized` caía para false e a página oferecia o botão de autorizar a
+        quem já tinha autorizado — sobre um termo em branco, porque o texto
+        também não carregou. O aceite gravava normalmente se a rede voltasse
+        antes do clique: prova de concordância com um texto que a usuária nunca
+        viu, que é o oposto do que a etapa 11 existe para produzir.
+      */}
+      {loadingConsent ? <p className="py-24 text-center text-white/45">Carregando…</p>
+      : consentFalhou ? <div className="rounded-3xl border border-white/15 px-6 py-16 text-center">
+          <p className="text-white/70">Não foi possível carregar o termo de autorização.</p>
+          <p className="mt-2 text-sm text-white/40">Sua autorização, se já existia, continua valendo. Tente de novo daqui a pouco.</p>
+          <button onClick={() => utils.consent.status.invalidate()} className="mt-5 rounded-xl border border-amber-300/50 px-5 py-2.5 text-sm font-semibold text-amber-200 hover:bg-amber-300/10">
+            Tentar de novo
+          </button>
+        </div>
+      : !authorized ? <SmartMatchConsent onAccepted={() => utils.consent.status.invalidate()}/> : <>
       <section className="mb-7 rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5"><div className="flex gap-3"><Lightbulb className="mt-0.5 shrink-0 text-amber-300" size={20}/><p className="text-sm leading-6 text-amber-100/80">Cadastre o que cada contato possui e o que procura. O MMM cruza tags exatas, categorias e significados semelhantes para sugerir a melhor conexão.</p></div></section>
       {/*
         O modo (possui / procura) decide o que o botão Adicionar faz, e modo
@@ -232,16 +248,25 @@ export default function IntelligentMatches() {
 
               {verHistorico && (
                 <ul className="mt-3 space-y-2">
-                  {historico.map(registro => (
+                  {historico.map(registro => {
+                    // Três situações, não duas. Uma autorização de versão
+                    // anterior nunca foi revogada — `revoke` só mexe na versão
+                    // vigente — mas também não autoriza nada: `hasValidConsent`
+                    // exige a versão vigente. Chamá-la de "ativa" dizia à
+                    // usuária que ela mantém autorizações vivas que não existem,
+                    // num registro que ela não tem como corrigir pela tela.
+                    const vigente = registro.version === consent?.document?.version;
+                    const situacao = registro.revokedAt ? "revogada" : vigente ? "ativa" : "substituída";
+                    const cor = situacao === "ativa" ? "text-emerald-300/70" : "text-white/35";
+                    return (
                     <li key={registro.id} className="flex flex-wrap items-baseline gap-x-2 text-xs text-white/45">
-                      <span className={registro.revokedAt ? "text-white/35" : "text-emerald-300/70"}>
-                        {registro.revokedAt ? "revogada" : "ativa"}
-                      </span>
+                      <span className={cor}>{situacao}</span>
                       <span className="text-white/55">versão {registro.version}</span>
                       <span>aceita em {new Date(registro.grantedAt).toLocaleString()}</span>
                       {registro.revokedAt && <span>· revogada em {new Date(registro.revokedAt).toLocaleString()}</span>}
+                      {situacao === "substituída" && <span>· o termo mudou depois disso</span>}
                     </li>
-                  ))}
+                  );})}
                 </ul>
               )}
             </div>
