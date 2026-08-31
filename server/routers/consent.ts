@@ -18,12 +18,33 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 const documentTypeInput = z.enum(DOCUMENT_TYPES);
 
 /**
+ * Banco fora do ar. Existe como tipo próprio porque a diferença entre "não há
+ * documento publicado" e "não consegui perguntar ao banco" decide se o
+ * cruzamento libera ou barra — e as duas coisas eram `null` antes, o que fazia
+ * a queda do banco liberar todo mundo.
+ */
+export class BancoIndisponivel extends Error {
+  constructor() {
+    super("Banco de dados indisponível.");
+    this.name = "BancoIndisponivel";
+  }
+}
+
+async function exigirBanco() {
+  const db = await getDb();
+  if (!db) throw new BancoIndisponivel();
+  return db;
+}
+
+/**
  * Versão vigente de um documento, ou null se ainda não houver nenhuma
  * publicada — é o caso enquanto o texto jurídico não fica pronto.
+ *
+ * Banco indisponível NÃO devolve null: lança. Quem chama precisa poder
+ * distinguir as duas situações.
  */
 export async function getCurrentDocument(type: DocumentType) {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirBanco();
   const [document] = await db
     .select()
     .from(documentVersions)
@@ -38,15 +59,21 @@ export async function getCurrentDocument(type: DocumentType) {
  * tem efeito imediato, sem rotina de limpeza.
  *
  * Sem documento publicado não há o que consentir, e a resposta é `true` — do
- * contrário a etapa 11 desligaria o Smart Match de todo mundo antes de o
- * termo existir.
+ * contrário a etapa 11 desligaria o Smart Match de todo mundo antes de o termo
+ * existir. Essa é a ÚNICA porta que libera sem consentimento, e ela depende de
+ * uma consulta que respondeu. Se o banco não responder, a exceção sobe e o
+ * cruzamento não acontece: na dúvida, barra.
  */
 export async function hasValidConsent(userId: number, type: DocumentType) {
-  const document = await getCurrentDocument(type);
+  const db = await exigirBanco();
+
+  const [document] = await db
+    .select({ id: documentVersions.id })
+    .from(documentVersions)
+    .where(and(eq(documentVersions.type, type), eq(documentVersions.isCurrent, true)))
+    .limit(1);
   if (!document) return true;
 
-  const db = await getDb();
-  if (!db) return false;
   const [consent] = await db
     .select({ id: consents.id })
     .from(consents)
@@ -69,8 +96,7 @@ export const consentRouter = router({
         return { document: null, accepted: true, acceptedAt: null, pendingText: true };
       }
 
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirBanco();
       const [consent] = await db
         .select({ grantedAt: consents.grantedAt })
         .from(consents)
@@ -103,8 +129,7 @@ export const consentRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Não há versão vigente deste documento." });
       }
 
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirBanco();
 
       // Aceitar de novo o que já está aceito não cria uma segunda linha.
       if (await hasValidConsent(ctx.user.id, input.type)) {
@@ -128,8 +153,7 @@ export const consentRouter = router({
       const document = await getCurrentDocument(input.type);
       if (!document) return { success: true };
 
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirBanco();
       await db
         .update(consents)
         .set({ revokedAt: new Date() })
@@ -144,8 +168,7 @@ export const consentRouter = router({
 
   /** Histórico completo, inclusive o que foi revogado. */
   history: protectedProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
+    const db = await exigirBanco();
     return db
       .select({
         id: consents.id,
