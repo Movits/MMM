@@ -23,8 +23,10 @@
 //    proibiria revogar e aceitar de novo, que é fluxo legítimo e prometido no
 //    termo. A coluna gerada vira NULL quando revogado, e NULLs não colidem.
 //
-// `pnpm db:push` não funciona neste projeto (motivo em scripts/criar-banco.mjs),
-// por isso os ALTER são escritos à mão. Tudo é idempotente: rodar duas vezes não
+// Este script é anterior ao sistema de migração (baseline 0000_fundacao) e
+// existe para pôr bancos daquela época em dia ANTES de o migrar.mjs adotar o
+// baseline. Banco novo não precisa dele. Mudança futura de schema não passa
+// por aqui: é pnpm db:generate + pnpm db:migrate. Tudo é idempotente: rodar duas vezes não
 // quebra, e sem --aplicar o script só relata.
 //
 // Uso:
