@@ -975,6 +975,8 @@ export const contactAssets = mysqlTable("contact_assets", {
   tagSlug: varchar("tag_slug", { length: 160 }).notNull(),
   tagLabel: varchar("tag_label", { length: 200 }).notNull(),
   category: varchar("category", { length: 120 }),
+  // Nulo enquanto a linha não tiver sido associada ao vocabulário.
+  vocabKey: varchar("vocab_key", { length: 80 }),
   description: text("description"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
@@ -982,6 +984,7 @@ export const contactAssets = mysqlTable("contact_assets", {
   ownerContactIdx: index("contact_assets_owner_contact_idx").on(table.ownerId, table.contactId),
   ownerSlugIdx: index("contact_assets_owner_slug_idx").on(table.ownerId, table.tagSlug),
   ownerCategoryIdx: index("contact_assets_owner_category_idx").on(table.ownerId, table.category),
+  ownerVocabIdx: index("contact_assets_owner_vocab_idx").on(table.ownerId, table.vocabKey),
 }));
 
 export const contactNeeds = mysqlTable("contact_needs", {
@@ -991,6 +994,8 @@ export const contactNeeds = mysqlTable("contact_needs", {
   tagSlug: varchar("tag_slug", { length: 160 }).notNull(),
   tagLabel: varchar("tag_label", { length: 200 }).notNull(),
   category: varchar("category", { length: 120 }),
+  // Nulo enquanto a linha não tiver sido associada ao vocabulário.
+  vocabKey: varchar("vocab_key", { length: 80 }),
   description: text("description"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
@@ -998,6 +1003,7 @@ export const contactNeeds = mysqlTable("contact_needs", {
   ownerContactIdx: index("contact_needs_owner_contact_idx").on(table.ownerId, table.contactId),
   ownerSlugIdx: index("contact_needs_owner_slug_idx").on(table.ownerId, table.tagSlug),
   ownerCategoryIdx: index("contact_needs_owner_category_idx").on(table.ownerId, table.category),
+  ownerVocabIdx: index("contact_needs_owner_vocab_idx").on(table.ownerId, table.vocabKey),
 }));
 
 export const aiMatchSuggestions = mysqlTable("ai_match_suggestions", {
