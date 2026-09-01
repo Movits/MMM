@@ -29,6 +29,7 @@ pnpm vitest run server/match-service.test.ts   # um teste só
 pnpm build             # vite build + esbuild do servidor → dist/
 pnpm start             # roda o build de produção
 pnpm format            # prettier --write .
+node scripts/checar-producao.mjs   # exame de saúde da produção (pós-deploy)
 ```
 
 - **No Windows, use Git Bash**: `dev` e `start` definem `NODE_ENV` com sintaxe
