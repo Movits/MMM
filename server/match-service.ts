@@ -5,7 +5,7 @@ import { cosineSimilarity, normalizeVector } from "./memory-service";
 import { getDb } from "./db";
 import { sendEmail } from "./_core/email";
 import { embedWithGemini } from "./gemini";
-import { analisarTermo, saoConcorrentes } from "@shared/direcao-do-termo";
+import { analisarTermo, nucleoDoTermo, saoConcorrentes } from "@shared/direcao-do-termo";
 
 const SEMANTIC_THRESHOLD = 0.7;
 const SAVE_THRESHOLD = 50;
@@ -51,6 +51,14 @@ export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore 
   // vinho" e "importar vinho" são quase o mesmo texto e são o negócio; duas
   // pontas que querem exportar são concorrentes. A regra vem antes de tudo:
   // nenhum outro critério pode reapresentar quem foi barrado aqui.
+  //
+  // E ela exige verbo explícito NOS DOIS lados, de propósito: com uma ponta
+  // neutra não há evidência de conflito na palavra. "Café" possuído diante de
+  // "Exportar café" procurado não é concorrência — é quem tem o produto diante
+  // de quem precisa dele para exportar. Uma tentativa de barrar pela direção
+  // efetiva de um lado só zerava pares legítimos como "Terras raras" ×
+  // "Fornecimento de terras raras" (a lista de verbos tem substantivos de ação
+  // que, no campo de procura, nomeiam o serviço de que a pessoa precisa).
   if (saoConcorrentes(asset.label, need.label)) {
     return { score: 0, type: "semantic" as const, bloqueio: "concorrentes" as const };
   }
@@ -65,6 +73,13 @@ export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore 
   const objetoAsset = analisarTermo(asset.label).objeto;
   const objetoNeed = analisarTermo(need.label).objeto;
   if (objetoAsset && objetoAsset === objetoNeed) return { score: 100, type: "exact" as const };
+
+  // E o núcleo atravessa a cabeça transparente: "mina DE terras raras" e
+  // "fornecedor DE terras raras" falam ambos de terras raras — o exemplo de
+  // aceite da etapa 7, que sem isto pontuava 0 e não virava sugestão.
+  const nucleoAsset = nucleoDoTermo(asset.label);
+  const nucleoNeed = nucleoDoTermo(need.label);
+  if (nucleoAsset && nucleoAsset === nucleoNeed) return { score: 100, type: "exact" as const };
 
   const categoriaAsset = slugifyMatchTag(asset.category ?? "");
   const categoriaNeed = slugifyMatchTag(need.category ?? "");
@@ -135,7 +150,10 @@ export async function recalculatePrivateMatches(ownerId: string, ownerEmail?: st
     db.select().from(privateContacts).where(eq(privateContacts.ownerId, ownerId)),
     db.select().from(aiMatchSuggestions).where(eq(aiMatchSuggestions.ownerId, ownerId)),
   ]);
-  if (new Set(assets.map(asset => asset.contactId)).size === 0 || new Set(needs.map(need => need.contactId)).size === 0) return { created: 0, updated: 0, total: 0 };
+  // Sem ativos OU sem necessidades não nasce par nenhum — mas a rodada segue
+  // até o fim mesmo assim: a limpeza de órfãos lá embaixo é que apaga a
+  // sugestão cuja razão acabou de sumir. Um retorno antecipado aqui deixava a
+  // última remoção com uma sugestão fantasma que nenhum recálculo alcançava.
 
   const contactName = new Map(contacts.map(contact => [contact.id, contact.fullName]));
   const semantico: SemanticContext = { cache: new Map(), disponivel: true };

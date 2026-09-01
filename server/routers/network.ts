@@ -4,6 +4,8 @@ import {
   createPrivateContact, listPrivateContacts, getPrivateContactById,
   updatePrivateContact, deletePrivateContact,
 } from "../db";
+import { recalculatePrivateMatches } from "../match-service";
+import { hasValidConsent } from "./consent";
 
 // ─── Minha Rede de Relacionamentos (Base Particular de Contatos) ──────────────
 export const networkRouter = router({
@@ -80,6 +82,17 @@ export const networkRouter = router({
     .mutation(async ({ ctx, input }) => {
       const deleted = await deletePrivateContact(ctx.user.openId, input.id);
       if (!deleted) throw new Error("NOT_FOUND");
+      // O cruzamento roda sozinho também na saída de dados, não só na entrada:
+      // apagar contato muda o mapa de possui/procura, e as sugestões precisam
+      // refletir isso sem ninguém clicar em atualizar. Melhor esforço e sem
+      // e-mail — exclusão não é notícia de oportunidade nova.
+      try {
+        if (await hasValidConsent(ctx.user.id, "termo_smart_match")) {
+          await recalculatePrivateMatches(ctx.user.openId);
+        }
+      } catch (erro) {
+        console.warn("[Rede] recálculo adiado após exclusão:", erro instanceof Error ? erro.message : erro);
+      }
       return { success: true };
     }),
 });

@@ -4,6 +4,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
 import { getDb, createNotification } from "../db";
 import { opportunities, userProfiles } from "../../drizzle/schema";
+import { usersComConsentimento } from "./consent";
 
 // ============================================================
 // MOTOR DE IA DE MATCHMAKING SEMÂNTICO
@@ -115,7 +116,7 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
       const [opp] = await db.select().from(opportunities).where(eq(opportunities.id, opportunityId)).limit(1);
       if (!opp || opp.status !== "active") return { notified: 0 };
 
-      const profiles = await db
+      const todos = await db
         .select({
           userId: userProfiles.userId,
           whatIHave: userProfiles.whatIHave,
@@ -128,6 +129,15 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
         .from(userProfiles)
         .where(sql`${userProfiles.userId} != ${opp.publishedBy}`)
         .limit(200);
+
+      // Etapa 11: o alerta cruza "tenho/preciso" dos perfis com a oportunidade
+      // e manda tudo ao LLM — isso é cruzamento, e dado de quem não aceitou o
+      // termo não entra nem no prompt.
+      const comTermo = await usersComConsentimento(todos.map(perfil => perfil.userId), "termo_smart_match");
+      const profiles = todos.filter(perfil => comTermo.has(perfil.userId));
+      // Ninguém autorizado = ninguém para alertar. Chamar o LLM com a lista
+      // vazia seria um no-op garantido queimando uma chamada da cota do dia.
+      if (!profiles.length) return { notified: 0 };
 
       const oppContext = `Título: "${opp.title}" | Setor: ${opp.sector || "N/A"} | Tipo: ${opp.type} | Tags: ${JSON.stringify(opp.tags || [])} | Descrição: "${(opp.description || "").substring(0, 300)}"`;
       // "tenho" entra junto com "preciso": uma oportunidade que BUSCA algo casa

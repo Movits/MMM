@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { consents, documentVersions } from "../../drizzle/schema";
@@ -84,6 +84,32 @@ export async function hasValidConsent(userId: number, type: DocumentType) {
     ))
     .limit(1);
   return Boolean(consent);
+}
+
+/**
+ * A mesma pergunta de hasValidConsent, para uma lista inteira: quais destas
+ * usuárias têm o termo vigente aceito? Sem documento publicado, todas — é a
+ * mesma e única porta que libera sem consentimento. Uma consulta só, porque
+ * quem chama está filtrando dezenas de candidatas de uma vez.
+ */
+export async function usersComConsentimento(userIds: number[], type: DocumentType): Promise<Set<number>> {
+  if (!userIds.length) return new Set();
+  const db = await exigirBanco();
+  const [document] = await db
+    .select({ id: documentVersions.id })
+    .from(documentVersions)
+    .where(and(eq(documentVersions.type, type), eq(documentVersions.isCurrent, true)))
+    .limit(1);
+  if (!document) return new Set(userIds);
+  const linhas = await db
+    .select({ userId: consents.userId })
+    .from(consents)
+    .where(and(
+      eq(consents.documentVersionId, document.id),
+      inArray(consents.userId, userIds),
+      isNull(consents.revokedAt),
+    ));
+  return new Set(linhas.map(linha => linha.userId));
 }
 
 /** MySQL avisa a colisão do índice único assim; é o sinal de "já existe". */

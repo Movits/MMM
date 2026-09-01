@@ -57,6 +57,19 @@ export default function IntelligentMatches() {
   });
   const createAsset = trpc.intelligentMatches.addAsset.useMutation({ onSuccess: refresh });
   const createNeed = trpc.intelligentMatches.addNeed.useMutation({ onSuccess: refresh });
+  const aposRemover = () => {
+    utils.intelligentMatches.list.invalidate();
+    utils.intelligentMatches.contacts.invalidate();
+    toast.success("Item removido e sugestões atualizadas.");
+  };
+  const removeAsset = trpc.intelligentMatches.removeAsset.useMutation({
+    onSuccess: aposRemover,
+    onError: error => toast.error(error.message || "Não foi possível remover o item."),
+  });
+  const removeNeed = trpc.intelligentMatches.removeNeed.useMutation({
+    onSuccess: aposRemover,
+    onError: error => toast.error(error.message || "Não foi possível remover o item."),
+  });
   const updateStatus = trpc.intelligentMatches.updateStatus.useMutation({ onSuccess: () => utils.intelligentMatches.list.invalidate() });
 
   function refresh() {
@@ -202,9 +215,19 @@ export default function IntelligentMatches() {
                 {jaRegistrados.map(item => (
                   <li
                     key={item.id}
-                    className={`rounded-full border px-3 py-1 text-xs ${kind === "asset" ? "border-emerald-400/30 text-emerald-200/80" : "border-sky-300/30 text-sky-200/80"}`}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${kind === "asset" ? "border-emerald-400/30 text-emerald-200/80" : "border-sky-300/30 text-sky-200/80"}`}
                   >
                     {item.label}{item.category ? <span className="text-white/35"> · {item.category}</span> : null}
+                    <button
+                      type="button"
+                      aria-label={`Remover ${item.label}`}
+                      title="Remover este item e atualizar as sugestões"
+                      disabled={removeAsset.isPending || removeNeed.isPending}
+                      onClick={() => (kind === "asset" ? removeAsset.mutate({ id: item.id }) : removeNeed.mutate({ id: item.id }))}
+                      className="rounded-full p-0.5 text-white/40 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+                    >
+                      <X size={12}/>
+                    </button>
                   </li>
                 ))}
               </ul>
