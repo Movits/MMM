@@ -276,8 +276,8 @@
       "mba": "MBA"
     },
     "errorSave": "プロフィールを保存できませんでした。",
-    "hintBio": "正直に書いてください — AIはこれを使ってあなたの本質を理解します",
-    "hintGoal": "具体的に書いてください — これによりAIが今すぐ繋がりを見つけます",
+    "hintBio": "正直に書いてください: AIはこれを使ってあなたの本質を理解します",
+    "hintGoal": "具体的に書いてください: これによりAIが今すぐ繋がりを見つけます",
     "successMsg": "🎉 プロフィール作成完了！ダッシュボードに移動します...",
     "errorMsg": "プロフィールを保存できませんでした。",
     "maxValues": "最大4つの価値観を選択",
@@ -299,10 +299,10 @@
       "selectPlaceholder": "選択...",
       "age": "あなたの年齢",
       "agePlaceholder": "例：32",
-      "ageHint": "任意 — より一致したつながりを見つけるのに役立ちます",
+      "ageHint": "任意: より一致したつながりを見つけるのに役立ちます",
       "bio": "一文であなたは誰ですか？",
       "bioPlaceholder": "例：フィンテックで10年の経験を持つ連続起業家...",
-      "bioHint": "本物であってください — AIはこれを使ってあなたの本質を理解します",
+      "bioHint": "本物であってください: AIはこれを使ってあなたの本質を理解します",
       "primarySpecialty": "主な専門分野は何ですか？*",
       "specialtySelectionCount": "（{{count}}件を選択）",
       "specialtyLimit": "専門分野は最大3つまで選択できます。",
@@ -323,10 +323,10 @@
       "selectAll": "（該当するものすべて選択）",
       "shortTermGoal": "短期目標（次の12ヶ月）",
       "shortTermGoalPlaceholder": "例：B2B SaaSを立ち上げる...",
-      "shortTermGoalHint": "具体的に — AIが今すぐのつながりを見つけるのに役立ちます",
+      "shortTermGoalHint": "具体的に: AIが今すぐのつながりを見つけるのに役立ちます",
       "longTermGoal": "長期目標（3〜5年）",
       "longTermGoalPlaceholder": "例：社会的インパクトのあるテック企業を構築する...",
-      "longTermGoalHint": "将来のビジョン — 軌跡が一致する人々とつながります",
+      "longTermGoalHint": "将来のビジョン: 軌跡が一致する人々とつながります",
       "currentResources": "今持っているものは何ですか？",
       "currentResourcesPlaceholder": "リソース、資産、経験、または利用できるネットワークを入力してください",
       "currentResourcesHint": "例：チーム、会社、資産、知識、連絡先。",
@@ -338,13 +338,15 @@
       "availableForTravel": "出張可能",
       "availableForTravelDesc": "対面ミーティング",
       "incomeRange": "月収の範囲 *",
-      "incomePrivacy": "暗号化されたデータ — 公開されることはありません",
+      "incomePrivacy": "暗号化されたデータ: 公開されることはありません",
       "investmentCapacity": "利用可能な投資能力",
       "lookingForInvestment": "ビジネスへの投資を探しています",
       "lookingForInvestmentDesc": "プラットフォームのアクティブな投資家とつながります",
       "workStyle": "希望する働き方 *",
       "values": "あなたの核心的価値観",
-      "languages": "話せる言語"
+      "languages": "話せる言語",
+      "customSector": "Seu setor não está na lista?",
+      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
     },
     "companySize": {
       "micro": "マイクロ (1–9)",
@@ -430,7 +432,7 @@
     "connections": "つながり",
     "profile": "マイプロフィール",
     "noMatches": "次の大きなつながりの準備はできていますか？",
-    "noMatchesDesc": "AIがあなたのプロフィールを5つの次元で分析し、最も高い本当の相性を持つ女性を見つけます。",
+    "noMatchesDesc": "AIがあなたのプロフィールを6つの次元で分析し、最も高い本当の相性を持つ女性を見つけます。",
     "compatibility": "平均スコア",
     "connect": "興味を示す",
     "dismiss": "マッチを非表示にしました。いつでも新しいマッチを生成できます。",
@@ -442,7 +444,7 @@
     "connectionAccepted": "🤝 つながりが承認されました！あなたたちは今つながっています。",
     "connectionDeclined": "リクエストが拒否されました。",
     "newMatches": "✨ {{count}}件の新しいマッチが見つかりました！",
-    "analysisDone": "分析完了。結果を改善するためにプロフィールを完成させてください。",
+    "analysisDone": "分析完了:今回は新しいマッチはありません。新しいメンバーやプロフィール更新が新しいつながりを生みます。",
     "distribution": "相性の分布",
     "distributionDesc": "マッチがスコア範囲別にどのように分布しているか",
     "analyzing": "分析中...",
@@ -551,7 +553,7 @@
   "aiEngine": {
     "label": "AIエンジン",
     "title": "本当に意味のあるつながり",
-    "desc": "私たちのAIはあなたのプロフィールの5つの次元を分析します — 専門性、目標、収入、場所、価値観 — そして各ペアに対して0から100の互換性スコアを生成します。そのつながりがあなたにとってなぜ意味があるのかを説明するパーソナライズされた洞察も受け取れます。",
+    "desc": "私たちのAIはあなたのプロフィールの5つの次元を分析します: 専門性、目標、収入、場所、価値観: そして各ペアに対して0から100の互換性スコアを生成します。そのつながりがあなたにとってなぜ意味があるのかを説明するパーソナライズされた洞察も受け取れます。",
     "variables": "女性のペアごとに50以上の変数を分析",
     "dim1": "あなたの主な専門分野",
     "dim2": "あなたが探しているもの",
@@ -575,7 +577,7 @@
     "silver": {
       "title": "シルバーメンバー",
       "desc": "プラットフォームに登録するすべての女性はシルバーメンバーとして参加します。マッチングシステム、公開機会、ネットワーク内の他の女性とのつながりへの完全なアクセス。",
-      "access": "登録によるアクセス — コストなし、選考なし"
+      "access": "登録によるアクセス: コストなし、選考なし"
     },
     "gold": {
       "badge": "認定",
@@ -591,7 +593,7 @@
     "bronze": {
       "title": "ブロンズメンバー",
       "desc": "プラットフォームへの新規参加者。公開機会、基本的なマッチング、MMMコミュニティへのアクセス。ネットワークで成長するための出発点。",
-      "access": "登録によるアクセス — すべてのメンバーの初期レベル"
+      "access": "登録によるアクセス: すべてのメンバーの初期レベル"
     }
   },
   "profile": {

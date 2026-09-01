@@ -6,6 +6,7 @@ import { presidentProcedure } from "./_procedures";
 import { getDb, grantGoldAccess, revokeGoldAccess, createNotification, listUsers } from "../db";
 import { createAuditLog } from "../security";
 import { users, goldAccessGrants, opportunities } from "../../drizzle/schema";
+import { notifyHighCompatibilityForOpportunity } from "./matching";
 
 // ============================================================
 // PAINEL PRESIDENTES — GESTÃO DE ACESSO OURO
@@ -151,6 +152,11 @@ export const presidentRouter = router({
               body: `Olá, ${firstName}. Analisamos a sua proposta e ela se encaixa muito bem no que buscamos.`,
               actionUrl: `/opportunities/${input.opportunityId}`,
             });
+            // Só agora a oportunidade está pública — é o momento certo de
+            // avisar as usuárias com alta compatibilidade.
+            notifyHighCompatibilityForOpportunity(input.opportunityId).catch(e =>
+              console.error("[President] Falha nos alertas de compatibilidade:", e)
+            );
           } else if (input.status === "rejected") {
             await createNotification({
               userId: publisherId,

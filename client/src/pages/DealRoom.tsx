@@ -117,10 +117,10 @@ export default function DealRoom() {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="text-center">
-          <p className="text-white/40 mb-4">Deal Room não encontrado ou acesso negado.</p>
+          <p className="text-white/40 mb-4">Não encontramos esta sala de negociação. Ela pode ter sido encerrada, ou você não faz parte dela.</p>
           <Link href="/dashboard">
             <Button variant="outline" className="border-white/20 text-white/60 bg-transparent">
-              <ArrowLeft size={14} className="mr-1.5" /> Voltar ao Dashboard
+              <ArrowLeft size={14} className="mr-1.5" /> Voltar para a página inicial
             </Button>
           </Link>
         </div>
@@ -135,7 +135,7 @@ export default function DealRoom() {
   const opp = (room as any).opportunity;
 
   const statusColor = room.status === "active" ? "#22c55e" : room.status === "awaiting_nda" ? "#eab308" : "#9ca3af";
-  const statusLabel = room.status === "active" ? "Ativa" : room.status === "awaiting_nda" ? "Aguardando NDA" : "Encerrada";
+  const statusLabel = room.status === "active" ? "Ativa" : room.status === "awaiting_nda" ? "Aguardando assinaturas do termo de sigilo" : "Encerrada";
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -152,7 +152,7 @@ export default function DealRoom() {
               <Lock size={14} className="text-amber-400" />
             </div>
             <div>
-              <h1 className="text-white font-semibold text-sm">Deal Room #{roomId}</h1>
+              <h1 className="text-white font-semibold text-sm">Sala de Negociação #{roomId}</h1>
               <p className="text-white/40 text-xs">{opp?.title || "Oportunidade"}</p>
             </div>
           </div>
@@ -176,7 +176,7 @@ export default function DealRoom() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white/40 text-xs">{p.label}</p>
-                <p className="text-white text-sm font-medium truncate">{p.person?.name || "—"}</p>
+                <p className="text-white text-sm font-medium truncate">{p.person?.name || "-"}</p>
               </div>
               <div className="flex-shrink-0">
                 {p.accepted ? (
@@ -198,7 +198,7 @@ export default function DealRoom() {
         {/* Tabs */}
         <div className="flex gap-1 mb-4 bg-white/5 rounded-xl p-1">
           {[
-            { key: "nda", icon: <Shield size={14} />, label: "NDA & Governança" },
+            { key: "nda", icon: <Shield size={14} />, label: "Termo de Sigilo (NDA)" },
             { key: "chat", icon: <MessageSquare size={14} />, label: "Chat Privado", disabled: room.status !== "active" },
             { key: "docs", icon: <FileText size={14} />, label: "Documentos", disabled: room.status !== "active" },
           ].map((tab) => (
@@ -240,7 +240,7 @@ export default function DealRoom() {
                 <p className="text-white/40 border-t border-white/10 pt-3">
                   Oportunidade: <strong className="text-white/60">{opp?.title}</strong><br />
                   Deal Room ID: #{roomId}<br />
-                  Data de criação: {room.createdAt ? new Date(room.createdAt).toLocaleDateString("pt-BR") : "—"}
+                  Data de criação: {room.createdAt ? new Date(room.createdAt).toLocaleDateString("pt-BR") : "-"}
                 </p>
               </div>
 
@@ -395,7 +395,7 @@ export default function DealRoom() {
                 <p className={`text-xs ${isDragOver ? 'text-amber-400' : 'text-white/30'}`}>
                   {isDragOver ? 'Solte para enviar' : 'Arraste arquivos aqui ou clique para selecionar'}
                 </p>
-                <p className="text-white/20 text-xs mt-0.5">PDF, Word, Excel, imagens, ZIP — máx. 16MB por arquivo</p>
+                <p className="text-white/20 text-xs mt-0.5">PDF, Word, Excel, imagens, ZIP (máx. 16MB por arquivo)</p>
               </div>
 
               {documents.length === 0 ? (

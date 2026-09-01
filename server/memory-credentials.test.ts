@@ -1,26 +1,25 @@
 import { describe, expect, it } from "vitest";
 
+// A Memória Inteligente usa o mesmo provedor do resto do app: embeddings pelo
+// Gemini e resposta via invokeLLM, ambos com a cadeia LLM_API_KEY >
+// BUILT_IN_FORGE_API_KEY > GOOGLE_API_KEY. As versões anteriores deste teste
+// exigiam OPENAI_API_KEY e ANTHROPIC_API_KEY, dependências que foram removidas
+// junto com o SDK da Anthropic.
 describe("Memória Inteligente — credenciais externas", () => {
-  it("expõe as chaves necessárias para a integração", () => {
-    expect(process.env.OPENAI_API_KEY).toBeTruthy();
-    expect(process.env.ANTHROPIC_API_KEY).toBeTruthy();
+  const llmKey =
+    process.env.LLM_API_KEY ||
+    process.env.BUILT_IN_FORGE_API_KEY ||
+    process.env.GOOGLE_API_KEY;
+
+  it.skipIf(!llmKey)("expõe a chave de LLM usada por embeddings e respostas", () => {
+    expect(llmKey).toBeTruthy();
   });
 
-  // A validação HTTPS real foi executada ao configurar as credenciais. Ela fica
-  // opt-in para não tornar a suíte de regressão dependente da disponibilidade dos provedores.
-  it.skipIf(process.env.RUN_LIVE_CREDENTIAL_TESTS !== "true")("autentica as chaves nos provedores", async () => {
-    const openaiResponse = await fetch("https://api.openai.com/v1/models", {
-      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-      signal: AbortSignal.timeout(10_000),
-    });
-    expect(openaiResponse.ok).toBe(true);
-    const anthropicResponse = await fetch("https://api.anthropic.com/v1/models?limit=1", {
-      headers: {
-        "x-api-key": process.env.ANTHROPIC_API_KEY!,
-        "anthropic-version": "2023-06-01",
-      },
-      signal: AbortSignal.timeout(10_000),
-    });
-    expect(anthropicResponse.ok).toBe(true);
+  it.skipIf(process.env.RUN_LIVE_CREDENTIAL_TESTS !== "true")("autentica a chave no provedor", async () => {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(llmKey!)}`,
+      { signal: AbortSignal.timeout(10_000) }
+    );
+    expect(response.ok).toBe(true);
   }, 25_000);
 });

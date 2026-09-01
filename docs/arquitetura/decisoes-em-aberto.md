@@ -1,11 +1,11 @@
-# Decisões em aberto — MMM
+# Decisões em aberto
 
-Coisas que **não são decisão técnica** e que travam implementação. Cada uma tem um
-item correspondente no quadro do projeto.
+Coisas que não são decisão técnica e que travam implementação. Cada uma tem um item
+correspondente no quadro do projeto.
 
 ---
 
-## D1 — Percentual e regras da comissão
+## D1: Percentual e regras da comissão
 
 **Trava:** ajuste A11 (contrato de comissão no cadastro), etapa 13.
 **Parado desde:** 12/08/2026.
@@ -13,19 +13,19 @@ item correspondente no quadro do projeto.
 Perguntas:
 
 1. Qual o percentual da comissão do MMM?
-2. Incide sobre o quê — valor do negócio fechado, valor recebido, outra base?
+2. Incide sobre o quê: valor do negócio fechado, valor recebido, outra base?
 3. Percentual único, ou varia por tipo de negócio, porte ou valor?
 
-**Dá para andar sem a resposta.** A tela de aceite, o versionamento do documento e o
+Dá para andar sem a resposta: a tela de aceite, o versionamento do documento e o
 registro do consentimento se constroem tratando o percentual como configuração. Só o
 texto final depende da decisão.
 
 ---
 
-## D2 — Como o dinheiro passa pela plataforma
+## D2: Como o dinheiro passa pela plataforma
 
-**Trava:** ajuste A14.
-**É a decisão de maior impacto no prazo, e a única com componente regulatório.**
+**Trava:** ajuste A14. É a decisão de maior impacto no prazo, e a única com
+componente regulatório.
 
 A nota da reunião de 05/08 diz:
 
@@ -33,8 +33,8 @@ A nota da reunião de 05/08 diz:
 > descontada a comissão
 
 Guardar dinheiro de terceiros e repassar depois é atividade regulada no Brasil.
-Fazer isso "na mão", com o valor passando por uma conta do MMM, cria risco jurídico
-e tributário real.
+Fazer isso na mão, com o valor passando por uma conta do MMM, cria risco jurídico e
+tributário.
 
 | Caminho | Como funciona | Cabe até 10/09? |
 |---|---|---|
@@ -47,7 +47,7 @@ versão seguinte. O terceiro não deveria entrar em discussão sem parecer jurí
 
 ---
 
-## D3 — Até onde bloquear o contato direto
+## D3: Até onde bloquear o contato direto
 
 **Trava:** ajuste A13, e se conecta à cláusula de non-circumvention da etapa 13.
 
@@ -59,14 +59,14 @@ Perguntas:
 3. Vale para todos os usuários ou só para oportunidades do Smart Match?
 
 Ver a seção sobre o alcance real do bloqueio em
-[privacidade.md](./privacidade.md#o-ajuste-a13-e-o-que-ele-não-resolve).
+[privacidade.md](./privacidade.md#acesso-após-o-aceite-etapa-13-e-ajuste-a13).
 
 ---
 
-## D4 — Destaque de produto: pago ou gratuito?
+## D4: Destaque de produto, pago ou gratuito?
 
-**Trava:** ajuste A12. É a decisão mais barata de tomar e a que mais muda o tamanho
-do item.
+**Trava:** ajuste A12. Decisão barata de tomar; muda o tamanho do item de um dia
+para semanas.
 
 | Se for | O item vira |
 |---|---|
@@ -75,28 +75,28 @@ do item.
 
 ---
 
-## D5 — O recorte do prazo de 10/09
+## D5: O recorte do prazo de 10/09
 
 Em 25/08 restam 16 dias, e estão em aberto:
 
 - Etapas **12** e **13**, as duas maiores e nenhuma iniciada
 - Ajustes **A11 a A14**, todos travados por decisão
-- O código está inacessível fora do Manus
+- O código saiu do Manus, mas ainda não está hospedado em lugar nenhum
 - Nada foi verificado por ninguém além de quem fez
 
 Só o A14, do jeito que está escrito, consome mais do que os 16 dias restantes.
 
 **Proposta de recorte:**
 
-- **Em 10/09** — etapas 1 a 11 verificadas de verdade, ajustes A1 a A10 conferidos,
+- **Em 10/09**: etapas 1 a 11 verificadas de verdade, ajustes A1 a A10 conferidos,
   etapas 12 e 13 na mecânica (aceite, corretor, status, auditoria), com o texto
   jurídico entrando como versão de documento depois.
-- **Data própria** — A14, e A12 se for pago.
-- **Esta semana** — D1, D2, D3 e D4 respondidos.
+- **Data própria**: A14, e A12 se for pago.
+- **Esta semana**: D1, D2, D3, D4 e D6 respondidos.
 
 ---
 
-## D6 — Qual banco de dados e onde hospedar
+## D6: Qual banco de dados e onde hospedar
 
 **Trava:** nada trava por falta de resposta de terceiros. Só depende de orçamento.
 **Estava adiada até sabermos o que sobrou do Manus. Sobrou tudo, e roda.**
@@ -107,7 +107,7 @@ juntos, com Drizzle sobre MySQL. Não é protótipo: 42 tabelas em `mysqlTable`,
 `national_leaders`, `user_vault`), e 3 migrações aplicadas.
 
 O conflito é conhecido: `modelo-de-dados.md` foi escrito assumindo Postgres. A
-pergunta não é qual banco é melhor em abstrato — é quem cede, com 16 dias no
+pergunta não é qual banco é melhor em abstrato, é quem cede, com 16 dias no
 relógio e duas etapas grandes não iniciadas.
 
 ### MySQL x Postgres: o custo de migrar, medido no código
@@ -117,16 +117,16 @@ Não é trocar um import. Foi contado arquivo por arquivo:
 | O que muda | Quantidade | Por quê |
 |---|---|---|
 | Tabelas reescritas para `pgTable` | 42 | dialeto |
-| Tabelas sem Drizzle, DDL à mão | 11 | o `drizzle-kit` não gera o que não conhece — o SIVC não nasceria |
+| Tabelas sem Drizzle, DDL à mão | 11 | o `drizzle-kit` não gera o que não conhece; o SIVC não nasceria |
 | `mysqlEnum` → `pgEnum` no topo | 21, sendo 11 com nome colidente | em Postgres o enum é tipo global, não inline |
-| `.onUpdateNow()` | 7 colunas | não existe em Postgres — vira trigger |
+| `.onUpdateNow()` | 7 colunas | não existe em Postgres, vira trigger |
 | `insertId` / `$returningId()` | 8 | formato de resultado do mysql2 |
 | `onDuplicateKeyUpdate` → `onConflictDoUpdate` | 4, um deles no login | `ON CONFLICT` exige nomear a chave, e `users` tem duas |
-| `db.execute` devolvendo tupla `[rows]` | 22 | em Postgres devolve `{ rows }` — **compila igual e devolve outra coisa** |
+| `db.execute` devolvendo tupla `[rows]` | 22 | em Postgres devolve `{ rows }`; **compila igual e devolve outra coisa** |
 | SQL cru com identificador camelCase | 19 statements | Postgres cria `"userId"` sensível a caixa; `WHERE userId` quebra em execução |
 | `like()` sensível a acento | 9 buscas | hoje "sao paulo" acha "São Paulo"; em Postgres deixa de achar |
 
-**Estimativa: 6 a 10 dias úteis, sem rede de proteção** — são 19 arquivos de teste
+**Estimativa: 6 a 10 dias úteis, sem rede de proteção.** São 19 arquivos de teste
 e só um encosta no banco. As três quebras mais caras (o `[rows]`, o upsert do login
 e a busca sem acento) não são pegas pelo compilador: aparecem em produção.
 
@@ -138,7 +138,7 @@ A assimetria é de dez para um.
 
 | Requisito | Depende do banco? |
 |---|---|
-| Busca em linguagem natural | **Não.** O cosseno roda em JavaScript (`server/memory-service.ts:42`), sobre no máximo 800 vetores de 768 dimensões por usuária, e `memory_documents` está vazia. O gargalo real é a reindexação disparada a cada busca, em laço serial contra o Gemini — o pgvector não toca nisso. |
+| Busca em linguagem natural | **Não.** O cosseno roda em JavaScript (`server/memory-service.ts:42`), sobre no máximo 800 vetores de 768 dimensões por usuária, e `memory_documents` está vazia. O gargalo real é a reindexação disparada a cada busca, em laço serial contra o Gemini, e o pgvector não toca nisso. |
 | Transcrição de áudio | **Não.** É chamada HTTP ao Gemini. |
 | Histórico auditável | **Não.** `audit_logs` roda igual nos dois. |
 | Funcionar no celular | **Não.** É trabalho de front-end. |
@@ -147,11 +147,11 @@ A assimetria é de dez para um.
 Sobre o último, dois fatos mudam a conta. **Isso não está atendido hoje em banco
 nenhum**: são cerca de 150 cláusulas `WHERE ownerId = ?` espalhadas pela aplicação,
 e não existe uma linha de `CREATE POLICY`. E **migrar não entrega RLS, só torna
-possível** — implementar de verdade exige cada requisição rodar sob identidade de
+possível**: implementar de verdade exige cada requisição rodar sob identidade de
 banco própria, o que soma 3 a 5 dias **depois** dos 6 a 10.
 
 O que existe hoje filtra no `WHERE`, executado pelo banco: linha alheia não sai do
-servidor. O que falta em relação a RLS é defesa contra alguém esquecer um `WHERE` —
+servidor. O que falta em relação a RLS é defesa contra alguém esquecer um `WHERE`,
 e isso se compra por meio dia, com uma camada que exige `ownerId` na assinatura e um
 teste que varre as queries. Sem trocar de banco.
 
@@ -168,15 +168,15 @@ Preços consultados em 25/08/2026 nas páginas oficiais.
 | Neon | Postgres | 0,5 GB, dorme em 5 min | sim | US$ 0 | 6-10 dias |
 | Supabase | Postgres | 500 MB, **pausa após 1 semana parado** | sim | US$ 25/mês; PITR custa +US$ 100 | 6-10 dias |
 
-Duas pegadinhas que importam: o TiDB **recusa novas conexões** quando a cota estoura
-— o login para de funcionar até virar o mês. O Aiven no grátis pode desligar serviço
+Duas pegadinhas que importam: o TiDB **recusa novas conexões** quando a cota estoura,
+e o login para de funcionar até virar o mês. O Aiven no grátis pode desligar serviço
 sem atividade, o que já justifica ir direto ao plano de US$ 5.
 
 ### Onde hospedar a aplicação
 
 Duas restrições do próprio código eliminam metade da lista antes do preço.
 `server/routers/meetings.ts` recebe o áudio como base64 de até 14 milhões de
-caracteres em **uma** requisição, e transcreve com LLM **dentro dela** — um request
+caracteres em **uma** requisição, e transcreve com LLM **dentro dela**: um request
 pode durar minutos. E é um processo único servindo API e front juntos.
 
 | Opção | Deploy | Dorme? | MySQL junto | Custo real | Esforço |
@@ -192,7 +192,7 @@ O VPS é o melhor preço por recurso e o pior encaixe: ninguém no time é engen
 infraestrutura, e uma noite depurando nginx é uma noite que não foi para a entrega.
 
 Nenhum serviço gerenciado dessa lista tem região no Brasil, exceto Fly.io e Cloud
-Run. Isso custa cerca de 130 ms por requisição a partir dos Estados Unidos —
+Run. Isso custa cerca de 130 ms por requisição a partir dos Estados Unidos,
 invisível neste app.
 
 ### Armazenamento de arquivos
@@ -200,7 +200,7 @@ invisível neste app.
 **O upload está quebrado hoje, e não é por causa da hospedagem.** `server/storage.ts`
 falava com o Forge do Manus, que saiu do ar. Isso derruba quatro caminhos: gravação
 de reunião, documentos de deal room, documentos do SIVC e geração de imagem. O
-cliente precisa ser reescrito de qualquer forma — e o `@aws-sdk/client-s3` já está
+cliente precisa ser reescrito de qualquer forma, e o `@aws-sdk/client-s3` já está
 instalado, sem ser usado em lugar nenhum.
 
 | Opção | Preço | Egresso | Grátis |
@@ -212,7 +212,7 @@ instalado, sem ser usado em lugar nenhum.
 ### "Funcionar no celular"
 
 Hoje é site responsivo e nada além: sem `manifest.json`, sem service worker. Um
-**PWA** atende o pedido de "app" dentro do prazo — ícone na tela inicial, tela cheia,
+**PWA** atende o pedido de "app" dentro do prazo: ícone na tela inicial, tela cheia,
 e a gravação já funciona por `MediaRecorder` no navegador. É trabalho de front-end,
 algumas horas. App nativo só seria necessário para gravar em segundo plano ou push
 confiável no iOS, e consumiria as duas etapas que ainda não começaram.
@@ -223,7 +223,7 @@ confiável no iOS, e consumiria as duas etapas que ainda não começaram.
    Se o teto for zero, existe caminho (TiDB grátis + Render grátis), mas a demo
    abre com cerca de um minuto de tela branca depois de um período parado.
 2. **A cliente aceita PWA como "app"?** Se exigir presença na App Store e na Play
-   Store, isso não cabe até 10/09 e vira decisão separada — precisa ser perguntado
+   Store, isso não cabe até 10/09 e vira decisão separada, e precisa ser perguntado
    esta semana.
 3. **Existe exigência contratual de dado hospedado no Brasil?** A LGPD não obriga,
    mas se a cliente pedir por escrito a resposta muda para Aiven São Paulo + Fly.io.
@@ -236,9 +236,11 @@ ligar o R2 e separar as variáveis de ambiente.
 
 ### Dois itens que valem mais que este debate
 
-- **`pnpm db:push` não recria o banco do zero.** As 11 tabelas sem definição Drizzle
-  não nasceriam numa instalação nova — o SIVC inteiro sumiria. É bug de
-  reprodutibilidade que já existe em MySQL e independe desta decisão.
+- ~~**`pnpm db:push` não recria o banco do zero.**~~ **Resolvido em 31/08/2026:**
+  as tabelas do SIVC ganharam definição Drizzle, o histórico de migrações foi
+  refundado (baseline `0000_fundacao`, 50 tabelas) e `db:push` deixou de
+  existir — o fluxo é `pnpm db:generate` + `pnpm db:migrate`, e o CI cria um
+  banco do zero a cada PR para provar que continua funcionando.
 - **A gravação de reunião só funciona em host que tolere requisição de minutos.**
   Confirmar o limite de tempo **antes** de contar essa etapa como pronta: o padrão
   de 30 ou 60 segundos de várias plataformas a inviabiliza sem erro revelador.
@@ -248,13 +250,50 @@ já existe em `drizzle/`, porque migrar custa 6 a 10 dias e não entrega uma tel
 hospedar em **Railway Hobby com o MySQL gerenciado do próprio Railway e Cloudflare R2
 para arquivos**, a única combinação que sobe o código como está, sem migração, sem
 hibernação e em cerca de meio dia. Registrar que a decisão se revisita depois de
-10/09 se a cliente exigir isolamento garantido pelo banco em auditoria — aí Postgres
+10/09 se a cliente exigir isolamento garantido pelo banco em auditoria; aí Postgres
 com RLS custa 6 a 10 dias **mais** 3 a 5, e isso precisa estar escrito antes de
 alguém prometer prazo.
 
 ---
 
-## Decisão técnica que estava adiada — agora é a D6
+## Decisões de produto do modelo de acesso
+
+Três definições que a revisão técnica do modelo levantou. São regras de produto, não
+de código, e mudam políticas de acesso já desenhadas:
+
+1. **A autorização Ouro é para o programa ou por pessoa?** Hoje o modelo registra
+   "autorizo o acesso Ouro" como um todo: qualquer Usuária Ouro ativa vê os contatos
+   nível ouro de quem autorizou. Se a intenção do escopo ("Usuários Ouro
+   autorizados") é autorizar pessoa a pessoa, a tabela e a política mudam.
+2. **Os níveis são cumulativos?** Um contato marcado `publico` aparece na vitrine de
+   oportunidades sem dados pessoais. A Usuária Ouro autorizada também deveria ver os
+   dados completos dele, como vê os de nível `ouro`? Se sim, a política inclui os
+   dois níveis; se não, registrar que público é menos visível que ouro para quem tem
+   acesso Ouro.
+3. ~~**Consentimento sobrevive à troca de versão do termo?**~~ **DECIDIDO em
+   31/08/2026 (Nicolas): não sobrevive.** O cruzamento pausa até a pessoa aceitar a
+   versão nova.
+
+   A razão é que a alternativa enfraquece a prova. Quem aceitou a versão 1 não leu a
+   versão 2, e registrar que aceitou um texto que nunca viu esvazia justamente o que
+   o versionamento existe para garantir — "fulana aceitou" só vale como prova se
+   disser o que ela aceitou.
+
+   O custo é atrito: toda publicação faz todo mundo ver a tela de novo. Ele é
+   mitigado, não eliminado — a tela passa a dizer "O termo foi atualizado", informa
+   qual versão a pessoa tinha aceitado e garante que contatos e conexões já aceitas
+   continuam onde estavam. Sem isso o retorno da tela pareceria falha do sistema.
+
+   Fica em aberto, para quando houver volume: distinguir mudança de substância de
+   correção de vírgula, para que a segunda não force novo aceite. Exige um campo no
+   documento marcando qual é qual, e alguém decidindo na hora de publicar.
+
+   Implementado em `server/routers/consent.ts` (o filtro por `documentVersionId`) e
+   `client/src/components/SmartMatchConsent.tsx` (o aviso).
+
+---
+
+## Decisão técnica que estava adiada, agora é a D6
 
 **A stack.** Não fazia sentido escolher antes de saber o que sobrou do código do
 Manus. Sobrou, e roda: a escolha já está feita pelo que existe, e o que resta
@@ -265,8 +304,8 @@ A D6 mede esse custo e recomenda qual dos dois cede.
 
 O que a stack escolhida precisa entregar:
 
-- Os três níveis de privacidade aplicados **no banco**, não na tela
+- Os três níveis de privacidade aplicados no banco, não na tela
 - Busca em linguagem natural sobre a base do próprio usuário
 - Transcrição e extração de áudio
 - Histórico auditável de oportunidades
-- Funcionar no celular — a Glenda pede "app", não só site
+- Funcionar no celular: o escopo pede app, não só site

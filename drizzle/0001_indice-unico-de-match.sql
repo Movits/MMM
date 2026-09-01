@@ -1,0 +1,1 @@
+ALTER TABLE `matches` ADD CONSTRAINT `match_user_matched_unq` UNIQUE(`userId`,`matchedUserId`);

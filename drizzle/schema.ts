@@ -14,6 +14,23 @@ import {
   tinyint,
 } from "drizzle-orm/mysql-core";
 import { decimal } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
+import { customType } from "drizzle-orm/mysql-core";
+
+/**
+ * Coluna JSON que funciona em MySQL e MariaDB.
+ *
+ * O MariaDB não tem tipo JSON nativo: `json` é apelido de `longtext` com uma
+ * checagem, então o driver entrega texto. O MySQL 8 tem o tipo de verdade e
+ * entrega objeto. Sem isto, o mesmo código devolve tipos diferentes conforme o
+ * motor, e qualquer `.map()` na leitura quebra só num deles.
+ */
+const jsonCompat = customType<{ data: unknown; driverData: unknown }>({
+  dataType: () => "json",
+  toDriver: valor => JSON.stringify(valor),
+  fromDriver: valor => (typeof valor === "string" ? JSON.parse(valor) : valor),
+});
+
 
 // ============================================================
 // TABELA PRINCIPAL DE USUÁRIOS
@@ -51,8 +68,8 @@ export const userProfiles = mysqlTable("user_profiles", {
   avatarUrl: text("avatarUrl"),
   city: varchar("city", { length: 100 }),
   country: varchar("country", { length: 2 }),
-  sectors: json("sectors"),        // string[] — setores de atuação
-  languages: json("languages"),    // string[] — idiomas
+  sectors: jsonCompat("sectors"),        // string[] — setores de atuação
+  languages: jsonCompat("languages"),    // string[] — idiomas
   linkedinUrl: text("linkedinUrl"),
   websiteUrl: text("websiteUrl"),
   profileCompleteness: int("profileCompleteness").default(0),
@@ -64,25 +81,25 @@ export const userProfiles = mysqlTable("user_profiles", {
   companyCnpj: varchar("companyCnpj", { length: 18 }),
   jobTitle: varchar("jobTitle", { length: 200 }),          // Cargo
   activityArea: varchar("activityArea", { length: 200 }),  // Área de Atuação
-  interestSectors: json("interestSectors"),                // string[] — Setores de Interesse
+  interestSectors: jsonCompat("interestSectors"),                // string[] — Setores de Interesse
   institutionalNetwork: varchar("institutionalNetwork", { length: 300 }), // Rede Institucional
   currentResources: text("currentResources"),              // Texto livre: o que a usuária tem hoje
-  whatIHave: json("whatIHave"),    // string[] — ativos/recursos disponíveis
-  whatINeed: json("whatINeed"),    // string[] — demandas/necessidades
+  whatIHave: jsonCompat("whatIHave"),    // string[] — ativos/recursos disponíveis
+  whatINeed: jsonCompat("whatINeed"),    // string[] — demandas/necessidades
 
   // --- Campos do sistema de matching (MMM original) ---
   primarySpecialty: varchar("primarySpecialty", { length: 100 }),
-  secondarySpecialties: json("secondarySpecialties"),
+  secondarySpecialties: jsonCompat("secondarySpecialties"),
   currentRole: varchar("currentRole", { length: 200 }),
   currentCompany: varchar("currentCompany", { length: 200 }),
   sector: varchar("sector", { length: 100 }),
-  seekingTypes: json("seekingTypes"),
-  businessInterests: json("businessInterests"),
+  seekingTypes: jsonCompat("seekingTypes"),
+  businessInterests: jsonCompat("businessInterests"),
   preferredCompanySize: varchar("preferredCompanySize", { length: 50 }),
   openToRemote: boolean("openToRemote").default(false),
   availableForTravel: boolean("availableForTravel").default(false),
   workStyle: varchar("workStyle", { length: 50 }),
-  values: json("values"),
+  values: jsonCompat("values"),
   incomeRange: varchar("incomeRange", { length: 50 }),
   investmentCapacity: varchar("investmentCapacity", { length: 50 }),
   lookingForInvestment: boolean("lookingForInvestment").default(false),
@@ -122,7 +139,7 @@ export const opportunities = mysqlTable("opportunities", {
   sector: varchar("sector", { length: 100 }),
   country: varchar("country", { length: 2 }),
   region: varchar("region", { length: 100 }),  // continente ou região
-  tags: json("tags"),                           // string[] — palavras-chave
+  tags: jsonCompat("tags"),                           // string[] — palavras-chave
 
   // Compliance e confiabilidade
   frauenTrustScore: float("frauenTrustScore").default(0),   // 0-100
@@ -130,7 +147,7 @@ export const opportunities = mysqlTable("opportunities", {
     "green", "yellow", "orange", "red", "pending"
   ]).default("pending").notNull(),
   complianceExplanation: text("complianceExplanation"),     // texto da IA explicando a classificação
-  suggestedDocuments: json("suggestedDocuments"),           // string[] — documentos sugeridos pela IA
+  suggestedDocuments: jsonCompat("suggestedDocuments"),           // string[] — documentos sugeridos pela IA
   lastComplianceAt: timestamp("lastComplianceAt"),
 
   // Visibilidade
@@ -234,7 +251,7 @@ export const strategicGroups = mysqlTable("strategic_groups", {
   name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),
   createdBy: int("createdBy").notNull(),
-  memberIds: json("memberIds"),    // number[] — userIds dos membros
+  memberIds: jsonCompat("memberIds"),    // number[] — userIds dos membros
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -325,7 +342,7 @@ export const auditLogs = mysqlTable("audit_logs", {
   action: varchar("action", { length: 100 }).notNull(),
   resource: varchar("resource", { length: 100 }),
   resourceId: varchar("resourceId", { length: 64 }),
-  details: json("details"),
+  details: jsonCompat("details"),
   ipAddress: varchar("ipAddress", { length: 45 }),
   userAgent: text("userAgent"),
   status: mysqlEnum("status", ["success", "failure", "blocked"]).default("success").notNull(),
@@ -361,7 +378,7 @@ export const securityEvents = mysqlTable("security_events", {
   ]).notNull(),
   severity: mysqlEnum("severity", ["info", "warning", "critical"]).default("info").notNull(),
   ipAddress: varchar("ipAddress", { length: 45 }),
-  details: json("details"),
+  details: jsonCompat("details"),
   resolved: boolean("resolved").default(false).notNull(),
   resolvedAt: timestamp("resolvedAt"),
   resolvedBy: int("resolvedBy"),
@@ -407,6 +424,11 @@ export const matches = mysqlTable("matches", {
   userIdIdx: index("match_userId_idx").on(table.userId),
   matchedUserIdIdx: index("match_matchedUserId_idx").on(table.matchedUserId),
   scoreIdx: index("match_score_idx").on(table.overallScore),
+  // Um match entre duas usuárias é único. Sem isto, cada "Reanalisar matches"
+  // reinseria o conjunto inteiro (o insert não tinha upsert e nada no banco
+  // segurava a duplicata), e quem tinha sido dispensado voltava como linha nova.
+  // A regeneração agora faz upsert contra esta chave.
+  matchPairUnq: uniqueIndex("match_user_matched_unq").on(table.userId, table.matchedUserId),
 }));
 
 // ============================================================
@@ -535,12 +557,18 @@ export const privateContacts = mysqlTable("private_contacts", {
   linkedinUrl:  varchar("linkedinUrl",  { length: 512 }),
   instagram:    varchar("instagram",    { length: 100 }),
 
-  profileTags:  json("profileTags").$type<string[]>(),
+  profileTags:  jsonCompat("profileTags").$type<string[]>(),
 
   cardImageUrl: varchar("cardImageUrl", { length: 512 }),
   cardOcrText:  text("cardOcrText"),
 
   notes:        text("notes"),
+  // Selo "IA em andamento" na lista da Rede. A coluna sempre existiu no banco
+  // (era do Manus) mas não estava declarada aqui — o drizzle descartava a chave
+  // nos updates (sobrava UPDATE sem SET, erro de SQL ao iniciar o chat de
+  // enriquecimento) e nos selects (o selo nunca aparecia). O `as any` nos
+  // chamadores escondia tudo.
+  enrichmentStatus: varchar("enrichment_status", { length: 20 }),
 
   createdAt:    bigint("createdAt", { mode: "number" }).notNull(),
   updatedAt:    bigint("updatedAt", { mode: "number" }).notNull(),
@@ -555,6 +583,117 @@ export const privateContacts = mysqlTable("private_contacts", {
 // ============================================================
 // TIPOS EXPORTADOS
 // ============================================================
+// ============================================================
+// SIVC — Sistema de Verificação de Identidade e Credenciais
+//
+// Estas tabelas existiam apenas em SQL escrito à mão dentro de
+// server/routers/sivc.ts. Sem definição aqui, a migração gerada não as cria e
+// um banco novo sobe com o módulo inteiro quebrado — foi o que apareceu ao
+// preparar o deploy. As colunas foram reconstruídas a partir das queries.
+//
+// Os campos de status usam varchar em vez de mysqlEnum de propósito: os
+// valores gravados vêm do OCR e de constantes do router, e um enum
+// incompleto rejeitaria a escrita em produção.
+// ============================================================
+
+export const sivcVerifications = mysqlTable("sivc_verifications", {
+  id:               int("id").autoincrement().primaryKey(),
+  userId:           int("userId").notNull(),
+  status:           varchar("status", { length: 32 }).default("in_progress").notNull(),
+  level:            varchar("level", { length: 32 }),
+  overallScore:     int("overallScore").default(0),
+  mandatoryPassed:  boolean("mandatoryPassed").default(false),
+  consentGrantedAt: timestamp("consentGrantedAt"),
+  createdAt:        timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index("sivc_ver_user_idx").on(table.userId),
+}));
+
+export const sivcConsents = mysqlTable("sivc_consents", {
+  id:          int("id").autoincrement().primaryKey(),
+  userId:      int("userId").notNull(),
+  consentType: varchar("consentType", { length: 64 }).notNull(),
+  ipAddress:   varchar("ipAddress", { length: 45 }),
+  payloadJson: jsonCompat("payloadJson"),
+  createdAt:   timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index("sivc_con_user_idx").on(table.userId),
+}));
+
+// O índice único é obrigatório, não decorativo: o router faz
+// INSERT ... ON DUPLICATE KEY UPDATE nesta tripla. Sem ele, cada
+// atualização de um campo criaria uma linha nova em vez de sobrescrever.
+export const sivcChecks = mysqlTable("sivc_checks", {
+  id:              int("id").autoincrement().primaryKey(),
+  verificationId:  int("verificationId").notNull(),
+  module:          varchar("module", { length: 64 }).notNull(),
+  field:           varchar("field", { length: 64 }).notNull(),
+  declaredValue:   text("declaredValue"),
+  verifiedValue:   text("verifiedValue"),
+  status:          varchar("status", { length: 32 }).default("unverified").notNull(),
+  confidenceScore: int("confidenceScore").default(0),
+  weight:          int("weight").default(1),
+  isMandatory:     boolean("isMandatory").default(false),
+  source:          varchar("source", { length: 64 }),
+  auditLog:        jsonCompat("auditLog"),
+  createdAt:       timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  checkUnq: uniqueIndex("sivc_chk_unq").on(table.verificationId, table.module, table.field),
+}));
+
+export const sivcDocuments = mysqlTable("sivc_documents", {
+  id:              int("id").autoincrement().primaryKey(),
+  verificationId:  int("verificationId").notNull(),
+  userId:          int("userId").notNull(),
+  module:          varchar("module", { length: 64 }).notNull(),
+  docType:         varchar("docType", { length: 64 }).notNull(),
+  fileKey:         varchar("fileKey", { length: 500 }).notNull(),
+  url:             text("url"),
+  mimeType:        varchar("mimeType", { length: 100 }),
+  sizeBytes:       bigint("sizeBytes", { mode: "number" }),
+  ocrStatus:       varchar("ocrStatus", { length: 32 }).default("processing").notNull(),
+  ocrText:         text("ocrText"),
+  extractedData:   jsonCompat("extractedData"),
+  confidenceScore: int("confidenceScore").default(0),
+  createdAt:       timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  verIdx: index("sivc_doc_ver_idx").on(table.verificationId),
+}));
+
+// ============================================================
+// GOVERNANÇA — validação da presidência e líderes regionais
+// Mesma situação das tabelas do SIVC: só existiam em SQL cru, em
+// server/routers/president.ts.
+// ============================================================
+
+// Uma validação por oportunidade: o router faz upsert por opportunityId.
+export const presidentValidations = mysqlTable("president_validations", {
+  id:            int("id").autoincrement().primaryKey(),
+  opportunityId: int("opportunityId").notNull(),
+  validatedBy:   int("validatedBy").notNull(),
+  status:        varchar("status", { length: 32 }).notNull(),
+  note:          text("note"),
+  createdAt:     timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  oppUnq: uniqueIndex("pres_val_opp_unq").on(table.opportunityId),
+}));
+
+export const nationalLeaders = mysqlTable("national_leaders", {
+  id:           int("id").autoincrement().primaryKey(),
+  userId:       int("userId").notNull(),
+  nominatedBy:  int("nominatedBy").notNull(),
+  region:       varchar("region", { length: 120 }).notNull(),
+  specialty:    varchar("specialty", { length: 200 }),
+  isActive:     boolean("isActive").default(true).notNull(),
+  revokedAt:    timestamp("revokedAt"),
+  revokedBy:    int("revokedBy"),
+  revokeReason: text("revokeReason"),
+  createdAt:    timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  activeIdx: index("nat_lead_active_idx").on(table.isActive),
+  userIdx:   index("nat_lead_user_idx").on(table.userId),
+}));
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type UserProfile = typeof userProfiles.$inferSelect;
@@ -688,7 +827,7 @@ export const enrichmentMessages = mysqlTable("enrichment_messages", {
   ownerId:    varchar("owner_id", { length: 128 }).notNull(),
   role:       varchar("role", { length: 10 }).notNull(),
   content:    text("content").notNull(),
-  metadata:   json("metadata"),
+  metadata:   jsonCompat("metadata"),
   tokenCount: int("token_count"),
   createdAt:  bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:  bigint("updated_at", { mode: "number" }).notNull(),
@@ -756,7 +895,7 @@ export const meetingTranscripts = mysqlTable("meeting_transcripts", {
   meetingId: varchar("meeting_id", { length: 36 }).notNull().unique(),
   ownerId: varchar("owner_id", { length: 128 }).notNull(),
   transcript: text("transcript").notNull(),
-  segments: json("segments"),
+  segments: jsonCompat("segments"),
   language: varchar("language", { length: 12 }),
   durationSeconds: int("duration_seconds"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
@@ -803,7 +942,7 @@ export const meetingContactSuggestions = mysqlTable("meeting_contact_suggestions
   company: varchar("company", { length: 200 }),
   phone: varchar("phone", { length: 50 }),
   email: varchar("email", { length: 320 }),
-  sourceEntityIds: json("source_entity_ids"),
+  sourceEntityIds: jsonCompat("source_entity_ids"),
   confidence: decimal("confidence", { precision: 4, scale: 3 }).default("0.000").notNull(),
   status: mysqlEnum("status", ["pending", "created", "linked", "ignored"]).default("pending").notNull(),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
@@ -825,8 +964,8 @@ export const memoryDocuments = mysqlTable("memory_documents", {
   sourceId: varchar("source_id", { length: 128 }).notNull(),
   title: varchar("title", { length: 300 }).notNull(),
   content: text("content").notNull(),
-  metadata: json("metadata"),
-  embedding: json("embedding").$type<number[]>(),
+  metadata: jsonCompat("metadata"),
+  embedding: jsonCompat("embedding").$type<number[]>(),
   contentHash: varchar("content_hash", { length: 64 }).notNull(),
   indexedAt: bigint("indexed_at", { mode: "number" }).notNull(),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
@@ -880,9 +1019,11 @@ export const aiMatchSuggestions = mysqlTable("ai_match_suggestions", {
   pairLowContactId: bigint("pair_low_contact_id", { mode: "number" }).notNull(),
   pairHighContactId: bigint("pair_high_contact_id", { mode: "number" }).notNull(),
   matchScore: int("match_score").notNull(),
-  matchType: mysqlEnum("match_type", ["exact", "category", "semantic"]).notNull(),
-  matchedAssets: json("matched_assets").$type<Array<{ slug: string; label: string }>>().notNull(),
-  matchedNeeds: json("matched_needs").$type<Array<{ slug: string; label: string }>>().notNull(),
+  // "mutual" é o par que se completa nos dois sentidos: cada contato tem o que o
+  // outro procura. É a conexão mais forte que o cruzamento sabe encontrar.
+  matchType: mysqlEnum("match_type", ["mutual", "exact", "category", "semantic"]).notNull(),
+  matchedAssets: jsonCompat("matched_assets").$type<Array<{ slug: string; label: string }>>().notNull(),
+  matchedNeeds: jsonCompat("matched_needs").$type<Array<{ slug: string; label: string }>>().notNull(),
   reasonText: text("reason_text").notNull(),
   status: mysqlEnum("status", ["pending", "viewed", "accepted", "dismissed"]).default("pending").notNull(),
   notifiedAt: bigint("notified_at", { mode: "number" }),
@@ -912,3 +1053,70 @@ export type MemoryDocument = typeof memoryDocuments.$inferSelect;
 export type ContactAsset = typeof contactAssets.$inferSelect;
 export type ContactNeed = typeof contactNeeds.$inferSelect;
 export type AiMatchSuggestion = typeof aiMatchSuggestions.$inferSelect;
+export type SivcVerification = typeof sivcVerifications.$inferSelect;
+export type SivcConsent = typeof sivcConsents.$inferSelect;
+export type SivcCheck = typeof sivcChecks.$inferSelect;
+export type SivcDocument = typeof sivcDocuments.$inferSelect;
+export type PresidentValidation = typeof presidentValidations.$inferSelect;
+export type NationalLeader = typeof nationalLeaders.$inferSelect;
+
+// ============================================================
+// CONSENTIMENTO E DOCUMENTOS — etapa 11, etapa 13 e ajuste A11
+// ============================================================
+// Versionar o documento é o que transforma consentimento em prova: "fulana
+// aceitou" sem versão não diz o que ela aceitou. Por isso o texto vive aqui,
+// e não no código — o texto jurídico entra como uma linha nova quando ficar
+// pronto, sem exigir deploy.
+export const documentVersions = mysqlTable("document_versions", {
+  id:          varchar("id", { length: 36 }).primaryKey(),
+  type:        mysqlEnum("type", [
+                 "termo_smart_match",
+                 "acordo_intermediacao",
+                 "contrato_comissao",
+                 "termo_gravacao",
+               ]).notNull(),
+  version:     int("version").notNull(),
+  text:        text("text").notNull(),
+  publishedAt: timestamp("publishedAt").defaultNow().notNull(),
+  isCurrent:   boolean("isCurrent").default(false).notNull(),
+  // No máximo uma versão vigente por tipo. O Postgres faria com índice parcial;
+  // no MySQL a coluna gerada resolve: vale o tipo enquanto vigente e NULL depois,
+  // e NULLs não colidem em índice único.
+  currentType: varchar("currentType", { length: 32 }).generatedAlwaysAs(
+                 sql`(CASE WHEN \`isCurrent\` THEN \`type\` ELSE NULL END)`,
+                 { mode: "virtual" },
+               ),
+}, (table) => ({
+  typeVersionUnique: uniqueIndex("doc_ver_type_version_unique").on(table.type, table.version),
+  currentUnique:     uniqueIndex("doc_ver_current_unique").on(table.currentType),
+}));
+
+// Revogar nunca apaga a linha: preenche revokedAt. A consulta do Smart Match
+// avalia a condição na hora, então revogar tem efeito imediato, sem rotina de
+// limpeza.
+export const consents = mysqlTable("consents", {
+  id:                int("id").autoincrement().primaryKey(),
+  userId:            int("userId").notNull(),
+  documentVersionId: varchar("documentVersionId", { length: 36 }).notNull(),
+  grantedAt:         timestamp("grantedAt").defaultNow().notNull(),
+  revokedAt:         timestamp("revokedAt"),
+  ipAddress:         varchar("ipAddress", { length: 45 }),
+  userAgent:         text("userAgent"),
+  // No máximo UM consentimento ativo por par (usuária, versão). Mesmo truque da
+  // coluna gerada usado acima: vale a chave enquanto não revogado e vira NULL
+  // depois, e NULLs não colidem em índice único.
+  //
+  // Um `UNIQUE (userId, documentVersionId)` simples seria errado: proibiria
+  // revogar e aceitar de novo, que é um fluxo legítimo e previsto no termo.
+  activeKey:         varchar("activeKey", { length: 80 }).generatedAlwaysAs(
+                       sql`(CASE WHEN \`revokedAt\` IS NULL THEN CONCAT(\`userId\`, ':', \`documentVersionId\`) ELSE NULL END)`,
+                       { mode: "virtual" },
+                     ),
+}, (table) => ({
+  userIdx:     index("consent_user_idx").on(table.userId),
+  documentIdx: index("consent_document_idx").on(table.documentVersionId),
+  activeUnique: uniqueIndex("consent_active_unique").on(table.activeKey),
+}));
+
+export type DocumentVersion = typeof documentVersions.$inferSelect;
+export type Consent = typeof consents.$inferSelect;

@@ -113,8 +113,6 @@ export default function NewOpportunity() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, description, type, sector]);
 
-  const notifyCompatibleMutation = trpc.matching.checkAndNotifyHighCompatibility.useMutation();
-
   const createMutation = trpc.opportunities.create.useMutation({
     onSuccess: (result) => {
       setAiResult({
@@ -125,18 +123,36 @@ export default function NewOpportunity() {
         status: result.status,
       });
       if (result.complianceLevel === "red") {
-        toast.error("Oportunidade bloqueada pela análise de compliance. Verifique as diretrizes da plataforma.");
+        toast.error("Sua oportunidade não pôde ser publicada. A análise automática encontrou um problema. Revise o texto, confira as diretrizes ao lado e tente novamente.");
+      } else if (result.status === "pending") {
+        // Toda oportunidade nasce em análise; dizer "publicada" fazia parecer
+        // que ela tinha sumido, porque a lista pública só mostra as aprovadas.
+        toast.success("Oportunidade enviada para análise!", {
+          description: "Ela já aparece para você na lista com o selo Em análise e fica pública assim que a moderação aprovar.",
+        });
+        setTimeout(() => navigate(`/opportunities`), 2200);
       } else {
-        toast.success("Oportunidade publicada com sucesso!");
-        // Disparar alertas de alta compatibilidade para usuárias com >= 80% de match
-        if (result.id && result.status === "active") {
-          notifyCompatibleMutation.mutate({ opportunityId: result.id });
-        }
+        toast.success("Recebemos sua oportunidade! Ela fica pública assim que a análise for concluída.");
         setTimeout(() => navigate(`/opportunities`), 1500);
       }
     },
     onError: (err) => toast.error(err.message),
   });
+
+  // Sugestões simples por tipo, para reduzir tag inventada e vocabulário
+  // fragmentado (tudo minúsculo, mesmo formato que handleAddTag grava).
+  const SUGGESTED_TAGS: Record<string, string[]> = {
+    offer: ["produto", "serviço", "consultoria", "exportação"],
+    demand: ["fornecedor", "orçamento", "prazo curto", "recorrente"],
+    investment: ["aporte", "sociedade", "expansão", "capital de giro"],
+    partnership: ["parceria", "co-branding", "distribuição", "representação"],
+    distribution: ["logística", "revenda", "atacado", "varejo"],
+    other: ["networking", "mentoria", "evento", "projeto social"],
+  };
+  const suggestedForType = (SUGGESTED_TAGS[type] ?? [])
+    .concat(sector ? [sector.toLowerCase()] : [])
+    .filter(s => !tags.includes(s))
+    .slice(0, 5);
 
   const handleAddTag = () => {
     const t = tagInput.trim().toLowerCase();
@@ -182,7 +198,7 @@ export default function NewOpportunity() {
           </div>
           <div className="flex items-center gap-1.5 text-xs text-amber-400/70">
             <Sparkles size={12} />
-            <span>Compliance IA ativo</span>
+            <span>Análise automática de segurança ativa</span>
           </div>
         </div>
       </div>
@@ -212,12 +228,12 @@ export default function NewOpportunity() {
                 <SelectTrigger className="bg-white/5 border-white/10 text-white">
                   <SelectValue placeholder="Selecione o tipo..." />
                 </SelectTrigger>
-                <SelectContent className="bg-[#0d1628] border-white/10">
-                  <SelectItem value="offer">📦 Oferta — produto, serviço ou commodity</SelectItem>
-                  <SelectItem value="demand">📈 Demanda — busca de fornecedores</SelectItem>
-                  <SelectItem value="investment">💰 Investimento — projeto que busca capital</SelectItem>
-                  <SelectItem value="partnership">🤝 Parceria — colaboração estratégica</SelectItem>
-                  <SelectItem value="distribution">🌍 Distribuição — busca de distribuidoras</SelectItem>
+                <SelectContent className="bg-[#0d1628] border-white/10 text-white">
+                  <SelectItem value="offer">📦 Oferta: produto, serviço ou commodity</SelectItem>
+                  <SelectItem value="demand">📈 Demanda: busca de fornecedores</SelectItem>
+                  <SelectItem value="investment">💰 Investimento: projeto que busca capital</SelectItem>
+                  <SelectItem value="partnership">🤝 Parceria: colaboração estratégica</SelectItem>
+                  <SelectItem value="distribution">🌍 Distribuição: busca de distribuidoras</SelectItem>
                   <SelectItem value="other">💡 Outro</SelectItem>
                 </SelectContent>
               </Select>
@@ -227,7 +243,7 @@ export default function NewOpportunity() {
             <div>
               <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Descrição detalhada *</label>
               <Textarea
-                placeholder="Descreva sua oportunidade com detalhes: o que você oferece ou busca, volume, condições, diferenciais, público-alvo, etc. Quanto mais detalhes, melhor a análise de compliance da IA."
+                placeholder="Conte o que você oferece ou busca: quantidade, condições, diferenciais e para quem é. Quanto mais detalhes, mais rápida e justa a análise."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={5000}
@@ -247,13 +263,13 @@ export default function NewOpportunity() {
                   {isAnalyzing ? (
                     <>
                       <Loader2 size={14} className="text-amber-400 animate-spin" />
-                      <span className="text-amber-400 text-xs font-semibold">IA de Compliance analisando...</span>
+                      <span className="text-amber-400 text-xs font-semibold">Analisando a segurança da sua oportunidade...</span>
                     </>
                   ) : risk ? (
                     <>
                       <span style={{ color: risk.color }}>{risk.icon}</span>
                       <span className="text-xs font-semibold" style={{ color: risk.color }}>
-                        Análise Prévia — {risk.label}
+                        Análise Prévia: {risk.label}
                       </span>
                     </>
                   ) : null}
@@ -301,7 +317,7 @@ export default function NewOpportunity() {
                         ))}
                       </div>
                       <p className="text-white/30 text-xs mt-2.5 italic">
-                        Você poderá anexar esses documentos após publicar a oportunidade.
+                        Guarde esses documentos: a moderação pode pedi-los durante a análise da sua oportunidade.
                       </p>
                     </div>
                   </div>
@@ -317,7 +333,7 @@ export default function NewOpportunity() {
                   <SelectTrigger className="bg-white/5 border-white/10 text-white">
                     <SelectValue placeholder="Selecionar..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0d1628] border-white/10 max-h-60">
+                  <SelectContent className="bg-[#0d1628] border-white/10 max-h-60 text-white">
                     {sortTextAlphabetically(SECTORS).map((s) => (
                       <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}
@@ -330,7 +346,7 @@ export default function NewOpportunity() {
                   <SelectTrigger className="bg-white/5 border-white/10 text-white">
                     <SelectValue placeholder="Selecionar..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0d1628] border-white/10 max-h-60">
+                  <SelectContent className="bg-[#0d1628] border-white/10 max-h-60 text-white">
                     {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: country.name }))).map((c) => (
                       <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
                     ))}
@@ -341,7 +357,7 @@ export default function NewOpportunity() {
 
             {/* Tags */}
             <div>
-              <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Tags (máx. 10)</label>
+              <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Palavras-chave (até 10)</label>
               <div className="flex gap-2 mb-2">
                 <Input
                   placeholder="Adicionar tag..."
@@ -356,6 +372,18 @@ export default function NewOpportunity() {
                   <Tag size={14} />
                 </Button>
               </div>
+              {suggestedForType.length > 0 && tags.length < 10 && (
+                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                  <span className="text-white/30 text-xs">Sugestões:</span>
+                  {suggestedForType.map((sug) => (
+                    <button key={sug} type="button"
+                      className="text-xs px-2 py-0.5 rounded-full border border-white/15 text-white/50 hover:border-amber-500/40 hover:text-amber-300 transition-colors"
+                      onClick={() => setTags([...tags, sug])}>
+                      + {sug}
+                    </button>
+                  ))}
+                </div>
+              )}
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {tags.map((tag) => (
@@ -395,7 +423,7 @@ export default function NewOpportunity() {
               {isLoading ? (
                 <><div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />Analisando com IA...</>
               ) : (
-                <><Sparkles size={16} />Publicar com análise IA</>
+                <><Sparkles size={16} />Enviar para análise e publicação</>
               )}
             </Button>
 
@@ -415,7 +443,7 @@ export default function NewOpportunity() {
               <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
                 <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <Sparkles size={12} className="text-amber-400" />
-                  Sistema de Compliance IA
+                  Como funciona a análise automática
                 </h3>
                 <div className="space-y-3 text-xs text-white/50 leading-relaxed">
                   <p>A IA analisa em <strong className="text-white/70">tempo real</strong> enquanto você preenche o formulário:</p>
@@ -424,7 +452,7 @@ export default function NewOpportunity() {
                       { step: "1", text: "Identifica riscos preliminares", color: "#f97316" },
                       { step: "2", text: "Sugere documentos específicos para o nicho", color: "#eab308" },
                       { step: "3", text: "Faz pergunta dinâmica de comprovação", color: "#22c55e" },
-                      { step: "4", text: "Calcula Frauen Trust Score (0-100%)", color: "#3b82f6" },
+                      { step: "4", text: "Calcula sua nota de confiança, de 0 a 100", color: "#3b82f6" },
                     ].map((item) => (
                       <div key={item.step} className="flex items-start gap-2">
                         <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5"
@@ -445,10 +473,10 @@ export default function NewOpportunity() {
                 <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">Escala de Confiabilidade</h3>
                 <div className="space-y-2">
                   {[
-                    { color: "#22c55e", label: "🟢 Verde", desc: "Acima de 80% — Alta confiabilidade" },
-                    { color: "#eab308", label: "🟡 Amarelo", desc: "50–79% — Boa documentação" },
-                    { color: "#f97316", label: "🟠 Laranja", desc: "20–49% — Necessita validação" },
-                    { color: "#ef4444", label: "🔴 Vermelho", desc: "Abaixo de 20% — Baixa confiabilidade" },
+                    { color: "#22c55e", label: "🟢 Verde", desc: "Acima de 80%: alta confiabilidade" },
+                    { color: "#eab308", label: "🟡 Amarelo", desc: "50–79%: boa documentação" },
+                    { color: "#f97316", label: "🟠 Laranja", desc: "20–49%: precisa de validação" },
+                    { color: "#ef4444", label: "🔴 Vermelho", desc: "Abaixo de 20%: baixa confiabilidade" },
                   ].map((item, i) => (
                     <div key={i} className="flex items-start gap-2 text-xs">
                       <span className="font-medium" style={{ color: item.color }}>{item.label}</span>
@@ -492,7 +520,7 @@ export default function NewOpportunity() {
                   <div className="mt-4 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
                     <div className="flex items-center gap-1.5 text-green-400 text-xs">
                       <CheckCircle size={12} />
-                      <span>Oportunidade publicada com sucesso!</span>
+                      <span>Recebemos sua oportunidade! Ela fica pública assim que a análise for concluída.</span>
                     </div>
                   </div>
                 )}

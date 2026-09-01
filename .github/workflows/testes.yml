@@ -1,0 +1,112 @@
+name: Testes
+
+# Roda em toda PR e em tudo que entra na main.
+#
+# Existe por causa de um defeito real: um bloco novo entrou no SQL do schema —
+# na época mantido à mão — sem o separador `--> statement-breakpoint`, e um
+# banco criado do zero passou a nascer sem as tabelas do consentimento. Não
+# apareceu em teste nenhum porque o banco de desenvolvimento tinha sido
+# consertado à mão ao longo do trabalho — quem verifica contra o próprio
+# ambiente remendado não verifica coisa nenhuma.
+#
+# Por isso os passos mais importantes daqui não são `pnpm test`: são criar o
+# banco do zero contra um MariaDB limpo, e conferir que drizzle/schema.ts e as
+# migrações de drizzle/ concordam. Se o schema não aplicar, ou se alguém mudou
+# o schema e esqueceu o `pnpm db:generate`, a PR fica vermelha antes de alguém
+# revisar.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Uma execução por branch; empurrar de novo cancela a anterior, que já não
+# interessa a ninguém.
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Tipos, banco do zero e testes
+    runs-on: ubuntu-latest
+
+    services:
+      # Banco de verdade, e não um dublê: parte da suíte fala com o banco, e o
+      # schema precisa ser exercitado contra o motor real. Sem serviço, esses
+      # testes falhariam por falta de banco e o time aprenderia a ignorar
+      # vermelho — que é pior do que não ter CI.
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: mmm_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=24
+
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/mmm_ci
+      # Só para o processo subir nos testes; não é segredo de nada.
+      JWT_SECRET: segredo-de-integracao-continua-sem-valor
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      # Quem muda drizzle/schema.ts e esquece o `pnpm db:generate` deixa as
+      # migrações para trás — e o banco de produção nunca receberia a mudança.
+      # Com schema e migrações em dia, o generate não cria arquivo nenhum.
+      - name: Schema e migrações concordam
+        run: |
+          pnpm db:generate
+          novos=$(git status --porcelain drizzle/)
+          if [ -n "$novos" ]; then
+            echo "$novos"
+            echo "::error::drizzle/schema.ts mudou sem migração. Rode 'pnpm db:generate' e faça commit do que ele criar."
+            exit 1
+          fi
+
+      # O passo que teria pego o defeito da etapa 11. `criar-banco.mjs` aplica
+      # as migrações de drizzle/ e sai com código 1 se qualquer comando falhar.
+      - name: Criar o banco do zero
+        run: node scripts/criar-banco.mjs
+
+      # Um banco recém-criado já deve bater com o baseline coluna a coluna: se o
+      # nivelador achar o que fazer, o baseline está em desacordo consigo mesmo
+      # ou o leitor dele quebrou.
+      - name: Banco novo já nasce nivelado
+        run: |
+          saida=$(node scripts/nivelar-banco.mjs)
+          echo "$saida"
+          echo "$saida" | grep -q "Nada a nivelar" || {
+            echo "::error::Banco recém-criado precisaria de nivelamento — baseline inconsistente ou leitor quebrado."
+            exit 1
+          }
+
+      - name: Tipos
+        run: pnpm check
+
+      - name: Testes
+        run: pnpm test
+
+      # O Dockerfile empacota o resultado disto. Quebra de build não aparece no
+      # typecheck: só no build.
+      - name: Build
+        run: pnpm build

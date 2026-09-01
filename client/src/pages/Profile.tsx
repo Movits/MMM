@@ -59,7 +59,7 @@ const WHAT_I_HAVE_OPTIONS = [
   { id: "tecnologia", label: "Tecnologia", icon: "💻" },
   { id: "investidores", label: "Rede de Investidores", icon: "💰" },
   { id: "acesso_governamental", label: "Acesso Governamental", icon: "🏛️" },
-  { id: "commodities", label: "Commodities", icon: "📦" },
+  { id: "commodities", label: "Matérias-primas (commodities)", icon: "📦" },
   { id: "licencas", label: "Licenças & Certificações", icon: "📋" },
   { id: "imoveis", label: "Imóveis", icon: "🏢" },
   { id: "logistica", label: "Logística", icon: "🚚" },
@@ -188,7 +188,13 @@ export default function Profile() {
       utils.profile.get.invalidate();
       setEditing(false);
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      // Erros de validação do zod chegam como JSON serializado; mostrar só a
+      // primeira mensagem em vez do array cru.
+      let msg = err.message;
+      try { const issues = JSON.parse(err.message); if (Array.isArray(issues) && issues[0]?.message) msg = issues[0].message; } catch { /* mensagem simples */ }
+      toast.error(msg);
+    },
   });
 
   const handleSave = () => {
@@ -242,12 +248,14 @@ export default function Profile() {
         <Link href="/dashboard">
           <span className="flex items-center gap-2 text-white/50 hover:text-white transition-colors cursor-pointer text-sm">
             <ArrowLeft size={16} />
-            Voltar ao Dashboard
+            Voltar para a página inicial
           </span>
         </Link>
-        <span className="text-xl font-black">
-          <span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span>
-        </span>
+        <Link href="/dashboard">
+          <span className="text-xl font-black cursor-pointer">
+            <span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span>
+          </span>
+        </Link>
         {editing ? (
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setEditing(false)} className="text-white/40 hover:text-white/70">
@@ -364,7 +372,7 @@ export default function Profile() {
                     if (next === "individual") setCompanyCnpj("");
                   }}>
                     <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"><SelectValue placeholder={t("profile.business.personTypePlaceholder")} /></SelectTrigger>
-                    <SelectContent className="bg-[#0d1530] border-white/10">
+                    <SelectContent className="bg-[#0d1530] border-white/10 text-white">
                       {sortOptionsAlphabetically([
                         { value: "individual", label: t("profile.business.individual") },
                         { value: "legal_entity", label: t("profile.business.legalEntity") },
@@ -393,7 +401,7 @@ export default function Profile() {
                     <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50">
                       <SelectValue placeholder="Selecione o país" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0d1530] border-white/10">
+                    <SelectContent className="bg-[#0d1530] border-white/10 text-white">
                       {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: country.name })), i18n.language).map(c => (
                         <SelectItem key={c.code} value={c.code} className="text-white hover:bg-white/10 focus:bg-white/10">{c.name}</SelectItem>
                       ))}
@@ -412,7 +420,7 @@ export default function Profile() {
                     <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50">
                       <SelectValue placeholder={t("profile.gender.placeholder")} />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0d1530] border-white/10">
+                    <SelectContent className="bg-[#0d1530] border-white/10 text-white">
                       {sortOptionsAlphabetically([
                         { value: "male", label: t("profile.gender.male") },
                         { value: "female", label: t("profile.gender.female") },
@@ -431,7 +439,7 @@ export default function Profile() {
                     <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.business.companySize")}</label>
                     <Select value={companySize} onValueChange={value => setCompanySize(value as typeof companySize)}>
                       <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"><SelectValue placeholder={t("profile.business.companySizePlaceholder")} /></SelectTrigger>
-                      <SelectContent className="bg-[#0d1530] border-white/10">
+                      <SelectContent className="bg-[#0d1530] border-white/10 text-white">
                         {personType === "mei" ? (
                           <SelectItem value="mei" className="text-white">{t("profile.business.sizeMei")}</SelectItem>
                         ) : (
@@ -466,7 +474,7 @@ export default function Profile() {
               <div>
                 <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">Sobre você</label>
                 <Textarea value={bio} onChange={e => setBio(e.target.value)}
-                  placeholder="Conte brevemente sobre sua trajetória e o que você representa no ecossistema..."
+                  placeholder="Conte um pouco da sua história e do seu negócio..."
                   rows={3}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50 resize-none" />
               </div>

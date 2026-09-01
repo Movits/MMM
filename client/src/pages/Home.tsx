@@ -99,35 +99,46 @@ function LanguageSelector() {
   );
 }
 
-// ─── FAQ COM IA ───────────────────────────────────────────────
+// ─── FAQ ─────────────────────────────────────────────────────
+// Respostas fixas: abrir uma pergunta não pode custar uma chamada de IA nem
+// depender dela estar no ar. A caixa "Pergunte à IA" continua logo abaixo
+// para dúvidas fora desta lista.
 const FAQ_ITEMS = [
-  { q: "Quais são os níveis de membro da plataforma?" },
-  { q: "Como funciona o NDA na Deal Room?" },
-  { q: "Como funciona o processo de Deal Room?" },
-  { q: "O que é o nível Ouro e como consigo?" },
-  { q: "Quais oportunidades posso encontrar na plataforma?" },
-  { q: "Como a IA faz o match entre perfis e oportunidades?" },
+  {
+    q: "Quais são os níveis de membro da plataforma?",
+    a: "São três: Bronze, Prata e Ouro. Toda conta nova começa no Bronze e já pode montar a base de contatos, participar de reuniões e explorar as oportunidades públicas. O Prata vem com a verificação de identidade. O Ouro é o nível de maior confiança e abre as oportunidades confidenciais.",
+  },
+  {
+    q: "Como funciona o acordo de confidencialidade (NDA) na Deal Room?",
+    a: "A Deal Room é a sala privada onde vocês negociam dentro da plataforma. Antes de qualquer conversa ali, as duas partes assinam um acordo de confidencialidade. A sala só é liberada depois das duas assinaturas, e tudo que for trocado ali fica protegido pelo acordo.",
+  },
+  {
+    q: "Como funciona a Deal Room, a sala privada de negociação?",
+    a: "Você demonstra interesse em uma oportunidade e, quando a outra parte aceita, a plataforma cria uma sala privada para vocês duas. Lá dentro ficam o chat e os documentos do negócio, tudo condicionado ao NDA assinado. A ideia é sair da conversa solta e ir para um espaço com regra clara.",
+  },
+  {
+    q: "O que é o nível Ouro e como consigo?",
+    a: "O Ouro identifica as usuárias de maior confiança da rede. Quem tem o selo enxerga também as oportunidades confidenciais e vê quem demonstrou interesse nas suas publicações. A concessão passa pela governança da plataforma, que considera a verificação de identidade e a participação na comunidade.",
+  },
+  {
+    q: "Quais oportunidades posso encontrar na plataforma?",
+    a: "De vários tipos: ofertas de produtos e serviços, demandas de quem procura fornecedor, busca de investimento, parcerias comerciais e canais de distribuição. Antes de aparecer para as outras membras, toda oportunidade passa por uma checagem automática das regras da plataforma e pela aprovação da nossa equipe.",
+  },
+  {
+    q: "Como a IA encontra as combinações entre perfis e oportunidades?",
+    a: "O sistema compara os perfis em dimensões como especialidade, setor, objetivos, localização, valores e capacidade de investimento, e calcula um índice de compatibilidade. Para as conexões mais fortes, a IA escreve uma explicação de por que aquela parceria faz sentido, para você decidir com contexto.",
+  },
 ];
 
 function FAQSection() {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [loading, setLoading] = useState<number | null>(null);
   const [customQ, setCustomQ] = useState("");
   const [customAnswer, setCustomAnswer] = useState("");
   const [customLoading, setCustomLoading] = useState(false);
   const faqMutation = trpc.faq.ask.useMutation();
 
-  const handleToggle = async (idx: number, question: string) => {
-    if (openIdx === idx) { setOpenIdx(null); return; }
-    setOpenIdx(idx);
-    if (answers[idx]) return;
-    setLoading(idx);
-    try {
-      const res = await faqMutation.mutateAsync({ question });
-      setAnswers(prev => ({ ...prev, [idx]: typeof res.answer === 'string' ? res.answer : String(res.answer) }));
-    } catch { setAnswers(prev => ({ ...prev, [idx]: "Não foi possível carregar a resposta. Tente novamente." })); }
-    setLoading(null);
+  const handleToggle = (idx: number) => {
+    setOpenIdx(openIdx === idx ? null : idx);
   };
 
   const handleCustom = async () => {
@@ -137,7 +148,7 @@ function FAQSection() {
     try {
       const res = await faqMutation.mutateAsync({ question: customQ });
       setCustomAnswer(typeof res.answer === 'string' ? res.answer : String(res.answer));
-    } catch { setCustomAnswer("Não foi possível processar sua pergunta. Tente novamente."); }
+    } catch { setCustomAnswer("Não conseguimos responder agora. Tente de novo em instantes."); }
     setCustomLoading(false);
   };
 
@@ -149,7 +160,7 @@ function FAQSection() {
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
             Tire suas <span className="text-[#f5a623]">dúvidas</span>
           </h2>
-          <p className="text-white/40 text-lg">Clique em uma pergunta ou faça a sua própria. A IA responde em segundos.</p>
+          <p className="text-white/40 text-lg">As respostas para as perguntas mais comuns. E se a sua não estiver aqui, pergunte à IA logo abaixo.</p>
         </div>
 
         {/* Perguntas pré-definidas */}
@@ -157,7 +168,7 @@ function FAQSection() {
           {FAQ_ITEMS.map((item, idx) => (
             <div key={idx} className="bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden transition-all duration-200 hover:border-white/15">
               <button
-                onClick={() => handleToggle(idx, item.q)}
+                onClick={() => handleToggle(idx)}
                 className="w-full flex items-center justify-between px-6 py-4 text-left"
               >
                 <span className="text-white/90 font-medium text-sm md:text-base">{item.q}</span>
@@ -165,14 +176,7 @@ function FAQSection() {
               </button>
               {openIdx === idx && (
                 <div className="px-6 pb-5">
-                  {loading === idx ? (
-                    <div className="flex items-center gap-2 text-white/40 text-sm">
-                      <div className="w-4 h-4 border-2 border-[#f5a623]/40 border-t-[#f5a623] rounded-full animate-spin" />
-                      Gerando resposta...
-                    </div>
-                  ) : (
-                    <p className="text-white/60 text-sm leading-relaxed whitespace-pre-line">{answers[idx]}</p>
-                  )}
+                  <p className="text-white/60 text-sm leading-relaxed whitespace-pre-line">{item.a}</p>
                 </div>
               )}
             </div>
@@ -262,9 +266,10 @@ export default function Home() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.05] bg-[#060b14]/80 backdrop-blur-2xl">
         <div className="flex items-center justify-between px-6 md:px-12 py-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="text-xl font-extrabold tracking-tight">
+            <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              className="text-xl font-extrabold tracking-tight cursor-pointer" aria-label="Voltar ao topo">
               <span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span>
-            </span>
+            </a>
             <span className="text-[10px] uppercase tracking-wider bg-[#f5a623]/10 text-[#f5a623] border border-[#f5a623]/20 px-2 py-0.5 rounded-full font-semibold">{t("nav.beta")}</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/50">
@@ -416,7 +421,7 @@ export default function Home() {
                   </div>
                   <div>
                     <div className="text-white font-bold text-sm leading-none">Match por IA</div>
-                    <div className="text-white/40 text-[11px] mt-1.5">Análise em 5 dimensões</div>
+                    <div className="text-white/40 text-[11px] mt-1.5">Análise em seis critérios</div>
                   </div>
                 </div>
               </div>
@@ -683,17 +688,19 @@ export default function Home() {
       {/* ─── FOOTER ─── */}
       <footer className="border-t border-white/[0.05] py-10">
         <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-white/25 text-sm">
-          <div className="font-extrabold">
+          <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            className="font-extrabold cursor-pointer" aria-label="Voltar ao topo">
             <span className="text-white/70">MMM</span><span className="text-[#f5a623]">OS</span>
-          </div>
+          </a>
           <div className="text-center">
             <div className="text-white/40 text-xs mb-1">{t("footer.tagline")}</div>
             <div>© 2026 MMM OS. {t("footer.rights")}</div>
           </div>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-white/60 transition-colors">{t("footer.privacy")}</a>
-            <a href="#" className="hover:text-white/60 transition-colors">{t("footer.terms")}</a>
-            <a href="#" className="hover:text-white/60 transition-colors">{t("footer.contact")}</a>
+            {/* O link de contato volta quando houver e-mail ou WhatsApp
+                institucional definido pela cliente. */}
+            <Link href="/privacidade" className="hover:text-white/60 transition-colors">{t("footer.privacy")}</Link>
+            <Link href="/termos" className="hover:text-white/60 transition-colors">{t("footer.terms")}</Link>
           </div>
         </div>
       </footer>

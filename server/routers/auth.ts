@@ -8,7 +8,7 @@ import { publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { createAuditLog, invalidateSession } from "../security";
 import { users, passwordResetTokens, passwordResetRequests } from "../../drizzle/schema";
-import { registerUser, loginUser } from "../auth";
+import { registerUser, loginUser, toPublicUser } from "../auth";
 import {
   getRequestIp,
   hashPasswordResetToken,
@@ -22,7 +22,7 @@ import {
 // AUTENTICAÇÃO
 // ============================================================
 export const authRouter = router({
-  me: publicProcedure.query(opts => opts.ctx.user),
+  me: publicProcedure.query(opts => toPublicUser(opts.ctx.user)),
 
   register: publicProcedure
     .input(z.object({

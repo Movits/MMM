@@ -178,3 +178,12 @@ export async function invalidateSessionByToken(sessionToken: string) {
     .set({ isActive: false })
     .where(eq(sessions.sessionToken, sessionToken));
 }
+
+// Remove campos que jamais podem ir para o navegador. `ctx.user` é a linha
+// crua da tabela `users`, e serializá-la inteira em auth.me/profile.get
+// expunha o passwordHash de quem estivesse logado.
+export function toPublicUser<T extends { passwordHash?: unknown }>(user: T | null | undefined) {
+  if (!user) return user ?? null;
+  const { passwordHash: _omitido, ...publico } = user as T & { passwordHash?: unknown };
+  return publico;
+}

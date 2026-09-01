@@ -14,7 +14,7 @@
     "headline2": "Entfalte dein volles Potenzial",
     "headline3": "Dein Netzwerk, deine Macht",
     "headline4": "Finde deine nächste große Chance",
-    "subtitle": "Sagen Sie uns, wer Sie sind, was Sie suchen und was Sie anzubieten haben. Unsere künstliche Intelligenz analysiert Ihr Profil tiefgehend, um Sie mit Führungspersönlichkeiten und Möglichkeiten mit hoher echter Kompatibilität zu verbinden — weit über einfache Schlüsselwörter hinaus.",
+    "subtitle": "Sagen Sie uns, wer Sie sind, was Sie suchen und was Sie anzubieten haben. Unsere künstliche Intelligenz analysiert Ihr Profil tiefgehend, um Sie mit Führungspersönlichkeiten und Möglichkeiten mit hoher echter Kompatibilität zu verbinden: weit über einfache Schlüsselwörter hinaus.",
     "cta": "Mein Profil erstellen →",
     "ctaSecondary": "Mehr erfahren"
   },
@@ -276,8 +276,8 @@
       "mba": "MBA"
     },
     "errorSave": "Ihr Profil konnte nicht gespeichert werden.",
-    "hintBio": "Seien Sie authentisch — die KI nutzt dies, um Ihr Wesen zu verstehen",
-    "hintGoal": "Seien Sie konkret — das hilft der KI, jetzt Verbindungen zu finden",
+    "hintBio": "Seien Sie authentisch: die KI nutzt dies, um Ihr Wesen zu verstehen",
+    "hintGoal": "Seien Sie konkret: das hilft der KI, jetzt Verbindungen zu finden",
     "successMsg": "🎉 Profil erstellt! Weiterleitung zum Dashboard...",
     "errorMsg": "Profil konnte nicht gespeichert werden.",
     "maxValues": "Maximal 4 Werte ausgewählt",
@@ -299,10 +299,10 @@
       "selectPlaceholder": "Auswählen...",
       "age": "Ihr Alter",
       "agePlaceholder": "z.B. 32",
-      "ageHint": "Optional — hilft, besser ausgerichtete Verbindungen zu finden",
+      "ageHint": "Optional: hilft, besser ausgerichtete Verbindungen zu finden",
       "bio": "Wer sind Sie in einem Satz?",
       "bioPlaceholder": "z.B. Serienunternehmerin mit 10 Jahren Fintech-Erfahrung...",
-      "bioHint": "Seien Sie authentisch — KI nutzt dies, um Ihr Wesen zu verstehen",
+      "bioHint": "Seien Sie authentisch: KI nutzt dies, um Ihr Wesen zu verstehen",
       "primarySpecialty": "Was sind Ihre wichtigsten Fachgebiete? *",
       "specialtySelectionCount": "({{count}} ausgewählt)",
       "specialtyLimit": "Sie können bis zu 3 Fachgebiete auswählen.",
@@ -323,10 +323,10 @@
       "selectAll": "(wählen Sie alles Zutreffende)",
       "shortTermGoal": "Kurzfristiges Ziel (nächste 12 Monate)",
       "shortTermGoalPlaceholder": "z.B. Mein B2B SaaS starten...",
-      "shortTermGoalHint": "Seien Sie spezifisch — das hilft der KI, Verbindungen für jetzt zu finden",
+      "shortTermGoalHint": "Seien Sie spezifisch: das hilft der KI, Verbindungen für jetzt zu finden",
       "longTermGoal": "Langfristiges Ziel (3–5 Jahre)",
       "longTermGoalPlaceholder": "z.B. Ein Tech-Unternehmen mit sozialem Impact aufbauen...",
-      "longTermGoalHint": "Zukunftsvision — verbindet Sie mit Menschen mit ausgerichteten Trajektorien",
+      "longTermGoalHint": "Zukunftsvision: verbindet Sie mit Menschen mit ausgerichteten Trajektorien",
       "currentResources": "Was haben Sie heute?",
       "currentResourcesPlaceholder": "Beschreiben Sie Ihre Ressourcen, Vermögenswerte, Erfahrungen oder Ihr Netzwerk",
       "currentResourcesHint": "Zum Beispiel: ein Team, ein Unternehmen, Vermögenswerte, Wissen oder Kontakte.",
@@ -338,13 +338,15 @@
       "availableForTravel": "Reisebereit",
       "availableForTravelDesc": "Persönliche Treffen",
       "incomeRange": "Monatliche Einkommensspanne *",
-      "incomePrivacy": "Verschlüsselte Daten — niemals öffentlich angezeigt",
+      "incomePrivacy": "Verschlüsselte Daten: niemals öffentlich angezeigt",
       "investmentCapacity": "Verfügbare Investitionskapazität",
       "lookingForInvestment": "Ich suche Investitionen für mein Unternehmen",
       "lookingForInvestmentDesc": "Verbindet Sie mit aktiven Investorinnen auf der Plattform",
       "workStyle": "Bevorzugter Arbeitsstil *",
       "values": "Ihre Kernwerte",
-      "languages": "Sprachen, die Sie sprechen"
+      "languages": "Sprachen, die Sie sprechen",
+      "customSector": "Seu setor não está na lista?",
+      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
     },
     "companySize": {
       "micro": "Mikro (1–9)",
@@ -430,7 +432,7 @@
     "connections": "Verbindungen",
     "profile": "Mein Profil",
     "noMatches": "Bereit für Ihre nächste große Verbindung?",
-    "noMatchesDesc": "Unsere KI analysiert Ihr Profil in 5 Dimensionen und findet Frauen mit der höchsten echten Kompatibilität mit Ihnen.",
+    "noMatchesDesc": "Unsere KI analysiert Ihr Profil in 6 Dimensionen und findet Frauen mit der höchsten echten Kompatibilität mit Ihnen.",
     "compatibility": "Durchschnittlicher Score",
     "connect": "Interesse bekunden",
     "dismiss": "Match ausgeblendet. Generieren Sie jederzeit neue Matches.",
@@ -442,7 +444,7 @@
     "connectionAccepted": "🤝 Verbindung angenommen! Sie sind jetzt verbunden.",
     "connectionDeclined": "Anfrage abgelehnt.",
     "newMatches": "✨ {{count}} neue(s) Match(es) gefunden!",
-    "analysisDone": "Analyse abgeschlossen. Vervollständigen Sie Ihr Profil für bessere Ergebnisse.",
+    "analysisDone": "Analyse abgeschlossen: diesmal keine neuen Matches. Neue Mitglieder und aktualisierte Profile schaffen neue Verbindungen.",
     "distribution": "Kompatibilitätsverteilung",
     "distributionDesc": "Wie Ihre Matches nach Score-Bereich verteilt sind",
     "analyzing": "Analysiere...",
@@ -551,7 +553,7 @@
   "aiEngine": {
     "label": "KI-Motor",
     "title": "Verbindungen, die wirklich Sinn ergeben",
-    "desc": "Unsere KI analysiert 5 Dimensionen Ihres Profils — Fachgebiet, Ziele, Einkommen, Standort und Werte — und generiert einen Kompatibilitätsscore von 0 bis 100 für jedes Paar. Sie erhalten auch einen personalisierten Einblick, der erklärt, warum diese Verbindung für Sie Sinn ergibt.",
+    "desc": "Unsere KI analysiert 5 Dimensionen Ihres Profils: Fachgebiet, Ziele, Einkommen, Standort und Werte: und generiert einen Kompatibilitätsscore von 0 bis 100 für jedes Paar. Sie erhalten auch einen personalisierten Einblick, der erklärt, warum diese Verbindung für Sie Sinn ergibt.",
     "variables": "Über 50 Variablen pro Frauenpaar analysiert",
     "dim1": "Ihre Hauptspezialisierung",
     "dim2": "Was Sie suchen",
@@ -575,7 +577,7 @@
     "silver": {
       "title": "Silber-Mitglied",
       "desc": "Alle Frauen, die sich auf der Plattform registrieren, treten als Silber-Mitglieder bei. Vollständiger Zugang zum Matching-System, öffentlichen Möglichkeiten und Verbindungen mit anderen Frauen im Netzwerk.",
-      "access": "Zugang durch Registrierung — keine Kosten, keine Auswahl"
+      "access": "Zugang durch Registrierung: keine Kosten, keine Auswahl"
     },
     "gold": {
       "badge": "Anerkennung",
@@ -591,7 +593,7 @@
     "bronze": {
       "title": "Bronze-Mitglied",
       "desc": "Neuankömmlinge auf der Plattform. Zugang zu öffentlichen Möglichkeiten, grundlegendem Matching und der MMM-Gemeinschaft. Der Ausgangspunkt für das Wachstum im Netzwerk.",
-      "access": "Zugang durch Registrierung — Anfangsniveau für alle Mitglieder"
+      "access": "Zugang durch Registrierung: Anfangsniveau für alle Mitglieder"
     }
   },
   "profile": {

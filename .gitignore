@@ -43,6 +43,9 @@ Thumbs.db
 backups/
 dumps/
 
+# Configuração pessoal do Claude Code
+.claude/settings.local.json
+
 # Dumps de banco — o dump do MMM contém dados pessoais reais
 *.sql
 *.sql.gz
@@ -50,6 +53,9 @@ dumps/
 backup/
 # Exceção: as migrações do Drizzle são versionadas
 !drizzle/*.sql
+# Exceção: o schema completo usado por scripts/criar-banco.mjs. É só DDL,
+# gerado do drizzle/schema.ts, sem uma linha de dado.
+!scripts/schema-completo.sql
 
 # Documentos internos — não publicar
 SECURITY_PENTEST_REPORT.md
@@ -58,3 +64,6 @@ todo.md
 # Logs da plataforma de origem
 .manus-logs/
 *.log
+
+# pastas de trabalho temporario de ferramentas de revisao
+.tmp-*/

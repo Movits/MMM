@@ -132,10 +132,17 @@ function OpportunityCard({ opp, isGold, isSaved = false, onToggleSave, onDelete 
   });
   const level = opp.complianceLevel ?? "pending";
   const borderClass = COMPLIANCE_BORDER[level] ?? "hover:border-amber-500/40";
+  const emAnalise = opp.status === "pending";
 
   return (
     <Link href={`/opportunities/${opp.id}`}>
-      <div className={`group relative bg-white/5 border border-white/10 rounded-2xl p-5 ${borderClass} hover:bg-white/8 transition-all duration-200 cursor-pointer card-lift`}>
+      <div className={`group relative bg-white/5 border border-white/10 rounded-2xl p-5 ${borderClass} hover:bg-white/8 transition-all duration-200 cursor-pointer card-lift ${emAnalise ? "opacity-80" : ""}`}>
+        {emAnalise && (
+          <div className="mb-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-500/15 border border-yellow-500/30">
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"/>
+            <span className="text-yellow-300 text-xs font-semibold">Em análise, visível só para você</span>
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -356,7 +363,7 @@ export default function Opportunities() {
               <SelectTrigger className="w-40 bg-white/5 border-white/10 text-white h-9 text-sm">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
-              <SelectContent className="bg-[#0d1628] border-white/10">
+              <SelectContent className="bg-[#0d1628] border-white/10 text-white">
                 <SelectItem value="all">Todos os tipos</SelectItem>
                 <SelectItem value="offer">Oferta</SelectItem>
                 <SelectItem value="demand">Demanda</SelectItem>
@@ -367,9 +374,9 @@ export default function Opportunities() {
             </Select>
             <Select value={complianceLevel} onValueChange={setComplianceLevel}>
               <SelectTrigger className="w-44 bg-white/5 border-white/10 text-white h-9 text-sm">
-                <SelectValue placeholder="Compliance" />
+                <SelectValue placeholder="Nível de confiança" />
               </SelectTrigger>
-              <SelectContent className="bg-[#0d1628] border-white/10">
+              <SelectContent className="bg-[#0d1628] border-white/10 text-white">
                 <SelectItem value="all">Todos os níveis</SelectItem>
                 <SelectItem value="green">✅ Confiável</SelectItem>
                 <SelectItem value="yellow">⚠️ Atenção</SelectItem>
@@ -388,7 +395,7 @@ export default function Opportunities() {
             <Star size={18} className="text-amber-400 flex-shrink-0" />
             <div>
               <p className="text-amber-300 text-sm font-semibold">Oportunidades exclusivas disponíveis</p>
-              <p className="text-amber-300/60 text-xs">Membros com Status Ouro têm acesso a oportunidades confidenciais e podem ver quem demonstrou interesse.</p>
+              <p className="text-amber-300/60 text-xs">Membras com Status Ouro também veem as oportunidades confidenciais e quem demonstrou interesse nelas.</p>
             </div>
           </div>
         )}
@@ -396,10 +403,10 @@ export default function Opportunities() {
         {/* Stats rápidas */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
-            { label: "Ativas", value: opps?.length ?? "—", icon: <TrendingUp size={14} /> },
-            { label: "Confiáveis", value: opps?.filter((o: any) => o.complianceLevel === "green").length ?? "—", icon: <ShieldCheck size={14} /> },
-            { label: "Investimento", value: opps?.filter((o: any) => o.type === "investment").length ?? "—", icon: <DollarSign size={14} /> },
-            { label: "Parcerias", value: opps?.filter((o: any) => o.type === "partnership").length ?? "—", icon: <Users size={14} /> },
+            { label: "Ativas", value: opps?.length ?? "-", icon: <TrendingUp size={14} /> },
+            { label: "Confiáveis", value: opps?.filter((o: any) => o.complianceLevel === "green").length ?? "-", icon: <ShieldCheck size={14} /> },
+            { label: "Investimento", value: opps?.filter((o: any) => o.type === "investment").length ?? "-", icon: <DollarSign size={14} /> },
+            { label: "Parcerias", value: opps?.filter((o: any) => o.type === "partnership").length ?? "-", icon: <Users size={14} /> },
           ].map((s, i) => (
             <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-2">
               <span className="text-amber-400">{s.icon}</span>
@@ -426,7 +433,7 @@ export default function Opportunities() {
                   <Bookmark size={24} className="text-white/20" />
                 </div>
                 <p className="text-white/40 text-sm">Nenhuma oportunidade salva ainda</p>
-                <p className="text-white/25 text-xs mt-1">Clique no ♥ nos cards para salvar oportunidades</p>
+                <p className="text-white/25 text-xs mt-1">Toque no coração de uma oportunidade para salvar e encontrar aqui depois</p>
                 <Button size="sm" variant="ghost" className="mt-4 text-amber-400 hover:text-amber-300" onClick={() => setShowSaved(false)}>
                   Ver todas as oportunidades
                 </Button>

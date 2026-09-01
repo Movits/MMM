@@ -15,8 +15,10 @@ import {
   type Context, type ContextType, type ContactContext, type ContextParticipant, type ContextMedia,
   enrichmentSessions, enrichmentMessages, enrichmentSuggestions,
   type EnrichmentSession, type EnrichmentMessage, type EnrichmentSuggestion,
+  contactAssets, contactNeeds,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { slugifyMatchTag } from "./match-service";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -92,6 +94,21 @@ export async function getUserProfile(userId: number) {
   return rows[0] ?? null;
 }
 
+// Os mesmos 10 campos da antiga saveUserProfile (matching.ts), que ficou órfã
+// quando o onboarding passou a usar este upsert — desde então o Dashboard
+// mostrava "0% Perfil completo" para todo mundo.
+export function computeProfileCompleteness(profile: Record<string, unknown> | null | undefined) {
+  if (!profile) return 0;
+  const fields = [
+    profile.displayName, profile.city, profile.primarySpecialty,
+    profile.sector, profile.seekingTypes, profile.incomeRange,
+    profile.workStyle, profile.bio, profile.experienceYears,
+    profile.values,
+  ];
+  const filled = fields.filter(f => f !== null && f !== undefined && f !== "" && !(Array.isArray(f) && f.length === 0)).length;
+  return Math.round((filled / fields.length) * 100);
+}
+
 export async function upsertUserProfile(userId: number, data: Record<string, unknown>) {
   const db = await getDb();
   if (!db) return;
@@ -100,6 +117,11 @@ export async function upsertUserProfile(userId: number, data: Record<string, unk
     await db.update(userProfiles).set({ ...data, updatedAt: new Date() } as any).where(eq(userProfiles.userId, userId));
   } else {
     await db.insert(userProfiles).values({ userId, ...data } as any);
+  }
+  const atual = await getUserProfile(userId);
+  const completeness = computeProfileCompleteness(atual as Record<string, unknown> | null);
+  if (atual && (atual as any).profileCompleteness !== completeness) {
+    await db.update(userProfiles).set({ profileCompleteness: completeness } as any).where(eq(userProfiles.userId, userId));
   }
 }
 
@@ -121,11 +143,24 @@ export async function listOpportunities(filters: {
   search?: string;
   limit?: number;
   offset?: number;
+  /** Quem está olhando a lista. Presente, a autora também vê as próprias
+   *  oportunidades ainda em análise ("pending") — sem isso, publicar parecia
+   *  engolir a oportunidade, porque a lista só mostrava as ativas. */
+  viewerUserId?: number;
 }) {
   const db = await getDb();
   if (!db) return [];
   const conditions: any[] = [];
-  conditions.push(eq(opportunities.status, (filters.status ?? "active") as any));
+  if (filters.status === undefined && filters.viewerUserId !== undefined) {
+    conditions.push(
+      or(
+        eq(opportunities.status, "active"),
+        and(eq(opportunities.status, "pending"), eq(opportunities.publishedBy, filters.viewerUserId)),
+      ),
+    );
+  } else {
+    conditions.push(eq(opportunities.status, (filters.status ?? "active") as any));
+  }
   if (filters.type) conditions.push(eq(opportunities.type, filters.type as any));
   if (filters.sector) conditions.push(eq(opportunities.sector, filters.sector));
   if (filters.country) conditions.push(eq(opportunities.country, filters.country));
@@ -811,7 +846,7 @@ export async function createEnrichmentSession(ownerId: string, contactId: number
   const now = Date.now();
   await db.insert(enrichmentSessions).values({ id, ownerId, contactId, status: "active", questionsAnswered: 0, questionsSkipped: 0, lastActivityAt: now, createdAt: now, updatedAt: now });
   // Atualizar enrichment_status no contato
-  await db.update(privateContacts).set({ enrichmentStatus: "active" } as any).where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)));
+  await db.update(privateContacts).set({ enrichmentStatus: "active" }).where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)));
   return id;
 }
 
@@ -862,27 +897,105 @@ export async function getEnrichmentSuggestion(id: string, ownerId: string) {
   return row ?? null;
 }
 
+/**
+ * Grava no contato a resposta que a usuária confirmou no chat de enriquecimento.
+ *
+ * Cada tipo de resposta tem um destino, e "assets" e "needs" são os que mais
+ * importam: caem em contact_assets/contact_needs, que é de onde o Cruzamento
+ * Inteligente lê. É isto que torna o chat o caminho automático de alimentar o
+ * match — a pessoa conversa, e o possui/procura do contato se preenche sozinho.
+ *
+ * A versão anterior deste código marcava tudo como "applied" e só gravava os
+ * campos simples de perfil (telefone, empresa...). assets, needs, how_met e
+ * relationship_type não estavam no mapa e eram jogados fora em silêncio — 18
+ * respostas confirmadas se perderam assim, e scripts/recuperar-enriquecimento.mjs
+ * existe para reaplicá-las. A ordem também importava e estava errada: o status
+ * virava "applied" ANTES de qualquer escrita, então uma falha na escrita deixava
+ * a sugestão mentindo que foi aplicada. Agora grava primeiro, marca depois.
+ */
 export async function applyEnrichmentSuggestion(id: string, ownerId: string, editedValue?: string): Promise<boolean> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const sug = await getEnrichmentSuggestion(id, ownerId);
   if (!sug || sug.status !== "pending") return false;
-  const finalValue = editedValue ?? sug.suggestedValue;
+  const finalValue = (editedValue ?? sug.suggestedValue).trim();
   const now = Date.now();
-  const newStatus = editedValue ? "edited" : "confirmed";
+
+  await aplicarRespostaAoContato(db, ownerId, sug.contactId, sug.fieldType, finalValue, now);
+
   await db.update(enrichmentSuggestions).set({ status: "applied", appliedValue: finalValue, actionedAt: now, actionedBy: "user", updatedAt: now }).where(eq(enrichmentSuggestions.id, id));
-  // Aplicar ao contato conforme field_type
+  return true;
+}
+
+/**
+ * O destino de cada resposta. Devolve true quando gravou e false quando não
+ * havia nada a fazer (valor vazio, item já existente, linha já anotada) — é o
+ * que deixa o script de recuperação relatar a verdade em vez de contar de novo
+ * o que já estava lá. Exportada porque o script replays as respostas antigas
+ * por aqui — mesmo caminho, mesma de-duplicação.
+ */
+export async function aplicarRespostaAoContato(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  ownerId: string,
+  contactId: number,
+  fieldType: string,
+  valor: string,
+  now: number,
+): Promise<boolean> {
+  if (!valor) return false;
+
+  // ── campos simples do perfil do contato ────────────────────────────────────
   const fieldMap: Record<string, string> = {
     phone: "phone", whatsapp: "whatsapp", email: "email",
     company: "company", job_title: "jobTitle", city: "city",
-    country: "country", linkedin_url: "linkedinUrl", instagram_handle: "instagramHandle",
+    country: "country", linkedin_url: "linkedinUrl",
+    // A coluna chama-se `instagram`; o mapa antigo apontava para uma coluna
+    // inexistente e a primeira sugestão de instagram confirmada quebraria aqui.
+    instagram_handle: "instagram",
   };
-  const dbField = fieldMap[sug.fieldType];
+  const dbField = fieldMap[fieldType];
   if (dbField) {
-    await db.update(privateContacts).set({ [dbField]: finalValue, updatedAt: now } as any)
-      .where(and(eq(privateContacts.id, sug.contactId), eq(privateContacts.ownerId, ownerId)));
+    await db.update(privateContacts).set({ [dbField]: valor, updatedAt: now } as any)
+      .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)));
+    return true;
   }
-  return true;
+
+  // ── o que o contato possui / procura: o combustível do cruzamento ──────────
+  if (fieldType === "assets" || fieldType === "needs") {
+    const tabela = fieldType === "assets" ? contactAssets : contactNeeds;
+    const slug = slugifyMatchTag(valor);
+    if (!slug) return false;
+    // Confirmar duas vezes a mesma resposta não pode duplicar o item — as
+    // sugestões antigas têm repetição real ("fabrica" cinco vezes no mesmo
+    // contato) e o script de recuperação passa por aqui.
+    const [existente] = await db.select({ id: tabela.id }).from(tabela)
+      .where(and(eq(tabela.ownerId, ownerId), eq(tabela.contactId, contactId), eq(tabela.tagSlug, slug)))
+      .limit(1);
+    if (existente) return false;
+    await db.insert(tabela).values({
+      ownerId, contactId, tagSlug: slug, tagLabel: valor, createdAt: now, updatedAt: now,
+    });
+    return true;
+  }
+
+  // ── contexto do relacionamento: vai para as anotações do contato ───────────
+  if (fieldType === "how_met" || fieldType === "relationship_type") {
+    const rotulo = fieldType === "how_met" ? "Como se conheceram" : "Relacionamento";
+    const linha = `${rotulo}: ${valor}`;
+    const [contato] = await db.select({ notes: privateContacts.notes }).from(privateContacts)
+      .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)))
+      .limit(1);
+    if (!contato || contato.notes?.includes(linha)) return false;
+    const notas = contato.notes ? `${contato.notes}
+${linha}` : linha;
+    await db.update(privateContacts).set({ notes: notas, updatedAt: now })
+      .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)));
+    return true;
+  }
+
+  // Tipo desconhecido: não há onde gravar, e fingir que gravou é o defeito que
+  // este código existe para não repetir.
+  throw new Error(`Tipo de resposta sem destino: ${fieldType}`);
 }
 
 export async function ignoreEnrichmentSuggestion(id: string, ownerId: string): Promise<boolean> {
@@ -911,7 +1024,7 @@ export async function completeEnrichmentSession(sessionId: string, ownerId: stri
     // Atualizar status no contato
     const [sess] = await db.select().from(enrichmentSessions).where(eq(enrichmentSessions.id, sessionId)).limit(1);
     if (sess) {
-      await db.update(privateContacts).set({ enrichmentStatus: "completed" } as any)
+      await db.update(privateContacts).set({ enrichmentStatus: "completed" })
         .where(and(eq(privateContacts.id, sess.contactId), eq(privateContacts.ownerId, ownerId)));
     }
   }

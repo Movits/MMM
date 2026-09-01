@@ -5,6 +5,7 @@ import { ArrowLeft, Check, CircleAlert, Clock3, FileText, Loader2, Mic, Pause, P
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { LANGUAGES } from "@/i18n";
+import { AppHeader } from "@/components/AppHeader";
 
 const MAX_DURATION = 10 * 60;
 
@@ -109,7 +110,7 @@ export default function Meetings() {
 
   async function startRecording() {
     if (!title.trim()) return toast.error("Dê um título para a reunião.");
-    if (!consent) return toast.error("Registre o consentimento antes de iniciar a gravação.");
+    if (!consent) return toast.error("Marque a caixa de autorização antes de iniciar a gravação.");
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return toast.error("A gravação não é suportada neste navegador.");
     try {
       setStarting(true);
@@ -163,7 +164,7 @@ export default function Meetings() {
 
   async function uploadAudio(file: File) {
     if (!title.trim()) return toast.error("Dê um título para a reunião.");
-    if (!consent) return toast.error("Registre o consentimento antes de enviar o áudio.");
+    if (!consent) return toast.error("Marque a caixa de autorização antes de enviar o áudio.");
     const mimeType = supportedAudioMime(file);
     if (!mimeType) return toast.error("Envie um arquivo WebM, MP3, M4A, MP4, OGG ou WAV.");
     if (file.size > 10 * 1024 * 1024) return toast.error("O arquivo de áudio deve ter no máximo 10 MB.");
@@ -228,9 +229,9 @@ export default function Meetings() {
     return <MeetingDetail meetingId={meetingId} onBack={() => setScreen("list")} />;
   }
 
-  return <main className="min-h-screen text-white px-4 py-8 md:px-8 bg-transparent">
+  return <><AppHeader title="Reuniões" backTo="/dashboard"/>
+  <main className="min-h-screen text-white px-4 py-8 md:px-8 bg-transparent">
     <div className="max-w-6xl mx-auto">
-      <button onClick={() => navigate("/dashboard")} className="inline-flex items-center gap-2 text-sm text-white/55 hover:text-white mb-6"><ArrowLeft size={16}/> Dashboard</button>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div><p className="text-amber-300 text-sm font-semibold tracking-wide">PRIVADO E SEGURO</p><h1 className="text-3xl md:text-4xl font-bold mt-1">Assistente de Reuniões</h1><p className="text-white/55 mt-2 max-w-2xl">Grave reuniões curtas com consentimento, revise a transcrição e confirme os contatos sugeridos.</p></div>
         <button onClick={() => setScreen("new")} className="inline-flex justify-center items-center gap-2 rounded-xl bg-[#f5a623] text-[#08121f] font-bold px-5 py-3 hover:bg-[#ffc04d]"><Plus size={18}/> Nova reunião</button>
@@ -238,7 +239,7 @@ export default function Meetings() {
       <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100/80 mb-7"><CircleAlert size={17} className="inline mr-2"/>Somente grave com consentimento de todas as pessoas. O áudio é privado e programado para expirar após 30 dias.</div>
       {isLoading ? <div className="py-20 text-center text-white/45"><Loader2 className="animate-spin inline mr-2"/>Carregando reuniões…</div> : !meetings?.length ? <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center"><Mic className="mx-auto text-amber-300 mb-4" size={34}/><h2 className="font-semibold text-xl">Nenhuma reunião registrada</h2><p className="text-white/45 mt-2">Inicie uma gravação para gerar transcrição e sugestões de contato.</p></div> : <div className="grid gap-3">{meetings.map(meeting => <button key={meeting.id} onClick={() => { setMeetingId(meeting.id); setScreen("detail"); }} className="text-left rounded-2xl border border-white/10 bg-white/[0.035] hover:bg-white/[0.07] p-5 transition-colors"><div className="flex items-center justify-between gap-4"><div><h2 className="font-semibold">{meeting.title}</h2><p className="text-xs text-white/45 mt-1">{new Date(meeting.createdAt).toLocaleString("pt-BR")}</p></div><span className={`border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(meeting.status)}</span></div></button>)}</div>}
     </div>
-  </main>;
+  </main></>;
 }
 
 function MeetingRecorder(props: { title: string; setTitle: (value: string) => void; consent: boolean; setConsent: (value: boolean) => void; recording: boolean; elapsed: number; processing: boolean; microphoneIssue: string | null; audioInput: React.RefObject<HTMLInputElement | null>; capturedAudio: { url: string; durationSeconds: number } | null; onProcessCaptured: () => void; onDiscardCaptured: () => void; onStart: () => void; onStop: () => void; onUpload: (file: File) => void; onBack: () => void }) {
@@ -252,7 +253,7 @@ function MeetingRecorder(props: { title: string; setTitle: (value: string) => vo
         <div><label className="text-sm text-white/70">Título da reunião</label><input disabled={locked} value={props.title} onChange={e => props.setTitle(e.target.value)} placeholder="Ex.: Conversa com investidora" className="mt-2 w-full rounded-xl bg-white/5 border border-white/15 px-4 py-3 outline-none focus:border-amber-300"/></div>
         <label className="flex items-start gap-3 rounded-xl border border-white/10 p-4 cursor-pointer"><input type="checkbox" checked={props.consent} disabled={locked} onChange={e => props.setConsent(e.target.checked)} className="mt-1 accent-amber-400"/><span className="text-sm text-white/70">Confirmo que todas as pessoas participantes autorizaram a gravação e o tratamento privado deste áudio para esta reunião.</span></label>
       </div>
-      <div className="my-9 text-center"><div className={`mx-auto mb-4 h-28 w-28 rounded-full flex items-center justify-center border ${props.recording ? "border-red-400 bg-red-500/15 animate-pulse" : "border-amber-400/40 bg-amber-400/10"}`}>{props.processing ? <Loader2 className="animate-spin text-amber-300" size={36}/> : <Mic className={props.recording ? "text-red-300" : "text-amber-300"} size={36}/>}</div><p className="font-mono text-3xl tracking-widest">{formatDuration(props.elapsed)}</p><p className="text-xs text-white/40 mt-2">Limite no modo atual: 10 minutos e 10 MB</p></div>
+      <div className="my-9 text-center"><div className={`mx-auto mb-4 h-28 w-28 rounded-full flex items-center justify-center border ${props.recording ? "border-red-400 bg-red-500/15 animate-pulse" : "border-amber-400/40 bg-amber-400/10"}`}>{props.processing ? <Loader2 className="animate-spin text-amber-300" size={36}/> : <Mic className={props.recording ? "text-red-300" : "text-amber-300"} size={36}/>}</div><p className="font-mono text-3xl tracking-widest">{formatDuration(props.elapsed)}</p><p className="text-xs text-white/40 mt-2">Limite por gravação: 10 minutos ou 10 MB</p></div>
       {props.microphoneIssue && <div className="mb-4 rounded-xl border border-amber-300/25 bg-amber-300/10 p-4 text-sm text-amber-100"><strong>Permissão de microfone:</strong> {props.microphoneIssue}</div>}
       <input ref={props.audioInput} type="file" accept="audio/webm,audio/mpeg,audio/mp4,audio/m4a,audio/x-m4a,audio/ogg,audio/wav,.mp3,.m4a,.mp4,.ogg,.wav,.webm" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) props.onUpload(file); event.currentTarget.value = ""; }}/>
       {props.processing ? <div className="w-full rounded-xl bg-white/8 py-4 text-center text-white/70"><Loader2 className="inline animate-spin mr-2" size={17}/>Transcrevendo e analisando a reunião…</div> : props.recording ? <button onClick={props.onStop} className="w-full rounded-xl bg-red-500 text-white font-bold py-4 inline-flex justify-center gap-2"><Pause size={19}/> Encerrar gravação</button> : props.capturedAudio ? <div className="space-y-3 rounded-2xl border border-amber-300/25 bg-amber-300/5 p-4"><p className="text-sm font-semibold text-amber-100">Ouça a gravação antes de transcrever</p><audio controls src={props.capturedAudio.url} className="w-full"/><p className="text-xs text-white/45">Duração: {formatDuration(props.capturedAudio.durationSeconds)}</p><button onClick={props.onProcessCaptured} className="w-full rounded-xl bg-[#f5a623] text-[#08121f] font-bold py-3 inline-flex justify-center gap-2"><FileText size={18}/> Transcrever áudio</button><button onClick={props.onDiscardCaptured} className="w-full rounded-xl border border-white/20 py-3 text-sm text-white/75">Descartar e gravar novamente</button></div> : <div className="space-y-3"><button onClick={props.onStart} className="w-full rounded-xl bg-[#f5a623] text-[#08121f] font-bold py-4 inline-flex justify-center gap-2"><Play size={19}/> Iniciar gravação</button><button onClick={() => props.audioInput.current?.click()} className="w-full rounded-xl border border-white/20 text-white/75 hover:bg-white/5 py-3 inline-flex justify-center gap-2 text-sm"><FileText size={17}/> Enviar arquivo de áudio</button></div>}
@@ -275,7 +276,7 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
     onError: error => toast.error(error.message || "Não foi possível traduzir a transcrição."),
   });
   const deleteMeeting = trpc.meetings.delete.useMutation({
-    onSuccess: async () => { await utils.meetings.list.invalidate(); toast.success("Reunião e dados derivados excluídos."); onBack(); },
+    onSuccess: async () => { await utils.meetings.list.invalidate(); toast.success("Reunião excluída, junto com a transcrição e as sugestões."); onBack(); },
     onError: error => toast.error(error.message || "Não foi possível excluir a reunião."),
   });
 
@@ -292,7 +293,7 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
     <div className="flex flex-col md:flex-row justify-between gap-4 mb-6"><div><p className="text-amber-300 text-xs font-semibold">REUNIÃO PRIVADA</p><h1 className="text-3xl font-bold mt-1">{meeting.title}</h1><p className="text-sm text-white/45 mt-2">{new Date(meeting.createdAt).toLocaleString(i18n.language)}</p></div><div className="flex items-start gap-2"><span className={`h-fit border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(meeting.status)}</span><button onClick={() => deleteMeeting.mutate({ meetingId })} disabled={deleteMeeting.isPending} className="rounded-full border border-red-400/25 px-3 py-1 text-xs text-red-200 hover:bg-red-400/10 disabled:opacity-50">Excluir</button></div></div>
     {meeting.status === "failed" && <div className="rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-red-200">{meeting.processingError || "O processamento não foi concluído. Tente novamente com uma gravação curta."}</div>}
     <div className="flex gap-2 border-b border-white/10 mb-6">{([ ["summary", "Resumo", FileText], ["transcript", "Transcrição", Clock3], ["contacts", `Contatos (${suggestions.length})`, Users] ] as const).map(([id,label,Icon]) => <button key={id} onClick={() => setTab(id)} className={`inline-flex items-center gap-2 px-4 py-3 text-sm border-b-2 ${tab === id ? "border-amber-300 text-amber-300" : "border-transparent text-white/50"}`}><Icon size={16}/>{label}</button>)}</div>
-    {tab === "summary" && <div className="grid md:grid-cols-2 gap-4"><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">Entidades detectadas</h2><div className="flex flex-wrap gap-2 mt-4">{entities.length ? entities.map(entity => <span key={entity.id} className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/75">{entity.value}</span>) : <p className="text-sm text-white/45">Nenhuma entidade pendente.</p>}</div></section><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">Proteção do áudio</h2><p className="text-sm text-white/50 mt-3">O áudio fica restrito à sua conta e expira automaticamente após 30 dias. A transcrição permanece privada na sua rede.</p></section></div>}
+    {tab === "summary" && <div className="grid md:grid-cols-2 gap-4"><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">Nomes e empresas citados na conversa</h2><div className="flex flex-wrap gap-2 mt-4">{entities.length ? entities.map(entity => <span key={entity.id} className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/75">{entity.value}</span>) : <p className="text-sm text-white/45">Nenhuma entidade pendente.</p>}</div></section><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">Proteção do áudio</h2><p className="text-sm text-white/50 mt-3">O áudio fica restrito à sua conta e expira automaticamente após 30 dias. A transcrição permanece privada na sua rede.</p></section></div>}
     {tab === "transcript" && <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
       <h2 className="font-semibold mb-4">Transcrição</h2>
       {transcript ? <>
@@ -301,7 +302,7 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
           <p className="mt-1 text-sm text-amber-100/70">Escolha o idioma da pessoa estrangeira para gerar uma versão traduzida da transcrição.</p>
           <label className="mt-3 flex flex-col gap-2 text-sm text-white/75 sm:flex-row sm:items-center">Idioma de destino
             <select value={translationLanguage} onChange={event => setTranslationLanguage(event.target.value)} className="rounded-lg bg-[#0b1725] border border-white/15 px-3 py-2 text-white">
-              {LANGUAGES.map(language => <option key={language.code} value={language.code}>{language.flag} {language.label}</option>)}
+              {LANGUAGES.map(language => <option className="bg-white text-[#2D3E50]" key={language.code} value={language.code}>{language.flag} {language.label}</option>)}
             </select>
           </label>
         </div>

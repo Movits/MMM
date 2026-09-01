@@ -101,16 +101,24 @@ export const matchingRouter = router({
   // Disparar alertas para nova oportunidade publicada com alta compatibilidade (>= 80%)
   checkAndNotifyHighCompatibility: protectedProcedure
     .input(z.object({ opportunityId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input }) => notifyHighCompatibilityForOpportunity(input.opportunityId)),
+});
+
+// Fora do router para a aprovação da moderação também disparar os alertas: a
+// versão anterior só rodava no create, condicionada a status "active" — que o
+// create nunca produz (toda oportunidade nasce "pending").
+export async function notifyHighCompatibilityForOpportunity(opportunityId: number) {
+  {
       const db = await getDb();
       if (!db) return { notified: 0 };
 
-      const [opp] = await db.select().from(opportunities).where(eq(opportunities.id, input.opportunityId)).limit(1);
+      const [opp] = await db.select().from(opportunities).where(eq(opportunities.id, opportunityId)).limit(1);
       if (!opp || opp.status !== "active") return { notified: 0 };
 
       const profiles = await db
         .select({
           userId: userProfiles.userId,
+          whatIHave: userProfiles.whatIHave,
           whatINeed: userProfiles.whatINeed,
           sector: userProfiles.sector,
           seekingTypes: userProfiles.seekingTypes,
@@ -122,8 +130,11 @@ export const matchingRouter = router({
         .limit(200);
 
       const oppContext = `Título: "${opp.title}" | Setor: ${opp.sector || "N/A"} | Tipo: ${opp.type} | Tags: ${JSON.stringify(opp.tags || [])} | Descrição: "${(opp.description || "").substring(0, 300)}"`;
+      // "tenho" entra junto com "preciso": uma oportunidade que BUSCA algo casa
+      // com quem OFERECE esse algo. Antes só "preciso" ia ao alerta, então quem
+      // poderia suprir a oportunidade nunca era avisada — metade do cruzamento.
       const profilesContext = profiles.map((p, i) =>
-        `[${i}] userId:${p.userId} setor:${p.sector || "N/A"} preciso:${JSON.stringify(p.whatINeed || [])} interesse:${JSON.stringify(p.interestSectors || [])}`
+        `[${i}] userId:${p.userId} setor:${p.sector || "N/A"} tenho:${JSON.stringify(p.whatIHave || [])} preciso:${JSON.stringify(p.whatINeed || [])} interesse:${JSON.stringify(p.interestSectors || [])}`
       ).join("\n");
 
       const aiResp = await invokeLLM({
@@ -176,5 +187,5 @@ export const matchingRouter = router({
         notified++;
       }
       return { notified };
-    }),
-});
+  }
+}

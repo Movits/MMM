@@ -219,7 +219,14 @@ const resolveApiUrl = () => {
     // prefixo de versão; só falta o caminho do recurso.
     return base.endsWith("/chat/completions") ? base : `${base}/chat/completions`;
   }
-  return "https://forge.manus.im/v1/chat/completions";
+  // O fallback antigo era o forge.manus.im — que morreu com o Manus. Chamar um
+  // host morto vira um erro de rede obscuro minutos depois; falhar aqui, com
+  // nome de variável, é diagnosticável em segundos. Todo chamador de invokeLLM
+  // já trata exceção (é o mesmo caminho de "sem chave configurada").
+  throw new Error(
+    "LLM_API_URL não definida. Aponte para um endpoint compatível com a API da " +
+      "OpenAI — ex.: https://generativelanguage.googleapis.com/v1beta/openai",
+  );
 };
 
 const assertApiKey = () => {
@@ -370,11 +377,14 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   };
 
   // LLM_MODEL redireciona todos os modelos herdados do proxy Manus (gpt-*, etc.)
-  // para o provedor configurado no .env.
-  const resolvedModel = process.env.LLM_MODEL || model;
-  if (resolvedModel) {
-    payload.model = resolvedModel;
-  }
+  // para o provedor configurado no .env. O default garante que o payload sempre
+  // leve um modelo: a API OpenAI-compatível do Gemini rejeita requisições sem o
+  // campo `model` com 400 — foi o que derrubou FAQ, matches e compliance em
+  // produção quando LLM_MODEL não estava definida. Modelo concreto, não o alias
+  // gemini-flash-latest: o alias resolve para um modelo com cota gratuita de 20
+  // requisições por dia, que esgota em minutos de uso real.
+  const resolvedModel = process.env.LLM_MODEL || model || "gemini-3.5-flash";
+  payload.model = resolvedModel;
 
   if (tools && tools.length > 0) {
     payload.tools = tools;
@@ -445,9 +455,11 @@ export type ModelsResponse = {
 export async function listLLMModels(): Promise<ModelsResponse> {
   assertApiKey();
 
-  const url = ENV.llmApiUrl && ENV.llmApiUrl.trim().length > 0
-    ? `${ENV.llmApiUrl.replace(/\/$/, "")}/v1/models`
-    : "https://forge.manus.im/v1/models";
+  if (!ENV.llmApiUrl || ENV.llmApiUrl.trim().length === 0) {
+    // Mesmo motivo do resolveApiUrl acima: o fallback era o forge morto.
+    throw new Error("LLM_API_URL não definida.");
+  }
+  const url = `${ENV.llmApiUrl.replace(/\/$/, "")}/v1/models`;
 
   const response = await fetchWithBackoff(url, {
     headers: { authorization: `Bearer ${ENV.llmApiKey}` },

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/i18n";
 import { NotificationBell } from "@/components/NotificationBell";
+import { GlobalMenu } from "@/components/AppHeader";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -168,6 +169,19 @@ const INTEREST_SYNONYMS: Record<string, string> = {
   imoveis: "Imobiliário", imóveis: "Imobiliário", imobiliario: "Imobiliário", real_estate: "Imobiliário",
 };
 
+// Perfis criados a partir de 31/08 guardam a CHAVE da opção ("engineering") em
+// vez do rótulo traduzido, para o match funcionar entre idiomas. A exibição
+// traduz de volta; texto livre e dados antigos passam intactos.
+const OPTION_NAMESPACES = ["specialties", "sectors", "seeking", "values", "languages"];
+function optionLabel(t: (k: string, o?: Record<string, unknown>) => string, valor?: string | null): string {
+  if (!valor) return "";
+  for (const ns of OPTION_NAMESPACES) {
+    const traduzido = t(`onboarding.${ns}.${valor}`, { defaultValue: "" });
+    if (traduzido) return traduzido;
+  }
+  return valor;
+}
+
 function normalizeInterest(raw: string): string {
   const key = raw.toLowerCase().trim().replace(/\s+/g, "_");
   return INTEREST_SYNONYMS[key] || INTEREST_SYNONYMS[raw.toLowerCase().trim()] || raw;
@@ -250,8 +264,11 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
   const values = Array.isArray(match.values) ? match.values as string[] : [];
 
   // Combina seekingTypes + businessInterests, normaliza sinônimos, remove duplicatas
+  // Perfis novos guardam CHAVES (ex. "investor"); perfis antigos, o texto
+  // traduzido. Traduz a chave quando houver tradução e cai no valor cru.
+  const keyToLabel = (k: string) => optionLabel(t, k);
   const allInterests = Array.from(new Set(
-    [...seekingTypes, ...businessInterests].map(normalizeInterest)
+    [...seekingTypes, ...businessInterests].map(k => normalizeInterest(keyToLabel(k)))
   )).slice(0, 5);
 
   useEffect(() => {
@@ -300,7 +317,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
             </div>
             <div className="text-xs text-white/40 mt-0.5 flex items-center gap-1">
               <span className="text-[10px]">📍</span>
-              {match.sector || match.primarySpecialty}
+              {match.sector || optionLabel(t, match.primarySpecialty)}
               {(match.sector || match.primarySpecialty) && (match.city) && " · "}
               {match.city}{match.country && `, ${match.country}`}
             </div>
@@ -338,7 +355,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
             {values.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-2">
                 {values.map((v: string) => (
-                  <span key={v} className="px-2.5 py-0.5 rounded-full bg-[#f5a623]/10 border border-[#f5a623]/20 text-xs text-[#f5a623]">{v}</span>
+                  <span key={v} className="px-2.5 py-0.5 rounded-full bg-[#f5a623]/10 border border-[#f5a623]/20 text-xs text-[#f5a623]">{optionLabel(t, v)}</span>
                 ))}
               </div>
             )}
@@ -354,7 +371,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
           </button>
           <button onClick={() => setExpanded(e => !e)}
             className="px-3 py-2.5 rounded-xl text-xs font-medium border border-white/15 text-white/50 hover:border-white/30 hover:text-white transition-all duration-200">
-            {expanded ? "▲" : "Scores"}
+            {expanded ? "▲" : "Ver detalhes"}
           </button>
           <button onClick={() => onDismiss(match.matchId)}
             className="px-3 py-2.5 rounded-xl text-white/25 hover:text-white/60 hover:bg-white/5 transition-all duration-200 text-sm">✕</button>
@@ -516,14 +533,26 @@ function RecommendedOpportunities() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!recommendedQuery.isLoading && (!recommendedQuery.data || recommendedQuery.data.length === 0) && (
+      {/* Erro da consulta: não é culpa do perfil da usuária */}
+      {!recommendedQuery.isLoading && recommendedQuery.isError && (
+        <div className="bg-[#0d1530] border border-white/8 rounded-2xl p-8 text-center">
+          <div className="text-4xl mb-3">📡</div>
+          <p className="text-white/40 text-sm">Não foi possível carregar as recomendações agora. Tente novamente em instantes.</p>
+          <button onClick={() => recommendedQuery.refetch()}
+            className="mt-4 px-5 py-2 rounded-xl text-xs font-semibold border border-[#f5a623]/30 text-[#f5a623] hover:bg-[#f5a623]/8 transition-colors">
+            Tentar de novo
+          </button>
+        </div>
+      )}
+
+      {/* Lista realmente vazia */}
+      {!recommendedQuery.isLoading && !recommendedQuery.isError && (!recommendedQuery.data || recommendedQuery.data.length === 0) && (
         <div className="bg-[#0d1530] border border-white/8 rounded-2xl p-8 text-center">
           <div className="text-4xl mb-3">🔭</div>
-          <p className="text-white/40 text-sm">Complete seu perfil para receber recomendações personalizadas de IA</p>
-          <Link href="/profile">
+          <p className="text-white/40 text-sm">Nenhuma recomendação por enquanto. Novas oportunidades publicadas na rede aparecem aqui.</p>
+          <Link href="/opportunities">
             <button className="mt-4 px-5 py-2 rounded-xl text-xs font-semibold border border-[#f5a623]/30 text-[#f5a623] hover:bg-[#f5a623]/8 transition-colors">
-              Completar Perfil
+              Explorar oportunidades
             </button>
           </Link>
         </div>
@@ -667,7 +696,7 @@ function DealRoomsTab() {
       {displayRooms.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-5xl mb-4">🔐</div>
-          <h3 className="text-xl font-black mb-2">{viewAll ? "Nenhuma Deal Room na plataforma" : "Nenhum Deal Room ainda"}</h3>
+          <h3 className="text-xl font-black mb-2">{viewAll ? "Nenhuma sala de negociação na plataforma" : "Nenhuma sala de negociação ainda"}</h3>
           <p className="text-white/40 text-sm max-w-sm mx-auto mb-6">
             {viewAll ? "Ainda não há salas de negociação criadas na plataforma." : "Quando você demonstrar interesse em uma oportunidade, a sala de negociação privada aparecerá aqui."}
           </p>
@@ -682,11 +711,11 @@ function DealRoomsTab() {
       ) : (
         <>
           <p className="text-white/40 text-xs mb-2">
-            {viewAll ? `${displayRooms.length} sala(s) na plataforma` : "Salas de negociação privadas com NDA ativo"}
+            {viewAll ? `${displayRooms.length} sala(s) na plataforma` : "Salas de conversa privadas. Tudo o que for dito nelas é protegido por um termo de sigilo assinado pelas duas partes."}
           </p>
           {displayRooms.map((room: any) => {
             const statusColor = room.status === "active" ? "#22c55e" : room.status === "awaiting_nda" ? "#eab308" : "#9ca3af";
-            const statusLabel = room.status === "active" ? "Ativa" : room.status === "awaiting_nda" ? "Aguardando NDA" : "Encerrada";
+            const statusLabel = room.status === "active" ? "Ativa" : room.status === "awaiting_nda" ? "Aguardando termo de sigilo" : "Encerrada";
             return (
               <Link key={room.id} href={`/deal-room/${room.id}`}>
                 <div className="bg-[#0d1530] border border-white/8 hover:border-amber-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-200 hover:bg-[#0d1530]/80">
@@ -706,7 +735,7 @@ function DealRoomsTab() {
                     </div>
                   </div>
                   {room.status === "awaiting_nda" && (
-                    <p className="text-amber-400/60 text-xs mt-2">⚠️ Aguardando assinatura do NDA para ativar a sala</p>
+                    <p className="text-amber-400/60 text-xs mt-2">⚠️ Falta assinar o termo de sigilo. Entre na sala para assinar e liberar a conversa.</p>
                   )}
                 </div>
               </Link>
@@ -800,7 +829,8 @@ export default function Dashboard() {
 
       {/* ─── NAVBAR ─── */}
       <nav className="border-b border-white/[0.06] px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-40 bg-[#060e1a]/90 backdrop-blur-2xl">
-        <Link href="/">
+        {/* O logo levava para a landing e tirava a usuária do app sem querer. */}
+        <Link href="/dashboard">
           <span className="text-xl font-black cursor-pointer tracking-tight">
             <span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span>
           </span>
@@ -809,81 +839,11 @@ export default function Dashboard() {
           {pendingConnections.length > 0 && (
             <button onClick={() => switchTab("connections")}
               className="text-xs text-[#f5a623] border border-[#f5a623]/30 px-3 py-1.5 rounded-full bg-[#f5a623]/5 hover:bg-[#f5a623]/10 transition-colors animate-pulse">
-              {pendingConnections.length} pendente{pendingConnections.length > 1 ? "s" : ""}
+              {pendingConnections.length} convite{pendingConnections.length > 1 ? "s" : ""} para responder
             </button>
           )}
 
-          {/* ─── MENU EM LISTA ─── */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="group flex items-center gap-2 text-sm font-medium text-white/80 border border-white/10 pl-3 pr-2.5 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] hover:border-[#f5a623]/40 hover:text-white transition-all duration-200 active:scale-[0.97] data-[state=open]:border-[#f5a623]/50 data-[state=open]:bg-white/[0.06] data-[state=open]:text-white">
-                <MenuIcon className="w-4 h-4 text-[#f5a623]" />
-                <span className="hidden sm:inline">Menu</span>
-                <ChevronDown className="w-3.5 h-3.5 text-white/40 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={10}
-              className="w-72 rounded-2xl border-white/10 bg-[#0a1424]/95 backdrop-blur-2xl text-white shadow-2xl shadow-black/60 p-2">
-              <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-widest text-white/35 px-3 pt-2 pb-1">
-                Navegação
-              </DropdownMenuLabel>
-              {[
-                { href: "/opportunities", icon: Briefcase, label: t("dashboard.opportunities") || "Oportunidades", desc: "Propostas e negócios ativos" },
-                { href: "/verification", icon: ShieldCheck, label: "Verificação", desc: "Identidade e selo SIVC" },
-                { href: "/network", icon: Users, label: "Minha Rede", desc: "Sua base particular de contatos" },
-                { href: "/contexts", icon: MapPin, label: "Contextos", desc: "Onde e como conheceu cada pessoa" },
-                { href: "/meetings", icon: Mic, label: "Reuniões", desc: "Gravações e transcrições" },
-                { href: "/memory", icon: Brain, label: "Memória IA", desc: "Pergunte ao seu histórico" },
-                { href: "/intelligent-matches", icon: Sparkles, label: "Matches Inteligentes", desc: "Conexões entre seus contatos" },
-              ].map(item => (
-                <DropdownMenuItem key={item.href} asChild
-                  className="rounded-xl px-3 py-2.5 cursor-pointer focus:bg-white/[0.07] focus:text-white data-[highlighted]:bg-white/[0.07]">
-                  <Link href={item.href}>
-                    <span className="flex items-center gap-3 w-full">
-                      <span className="w-9 h-9 rounded-lg bg-white/[0.05] border border-white/[0.06] flex items-center justify-center shrink-0">
-                        <item.icon className="w-4 h-4 text-white/70" />
-                      </span>
-                      <span className="flex flex-col min-w-0">
-                        <span className="text-sm font-medium text-white leading-tight">{item.label}</span>
-                        <span className="text-[11px] text-white/35 leading-tight truncate">{item.desc}</span>
-                      </span>
-                    </span>
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-              {(user?.role === "president" || user?.role === "gold" || user?.role === "admin") && (
-                <>
-                  <DropdownMenuSeparator className="bg-white/[0.07] my-2" />
-                  <DropdownMenuItem asChild
-                    className="rounded-xl px-3 py-2.5 cursor-pointer focus:bg-amber-400/10 data-[highlighted]:bg-amber-400/10">
-                    <Link href="/president">
-                      <span className="flex items-center gap-3 w-full">
-                        <span className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#f5a623]/25 to-[#ffd166]/10 border border-amber-400/25 flex items-center justify-center shrink-0">
-                          <Crown className="w-4 h-4 text-amber-400" />
-                        </span>
-                        <span className="flex flex-col min-w-0">
-                          <span className="text-sm font-semibold text-amber-300 leading-tight">Painel Ouro</span>
-                          <span className="text-[11px] text-amber-200/40 leading-tight truncate">Governança e validações</span>
-                        </span>
-                      </span>
-                    </Link>
-                  </DropdownMenuItem>
-                </>
-              )}
-              <DropdownMenuSeparator className="bg-white/[0.07] my-2" />
-              <DropdownMenuItem
-                onClick={() => logoutMutation.mutate()}
-                className="rounded-xl px-3 py-2.5 cursor-pointer text-white/50 focus:bg-red-500/10 focus:text-red-300 data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-300">
-                <span className="flex items-center gap-3 w-full">
-                  <span className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0">
-                    <LogOut className="w-4 h-4" />
-                  </span>
-                  <span className="text-sm font-medium leading-tight">{t("dashboard.logout")}</span>
-                </span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <GlobalMenu />
 
           <NotificationBell />
           <LangSelectorMini />
@@ -911,7 +871,7 @@ export default function Dashboard() {
               ? <><span className="text-[#f5a623] font-semibold">{stats.unseen} novo{stats.unseen > 1 ? 's' : ''} match{stats.unseen > 1 ? 'es' : ''}</span> esperando pela sua atenção</>
               : stats?.total && stats.total > 0
                 ? `${stats.total} oportunidade${stats.total > 1 ? 's' : ''} compatível${stats.total > 1 ? 'is' : ''} encontrada${stats.total > 1 ? 's' : ''} para você`
-                : 'Bem-vindo ao MMM OS — gere seus primeiros matches abaixo'}
+                : 'Bem-vinda ao MMM OS! Gere seus primeiros matches abaixo'}
           </p>
         </div>
 
@@ -941,7 +901,7 @@ export default function Dashboard() {
                 : tab === "connections"
                   ? `${t("dashboard.connections")}${connections.length > 0 ? ` (${connections.length})` : ""}`
                   : tab === "dealrooms"
-                  ? "🔐 Deal Rooms"
+                  ? "🔐 Salas de Negociação"
                   : t("dashboard.profile")}
             </button>
           ))}
@@ -1029,7 +989,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-bold">{conn.displayName}</div>
-                    <div className="text-sm text-white/40">{conn.primarySpecialty} · {conn.city}</div>
+                    <div className="text-sm text-white/40">{optionLabel(t, conn.primarySpecialty)} · {conn.city}</div>
                     {conn.message && <div className="text-xs text-white/25 mt-1 truncate">"{conn.message}"</div>}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -1078,7 +1038,7 @@ export default function Dashboard() {
                       <div className="flex-1">
                         <h2 className="text-xl font-black">{profile.displayName}</h2>
                         <div className="text-white/40 text-sm">{profile.currentRole}{profile.currentRole && profile.city && " · "}{profile.city}</div>
-                        <div className="text-xs text-white/25 mt-0.5">{profile.primarySpecialty}</div>
+                        <div className="text-xs text-white/25 mt-0.5">{optionLabel(t, profile.primarySpecialty)}</div>
                       </div>
                         <div className="text-right">
                         <div className="text-3xl font-black text-[#f5a623]">{profile.profileCompleteness}%</div>
@@ -1102,7 +1062,7 @@ export default function Dashboard() {
 
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       {[
-                        { label: t("onboarding.specialty"), value: profile.primarySpecialty, icon: "⚡" },
+                        { label: t("onboarding.specialty"), value: optionLabel(t, profile.primarySpecialty), icon: "⚡" },
                         { label: t("onboarding.sector"), value: profile.sector, icon: "🌐" },
                         { label: t("onboarding.experience"), value: profile.experienceYears ? `${profile.experienceYears} ${t("dashboard.years")}` : null, icon: "📅" },
                         { label: t("onboarding.workStyle"), value: profile.workStyle, icon: "💼" },

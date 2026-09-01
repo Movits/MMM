@@ -14,7 +14,7 @@
     "headline2": "right opportunities",
     "headline3": "made",
     "headline4": "for you",
-    "subtitle": "Tell us who you are, what you seek and what you have to offer. Our artificial intelligence deeply analyzes your profile to connect you with leaders and opportunities of high real compatibility — going far beyond simple keywords.",
+    "subtitle": "Tell us who you are, what you seek and what you have to offer. Our artificial intelligence deeply analyzes your profile to connect you with leaders and opportunities of high real compatibility: going far beyond simple keywords.",
     "cta": "Create my profile →",
     "ctaSecondary": "See how it works"
   },
@@ -33,7 +33,7 @@
     },
     "step2": {
       "title": "AI analyzes everything",
-      "desc": "Our artificial intelligence engine processes your profile across 5 dimensions and compares it with all other women on the platform."
+      "desc": "Our artificial intelligence engine processes your profile across 6 dimensions and compares it with all other women on the platform."
     },
     "step3": {
       "title": "Connect",
@@ -276,8 +276,8 @@
       "mba": "MBA"
     },
     "errorSave": "Could not save your profile.",
-    "hintBio": "Be authentic — the AI uses this to understand your essence",
-    "hintGoal": "Be specific — this helps the AI find connections for right now",
+    "hintBio": "Be authentic: the AI uses this to understand your essence",
+    "hintGoal": "Be specific: this helps the AI find connections for right now",
     "successMsg": "🎉 Profile created! Redirecting to your dashboard...",
     "errorMsg": "Could not save your profile.",
     "maxValues": "Maximum 4 values selected",
@@ -299,10 +299,10 @@
       "selectPlaceholder": "Select...",
       "age": "Your age",
       "agePlaceholder": "e.g. 32",
-      "ageHint": "Optional — helps find more aligned connections",
+      "ageHint": "Optional: helps find more aligned connections",
       "bio": "Who are you in one sentence?",
       "bioPlaceholder": "e.g. Serial entrepreneur with 10 years in fintech, seeking my next impact project...",
-      "bioHint": "Be authentic — AI uses this to understand your essence",
+      "bioHint": "Be authentic: AI uses this to understand your essence",
       "primarySpecialty": "What are your main areas of expertise? *",
       "specialtySelectionCount": "({{count}} selected)",
       "specialtyLimit": "You can choose up to 3 areas of expertise.",
@@ -323,10 +323,10 @@
       "selectAll": "(select all that apply)",
       "shortTermGoal": "Short-term goal (next 12 months)",
       "shortTermGoalPlaceholder": "e.g. Launch my B2B SaaS and reach first $50k MRR...",
-      "shortTermGoalHint": "Be specific — this helps AI find connections for right now",
+      "shortTermGoalHint": "Be specific: this helps AI find connections for right now",
       "longTermGoal": "Long-term goal (3–5 years)",
       "longTermGoalPlaceholder": "e.g. Build a tech company with social impact and scale globally...",
-      "longTermGoalHint": "Future vision — connects you to people with aligned trajectories",
+      "longTermGoalHint": "Future vision: connects you to people with aligned trajectories",
       "currentResources": "What do you have today?",
       "currentResourcesPlaceholder": "Share your resources, assets, experience or available network",
       "currentResourcesHint": "For example: a team, company, assets, knowledge or contacts.",
@@ -338,13 +338,15 @@
       "availableForTravel": "Available for travel",
       "availableForTravelDesc": "In-person meetings",
       "incomeRange": "Monthly income range *",
-      "incomePrivacy": "Encrypted data — never displayed publicly",
+      "incomePrivacy": "Encrypted data: never displayed publicly",
       "investmentCapacity": "Available investment capacity",
       "lookingForInvestment": "I'm looking for investment for my business",
       "lookingForInvestmentDesc": "Connects you to active investors on the platform",
       "workStyle": "Preferred work style *",
       "values": "Your core values",
-      "languages": "Languages you speak"
+      "languages": "Languages you speak",
+      "customSector": "Seu setor não está na lista?",
+      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
     },
     "companySize": {
       "micro": "Micro (1–9)",
@@ -430,7 +432,7 @@
     "connections": "Connections",
     "profile": "My Profile",
     "noMatches": "Ready for your next great connection?",
-    "noMatchesDesc": "Our AI will analyze your profile in 5 dimensions and find women with the highest real compatibility with you.",
+    "noMatchesDesc": "Our AI will analyze your profile in 6 dimensions and find women with the highest real compatibility with you.",
     "compatibility": "Average Score",
     "connect": "Express Interest",
     "dismiss": "Match hidden. Generate new matches anytime.",
@@ -442,7 +444,7 @@
     "connectionAccepted": "🤝 Connection accepted! You are now connected.",
     "connectionDeclined": "Request declined.",
     "newMatches": "✨ {{count}} new match(es) found!",
-    "analysisDone": "Analysis complete. Complete your profile to improve results.",
+    "analysisDone": "Analysis complete: no new matches this time. New members and updated profiles create new connections.",
     "distribution": "Compatibility Distribution",
     "distributionDesc": "How your matches are distributed by score range",
     "analyzing": "Analyzing...",
@@ -551,7 +553,7 @@
   "aiEngine": {
     "label": "AI Engine",
     "title": "Connections that make real sense",
-    "desc": "Our AI analyzes 5 dimensions of your profile — specialty, goals, income, location and values — and generates a compatibility score from 0 to 100 for each pair. You also receive a personalized insight explaining why that connection makes sense for you.",
+    "desc": "Our AI analyzes 5 dimensions of your profile: specialty, goals, income, location and values: and generates a compatibility score from 0 to 100 for each pair. You also receive a personalized insight explaining why that connection makes sense for you.",
     "variables": "Over 50 variables analyzed per pair of women",
     "dim1": "Your main specialty",
     "dim2": "What you are seeking",
@@ -575,7 +577,7 @@
     "silver": {
       "title": "Silver Member",
       "desc": "All women who register on the platform join as Silver Members. Full access to the matching system, public opportunities and connections with other women in the network.",
-      "access": "Access by registration — no cost, no selection"
+      "access": "Access by registration: no cost, no selection"
     },
     "gold": {
       "badge": "Recognition",
@@ -591,7 +593,7 @@
     "bronze": {
       "title": "Bronze Member",
       "desc": "Newcomers to the platform. Access to public opportunities, basic matching and the MMM community. The starting point to grow in the network.",
-      "access": "Access by registration — initial level for all members"
+      "access": "Access by registration: initial level for all members"
     }
   },
   "profile": {
