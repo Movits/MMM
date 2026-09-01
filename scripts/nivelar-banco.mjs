@@ -62,9 +62,10 @@ try {
     const def = baseline.tabelas.get(tabela);
     const linhas = [...def.colunas].map(([nome, definicao]) => `\`${nome}\` ${definicao}`);
     for (const [nome, colunas] of def.unicos) linhas.push(`CONSTRAINT \`${nome}\` UNIQUE(${colunas})`);
-    // A chave primária mora na definição da coluna no formato do drizzle
-    // (AUTO_INCREMENT ... PRIMARY KEY ou "NOT NULL" + CONSTRAINT); o formato
-    // gerado já traz tudo na linha da coluna, então basta juntá-las.
+    // A chave primária vem como linha própria no SQL do drizzle-kit; o
+    // baseline agora a preserva em def.pk. Sem ela o Aiven recusa o CREATE
+    // (sql_require_primary_key).
+    if (def.pk) linhas.push(`PRIMARY KEY (${def.pk})`);
     passos.push({
       nome: `criar a tabela ${tabela}`,
       sql: `CREATE TABLE \`${tabela}\` (\n  ${linhas.join(",\n  ")}\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,

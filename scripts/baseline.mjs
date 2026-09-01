@@ -34,6 +34,7 @@ export async function lerBaseline() {
     const [, nome, corpo] = bloco;
     const colunas = new Map();
     const unicos = new Map();
+    let pk = null;
 
     for (const linhaCrua of corpo.split("\n")) {
       const linha = linhaCrua.trim().replace(/,$/, "");
@@ -44,13 +45,22 @@ export async function lerBaseline() {
         unicos.set(constraint[1], constraint[2]);
         continue;
       }
+      // O drizzle-kit emite a chave primária como linha própria (CONSTRAINT
+      // `x` PRIMARY KEY(`id`)). Descartá-la fazia o nivelar-banco montar
+      // CREATE sem primary key — e o Aiven, com sql_require_primary_key
+      // ligado, recusa a tabela.
+      const chavePrimaria = linha.match(/^(?:CONSTRAINT `[a-z0-9_]+` )?PRIMARY KEY\s*\((.+)\)$/i);
+      if (chavePrimaria) {
+        pk = chavePrimaria[1];
+        continue;
+      }
       if (/^(PRIMARY KEY|KEY|FOREIGN KEY|CONSTRAINT)/i.test(linha)) continue;
 
       const coluna = linha.match(/^`([a-z0-9_]+)` (.+)$/i);
       if (coluna) colunas.set(coluna[1], coluna[2]);
     }
 
-    tabelas.set(nome, { colunas, unicos });
+    tabelas.set(nome, { colunas, unicos, pk });
   }
 
   const indices = new Map();
