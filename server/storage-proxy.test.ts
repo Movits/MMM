@@ -31,6 +31,14 @@ describe("Storage — quem pode baixar o quê", () => {
     expect(await podeBaixarChave(ouro, chave, semSala)).toBe(false);
   });
 
+  it("foto ou documento de contexto: só a dona", async () => {
+    const chave = "contexts/email_dona/ctx-1/foto_ab12cd34.jpg";
+    expect(await podeBaixarChave(dona, chave, semSala)).toBe(true);
+    expect(await podeBaixarChave(bronze, chave, semSala)).toBe(false);
+    // nem Ouro: contexto é da agenda particular, como a reunião
+    expect(await podeBaixarChave(ouro, chave, semSala)).toBe(false);
+  });
+
   it("documento do SIVC (RG, CPF): só a dona", async () => {
     const chave = "sivc/30/ver-1/1700000000-rg.png";
     expect(await podeBaixarChave(dona, chave, semSala)).toBe(true);

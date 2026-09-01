@@ -165,6 +165,11 @@ async function startServer() {
   // O limite ampliado é aplicado somente ao procedimento privado de reunião.
   app.use("/api/trpc/meetings.submitRecording", express.json({ limit: "15mb" }));
 
+  // Mesmo caso para os anexos de contexto (fotos/PDF de até 10 MB em Base64):
+  // sem este recorte, o limite global de 5 MB devolveria 413 para qualquer
+  // arquivo acima de ~3,7 MB — antes de o tRPC sequer validar.
+  app.use("/api/trpc/contexts.uploadMedia", express.json({ limit: "15mb" }));
+
   // V-09: Limite reduzido para 5MB no restante da aplicação.
   app.use(express.json({ limit: "5mb" }));
   app.use(express.urlencoded({ limit: "5mb", extended: true }));

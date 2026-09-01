@@ -9,7 +9,7 @@ import {
   Plus, Search, X, MapPin, Calendar, Users, ChevronLeft,
   Edit2, Trash2, UserPlus, Image, Lock, Globe, Briefcase,
   Building2, Utensils, Landmark, Star, Handshake, FlaskConical,
-  Store
+  Store, FileText
 } from "lucide-react";
 import { Link } from "wouter";
 import { getLoginUrl } from "@/const";
@@ -330,6 +330,45 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
   const deleteMut = trpc.contexts.delete.useMutation({
     onSuccess: () => { toast.success("Contexto excluído."); onClose(); onRefresh(); },
   });
+  const uploadMut = trpc.contexts.uploadMedia.useMutation({
+    onSuccess: () => { toast.success("Arquivo anexado!"); refetch(); },
+    onError: err => toast.error(err.message || "Não foi possível anexar o arquivo."),
+  });
+  const deleteMediaMut = trpc.contexts.deleteMedia.useMutation({
+    onSuccess: () => { toast.success("Arquivo removido."); refetch(); },
+    onError: err => toast.error(err.message || "Não foi possível remover o arquivo."),
+  });
+
+  const TIPOS_DE_MIDIA = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
+  const handleUploadFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite escolher o mesmo arquivo de novo
+    if (!file) return;
+    if (!(TIPOS_DE_MIDIA as readonly string[]).includes(file.type)) {
+      toast.error("Formato não suportado: envie JPG, PNG, WebP ou PDF.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("O arquivo deve ter no máximo 10 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => toast.error("Não foi possível ler o arquivo. Tente de novo.");
+    reader.onload = () => {
+      const conteudo = String(reader.result ?? "");
+      if (!conteudo) {
+        toast.error("Não foi possível ler o arquivo. Tente de novo.");
+        return;
+      }
+      uploadMut.mutate({
+        contextId,
+        fileName: file.name,
+        mimeType: file.type as (typeof TIPOS_DE_MIDIA)[number],
+        dataBase64: conteudo,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
 
   if (isLoading) return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
@@ -464,11 +503,42 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
           )}
         </div>
 
-        {/* Rodapé */}
-        <div className="px-6 py-3 border-t border-white/8 bg-white/2">
-          <p className="text-xs text-white/25 flex items-center gap-1.5">
-            <Image size={10} /> {ctx.media.length} arquivo{ctx.media.length !== 1 ? "s" : ""} · Upload de mídia disponível em breve
-          </p>
+        {/* Fotos e documentos do encontro */}
+        <div className="px-6 py-4 border-t border-white/8">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-white/35 uppercase tracking-wider flex items-center gap-1.5">
+              <Image size={11} /> Fotos e Documentos ({ctx.media.length})
+            </p>
+            <label className={`text-xs flex items-center gap-1 ${uploadMut.isPending ? "text-white/30" : "text-amber-400 hover:text-amber-300 cursor-pointer"}`}>
+              <Plus size={12} /> {uploadMut.isPending ? "Enviando..." : "Anexar"}
+              <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
+                className="hidden" disabled={uploadMut.isPending} onChange={handleUploadFile} />
+            </label>
+          </div>
+          {ctx.media.length === 0 ? (
+            <p className="text-sm text-white/30 py-1">Nenhum arquivo ainda. Anexe fotos do encontro ou documentos relacionados.</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {ctx.media.map(m => (
+                <div key={m.id} className="relative rounded-xl overflow-hidden bg-white/5 border border-white/10">
+                  <a href={m.storagePath} target="_blank" rel="noopener noreferrer" className="block" title={m.originalName}>
+                    {m.fileType.startsWith("image/") ? (
+                      <img src={m.storagePath} alt={m.originalName} className="w-full h-20 object-cover" />
+                    ) : (
+                      <div className="w-full h-20 flex flex-col items-center justify-center gap-1 text-white/50 px-1">
+                        <FileText size={18} />
+                        <span className="text-[10px] truncate max-w-full">{m.originalName}</span>
+                      </div>
+                    )}
+                  </a>
+                  <button onClick={() => { if (confirm("Remover este arquivo?")) deleteMediaMut.mutate({ mediaId: m.id }); }}
+                    className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white/60 hover:text-red-400 transition-colors">
+                    <X size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
