@@ -1,0 +1,1 @@
+ALTER TABLE `private_contacts` ADD `enrichment_status` varchar(20);

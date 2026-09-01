@@ -846,7 +846,7 @@ export async function createEnrichmentSession(ownerId: string, contactId: number
   const now = Date.now();
   await db.insert(enrichmentSessions).values({ id, ownerId, contactId, status: "active", questionsAnswered: 0, questionsSkipped: 0, lastActivityAt: now, createdAt: now, updatedAt: now });
   // Atualizar enrichment_status no contato
-  await db.update(privateContacts).set({ enrichmentStatus: "active" } as any).where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)));
+  await db.update(privateContacts).set({ enrichmentStatus: "active" }).where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)));
   return id;
 }
 
@@ -1024,7 +1024,7 @@ export async function completeEnrichmentSession(sessionId: string, ownerId: stri
     // Atualizar status no contato
     const [sess] = await db.select().from(enrichmentSessions).where(eq(enrichmentSessions.id, sessionId)).limit(1);
     if (sess) {
-      await db.update(privateContacts).set({ enrichmentStatus: "completed" } as any)
+      await db.update(privateContacts).set({ enrichmentStatus: "completed" })
         .where(and(eq(privateContacts.id, sess.contactId), eq(privateContacts.ownerId, ownerId)));
     }
   }
