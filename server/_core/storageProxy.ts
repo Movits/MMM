@@ -37,6 +37,8 @@ const ehOuroOuAcima = (role?: string | null) =>
  * Prefixos conhecidos e suas regras — qualquer coisa fora disto é NEGADA:
  *
  *   meetings/{openId}/...     só a dona da reunião (meeting-service.ts:219)
+ *   contexts/{openId}/...     só a dona — fotos e documentos de contexto
+ *                             (routers/contexts.ts, uploadMedia)
  *   sivc/{userId}/...         só a dona dos documentos (sivc.ts:397)
  *   deal-rooms/{roomId}/...   partes da sala, ou Ouro+ (dealRoom.ts:306)
  *   generated/...             qualquer usuária logada — são imagens geradas
@@ -50,6 +52,10 @@ export async function podeBaixarChave(
   const partes = chave.split("/");
 
   if (partes[0] === "meetings") {
+    return partes.length >= 2 && partes[1] === usuaria.openId;
+  }
+
+  if (partes[0] === "contexts") {
     return partes.length >= 2 && partes[1] === usuaria.openId;
   }
 

@@ -767,9 +767,20 @@ export async function updateContext(ownerId: string, contextId: string, data: Pa
 export async function deleteContext(ownerId: string, contextId: string): Promise<boolean> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  // Os registros de anexos saem junto: não há FK/cascade no schema herdado, e
+  // linha de mídia órfã esconderia arquivo que continua existindo no bucket.
+  await db.delete(contextMedia)
+    .where(and(eq(contextMedia.contextId, contextId), eq(contextMedia.ownerId, ownerId)));
   const [r] = await db.delete(contexts)
     .where(and(eq(contexts.id, contextId), eq(contexts.ownerId, ownerId)));
   return (r as any).affectedRows > 0;
+}
+
+export async function listContextMediaByContext(ownerId: string, contextId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(contextMedia)
+    .where(and(eq(contextMedia.contextId, contextId), eq(contextMedia.ownerId, ownerId)));
 }
 
 export async function linkContactToContext(
@@ -868,6 +879,60 @@ export async function addContextParticipant(
   const now = Date.now();
   await db.insert(contextParticipants).values({ id, ownerId, ...data, createdAt: now, updatedAt: now });
   return id;
+}
+
+// ─── Mídia de contextos (fotos e documentos do encontro) ──────────────────────
+
+/** O contexto está visível para esta dona? (dela mesma, ou do catálogo global) */
+export async function contextIsVisible(ownerId: string, contextId: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [row] = await db.select({ id: contexts.id }).from(contexts)
+    .where(and(eq(contexts.id, contextId), drizzleOr(eq(contexts.ownerId, ownerId), isNull(contexts.ownerId))))
+    .limit(1);
+  return Boolean(row);
+}
+
+export async function addContextMedia(
+  ownerId: string,
+  data: {
+    contextId: string; storagePath: string; fileType: string; fileSize: number;
+    originalName: string; caption?: string | null;
+  }
+): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  await db.insert(contextMedia).values({
+    id, ownerId,
+    contextId: data.contextId,
+    storagePath: data.storagePath,
+    fileType: data.fileType,
+    fileSize: data.fileSize,
+    originalName: data.originalName,
+    caption: data.caption ?? null,
+    uploadedBy: ownerId,
+    createdAt: now, updatedAt: now,
+  });
+  return id;
+}
+
+export async function getContextMediaById(ownerId: string, mediaId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [row] = await db.select().from(contextMedia)
+    .where(and(eq(contextMedia.id, mediaId), eq(contextMedia.ownerId, ownerId)))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function deleteContextMedia(ownerId: string, mediaId: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [r] = await db.delete(contextMedia)
+    .where(and(eq(contextMedia.id, mediaId), eq(contextMedia.ownerId, ownerId)));
+  return (r as any).affectedRows > 0;
 }
 
 // ─── Enriquecimento com IA (Etapa 4) ──────────────────────────────────────────

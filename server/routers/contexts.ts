@@ -4,7 +4,22 @@ import {
   listContextTypes, listContexts, createContext, getContextById,
   updateContext, deleteContext, linkContactToContext, unlinkContactFromContext,
   addContextParticipant, listContextsByContact,
+  contextIsVisible, addContextMedia, getContextMediaById, deleteContextMedia,
+  listContextMediaByContext,
 } from "../db";
+import { storagePut, storageDelete } from "../storage";
+import {
+  ALLOWED_CONTEXT_MEDIA_TYPES, decodeContextMedia,
+  extensionForContextMedia, sanitizeMediaFileName,
+} from "../context-media";
+
+// Defesa em profundidade na hora de apagar do bucket: só sai objeto que está
+// no espaço da própria dona. Um storagePath legado ou corrompido (a tabela veio
+// do backup do Manus) não pode virar a exclusão de uma chave arbitrária.
+function chaveDoStorageDaDona(openId: string, storagePath: string): string | null {
+  const chave = storagePath.replace(/^\/manus-storage\//, "");
+  return chave.startsWith(`contexts/${openId}/`) ? chave : null;
+}
 
 // ─── Extensão: Módulo de Contextos (Onde e Como Conheceu) ─────────────────────
 export const contextsRouter = router({
@@ -77,10 +92,21 @@ export const contextsRouter = router({
       return { success: true };
     }),
 
-  // Excluir contexto
+  // Excluir contexto (os anexos saem junto — registros e, melhor esforço, os
+  // objetos no bucket)
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const anexos = await listContextMediaByContext(ctx.user.openId, input.id);
+      for (const anexo of anexos) {
+        const chave = chaveDoStorageDaDona(ctx.user.openId, anexo.storagePath);
+        if (!chave) continue;
+        try {
+          await storageDelete(chave);
+        } catch (erro) {
+          console.warn("[Contextos] objeto ficou no bucket:", erro instanceof Error ? erro.message : erro);
+        }
+      }
       const ok = await deleteContext(ctx.user.openId, input.id);
       if (!ok) throw new Error("NOT_FOUND");
       return { success: true };
@@ -122,6 +148,61 @@ export const contextsRouter = router({
     .input(z.object({ linkId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const ok = await unlinkContactFromContext(ctx.user.openId, input.linkId);
+      if (!ok) throw new Error("NOT_FOUND");
+      return { success: true };
+    }),
+
+  // Anexar foto ou documento ao contexto — mesmo caminho da gravação de
+  // reunião: base64 numa requisição, validação aqui, storage S3 com a dona na
+  // chave (o storageProxy só serve contexts/{dona}/... para a própria dona).
+  uploadMedia: protectedProcedure
+    .input(z.object({
+      contextId:  z.string(),
+      fileName:   z.string().min(1).max(255),
+      mimeType:   z.enum(ALLOWED_CONTEXT_MEDIA_TYPES),
+      dataBase64: z.string().min(1),
+      caption:    z.string().max(255).optional().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (!(await contextIsVisible(ctx.user.openId, input.contextId))) {
+        throw new Error("NOT_FOUND");
+      }
+      const dados = decodeContextMedia(input.dataBase64, input.mimeType);
+      const nome = sanitizeMediaFileName(input.fileName);
+      const extensao = extensionForContextMedia(input.mimeType);
+      const uploaded = await storagePut(
+        `contexts/${ctx.user.openId}/${input.contextId}/${nome}.${extensao}`,
+        dados,
+        input.mimeType,
+      );
+      const id = await addContextMedia(ctx.user.openId, {
+        contextId: input.contextId,
+        storagePath: uploaded.url,
+        fileType: input.mimeType,
+        fileSize: dados.length,
+        originalName: input.fileName,
+        caption: input.caption ?? null,
+      });
+      return { id, storagePath: uploaded.url };
+    }),
+
+  // Remover um anexo do contexto
+  deleteMedia: protectedProcedure
+    .input(z.object({ mediaId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const midia = await getContextMediaById(ctx.user.openId, input.mediaId);
+      if (!midia) throw new Error("NOT_FOUND");
+      // O registro sai sempre; o objeto no bucket sai como melhor esforço — um
+      // storage fora do ar não pode impedir a usuária de tirar a foto da tela.
+      const chave = chaveDoStorageDaDona(ctx.user.openId, midia.storagePath);
+      if (chave) {
+        try {
+          await storageDelete(chave);
+        } catch (erro) {
+          console.warn("[Contextos] objeto ficou no bucket:", erro instanceof Error ? erro.message : erro);
+        }
+      }
+      const ok = await deleteContextMedia(ctx.user.openId, input.mediaId);
       if (!ok) throw new Error("NOT_FOUND");
       return { success: true };
     }),

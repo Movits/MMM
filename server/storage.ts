@@ -20,7 +20,7 @@
 // agora exige sessão e posse antes de assinar o download.
 
 import crypto from "node:crypto";
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 type StorageConfig = {
@@ -105,6 +105,15 @@ export async function storagePut(
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
   return { key, url: `/manus-storage/${key}` };
+}
+
+/** Remove um objeto do bucket. Chave inexistente não é erro no protocolo S3. */
+export async function storageDelete(relKey: string): Promise<void> {
+  const config = getStorageConfig();
+  const key = normalizeKey(relKey);
+  await getClient(config).send(
+    new DeleteObjectCommand({ Bucket: config.bucket, Key: key }),
+  );
 }
 
 /**
