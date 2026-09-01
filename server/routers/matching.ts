@@ -3,7 +3,7 @@ import { eq, desc, and, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
 import { getDb, createNotification } from "../db";
-import { opportunities, userProfiles } from "../../drizzle/schema";
+import { opportunities, userProfiles, users } from "../../drizzle/schema";
 import { usersComConsentimento } from "./consent";
 
 // ============================================================
@@ -18,10 +18,20 @@ export const matchingRouter = router({
     const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.userId, ctx.user.id)).limit(1);
     if (!profile) return [];
 
+    // A mesma régua de opportunities.list: confidencial é só para Ouro+. Este
+    // era o segundo caminho de consulta que tinha esquecido o filtro — e
+    // devolvia a oportunidade INTEIRA (título, descrição, tags) para qualquer
+    // logada, além de mandá-la ao LLM. Exatamente o modo de falha que a regra
+    // geral de privacidade.md descreve.
+    const isGold = ctx.user.role === "gold" || ctx.user.role === "admin" || ctx.user.role === "president";
     const activeOpps = await db
       .select()
       .from(opportunities)
-      .where(and(eq(opportunities.status, "active"), sql`${opportunities.publishedBy} != ${ctx.user.id}`))
+      .where(and(
+        eq(opportunities.status, "active"),
+        sql`${opportunities.publishedBy} != ${ctx.user.id}`,
+        ...(isGold ? [] : [eq(opportunities.isConfidential, false)]),
+      ))
       .orderBy(desc(opportunities.createdAt))
       .limit(50);
 
@@ -119,6 +129,7 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
       const todos = await db
         .select({
           userId: userProfiles.userId,
+          role: users.role,
           whatIHave: userProfiles.whatIHave,
           whatINeed: userProfiles.whatINeed,
           sector: userProfiles.sector,
@@ -127,14 +138,21 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
           activityArea: userProfiles.activityArea,
         })
         .from(userProfiles)
+        .innerJoin(users, eq(users.id, userProfiles.userId))
         .where(sql`${userProfiles.userId} != ${opp.publishedBy}`)
         .limit(200);
+
+      // Oportunidade confidencial é assunto de Ouro: o alerta não pode contar
+      // o título dela (nem mandar o contexto ao LLM em nome) de quem não tem o
+      // nível — mesma régua do filtro de opportunities.list.
+      const podeVerConfidencial = (role: string | null) => role === "gold" || role === "president" || role === "admin";
+      const elegiveis = opp.isConfidential ? todos.filter(perfil => podeVerConfidencial(perfil.role)) : todos;
 
       // Etapa 11: o alerta cruza "tenho/preciso" dos perfis com a oportunidade
       // e manda tudo ao LLM — isso é cruzamento, e dado de quem não aceitou o
       // termo não entra nem no prompt.
-      const comTermo = await usersComConsentimento(todos.map(perfil => perfil.userId), "termo_smart_match");
-      const profiles = todos.filter(perfil => comTermo.has(perfil.userId));
+      const comTermo = await usersComConsentimento(elegiveis.map(perfil => perfil.userId), "termo_smart_match");
+      const profiles = elegiveis.filter(perfil => comTermo.has(perfil.userId));
       // Ninguém autorizado = ninguém para alertar. Chamar o LLM com a lista
       // vazia seria um no-op garantido queimando uma chamada da cota do dia.
       if (!profiles.length) return { notified: 0 };

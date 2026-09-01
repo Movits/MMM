@@ -41,9 +41,18 @@ type Contact = {
   cardImageUrl?: string | null;
   notes?: string | null;
   enrichmentStatus?: string | null;
+  nivelVisibilidade?: "privado" | "ouro" | "publico" | null;
   createdAt: number;
   updatedAt: number;
 };
+
+// Etapa 8 — os três níveis, na linguagem de quem escolhe. O padrão é privado:
+// nada vira público sem a dona pedir, e dá para mudar a qualquer momento.
+const NIVEIS_DE_VISIBILIDADE = [
+  { valor: "privado" as const, rotulo: "Privado", descricao: "Só você vê. O padrão de todo contato." },
+  { valor: "ouro" as const, rotulo: "Autorizadas (Ouro)", descricao: "Reservado para Usuárias Ouro autorizadas — as regras de acesso serão ativadas com a etapa 10." },
+  { valor: "publico" as const, rotulo: "Público no MMM", descricao: "A oportunidade (o que possui/procura, cidade e país) entra na vitrine do ecossistema. Os dados pessoais nunca aparecem." },
+];
 
 // ─── Formulário vazio ─────────────────────────────────────────────────────────
 const emptyForm = () => ({
@@ -53,6 +62,7 @@ const emptyForm = () => ({
   linkedinUrl: "", instagram: "",
   profileTags: [] as string[],
   notes: "",
+  nivelVisibilidade: "privado" as "privado" | "ouro" | "publico",
 });
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
@@ -170,6 +180,7 @@ function ContactForm({ initial, onSave, onClose, loading }: {
     instagram:   initial?.instagram   ?? "",
     profileTags: initial?.profileTags ?? [],
     notes:       initial?.notes       ?? "",
+    nivelVisibilidade: initial?.nivelVisibilidade ?? "privado",
   });
 
   const set = (k: keyof typeof form, v: unknown) => setForm(p => ({ ...p, [k]: v }));
@@ -309,6 +320,19 @@ function ContactForm({ initial, onSave, onClose, loading }: {
                   placeholder="Como nos conhecemos, contexto, próximos passos..."
                   rows={5}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50 resize-none" />
+              </div>
+              <div>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Quem pode ver este contato</label>
+                <div className="space-y-2">
+                  {NIVEIS_DE_VISIBILIDADE.map(nivel => (
+                    <button key={nivel.valor} type="button"
+                      onClick={() => set("nivelVisibilidade", nivel.valor)}
+                      className={`w-full text-left rounded-xl border px-3 py-2.5 transition-colors ${form.nivelVisibilidade === nivel.valor ? "border-amber-500/60 bg-amber-500/10" : "border-white/10 bg-white/5 hover:border-white/25"}`}>
+                      <span className={`text-sm font-semibold ${form.nivelVisibilidade === nivel.valor ? "text-amber-300" : "text-white/80"}`}>{nivel.rotulo}</span>
+                      <span className="block text-xs text-white/40 mt-0.5">{nivel.descricao}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </>
           )}
@@ -655,6 +679,7 @@ export default function Network() {
       instagram:   form.instagram   || null,
       profileTags: form.profileTags.length > 0 ? form.profileTags : null,
       notes:       form.notes    || null,
+      nivelVisibilidade: form.nivelVisibilidade,
     };
     if (editContact) {
       updateMut.mutate({ id: editContact.id, ...payload });

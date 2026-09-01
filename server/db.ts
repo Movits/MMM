@@ -18,6 +18,7 @@ import {
   contactAssets, contactNeeds, aiMatchSuggestions,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import nodeCrypto from "node:crypto";
 import { slugifyMatchTag } from "./match-service";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -648,6 +649,50 @@ export async function deletePrivateContact(
       ));
   }
   return apagou;
+}
+
+/**
+ * Etapa 8 — a vitrine coletiva do ecossistema.
+ *
+ * O escopo é explícito: de um contato público "não pode aparecer os dados
+ * pessoais do contato, só as oportunidades". Não basta filtrar linhas — as
+ * colunas pessoais (nome, empresa, cargo, telefone, whatsapp, email, linkedin,
+ * instagram, foto, cartão) NEM SÃO SELECIONADAS aqui, seguindo a projeção de
+ * privacidade.md. Sai só: uma referência opaca, país, cidade e o que o contato
+ * possui/procura. O filtro por nível roda no banco a cada leitura, então
+ * voltar para 'privado' remove da vitrine na requisição seguinte.
+ */
+export async function listVitrineColetiva() {
+  const db = await getDb();
+  if (!db) return [];
+  // Teto de leitura: a vitrine é uma tela, não uma exportação. Sem o limite,
+  // cada visita carregaria o ecossistema inteiro.
+  const publicos = await db
+    .select({ id: privateContacts.id, country: privateContacts.country, city: privateContacts.city })
+    .from(privateContacts)
+    .where(eq(privateContacts.nivelVisibilidade, "publico"))
+    .limit(200);
+  if (!publicos.length) return [];
+  const ids = publicos.map(publico => publico.id);
+  const [possui, procura] = await Promise.all([
+    db.select({ contactId: contactAssets.contactId, label: contactAssets.tagLabel, category: contactAssets.category })
+      .from(contactAssets).where(inArray(contactAssets.contactId, ids)),
+    db.select({ contactId: contactNeeds.contactId, label: contactNeeds.tagLabel, category: contactNeeds.category })
+      .from(contactNeeds).where(inArray(contactNeeds.contactId, ids)),
+  ]);
+  // A referência precisa ser OPACA de verdade: o id sequencial da tabela conta
+  // quantos contatos existem e permite correlação com qualquer outro endpoint
+  // que um dia exponha ids. Um hash com sal de servidor identifica o item na
+  // tela sem entregar nada — e continua estável entre leituras.
+  const referenciaOpaca = (id: number) =>
+    nodeCrypto.createHash("sha256").update(`vitrine:${ENV.cookieSecret}:${id}`).digest("hex").slice(0, 10);
+  return publicos.map(publico => ({
+    contatoRef: referenciaOpaca(publico.id),
+    country: publico.country,
+    city: publico.city,
+    possui: possui.filter(item => item.contactId === publico.id).map(({ label, category }) => ({ label, category })),
+    procura: procura.filter(item => item.contactId === publico.id).map(({ label, category }) => ({ label, category })),
+  }));
 }
 
 // ─── Contextos (Onde e Como Conheceu) ─────────────────────────────────────────

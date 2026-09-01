@@ -29,6 +29,13 @@
       "when": 1788264320461,
       "tag": "0003_semear-tipos-de-contexto",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1788305092155,
+      "tag": "0004_nivel-de-visibilidade",
+      "breakpoints": true
     }
   ]
 }

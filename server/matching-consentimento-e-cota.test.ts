@@ -137,26 +137,9 @@ describe("Matches do Dashboard — a cota do insight de IA", () => {
   });
 });
 
-describe("Matches do Dashboard — revogação esconde na leitura", () => {
-  it("dona que revogou o termo não vê matches", async () => {
-    hasValidConsent.mockResolvedValue(false);
-
-    expect(await motor.getMatchesForUser(1)).toEqual([]);
-  });
-
-  it("match citando quem revogou some da lista", async () => {
-    filas.push([
-      { matchedUserId: 2, overallScore: 90 },
-      { matchedUserId: 3, overallScore: 80 },
-    ]);
-    usersComConsentimento.mockResolvedValue(new Set([3]));
-
-    const lista = await motor.getMatchesForUser(1);
-
-    expect(lista).toHaveLength(1);
-    expect((lista[0] as { matchedUserId: number }).matchedUserId).toBe(3);
-  });
-});
+// A trava de revogação NA LEITURA vive no caminho que o Dashboard chama de
+// verdade (routers/profileMatches.ts) e é coberta em etapa8-niveis.test.ts —
+// a duplicata sem chamadores que morava aqui foi aposentada na etapa 8.
 
 describe("Matches do Dashboard — setor normalizado para a chave canônica", () => {
   it("rótulos do mesmo setor em idiomas diferentes casam", () => {

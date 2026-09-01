@@ -559,56 +559,10 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
   return matchesCreated;
 }
 
-// ─── Get matches for a user ───────────────────────────────────
-export async function getMatchesForUser(userId: number, limit = 20) {
-  const db = await getDb();
-  if (!db) return [];
-
-  // Etapa 11 também na LEITURA: revogar o termo esconde na hora o que já tinha
-  // sido cruzado — dos dois lados. A linha gravada fica (histórico), mas não
-  // aparece nem para quem revogou nem citando quem revogou.
-  if (!(await hasValidConsent(userId, "termo_smart_match"))) return [];
-
-  const userMatches = await db.select({
-    matchId: matches.id,
-    matchedUserId: matches.matchedUserId,
-    overallScore: matches.overallScore,
-    specialtyScore: matches.specialtyScore,
-    objectivesScore: matches.objectivesScore,
-    incomeScore: matches.incomeScore,
-    locationScore: matches.locationScore,
-    valuesScore: matches.valuesScore,
-    aiInsight: matches.aiInsight,
-    userSeen: matches.userSeen,
-    userDismissed: matches.userDismissed,
-    createdAt: matches.createdAt,
-    // Profile fields
-    displayName: userProfiles.displayName,
-    city: userProfiles.city,
-    country: userProfiles.country,
-    avatarUrl: userProfiles.avatarUrl,
-    bio: userProfiles.bio,
-    primarySpecialty: userProfiles.primarySpecialty,
-    currentRole: userProfiles.currentRole,
-    currentCompany: userProfiles.currentCompany,
-    sector: userProfiles.sector,
-    seekingTypes: userProfiles.seekingTypes,
-    values: userProfiles.values,
-    profileCompleteness: userProfiles.profileCompleteness,
-  })
-    .from(matches)
-    .innerJoin(userProfiles, eq(userProfiles.userId, matches.matchedUserId))
-    .where(and(
-      eq(matches.userId, userId),
-      eq(matches.userDismissed, false),
-    ))
-    .orderBy(desc(matches.overallScore))
-    .limit(limit);
-
-  const ids = userMatches.map(match => match.matchedUserId).filter((id): id is number => id !== null);
-  const comTermo = await usersComConsentimento(ids, "termo_smart_match");
-  return userMatches.filter(match => match.matchedUserId !== null && comTermo.has(match.matchedUserId));
-}
+// A leitura dos matches (com a trava de leitura da etapa 11) vive em
+// routers/profileMatches.ts, o caminho que o Dashboard chama de verdade. Uma
+// versão dela existiu aqui, com a trava — e nenhum router a chamava; a
+// auditoria da etapa 8 aposentou a duplicata para o desvio não renascer.
 
 // ─── Dismiss a match ─────────────────────────────────────────
 export async function dismissMatch(userId: number, matchId: number) {

@@ -281,6 +281,11 @@ export default function Opportunities() {
     offset: 0,
   });
 
+  // Etapa 8 — a vitrine coletiva: oportunidades dos contatos que as membras
+  // marcaram como públicos. Só o que possui/procura, cidade e país — o servidor
+  // nem seleciona os dados pessoais.
+  const { data: vitrine } = trpc.network.vitrine.useQuery(undefined, { enabled: !!user });
+
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
@@ -483,6 +488,52 @@ export default function Opportunities() {
                 onToggleSave={() => refetchSaved()}
               />
             ))}
+          </div>
+        )}
+
+        {/* Vitrine do ecossistema (etapa 8): contatos públicos, sem dados pessoais */}
+        {!showSaved && (vitrine?.length ?? 0) > 0 && (
+          <div className="mt-10">
+            <div className="flex items-center gap-2 mb-1">
+              <Globe size={16} className="text-amber-400" />
+              <h2 className="text-white font-semibold text-sm">Vitrine do ecossistema</h2>
+              <span className="text-white/40 text-xs">({vitrine!.length})</span>
+            </div>
+            <p className="text-white/35 text-xs mb-4">
+              Oportunidades de contatos que as membras tornaram públicos. Por privacidade, só o que possuem ou procuram — nunca os dados pessoais.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {vitrine!.map(item => (
+                <div key={item.contatoRef} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                  <p className="text-white/40 text-xs mb-2">
+                    {[item.city, item.country].filter(Boolean).join(", ") || "Local não informado"} · ref. {item.contatoRef}
+                  </p>
+                  {item.possui.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-emerald-300/80 text-xs font-semibold mb-1">Possui</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.possui.map((coisa, i) => (
+                          <span key={i} className="rounded-full border border-emerald-400/30 px-2.5 py-0.5 text-xs text-emerald-200/80">{coisa.label}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {item.procura.length > 0 && (
+                    <div>
+                      <p className="text-sky-300/80 text-xs font-semibold mb-1">Procura</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.procura.map((coisa, i) => (
+                          <span key={i} className="rounded-full border border-sky-300/30 px-2.5 py-0.5 text-xs text-sky-200/80">{coisa.label}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {item.possui.length === 0 && item.procura.length === 0 && (
+                    <p className="text-white/25 text-xs">Sem itens registrados ainda.</p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
