@@ -25,11 +25,23 @@ export const networkRouter = router({
       instagram:   z.string().max(100).optional().nullable(),
       profileTags: z.array(z.string()).optional().nullable(),
       notes:       z.string().max(5000).optional().nullable(),
+      // Etapa 8: o nível é escolha da dona; omitido, a coluna nasce 'privado'.
+      nivelVisibilidade: z.enum(["privado", "ouro", "publico"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const id = await createPrivateContact(ctx.user.openId, input);
       return { id };
     }),
+
+  // Etapa 8 — a vitrine coletiva: o que o ecossistema vê de um contato marcado
+  // 'publico' é a OPORTUNIDADE, nunca a pessoa. As colunas pessoais nem são
+  // selecionadas (privacidade.md), e o filtro roda no banco a cada leitura:
+  // voltar o contato para 'privado' o tira daqui na requisição seguinte, sem
+  // cache nem rotina de limpeza no meio.
+  vitrine: protectedProcedure.query(async () => {
+    const { listVitrineColetiva } = await import("../db");
+    return listVitrineColetiva();
+  }),
 
   list: protectedProcedure
     .input(z.object({
@@ -69,6 +81,9 @@ export const networkRouter = router({
       profileTags: z.array(z.string()).optional().nullable(),
       cardImageUrl: z.string().optional().nullable(),
       notes:       z.string().max(5000).optional().nullable(),
+      // Etapa 8: o nível muda a qualquer momento, e o efeito é imediato — a
+      // vitrine filtra na leitura, então 'privado' some na requisição seguinte.
+      nivelVisibilidade: z.enum(["privado", "ouro", "publico"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;

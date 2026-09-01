@@ -559,6 +559,18 @@ export const privateContacts = mysqlTable("private_contacts", {
 
   profileTags:  jsonCompat("profileTags").$type<string[]>(),
 
+  // Etapa 8 — o nível de visibilidade escolhido pela DONA (privacidade.md):
+  // 'privado' (só a dona — o padrão, nada vira público por omissão), 'publico'
+  // (o contato entra na vitrine do ecossistema SÓ como oportunidade: país,
+  // cidade e o que possui/procura — nenhuma coluna pessoal é sequer lida) e
+  // 'ouro' (guardado, mas AINDA sem leitura por ninguém além da dona: a
+  // política de exposição Ouro aguarda as decisões de produto do modelo de
+  // acesso em decisoes-em-aberto.md).
+  // O índice existe porque a vitrine consulta por nível SEM ownerId — é a
+  // única leitura legítima que atravessa donas, e sem índice ela viraria um
+  // full-scan da tabela inteira do ecossistema a cada visita à tela.
+  nivelVisibilidade: varchar("nivel_visibilidade", { length: 10, enum: ["privado", "ouro", "publico"] }).default("privado").notNull(),
+
   cardImageUrl: varchar("cardImageUrl", { length: 512 }),
   cardOcrText:  text("cardOcrText"),
 
@@ -578,6 +590,7 @@ export const privateContacts = mysqlTable("private_contacts", {
   ownerCompanyIdx: index("pc_owner_company_idx").on(table.ownerId, table.company),
   ownerCountryIdx: index("pc_owner_country_idx").on(table.ownerId, table.country),
   ownerUpdatedIdx: index("pc_owner_updated_idx").on(table.ownerId, table.updatedAt),
+  nivelIdx:        index("pc_nivel_idx").on(table.nivelVisibilidade),
 }));
 
 // ============================================================
