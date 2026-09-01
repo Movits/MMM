@@ -28,6 +28,23 @@ descreve para onde o projeto vai, e nem tudo que está desenhado já existe no c
 As specs por etapa (perfil estratégico, contextos, enriquecimento, assistente de
 reuniões, rede privada) estão soltas em `docs/`, como vieram do Manus.
 
+## Exame de saúde de produção
+
+Depois de qualquer deploy, confirme em um comando que o site no ar está inteiro:
+
+```bash
+node scripts/checar-producao.mjs            # bateria padrão, sem gastar cota de IA
+node scripts/checar-producao.mjs --com-ia   # inclui FAQ, memória e as checagens de IA
+```
+
+O exame confere site, cache, migrações do banco, login, contatos, o match por
+direção, contextos, a confidencialidade por nível de acesso e o isolamento entre
+contas, usando uma conta QA descartável que ele mesmo cria e apaga. Precisa do
+`.env` da produção (`DATABASE_URL` e `JWT_SECRET`). Saída: uma linha OK/FALHA
+por checagem; qualquer FALHA é problema real no ar e merece investigação antes
+de seguir. O código de saída é 0 só quando tudo passa, então dá para usar em
+automação.
+
 ## O que já está implementado
 
 - **Matches por IA**: perfil analisado em cinco dimensões, com score de
