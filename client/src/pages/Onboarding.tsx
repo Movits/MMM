@@ -824,7 +824,7 @@ export default function Onboarding() {
                   {[
                     { label: t("onboarding.review.name"), value: form.displayName, icon: "👤" },
                     { label: t("onboarding.review.location"), value: `${form.city}, ${form.country}`, icon: "📍" },
-                    ...(form.gender ? [{ label: t("profile.gender.label"), value: t(`profile.gender.${form.gender}`), icon: "⚥" }] : []),
+                    ...(form.gender ? [{ label: t("profile.gender.label"), value: t(`profile.gender.${form.gender === "prefer_not_to_say" ? "preferNotToSay" : form.gender}`), icon: "⚥" }] : []),
                     { label: t("onboarding.review.specialty"), value: normalizePrimarySpecialties(form.primarySpecialties, form.customSpecialty).map(k => t("onboarding.specialties." + k, { defaultValue: k })).join(", "), icon: "⚡" },
                     { label: t("onboarding.misc.company"), value: form.company || form.currentCompany || "-", icon: "🏢" },
                     { label: t("onboarding.review.seeking"), value: form.seekingTypes.slice(0, 2).map(k => t("onboarding.seeking." + k, { defaultValue: k })).join(", ") + (form.seekingTypes.length > 2 ? "..." : ""), icon: "🎯" },
