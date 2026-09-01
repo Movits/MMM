@@ -22,6 +22,13 @@
       "when": 1788222191490,
       "tag": "0002_selo-de-enriquecimento",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1788264320461,
+      "tag": "0003_semear-tipos-de-contexto",
+      "breakpoints": true
     }
   ]
 }

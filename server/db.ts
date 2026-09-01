@@ -1,4 +1,4 @@
-import { and, eq, desc, like, or, ne, notInArray, sql, isNull } from "drizzle-orm";
+import { and, eq, desc, like, or, ne, notInArray, inArray, sql, isNull } from "drizzle-orm";
 const drizzleOr = or;
 import { drizzle } from "drizzle-orm/mysql2";
 import {
@@ -642,7 +642,7 @@ export async function listContextTypes(): Promise<ContextType[]> {
 export async function listContexts(
   ownerId: string,
   opts: { q?: string; typeSlug?: string; year?: number; country?: string; page?: number; limit?: number }
-): Promise<{ data: (Context & { typeName?: string; typeColor?: string; contactCount: number })[]; total: number }> {
+): Promise<{ data: (Context & { typeName?: string; typeColor?: string; typeSlug?: string; contactCount: number })[]; total: number }> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const { q, typeSlug, year, country, page = 1, limit = 20 } = opts;
@@ -701,6 +701,9 @@ export async function listContexts(
       ...r.ctx,
       typeName: r.typeName ?? undefined,
       typeColor: r.typeColor ?? undefined,
+      // Sem o slug a tela não acha o ícone do tipo e — pior — o formulário de
+      // edição abre com o tipo vazio e salvar apaga o tipo do contexto.
+      typeSlug: r.typeSlug ?? undefined,
       contactCount: countMap[r.ctx.id] ?? 0,
     })),
     total: Number(countRow?.count ?? 0),
@@ -732,13 +735,24 @@ export async function getContextById(ownerId: string, contextId: string) {
 
   const links = await db.select().from(contactContexts)
     .where(and(eq(contactContexts.contextId, contextId), eq(contactContexts.ownerId, ownerId)));
+  // O nome de quem foi vinculado — sem ele a tela mostrava "Contato #42".
+  const idsVinculados = Array.from(new Set(links.map(l => l.contactId)));
+  const nomes = idsVinculados.length
+    ? await db.select({ id: privateContacts.id, fullName: privateContacts.fullName }).from(privateContacts)
+        .where(and(eq(privateContacts.ownerId, ownerId), inArray(privateContacts.id, idsVinculados)))
+    : [];
+  const nomePorContato = new Map(nomes.map(n => [n.id, n.fullName]));
   const participants = await db.select().from(contextParticipants)
     .where(and(eq(contextParticipants.contextId, contextId), eq(contextParticipants.ownerId, ownerId)));
   const media = await db.select().from(contextMedia)
     .where(and(eq(contextMedia.contextId, contextId), eq(contextMedia.ownerId, ownerId)))
     .orderBy(contextMedia.sortOrder, contextMedia.createdAt);
 
-  return { ...row.ctx, typeName: row.typeName, typeColor: row.typeColor, typeSlug: row.typeSlug, typeIcon: row.typeIcon, links, participants, media };
+  return {
+    ...row.ctx, typeName: row.typeName, typeColor: row.typeColor, typeSlug: row.typeSlug, typeIcon: row.typeIcon,
+    links: links.map(l => ({ ...l, contactName: nomePorContato.get(l.contactId) ?? null })),
+    participants, media,
+  };
 }
 
 export async function updateContext(ownerId: string, contextId: string, data: Partial<typeof contexts.$inferInsert>): Promise<boolean> {
@@ -764,6 +778,29 @@ export async function linkContactToContext(
 ): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  // Vincular duas vezes não duplica: o vínculo existente é atualizado com o
+  // que veio preenchido e devolvido. Jogar fora o que a usuária digitou (data,
+  // cidade, notas) com um toast de sucesso seria mentir para ela.
+  const [jaExiste] = await db.select({ id: contactContexts.id }).from(contactContexts)
+    .where(and(
+      eq(contactContexts.ownerId, ownerId),
+      eq(contactContexts.contactId, data.contactId),
+      eq(contactContexts.contextId, data.contextId),
+    ))
+    .limit(1);
+  if (jaExiste) {
+    const atualiza: Record<string, unknown> = {};
+    if (data.eventDate) atualiza.eventDate = data.eventDate;
+    if (data.city) atualiza.city = data.city;
+    if (data.country) atualiza.country = data.country;
+    if (data.notes) atualiza.notes = data.notes;
+    if (data.relationshipType) atualiza.relationshipType = data.relationshipType;
+    if (Object.keys(atualiza).length > 0) {
+      await db.update(contactContexts).set({ ...atualiza, updatedAt: Date.now() })
+        .where(and(eq(contactContexts.id, jaExiste.id), eq(contactContexts.ownerId, ownerId)));
+    }
+    return jaExiste.id;
+  }
   const id = crypto.randomUUID();
   const now = Date.now();
   await db.insert(contactContexts).values({
@@ -788,6 +825,37 @@ export async function unlinkContactFromContext(ownerId: string, linkId: string):
   const [r] = await db.delete(contactContexts)
     .where(and(eq(contactContexts.id, linkId), eq(contactContexts.ownerId, ownerId)));
   return (r as any).affectedRows > 0;
+}
+
+/** Os contextos em que um contato apareceu — é o que o perfil do contato exibe. */
+export async function listContextsByContact(ownerId: string, contactId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select({
+      link: contactContexts,
+      ctxName: contexts.name,
+      typeName: contextTypes.name,
+      typeColor: contextTypes.colorToken,
+      typeSlug: contextTypes.slug,
+    })
+    .from(contactContexts)
+    .innerJoin(contexts, eq(contactContexts.contextId, contexts.id))
+    .leftJoin(contextTypes, eq(contexts.contextTypeId, contextTypes.id))
+    .where(and(eq(contactContexts.ownerId, ownerId), eq(contactContexts.contactId, contactId)))
+    .orderBy(desc(contactContexts.createdAt));
+  return rows.map(r => ({
+    linkId: r.link.id,
+    contextId: r.link.contextId,
+    name: r.ctxName,
+    eventDate: r.link.eventDate,
+    city: r.link.city,
+    country: r.link.country,
+    relationshipType: r.link.relationshipType,
+    typeName: r.typeName ?? undefined,
+    typeColor: r.typeColor ?? undefined,
+    typeSlug: r.typeSlug ?? undefined,
+  }));
 }
 
 export async function addContextParticipant(
@@ -978,10 +1046,69 @@ export async function aplicarRespostaAoContato(
     return true;
   }
 
-  // ── contexto do relacionamento: vai para as anotações do contato ───────────
-  if (fieldType === "how_met" || fieldType === "relationship_type") {
-    const rotulo = fieldType === "how_met" ? "Como se conheceram" : "Relacionamento";
-    const linha = `${rotulo}: ${valor}`;
+  // ── como se conheceram: anotação + contexto de verdade (etapa 5) ───────────
+  if (fieldType === "how_met") {
+    const linha = `Como se conheceram: ${valor}`;
+    const [contato] = await db.select({ notes: privateContacts.notes }).from(privateContacts)
+      .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)))
+      .limit(1);
+    if (!contato) return false;
+
+    let gravouNota = false;
+    if (!contato.notes?.includes(linha)) {
+      const notas = contato.notes ? `${contato.notes}
+${linha}` : linha;
+      await db.update(privateContacts).set({ notes: notas, updatedAt: now })
+        .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)));
+      gravouNota = true;
+    }
+
+    // O critério da etapa 4 pede a resposta LIGADA ao contexto da etapa 5, não
+    // só anotada. A resposta vira (ou reusa) um contexto com esse nome e o
+    // contato entra em contact_contexts — que é de onde a tela de contextos e
+    // as buscas leem. Nota e vínculo têm dedução separada de propósito: as
+    // respostas antigas recuperadas só têm a nota, e reprocessá-las por aqui
+    // (scripts/recuperar-enriquecimento.ts) completa o vínculo que faltou.
+    const nomeContexto = valor.slice(0, 100);
+    // Reusa também os contextos do catálogo global (ownerId null) — senão uma
+    // resposta como "CPHI" criaria um contexto privado homônimo e a lista
+    // mostraria o nome duas vezes. Havendo os dois, o da própria dona vence.
+    const [ctxExistente] = await db.select({ id: contexts.id }).from(contexts)
+      .where(and(
+        drizzleOr(eq(contexts.ownerId, ownerId), isNull(contexts.ownerId)),
+        eq(contexts.name, nomeContexto),
+      ))
+      .orderBy(desc(contexts.ownerId))
+      .limit(1);
+    let idContexto = ctxExistente?.id;
+    if (!idContexto) {
+      idContexto = crypto.randomUUID();
+      await db.insert(contexts).values({
+        id: idContexto, ownerId, contextTypeId: null, name: nomeContexto,
+        isCustom: true, visibility: "private", createdAt: now, updatedAt: now,
+      });
+    }
+    const [vinculoExistente] = await db.select({ id: contactContexts.id }).from(contactContexts)
+      .where(and(
+        eq(contactContexts.ownerId, ownerId),
+        eq(contactContexts.contactId, contactId),
+        eq(contactContexts.contextId, idContexto),
+      ))
+      .limit(1);
+    let gravouVinculo = false;
+    if (!vinculoExistente) {
+      await db.insert(contactContexts).values({
+        id: crypto.randomUUID(), ownerId, contactId, contextId: idContexto,
+        relationshipType: "profissional", visibility: "private", createdAt: now, updatedAt: now,
+      });
+      gravouVinculo = true;
+    }
+    return gravouNota || gravouVinculo;
+  }
+
+  // ── tipo de relacionamento: vai para as anotações do contato ───────────────
+  if (fieldType === "relationship_type") {
+    const linha = `Relacionamento: ${valor}`;
     const [contato] = await db.select({ notes: privateContacts.notes }).from(privateContacts)
       .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)))
       .limit(1);

@@ -11,7 +11,7 @@ import {
   Plus, Search, X, Phone, Mail, Linkedin, Instagram,
   MapPin, Briefcase, Tag, Edit2, Trash2, ExternalLink,
   ChevronLeft, User, MessageCircle, Globe, FileText,
-  Shield, Lock, Sparkles, History, RotateCcw
+  Shield, Lock, Sparkles, History, RotateCcw, Calendar
 } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
@@ -352,6 +352,12 @@ function ContactDetail({ contact, onEdit, onClose }: {
     { refetchOnWindowFocus: false }
   );
 
+  // Contextos em que este contato apareceu (onde e como se conheceram)
+  const { data: contextosDoContato } = trpc.contexts.listByContact.useQuery(
+    { contactId: contact.id },
+    { refetchOnWindowFocus: false }
+  );
+
   const confirmMut = trpc.enrichment.confirmSuggestion.useMutation({
     onError: () => toast.error("Erro ao desfazer."),
   });
@@ -478,6 +484,23 @@ function ContactDetail({ contact, onEdit, onClose }: {
           <div className="px-6 py-4 border-t border-white/8">
             <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><FileText size={11} /> Cartão de Visita</p>
             <img src={contact.cardImageUrl} alt="Cartão de visita" className="w-full rounded-xl border border-white/10 object-contain max-h-48" />
+          </div>
+        )}
+
+        {/* Contextos — onde e como se conheceram (etapa 5) */}
+        {contextosDoContato && contextosDoContato.length > 0 && (
+          <div className="px-6 py-4 border-t border-white/8">
+            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Calendar size={11} /> Contextos</p>
+            <div className="space-y-2">
+              {contextosDoContato.map(cc => (
+                <div key={cc.linkId} className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-white/70 truncate">{cc.name}</span>
+                  <span className="text-xs text-white/35 flex-shrink-0">
+                    {[cc.typeName, cc.city ?? cc.country].filter(Boolean).join(" · ")}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
