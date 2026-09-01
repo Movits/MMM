@@ -108,9 +108,11 @@ try {
   const eu = await runner.get("auth.me", undefined);
   ok("login por sessão funciona", eu.status === 200 && !!eu.dado?.id);
   ok("resposta não vaza hash de senha", !JSON.stringify(eu.dado || {}).includes("passwordHash"));
+  // auth.me é público de propósito (devolve null sem sessão); a rejeição de
+  // token inválido se prova numa rota protegida.
   const invalido = cliente("token-invalido-de-proposito");
-  const negado = await invalido.get("auth.me", undefined);
-  ok("token inválido é rejeitado", negado.status === 401 || negado.status === 403, `status ${negado.status}`);
+  const negado = await invalido.get("network.list", {});
+  ok("token inválido é rejeitado na rota protegida", negado.status === 401 || negado.status === 403, `status ${negado.status}`);
   const proxyAnonimo = await fetch(BASE + "/manus-storage/qualquer/coisa.txt");
   ok("arquivos exigem sessão (anônimo barrado)", proxyAnonimo.status === 401, `status ${proxyAnonimo.status}`);
 
