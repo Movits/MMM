@@ -182,7 +182,10 @@ try {
     await espera(15000);
     const pergunta = await runner.post("memory.search", { query: "Quem eu conheci na Antártida em 1990?" });
     const honesta = /não encontrei|não há|nenhum|não localiz|não tenho|não constam/i.test(pergunta.dado?.answer || "");
-    const limitada2 = /429|limite|rate|muitas/i.test(pergunta.erro || "");
+    // Com o LLM em cota, a busca não estoura mais: devolve as fontes com um
+    // aviso no lugar da resposta (memory-service.ts). Para o exame, isso é o
+    // mesmo "pulado por ritmo" do erro antigo — não uma falha no ar.
+    const limitada2 = /429|limite|rate|muitas/i.test(pergunta.erro || "") || /não conseguiu redigir/i.test(pergunta.dado?.answer || "");
     ok("memória responde com honestidade" + (limitada2 ? " (PULADO: ritmo do embedding)" : ""), honesta || limitada2);
   } else {
     resultados.push("INFO  checagens de IA puladas (rode com --com-ia para incluí-las)");

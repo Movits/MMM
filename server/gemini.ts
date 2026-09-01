@@ -108,6 +108,28 @@ export async function embedWithGemini(text: string, taskType: "RETRIEVAL_DOCUMEN
   return vector;
 }
 
+// O limite do plano do Gemini conta REQUISIÇÕES por minuto, não textos: um
+// lote inteiro numa chamada de batchEmbedContents custa 1 requisição, enquanto
+// indexar documento a documento custava N — era isso que estourava o ritmo na
+// primeira indexação de uma base grande. O teto de textos por lote fica com
+// quem chama (a indexação da memória usa lotes pequenos, com pausa entre eles).
+export async function embedManyWithGemini(texts: string[], taskType: "RETRIEVAL_DOCUMENT" | "RETRIEVAL_QUERY" | "SEMANTIC_SIMILARITY" = "RETRIEVAL_DOCUMENT"): Promise<number[][]> {
+  if (!texts.length) return [];
+  const payload = await geminiPost<{ embeddings?: Array<{ values?: number[] }> }>(`/models/${EMBEDDING_MODEL}:batchEmbedContents`, {
+    requests: texts.map(text => ({
+      model: `models/${EMBEDDING_MODEL}`,
+      taskType,
+      outputDimensionality: 768,
+      content: { parts: [{ text: text.slice(0, 20_000) }] },
+    })),
+  });
+  const vectors = payload.embeddings?.map(item => item.values);
+  if (!Array.isArray(vectors) || vectors.length !== texts.length || vectors.some(vector => !Array.isArray(vector) || vector.length !== 768)) {
+    throw new Error("Gemini não retornou um embedding de 768 dimensões para cada texto do lote.");
+  }
+  return vectors as number[][];
+}
+
 type RespostaGeracao = { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
 
 export async function transcribeWithGemini(input: { audio: Buffer; mimeType: string; language?: string }) {
