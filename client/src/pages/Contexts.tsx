@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import {
   Building2, Utensils, Landmark, Star, Handshake, FlaskConical,
   Store
 } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { getLoginUrl } from "@/const";
 
 // ─── Ícones por tipo ──────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ type Ctx = {
   contactCount: number;
 };
 type CtxDetail = Ctx & {
-  links: Array<{ id: string; contactId: number; eventDate?: string | null; city?: string | null; country?: string | null; notes?: string | null; relationshipType: string }>;
+  links: Array<{ id: string; contactId: number; contactName?: string | null; eventDate?: string | null; city?: string | null; country?: string | null; notes?: string | null; relationshipType: string }>;
   participants: Array<{ id: string; name: string; company?: string | null; role?: string | null }>;
   media: Array<{ id: string; originalName: string; fileType: string; storagePath: string }>;
 };
@@ -111,6 +111,17 @@ function ContextForm({ initial, types, onSave, onClose, loading }: {
     notes:         initial?.notes ?? "",
   });
   const set = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }));
+
+  // Se o formulário de edição abriu antes de o catálogo de tipos chegar, o tipo
+  // nasce vazio — e salvar assim apagaria o tipo do contexto. Quando os tipos
+  // chegam, o campo é re-derivado (sem atropelar uma escolha já feita).
+  useEffect(() => {
+    if (!form.contextTypeId && initial?.typeSlug && types.length > 0) {
+      const idDoTipo = types.find(t => t.slug === initial.typeSlug)?.id;
+      if (idDoTipo) setForm(p => (p.contextTypeId ? p : { ...p, contextTypeId: idDoTipo }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [types]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
@@ -337,16 +348,22 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
           <button onClick={onClose} className="text-white/40 hover:text-white/70 flex items-center gap-1.5 text-sm">
             <ChevronLeft size={16} /> Contextos
           </button>
-          <div className="flex items-center gap-2">
-            <Button size="sm" onClick={onEdit} variant="outline"
-              className="border-white/20 text-white/60 hover:bg-white/8 bg-transparent">
-              <Edit2 size={13} className="mr-1" /> Editar
-            </Button>
-            <Button size="sm" onClick={() => { if (confirm("Excluir este contexto?")) deleteMut.mutate({ id: contextId }); }}
-              variant="outline" className="border-red-500/30 text-red-400/80 hover:bg-red-500/10 bg-transparent">
-              <Trash2 size={13} />
-            </Button>
-          </div>
+          {/* Contexto do catálogo (global) não é editável nem apagável — o
+              backend recusaria e a tela só mostrava um erro sem explicação. */}
+          {ctx.isCustom ? (
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={onEdit} variant="outline"
+                className="border-white/20 text-white/60 hover:bg-white/8 bg-transparent">
+                <Edit2 size={13} className="mr-1" /> Editar
+              </Button>
+              <Button size="sm" onClick={() => { if (confirm("Excluir este contexto?")) deleteMut.mutate({ id: contextId }); }}
+                variant="outline" className="border-red-500/30 text-red-400/80 hover:bg-red-500/10 bg-transparent">
+                <Trash2 size={13} />
+              </Button>
+            </div>
+          ) : (
+            <span className="text-xs text-white/30">Contexto do catálogo MMM</span>
+          )}
         </div>
 
         {/* Info */}
@@ -387,10 +404,10 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
                 <div key={link.id} className="flex items-center justify-between p-2.5 rounded-xl bg-white/5">
                   <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold text-xs">
-                      {link.contactId}
+                      {(link.contactName || "#").charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm text-white">Contato #{link.contactId}</p>
+                      <p className="text-sm text-white">{link.contactName ?? `Contato #${link.contactId}`}</p>
                       <p className="text-xs text-white/40">{link.relationshipType}{link.city ? ` · ${link.city}` : ""}</p>
                     </div>
                   </div>

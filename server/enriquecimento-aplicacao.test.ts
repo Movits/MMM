@@ -80,8 +80,15 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
     expect(busca!.params).toEqual(expect.arrayContaining(["dona-1", 42, "fabrica"]));
   });
 
-  it("'como se conheceram' entra nas anotações do contato, uma vez só", async () => {
-    respostas = [[[null]]]; // notes atual: null
+  it("'como se conheceram' anota no contato E vira contexto com vínculo (etapa 5)", async () => {
+    respostas = [
+      [[null]], // notes atual: null → vai anotar
+      [],       // update das notas
+      [],       // não existe contexto com esse nome → vai criar
+      [],       // insert do contexto
+      [],       // não existe vínculo → vai criar
+      [],       // insert do vínculo
+    ];
     const gravou = await aplicarRespostaAoContato(db, "dona-1", 42, "how_met", "Em um evento", 1000);
 
     expect(gravou).toBe(true);
@@ -89,9 +96,53 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
     expect(update).toBeDefined();
     expect(String(update!.params[0])).toContain("Como se conheceram: Em um evento");
 
-    // segunda vez: a linha já está lá
-    consultas = []; respostas = [[["Como se conheceram: Em um evento"]]];
+    const insertContexto = sqlDe("insert into `contexts`");
+    expect(insertContexto).toBeDefined();
+    expect(insertContexto!.params).toContain("Em um evento");
+    expect(insertContexto!.params).toContain("dona-1");
+
+    const insertVinculo = sqlDe("insert into `contact_contexts`");
+    expect(insertVinculo).toBeDefined();
+    expect(insertVinculo!.params).toContain(42);
+  });
+
+  it("'como se conheceram' repetido não duplica nada: nota, contexto e vínculo já existem", async () => {
+    respostas = [
+      [["Como se conheceram: Em um evento"]], // nota já está lá
+      [["ctx-1"]],                            // contexto já existe
+      [["vinc-1"]],                           // vínculo já existe
+    ];
     expect(await aplicarRespostaAoContato(db, "dona-1", 42, "how_met", "Em um evento", 1000)).toBe(false);
+    expect(consultas.some(c => c.sql.startsWith("insert") || c.sql.startsWith("update"))).toBe(false);
+  });
+
+  it("resposta antiga recuperada (só nota) ganha o vínculo que faltava ao reprocessar", async () => {
+    // As respostas confirmadas antes desta mudança só viraram nota; reprocessar
+    // pelo script de recuperação completa o contexto e o vínculo.
+    respostas = [
+      [["Como se conheceram: Em um evento"]], // nota já está lá
+      [],                                     // contexto ainda não existe
+      [],                                     // insert do contexto
+      [],                                     // vínculo não existe
+      [],                                     // insert do vínculo
+    ];
+    expect(await aplicarRespostaAoContato(db, "dona-1", 42, "how_met", "Em um evento", 1000)).toBe(true);
+    expect(sqlDe("update `private_contacts`")).toBeUndefined(); // nota não é regravada
+    expect(sqlDe("insert into `contexts`")).toBeDefined();
+    expect(sqlDe("insert into `contact_contexts`")).toBeDefined();
+  });
+
+  it("'relacionamento' entra nas anotações do contato, uma vez só", async () => {
+    respostas = [[[null]]];
+    const gravou = await aplicarRespostaAoContato(db, "dona-1", 42, "relationship_type", "profissional", 1000);
+
+    expect(gravou).toBe(true);
+    const update = sqlDe("update `private_contacts`");
+    expect(update).toBeDefined();
+    expect(String(update!.params[0])).toContain("Relacionamento: profissional");
+
+    consultas = []; respostas = [[["Relacionamento: profissional"]]];
+    expect(await aplicarRespostaAoContato(db, "dona-1", 42, "relationship_type", "profissional", 1000)).toBe(false);
     expect(sqlDe("update `private_contacts`")).toBeUndefined();
   });
 

@@ -3,7 +3,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import {
   listContextTypes, listContexts, createContext, getContextById,
   updateContext, deleteContext, linkContactToContext, unlinkContactFromContext,
-  addContextParticipant,
+  addContextParticipant, listContextsByContact,
 } from "../db";
 
 // ─── Extensão: Módulo de Contextos (Onde e Como Conheceu) ─────────────────────
@@ -108,6 +108,13 @@ export const contextsRouter = router({
         relationshipType: input.relationshipType,
       });
       return { id };
+    }),
+
+  // Contextos em que um contato apareceu (exibido no perfil do contato)
+  listByContact: protectedProcedure
+    .input(z.object({ contactId: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      return listContextsByContact(ctx.user.openId, input.contactId);
     }),
 
   // Desvincular contato do contexto
