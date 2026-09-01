@@ -15,7 +15,7 @@ import {
   type Context, type ContextType, type ContactContext, type ContextParticipant, type ContextMedia,
   enrichmentSessions, enrichmentMessages, enrichmentSuggestions,
   type EnrichmentSession, type EnrichmentMessage, type EnrichmentSuggestion,
-  contactAssets, contactNeeds,
+  contactAssets, contactNeeds, aiMatchSuggestions,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { slugifyMatchTag } from "./match-service";
@@ -628,7 +628,26 @@ export async function deletePrivateContact(
   const [result] = await db
     .delete(privateContacts)
     .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)));
-  return (result as any).affectedRows > 0;
+  const apagou = (result as any).affectedRows > 0;
+  // Contato apagado leva o rastro junto: sem isto, os "possui/procura" dele
+  // continuavam alimentando o cruzamento para sempre, e a sugestão sobrevivia
+  // apontando para um contato que não existe ("Contato A" fantasma na tela).
+  // Não há FK/cascade no banco (colunas bigint sem references), então é aqui.
+  if (apagou) {
+    await db.delete(contactAssets)
+      .where(and(eq(contactAssets.ownerId, ownerId), eq(contactAssets.contactId, contactId)));
+    await db.delete(contactNeeds)
+      .where(and(eq(contactNeeds.ownerId, ownerId), eq(contactNeeds.contactId, contactId)));
+    await db.delete(aiMatchSuggestions)
+      .where(and(
+        eq(aiMatchSuggestions.ownerId, ownerId),
+        drizzleOr(
+          eq(aiMatchSuggestions.pairLowContactId, contactId),
+          eq(aiMatchSuggestions.pairHighContactId, contactId),
+        ),
+      ));
+  }
+  return apagou;
 }
 
 // ─── Contextos (Onde e Como Conheceu) ─────────────────────────────────────────
@@ -1075,7 +1094,15 @@ export async function aplicarRespostaAoContato(
   valor: string,
   now: number,
 ): Promise<boolean> {
-  if (!valor) return false;
+  if (!valor || !valor.trim()) return false;
+
+  // Contato apagado no meio da conversa não pode voltar a existir em pedaços:
+  // sem esta guarda, a resposta confirmada depois da exclusão recriava
+  // possui/procura órfãos — combustível novo para match fantasma.
+  const [contatoVivo] = await db.select({ id: privateContacts.id }).from(privateContacts)
+    .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)))
+    .limit(1);
+  if (!contatoVivo) return false;
 
   // ── campos simples do perfil do contato ────────────────────────────────────
   const fieldMap: Record<string, string> = {

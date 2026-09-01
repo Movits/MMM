@@ -94,6 +94,21 @@ export const intelligentMatchesRouter = router({
     return recalculatePrivateMatches(ctx.user.openId, ctx.user.email);
   }),
 
+  // Remover um item registrado errado. Sem isto, um "possui" digitado no campo
+  // errado era permanente — e a limpeza de órfãos do recálculo, que existe para
+  // quando a razão de um match some, nunca tinha como acontecer de verdade.
+  removeAsset: smartMatchProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const db = await getDb(); if (!db) throw new Error("Banco indisponível.");
+    await db.delete(contactAssets).where(and(eq(contactAssets.id, input.id), eq(contactAssets.ownerId, ctx.user.openId)));
+    return recalculatePrivateMatches(ctx.user.openId);
+  }),
+
+  removeNeed: smartMatchProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const db = await getDb(); if (!db) throw new Error("Banco indisponível.");
+    await db.delete(contactNeeds).where(and(eq(contactNeeds.id, input.id), eq(contactNeeds.ownerId, ctx.user.openId)));
+    return recalculatePrivateMatches(ctx.user.openId);
+  }),
+
   recalculate: smartMatchProcedure.mutation(async ({ ctx }) => {
     return recalculatePrivateMatches(ctx.user.openId, ctx.user.email);
   }),

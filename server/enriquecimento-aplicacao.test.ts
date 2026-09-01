@@ -38,7 +38,7 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
   beforeEach(() => { consultas = []; respostas = []; });
 
   it("'o que possui' vira linha em contact_assets, com slug e rótulo", async () => {
-    respostas = [[], []]; // não existe ainda; insert
+    respostas = [[[42]], [], []]; // contato vivo; não existe ainda; insert
     const gravou = await aplicarRespostaAoContato(db, "dona-1", 42, "assets", "Fábrica de calçados", 1000);
 
     expect(gravou).toBe(true);
@@ -51,7 +51,7 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
   });
 
   it("'o que procura' vira linha em contact_needs", async () => {
-    respostas = [[], []];
+    respostas = [[[42]], [], []];
     const gravou = await aplicarRespostaAoContato(db, "dona-1", 42, "needs", "investidores", 1000);
 
     expect(gravou).toBe(true);
@@ -61,7 +61,7 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
 
   it("confirmar duas vezes não duplica: o item existente barra o insert", async () => {
     // A base real tinha "fabrica" confirmada CINCO vezes no mesmo contato.
-    respostas = [[[7]]]; // o select de existência devolve uma linha
+    respostas = [[[42]], [[7]]]; // contato vivo; o select de existência devolve uma linha
     const gravou = await aplicarRespostaAoContato(db, "dona-1", 42, "assets", "fabrica", 1000);
 
     expect(gravou).toBe(false);
@@ -69,7 +69,7 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
   });
 
   it("a busca de duplicata é pelo slug, do dono e do contato certos", async () => {
-    respostas = [[], []];
+    respostas = [[[42]], [], []];
     await aplicarRespostaAoContato(db, "dona-1", 42, "assets", "FÁBRICA", 1000);
 
     const busca = sqlDe("select `id` from `contact_assets`");
@@ -82,6 +82,7 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
 
   it("'como se conheceram' anota no contato E vira contexto com vínculo (etapa 5)", async () => {
     respostas = [
+      [[42]],   // contato vivo
       [[null]], // notes atual: null → vai anotar
       [],       // update das notas
       [],       // não existe contexto com esse nome → vai criar
@@ -108,6 +109,7 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
 
   it("'como se conheceram' repetido não duplica nada: nota, contexto e vínculo já existem", async () => {
     respostas = [
+      [[42]],                                 // contato vivo
       [["Como se conheceram: Em um evento"]], // nota já está lá
       [["ctx-1"]],                            // contexto já existe
       [["vinc-1"]],                           // vínculo já existe
@@ -120,6 +122,7 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
     // As respostas confirmadas antes desta mudança só viraram nota; reprocessar
     // pelo script de recuperação completa o contexto e o vínculo.
     respostas = [
+      [[42]],                                 // contato vivo
       [["Como se conheceram: Em um evento"]], // nota já está lá
       [],                                     // contexto ainda não existe
       [],                                     // insert do contexto
@@ -133,7 +136,7 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
   });
 
   it("'relacionamento' entra nas anotações do contato, uma vez só", async () => {
-    respostas = [[[null]]];
+    respostas = [[[42]], [[null]]];
     const gravou = await aplicarRespostaAoContato(db, "dona-1", 42, "relationship_type", "profissional", 1000);
 
     expect(gravou).toBe(true);
@@ -141,7 +144,7 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
     expect(update).toBeDefined();
     expect(String(update!.params[0])).toContain("Relacionamento: profissional");
 
-    consultas = []; respostas = [[["Relacionamento: profissional"]]];
+    consultas = []; respostas = [[[42]], [["Relacionamento: profissional"]]];
     expect(await aplicarRespostaAoContato(db, "dona-1", 42, "relationship_type", "profissional", 1000)).toBe(false);
     expect(sqlDe("update `private_contacts`")).toBeUndefined();
   });
@@ -149,7 +152,7 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
   it("instagram vai para a coluna que existe", async () => {
     // O mapa antigo apontava para `instagramHandle`, coluna inexistente — a
     // primeira sugestão de instagram confirmada teria quebrado em produção.
-    respostas = [[]];
+    respostas = [[[42]], []];
     await aplicarRespostaAoContato(db, "dona-1", 42, "instagram_handle", "@empresa", 1000);
 
     const update = sqlDe("update `private_contacts`");
@@ -158,8 +161,15 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
   });
 
   it("tipo sem destino lança em vez de fingir sucesso", async () => {
+    respostas = [[[42]]];
     await expect(aplicarRespostaAoContato(db, "dona-1", 42, "tipo_invenido", "x", 1000))
       .rejects.toThrow(/sem destino/);
+  });
+
+  it("contato apagado: nada é gravado — resposta confirmada não recria órfão", async () => {
+    respostas = [[]]; // o select do contato não encontra ninguém
+    expect(await aplicarRespostaAoContato(db, "dona-1", 42, "assets", "Fábrica", 1000)).toBe(false);
+    expect(consultas.some(c => c.sql.startsWith("insert") || c.sql.startsWith("update"))).toBe(false);
   });
 
   it("valor vazio não grava nada e diz que não gravou", async () => {

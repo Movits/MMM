@@ -204,6 +204,61 @@ export function direcaoEfetiva(rotulo: string, campo: "oferta" | "demanda") {
 }
 
 /**
+ * Cabeças TRANSPARENTES: substantivos de papel ou estrutura que apresentam a
+ * substância pelo genitivo sem mudar do que se trata. "Mina DE terras raras" e
+ * "fornecedor DE terras raras" falam ambos de terras raras — e é exatamente o
+ * exemplo de aceite da etapa 7, que sem esta lista pontuava 0.
+ *
+ * Mesma disciplina da lista de verbos: só entra substantivo cujo genitivo é
+ * inequivocamente a mercadoria. "Sapatos de couro" fica de fora de propósito —
+ * ali o genitivo é o MATERIAL, e reduzir os dois lados a "couro" casaria sapato
+ * com bolsa. Papel (fornecedor, produtor) e estrutura produtiva (mina, fazenda,
+ * fábrica) são os casos seguros; na dúvida, o termo vale por inteiro, que é o
+ * comportamento anterior.
+ */
+const CABECAS_TRANSPARENTES = new Set([
+  // pt — papéis
+  "fornecedor", "fornecedora", "fornecedores", "fornecedoras",
+  "produtor", "produtora", "produtores", "produtoras",
+  "fabricante", "fabricantes", "distribuidor", "distribuidora",
+  "distribuidores", "distribuidoras", "atacadista", "atacadistas",
+  "revendedor", "revendedora", "revendedores", "revendedoras",
+  "representante", "representantes", "importador", "importadora",
+  "importadores", "importadoras", "exportador", "exportadora",
+  "exportadores", "exportadoras",
+  // pt — estruturas produtivas
+  "mina", "minas", "jazida", "jazidas", "fazenda", "fazendas",
+  "plantacao", "plantacoes", "criacao", "criacoes", "industria",
+  "industrias", "fabrica", "fabricas", "usina", "usinas",
+  "producao", "estoque", "estoques", "safra", "safras",
+  // en
+  "supplier", "suppliers", "producer", "producers", "manufacturer",
+  "manufacturers", "distributor", "distributors", "mine", "mines",
+  "farm", "farms", "factory", "factories", "stock",
+  // es
+  "proveedor", "proveedores", "productor", "productores", "distribuidor",
+  "distribuidores", "granja", "granjas",
+]);
+
+/**
+ * O núcleo do termo: a substância de que ele trata, atravessando uma cabeça
+ * transparente quando houver. "Mina de terras raras" → "terras-raras";
+ * "Fornecedor de terras raras" → "terras-raras"; "Terras raras" → "terras-raras".
+ * Sem cabeça transparente seguida de genitivo, o núcleo é o próprio objeto —
+ * nada muda para quem já casava antes.
+ */
+export function nucleoDoTermo(rotulo: string): string {
+  const { objeto } = analisarTermo(rotulo);
+  const palavras = objeto.split("-").filter(Boolean);
+  if (palavras.length < 3) return objeto;
+  // Exige a forma exata "CABEÇA + genitivo + substância": é o padrão em que a
+  // cabeça comprovadamente não é a mercadoria. Qualquer outra forma fica inteira.
+  if (!CABECAS_TRANSPARENTES.has(palavras[0]) || !GENITIVOS.has(palavras[1])) return objeto;
+  const substancia = objetoDepoisDe(palavras.slice(1));
+  return substancia ? substancia.join("-") : objeto;
+}
+
+/**
  * São concorrentes? Só respondemos que sim quando AS DUAS pontas trazem verbo
  * explícito e os dois verbos apontam para o mesmo lado. Com uma ponta neutra
  * não há evidência de conflito nas palavras — e o campo já separou uma da

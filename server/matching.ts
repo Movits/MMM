@@ -7,6 +7,7 @@ import {
 } from "../drizzle/schema";
 import { eq, ne, and, desc } from "drizzle-orm";
 import crypto from "crypto";
+import { hasValidConsent, usersComConsentimento } from "./routers/consent";
 
 // ─── Encryption helpers (for sensitive data) ─────────────────
 const VAULT_KEY = process.env.VAULT_ENCRYPTION_KEY || requireSecret("JWT_SECRET");
@@ -132,11 +133,72 @@ export async function getUserProfile(userId: number) {
   return profile || null;
 }
 
+// O onboarding grava o SETOR como o rótulo traduzido (o select envia s.label),
+// então o banco tem "Saúde", "Health & Healthtechs", "Salud & Healthtechs"...
+// conforme o idioma de quem preencheu. Esta tabela traduz o gravado — rótulo em
+// pt/en/es, com ou sem acento, ou a própria chave — para a chave canônica de
+// onboarding.sectors, que é o idioma da adjacência. Rótulo desconhecido segue
+// em minúsculas: dois iguais ainda casam entre si.
+const SECTOR_LABEL_PARA_CHAVE: Record<string, string> = {
+  // pt-BR
+  "agronegocio": "agribusiness", "construcao civil": "construction",
+  "educacao": "education", "energia, agua & gas": "energy",
+  "entretenimento & midia": "entertainment", "financeiro & fintechs": "financial",
+  "governo & setor publico": "government", "industria & manufatura": "industry",
+  "logistica & transporte": "logistics", "saude": "health",
+  "tecnologia & software": "technology", "telecomunicacoes": "telecom",
+  "turismo & hospitalidade": "tourism", "varejo & consumo": "retail",
+  // en
+  "agribusiness": "agribusiness", "construction": "construction",
+  "education": "education", "energy & utilities": "energy",
+  "entertainment & media": "entertainment", "financial & fintechs": "financial",
+  "government & public sector": "government", "industry & manufacturing": "industry",
+  "logistics & transport": "logistics", "health & healthtechs": "health",
+  "technology & saas": "technology", "telecommunications": "telecom",
+  "tourism & hospitality": "tourism", "retail & consumer": "retail",
+  // es
+  "agronegocios": "agribusiness", "construccion": "construction",
+  "educacion": "education",
+  "energia & utilities": "energy", "entretenimiento & medios": "entertainment",
+  "financiero & fintechs": "financial", "gobierno & sector publico": "government",
+  "industria & manufactura": "industry", "salud & healthtechs": "health",
+  "tecnologia & saas": "technology", "telecomunicaciones": "telecom",
+  "turismo & hospitalidad": "tourism", "retail & consumo": "retail",
+  // Os outros 7 idiomas do app ainda gravam rótulos próprios; dois iguais
+  // seguem casando entre si pelo fallback, e o conserto definitivo é o
+  // onboarding passar a gravar a CHAVE (tarefa "adaptar às chaves canônicas").
+};
+
+export function chaveDoSetor(valor: string | null | undefined): string | null {
+  if (!valor) return null;
+  const bruto = valor.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  if (!bruto) return null;
+  return SECTOR_LABEL_PARA_CHAVE[bruto] ?? bruto;
+}
+
+// Adjacência entre setores, no vocabulário canônico do onboarding.
+const SECTOR_ADJACENCY: Record<string, string[]> = {
+  agribusiness: ["logistics", "industry", "retail"],
+  industry: ["logistics", "energy", "construction", "agribusiness"],
+  technology: ["financial", "education", "health", "telecom", "entertainment"],
+  financial: ["technology", "retail", "construction"],
+  health: ["technology", "education"],
+  energy: ["industry", "construction"],
+  education: ["technology", "entertainment"],
+  retail: ["logistics", "agribusiness", "technology"],
+  logistics: ["industry", "agribusiness", "retail"],
+  construction: ["industry", "energy", "government"],
+  telecom: ["technology", "entertainment"],
+  tourism: ["entertainment", "retail"],
+  entertainment: ["telecom", "education", "tourism"],
+  government: ["construction", "energy", "health"],
+};
+
 // O que cada ativo ("o que possui") satisfaz nas necessidades ("o que procura").
 // Os dois campos vêm de listas diferentes no onboarding (WHAT_I_HAVE_OPTIONS /
 // WHAT_I_NEED_OPTIONS) e só compartilham 3 ids, então a ponte é explícita. Ids
 // desconhecidos simplesmente não cobrem nada — degrada suave, nunca quebra.
-// Espelha o formato do SECTOR_ADJACENCY, logo abaixo.
+// Espelha o formato do SECTOR_ADJACENCY, logo acima.
 const HAVE_SATISFIES_NEED: Record<string, string[]> = {
   industria: ["fornecedores", "compradores"],
   fazenda: ["fornecedores", "compradores"],
@@ -183,26 +245,21 @@ export function calculateCompatibilityScore(
     }
   }
 
-  // Sector score — same sector = potential synergy; adjacent sectors = moderate
-  const SECTOR_ADJACENCY: Record<string, string[]> = {
-    agriculture: ["food", "sustainability", "logistics"],
-    technology: ["fintech", "education", "media", "healthcare"],
-    fintech: ["technology", "finance", "real_estate"],
-    healthcare: ["pharma", "technology", "wellness"],
-    fashion: ["retail", "luxury", "sustainability"],
-    energy: ["sustainability", "infrastructure", "technology"],
-    education: ["technology", "media"],
-    retail: ["ecommerce", "fashion", "logistics"],
-    media: ["technology", "education", "entertainment"],
-    tourism: ["hospitality", "wellness", "luxury"],
-  };
+  // Sector score — same sector = potential synergy; adjacent sectors = moderate.
+  // A adjacência fala o vocabulário CANÔNICO do onboarding (as chaves de
+  // onboarding.sectors); a comparação normaliza o que estiver gravado antes.
+  // A tabela anterior usava um vocabulário que não existe no app (agriculture,
+  // fintech, healthcare...) — nenhum valor gravado casava com ela, e os 20% de
+  // peso do setor eram letra morta.
   let sectorScore = 30; // default: different sectors
-  if (a.sector && b.sector) {
-    if (a.sector === b.sector) {
+  const setorA = chaveDoSetor(a.sector);
+  const setorB = chaveDoSetor(b.sector);
+  if (setorA && setorB) {
+    if (setorA === setorB) {
       sectorScore = 70; // same sector: synergy but also competition
     } else {
-      const adjacent = SECTOR_ADJACENCY[a.sector] || [];
-      sectorScore = adjacent.includes(b.sector) ? 55 : 30;
+      const adjacent = SECTOR_ADJACENCY[setorA] || [];
+      sectorScore = adjacent.includes(setorB) ? 55 : 30;
     }
   }
 
@@ -304,27 +361,45 @@ export function calculateCompatibilityScore(
   };
 }
 
+// Desde a migração para chaves canônicas (migrar-rotulos-para-chaves), busca e
+// valores ficam gravados como strategic_partner, innovation etc. — e era assim,
+// cru, que entravam no prompt e voltavam citados no texto que a usuária lê.
+// Estes mapas devolvem o rótulo humano; chave desconhecida passa como veio.
+const ROTULO_DE_BUSCA: Record<string, string> = {
+  strategic_partner: "Sócia estratégica", investor: "Investidora", mentor: "Mentora",
+  team: "Equipe/Talentos", job: "Emprego/Projeto", be_mentor: "Quer também mentorar",
+};
+const ROTULO_DE_VALOR: Record<string, string> = {
+  innovation: "Inovação", social_impact: "Impacto social", autonomy: "Autonomia",
+  fast_growth: "Crescimento rápido", stability: "Estabilidade", purpose: "Propósito",
+  collaboration: "Colaboração", results: "Resultados", diversity: "Diversidade",
+  transparency: "Transparência", sustainability: "Sustentabilidade",
+  technical_excellence: "Excelência técnica",
+};
+const rotular = (valores: unknown, mapa: Record<string, string>) =>
+  ((valores as string[]) || []).map(valor => mapa[valor] ?? valor).join(", ");
+
 // ─── Generate AI insight for a match ─────────────────────────
 export async function generateMatchInsight(
   profileA: UserProfile,
   profileB: UserProfile,
   scores: ReturnType<typeof calculateCompatibilityScore>
-): Promise<string> {
+): Promise<string | null> {
   try {
     const prompt = `Você é um assistente de matchmaking profissional. Analise a compatibilidade entre dois perfis e escreva um insight conciso (2-3 frases) explicando POR QUE eles são compatíveis e QUAL oportunidade específica podem criar juntos.
 
 Perfil A:
 - Especialidade: ${profileA.primarySpecialty}
-- Busca: ${(profileA.seekingTypes as string[])?.join(", ")}
+- Busca: ${rotular(profileA.seekingTypes, ROTULO_DE_BUSCA)}
 - Setor: ${profileA.sector}
-- Valores: ${(profileA.values as string[])?.join(", ")}
+- Valores: ${rotular(profileA.values, ROTULO_DE_VALOR)}
 - Localização: ${profileA.city}, ${profileA.country}
 
 Perfil B:
 - Especialidade: ${profileB.primarySpecialty}
-- Busca: ${(profileB.seekingTypes as string[])?.join(", ")}
+- Busca: ${rotular(profileB.seekingTypes, ROTULO_DE_BUSCA)}
 - Setor: ${profileB.sector}
-- Valores: ${(profileB.values as string[])?.join(", ")}
+- Valores: ${rotular(profileB.values, ROTULO_DE_VALOR)}
 - Localização: ${profileB.city}, ${profileB.country}
 
 Score de compatibilidade: ${scores.overall}%
@@ -339,16 +414,37 @@ Escreva o insight em português, de forma direta e motivadora. Máximo 150 palav
     });
 
     const content = response.choices?.[0]?.message?.content;
-    return (typeof content === "string" ? content : null) || "Perfis com alta compatibilidade estratégica identificada.";
+    // Falhou ou veio vazio: null, e NUNCA um texto de enchimento. O chamador
+    // grava o que vier daqui — um enchimento gravado contava como "insight já
+    // existe" e impedia para sempre a geração do texto de verdade.
+    return (typeof content === "string" && content.trim()) ? content : null;
   } catch {
-    return "Perfis complementares com potencial de parceria estratégica.";
+    return null;
   }
 }
+
+// Enchimentos da versão anterior que ficaram gravados no banco: para o reuso,
+// valem como "sem insight" — senão quem os recebeu nunca ganharia o texto real.
+const INSIGHTS_DE_ENCHIMENTO = new Set([
+  "Perfis com alta compatibilidade estratégica identificada.",
+  "Perfis complementares com potencial de parceria estratégica.",
+]);
+
+// Teto de insights de IA por rodada: o texto é um luxo, o score é o produto.
+// Sem teto, uma rodada com 50 candidatas acima de 70 disparava 50 chamadas ao
+// LLM em sequência — mais que o dia inteiro de cota do plano gratuito, num
+// clique. O insight já gravado é reaproveitado e nunca sobrescrito por null.
+const INSIGHTS_POR_RODADA = 3;
 
 // ─── Generate matches for a user ─────────────────────────────
 export async function generateMatchesForUser(userId: number): Promise<number> {
   const myProfile = await getUserProfile(userId);
   if (!myProfile) return 0;
+
+  // Etapa 11: cruzar perfis estratégicos (o que tem / o que precisa) é
+  // cruzamento, e cruzamento exige o termo aceito — dos DOIS lados. O mesmo
+  // hasValidConsent do cruzamento privado: sem termo publicado, libera.
+  if (!(await hasValidConsent(userId, "termo_smart_match"))) return 0;
 
   // Todas as outras usuárias ativas. NÃO se exclui quem já casou: a regeneração
   // re-scora todo mundo e grava por upsert contra a chave única
@@ -390,7 +486,8 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
     values: userProfiles.values,
     profileCompleteness: userProfiles.profileCompleteness,
     lastAiAnalysisAt: userProfiles.lastAiAnalysisAt,
-    encryptedSensitiveData: userProfiles.encryptedSensitiveData,
+    // encryptedSensitiveData fica FORA de propósito: o cofre não participa do
+    // score e não pode passear por candidatas, logs ou prompts.
     createdAt: userProfiles.createdAt,
     updatedAt: userProfiles.updatedAt,
   })
@@ -402,24 +499,42 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
     ))
     .limit(50);
 
+  // O outro lado da etapa 11: só cruza o dado de quem também autorizou.
+  const autorizadas = await usersComConsentimento(candidates.map(candidate => candidate.userId as number), "termo_smart_match");
+
+  // Insights já gravados: reaproveitar em vez de regenerar — cada um custou uma
+  // chamada da cota diária do LLM.
+  const existentes = await db.select({ matchedUserId: matches.matchedUserId, aiInsight: matches.aiInsight })
+    .from(matches)
+    .where(eq(matches.userId, userId));
+  const insightExistente = new Map(existentes.map(linha => [linha.matchedUserId, linha.aiInsight]));
+
   let matchesCreated = 0;
+  let insightsGerados = 0;
 
   for (const candidate of candidates) {
+    if (!autorizadas.has(candidate.userId as number)) continue;
     const scores = calculateCompatibilityScore(myProfile as UserProfile, candidate as UserProfile);
 
     // Only create matches with score >= 40
     if (scores.overall < 40) continue;
 
-    // Generate AI insight for top matches (score >= 70)
+    // Insight de IA só para os melhores, só quando ainda não existe um DE
+    // VERDADE (enchimento antigo não conta), e no máximo INSIGHTS_POR_RODADA
+    // por rodada — cota é finita e o score não depende dele.
     let aiInsight: string | null = null;
-    if (scores.overall >= 70) {
+    const guardado = insightExistente.get(candidate.userId as number);
+    const temInsightReal = !!guardado && !INSIGHTS_DE_ENCHIMENTO.has(guardado);
+    if (scores.overall >= 70 && !temInsightReal && insightsGerados < INSIGHTS_POR_RODADA) {
       aiInsight = await generateMatchInsight(myProfile as UserProfile, candidate as UserProfile, scores);
+      insightsGerados += 1;
     }
 
     // Upsert contra a chave única (userId, matchedUserId): re-analisar atualiza o
     // score de quem já existe em vez de duplicar. O `set` de propósito NÃO toca
     // userSeen, userDismissed nem createdAt — é o que preserva a decisão da
-    // usuária, e o que impede um dispensado de voltar como linha nova.
+    // usuária, e o que impede um dispensado de voltar como linha nova. E só toca
+    // aiInsight quando gerou um agora: null não apaga o texto que já custou cota.
     const scoreValues = {
       overallScore: scores.overall,
       specialtyScore: scores.specialty,
@@ -427,12 +542,11 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
       incomeScore: scores.investment,
       locationScore: scores.location,
       valuesScore: scores.values,
-      aiInsight,
-      aiGeneratedAt: aiInsight ? new Date() : null,
     };
+    const comInsight = aiInsight ? { ...scoreValues, aiInsight, aiGeneratedAt: new Date() } : scoreValues;
     await db.insert(matches)
-      .values({ userId, matchedUserId: candidate.userId as number, ...scoreValues })
-      .onDuplicateKeyUpdate({ set: scoreValues });
+      .values({ userId, matchedUserId: candidate.userId as number, ...comInsight })
+      .onDuplicateKeyUpdate({ set: comInsight });
 
     matchesCreated++;
   }
@@ -449,6 +563,11 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
 export async function getMatchesForUser(userId: number, limit = 20) {
   const db = await getDb();
   if (!db) return [];
+
+  // Etapa 11 também na LEITURA: revogar o termo esconde na hora o que já tinha
+  // sido cruzado — dos dois lados. A linha gravada fica (histórico), mas não
+  // aparece nem para quem revogou nem citando quem revogou.
+  if (!(await hasValidConsent(userId, "termo_smart_match"))) return [];
 
   const userMatches = await db.select({
     matchId: matches.id,
@@ -486,7 +605,9 @@ export async function getMatchesForUser(userId: number, limit = 20) {
     .orderBy(desc(matches.overallScore))
     .limit(limit);
 
-  return userMatches;
+  const ids = userMatches.map(match => match.matchedUserId).filter((id): id is number => id !== null);
+  const comTermo = await usersComConsentimento(ids, "termo_smart_match");
+  return userMatches.filter(match => match.matchedUserId !== null && comTermo.has(match.matchedUserId));
 }
 
 // ─── Dismiss a match ─────────────────────────────────────────
