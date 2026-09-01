@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { LANGUAGES } from "@/i18n";
 import { AppHeader } from "@/components/AppHeader";
+import { segmentarTranscricao, TIPOS_DE_ENTIDADE, type TipoEntidade } from "@/lib/transcricao-destacada";
 
 const MAX_DURATION = 10 * 60;
 
@@ -288,12 +289,20 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
   if (isLoading || !data) return <main className="min-h-screen grid place-items-center text-white"><Loader2 className="animate-spin"/></main>;
   const { meeting, transcript, entities, suggestions } = data;
   const displayTranscript = translationLanguage === "pt-BR" ? transcript?.transcript : translatedText;
+  // Destaques valem só para o texto original: os valores extraídos pela IA não
+  // batem com o texto traduzido.
+  const segmentos = transcript && translationLanguage === "pt-BR"
+    ? segmentarTranscricao(transcript.transcript, entities)
+    : null;
+  const tiposPresentes = segmentos
+    ? Array.from(new Set(segmentos.flatMap(s => (s.tipo ? [s.tipo] : []))))
+    : [];
   return <main className="min-h-screen p-4 md:p-8 text-white bg-transparent"><div className="max-w-5xl mx-auto">
     <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-white/55 hover:text-white mb-6"><ArrowLeft size={16}/> Todas as reuniões</button>
     <div className="flex flex-col md:flex-row justify-between gap-4 mb-6"><div><p className="text-amber-300 text-xs font-semibold">REUNIÃO PRIVADA</p><h1 className="text-3xl font-bold mt-1">{meeting.title}</h1><p className="text-sm text-white/45 mt-2">{new Date(meeting.createdAt).toLocaleString(i18n.language)}</p></div><div className="flex items-start gap-2"><span className={`h-fit border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(meeting.status)}</span><button onClick={() => deleteMeeting.mutate({ meetingId })} disabled={deleteMeeting.isPending} className="rounded-full border border-red-400/25 px-3 py-1 text-xs text-red-200 hover:bg-red-400/10 disabled:opacity-50">Excluir</button></div></div>
     {meeting.status === "failed" && <div className="rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-red-200">{meeting.processingError || "O processamento não foi concluído. Tente novamente com uma gravação curta."}</div>}
     <div className="flex gap-2 border-b border-white/10 mb-6">{([ ["summary", "Resumo", FileText], ["transcript", "Transcrição", Clock3], ["contacts", `Contatos (${suggestions.length})`, Users] ] as const).map(([id,label,Icon]) => <button key={id} onClick={() => setTab(id)} className={`inline-flex items-center gap-2 px-4 py-3 text-sm border-b-2 ${tab === id ? "border-amber-300 text-amber-300" : "border-transparent text-white/50"}`}><Icon size={16}/>{label}</button>)}</div>
-    {tab === "summary" && <div className="grid md:grid-cols-2 gap-4"><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">Nomes e empresas citados na conversa</h2><div className="flex flex-wrap gap-2 mt-4">{entities.length ? entities.map(entity => <span key={entity.id} className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/75">{entity.value}</span>) : <p className="text-sm text-white/45">Nenhuma entidade pendente.</p>}</div></section><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">Proteção do áudio</h2><p className="text-sm text-white/50 mt-3">O áudio fica restrito à sua conta e expira automaticamente após 30 dias. A transcrição permanece privada na sua rede.</p></section></div>}
+    {tab === "summary" && <div className="grid md:grid-cols-2 gap-4"><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">Nomes e empresas citados na conversa</h2><div className="flex flex-wrap gap-2 mt-4">{entities.length ? entities.map(entity => { const tipo = TIPOS_DE_ENTIDADE[entity.entityType as TipoEntidade]; return <span key={entity.id} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${tipo ? tipo.classes : "border border-white/10 bg-white/5 text-white/75"}`}>{tipo && <span className="text-[10px] font-semibold uppercase tracking-wider opacity-75">{tipo.rotulo}</span>}<span>{entity.value}</span></span>; }) : <p className="text-sm text-white/45">Nenhuma entidade pendente.</p>}</div></section><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">Proteção do áudio</h2><p className="text-sm text-white/50 mt-3">O áudio fica restrito à sua conta e expira automaticamente após 30 dias. A transcrição permanece privada na sua rede.</p></section></div>}
     {tab === "transcript" && <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
       <h2 className="font-semibold mb-4">Transcrição</h2>
       {transcript ? <>
@@ -306,7 +315,17 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
             </select>
           </label>
         </div>
-        {translateTranscript.isPending ? <div className="text-white/55"><Loader2 className="inline animate-spin mr-2" size={16}/>Traduzindo transcrição…</div> : <p className="whitespace-pre-wrap leading-7 text-white/75">{displayTranscript || transcript.transcript}</p>}
+        {translateTranscript.isPending ? <div className="text-white/55"><Loader2 className="inline animate-spin mr-2" size={16}/>Traduzindo transcrição…</div> : <>
+          {tiposPresentes.length > 0 && <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-white/40">Destaques:</span>
+            {tiposPresentes.map(tipo => <span key={tipo} className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${TIPOS_DE_ENTIDADE[tipo].classes}`}>{TIPOS_DE_ENTIDADE[tipo].rotulo}</span>)}
+          </div>}
+          {segmentos
+            ? <p className="whitespace-pre-wrap leading-7 text-white/75">{segmentos.map((s, i) => s.tipo
+                ? <mark key={i} title={TIPOS_DE_ENTIDADE[s.tipo].rotulo} className={`rounded-md px-1 py-0.5 font-medium ${TIPOS_DE_ENTIDADE[s.tipo].classes}`}>{s.texto}</mark>
+                : <span key={i}>{s.texto}</span>)}</p>
+            : <p className="whitespace-pre-wrap leading-7 text-white/75">{displayTranscript || transcript.transcript}</p>}
+        </>}
       </> : <p className="text-white/45">A transcrição ainda não está disponível.</p>}
     </section>}
     {tab === "contacts" && <div className="space-y-3">{suggestions.length ? suggestions.map(suggestion => <section key={suggestion.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="flex flex-col md:flex-row gap-4 justify-between"><div><h2 className="font-semibold">{suggestion.fullName}</h2><p className="text-sm text-white/55">{[suggestion.jobTitle, suggestion.company].filter(Boolean).join(" · ") || "Dados parciais detectados"}</p>{suggestion.email && <p className="text-xs text-white/40 mt-1">{suggestion.email}</p>}</div>{suggestion.status === "pending" ? <div className="flex flex-wrap gap-2"><button onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "create" })} className="rounded-lg bg-amber-400 text-[#08121f] px-3 py-2 text-sm font-bold"><Check size={15} className="inline mr-1"/>Criar contato</button><button onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "ignore" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65"><X size={15} className="inline mr-1"/>Ignorar</button></div> : <span className="text-sm text-white/45">{suggestion.status === "created" ? "Contato criado" : "Ignorada"}</span>}</div></section>) : <div className="rounded-2xl border border-dashed border-white/15 py-14 text-center text-white/45">Nenhum contato sugerido nesta reunião.</div>}</div>}
