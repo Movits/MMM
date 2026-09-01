@@ -37,6 +37,9 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
+# O boot aplica as migrações pendentes (scripts/migrar.mjs) antes de aceitar
+# tráfego — o script e a pasta drizzle/ precisam existir na imagem final.
+COPY --from=build /app/scripts ./scripts
 
 EXPOSE 3000
 CMD ["node", "dist/index.js"]

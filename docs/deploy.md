@@ -102,6 +102,15 @@ O repositório já tem `Dockerfile`, então o Railway não precisa adivinhar nad
    (aplica). Nunca edite SQL de migração à mão — foi mantendo um SQL à mão que
    um banco novo passou a nascer sem as tabelas do consentimento. O CI cria um
    banco do zero e confere que schema e migrações concordam.
+
+   **Em produção as migrações rodam sozinhas no boot.** O servidor (em
+   `NODE_ENV=production`, com `DATABASE_URL` definida) executa
+   `scripts/migrar.mjs` antes de aceitar tráfego: pendência é aplicada,
+   falha aborta a subida — e a plataforma mantém a versão anterior no ar.
+   Nasceu porque o deploy automático publicava código novo contra banco
+   velho e ninguém rodava o comando manual: uma coluna nova no schema
+   derrubaria todas as consultas da tabela até alguém migrar. O comando
+   manual continua valendo para banco novo e para desenvolvimento.
 6. **Generate Domain** em Settings → Networking. Sai um endereço
    `*.up.railway.app`. Esse é o link da Glenda.
 7. **Voltar em Variables** e apontar `FRONTEND_URL` para esse domínio, senão os

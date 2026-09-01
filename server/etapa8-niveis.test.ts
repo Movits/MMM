@@ -102,6 +102,17 @@ describe("Etapa 8 — o nível é escolha da dona", () => {
     const schema = readFileSync(join(__dirname, "..", "drizzle", "schema.ts"), "utf8");
     expect(schema).toContain('varchar("nivel_visibilidade", { length: 10, enum: ["privado", "ouro", "publico"] }).default("privado").notNull()');
   });
+
+  it("em produção o boot aplica as migrações antes de aceitar tráfego", () => {
+    const boot = readFileSync(join(__dirname, "_core", "index.ts"), "utf8");
+    const inicio = boot.slice(boot.indexOf("async function startServer"), boot.indexOf("const app = express()"));
+    expect(inicio).toContain('spawnSync(process.execPath, ["scripts/migrar.mjs"]');
+    expect(inicio).toContain('process.env.NODE_ENV === "production"');
+    expect(inicio).toContain("process.exit(1)");
+    // e a imagem leva o script junto
+    const docker = readFileSync(join(__dirname, "..", "Dockerfile"), "utf8");
+    expect(docker).toContain("COPY --from=build /app/scripts ./scripts");
+  });
 });
 
 describe("Etapa 8 — a projeção pública não lê colunas pessoais", () => {

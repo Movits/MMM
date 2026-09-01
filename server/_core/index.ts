@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express, { type Request, type Response, type NextFunction } from "express";
+import { spawnSync } from "child_process";
 import { createServer } from "http";
 import helmet from "helmet";
 import compression from "compression";
@@ -106,6 +107,28 @@ function antiScanMiddleware(req: Request, res: Response, next: NextFunction) {
 }
 
 async function startServer() {
+  // Migrações no boot, ANTES de aceitar tráfego — só em produção. O deploy do
+  // Render publica o código na hora, mas ninguém no time roda migração na mão:
+  // a 0003 ficou dias pendente na produção, e a 0004 sem este passo derrubaria
+  // toda a leitura de contatos (o drizzle nomeia as colunas nos selects).
+  // Processo filho de propósito: migrar.mjs tem modo CLI idempotente com
+  // código de saída honesto, e bundlá-lo no dist dispararia o guard de
+  // "rodado direto" dele. Falhar aqui mata a subida: o Render mantém a versão
+  // antiga no ar e o erro fica no log do deploy — servidor de pé com schema
+  // errado é pior do que não subir. A instância é única; se duas correrem, o
+  // PK de _migracoes faz a segunda falhar em vez de aplicar duas vezes. O
+  // fluxo local de desenvolvimento não muda: pnpm db:migrate continua manual.
+  if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
+    const migracao = spawnSync(process.execPath, ["scripts/migrar.mjs"], {
+      stdio: "inherit",
+      env: process.env,
+    });
+    if (migracao.status !== 0) {
+      console.error("[Boot] Migrações pendentes não aplicadas; abortando a subida.");
+      process.exit(1);
+    }
+  }
+
   const app = express();
   const server = createServer(app);
 
