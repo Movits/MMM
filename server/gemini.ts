@@ -24,10 +24,23 @@ const ORCAMENTO_RETENTATIVAS_MS = 50_000;
 const espera = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class GeminiIndisponivelError extends Error {
-  constructor(readonly status: number) {
-    super(`O serviço de IA está com alta demanda neste momento (${status}). Aguarde alguns instantes e tente de novo.`);
+  constructor(readonly status: number, mensagem?: string) {
+    super(mensagem ?? `O serviço de IA está com alta demanda neste momento (${status}). Aguarde alguns instantes e tente de novo.`);
   }
 }
+
+// 429 de COTA ("exceeded your current quota... free_tier_requests, limit: 20")
+// não é pico: é o limite gratuito diário do modelo, e retentar só queima tempo.
+// O caminho certo é pular direto para o modelo reserva — cota separada — e,
+// se as duas se esgotarem, dizer a verdade: renova em algumas horas.
+export class GeminiCotaEsgotadaError extends GeminiIndisponivelError {
+  constructor() {
+    super(429, "O limite de uso gratuito do serviço de IA foi atingido. Ele renova sozinho (em minutos, se for o limite por minuto; em algumas horas, se for o diário). Para uso contínuo, ative o faturamento da chave do Google.");
+  }
+}
+
+const pareceCotaEsgotada = (detalhe: string) =>
+  /exceeded your current quota|free_tier_requests|RESOURCE_EXHAUSTED/i.test(detalhe);
 
 function getGeminiKey() {
   // Mesma cadeia de fallback do resto do app (LLM_API_KEY > chaves legadas >
@@ -70,6 +83,12 @@ async function geminiPost<T>(path: string, body: unknown, tentativas = ESPERAS_M
     // melhora repetindo: sai na hora, com o detalhe para diagnóstico.
     if (!STATUS_PASSAGEIROS.has(response.status)) {
       throw new Error(`Gemini indisponível (${response.status}): ${details.slice(0, 400)}`);
+    }
+    // Cota esgotada não é pico: repetir no mesmo modelo só queima tempo. Sai
+    // já — na transcrição, é o que aciona o modelo reserva de imediato.
+    if (response.status === 429 && pareceCotaEsgotada(details)) {
+      console.warn(`[Gemini] cota esgotada em ${path}: ${details.slice(0, 200)}`);
+      throw new GeminiCotaEsgotadaError();
     }
     ultimoStatus = response.status;
     console.warn(`[Gemini] ${response.status} em ${path} (tentativa ${tentativa + 1}/${tentativas}): ${details.slice(0, 200)}`);

@@ -24,6 +24,13 @@ const carregarGemini = async () => {
 
 const resposta503 = () => ({ ok: false, status: 503, text: async () => '{"error":{"code":503,"status":"UNAVAILABLE"}}' });
 const resposta400 = () => ({ ok: false, status: 400, text: async () => '{"error":{"code":400,"message":"bad request"}}' });
+// O 429 real do incidente: cota do plano gratuito, com o marcador free_tier.
+const resposta429Cota = () => ({
+  ok: false, status: 429,
+  text: async () => '{"error":{"code":429,"message":"You exceeded your current quota... Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20"}}',
+});
+// Um 429 sem marcador de cota: tratado como pico passageiro.
+const resposta429Pico = () => ({ ok: false, status: 429, text: async () => '{"error":{"code":429,"message":"try again shortly"}}' });
 const respostaTranscricao = (texto: string) => ({
   ok: true, status: 200,
   json: async () => ({ candidates: [{ content: { parts: [{ text: texto }] } }] }),
@@ -82,6 +89,37 @@ describe("Gemini — sobrecarga passageira não derruba a transcrição", () => 
     await vi.advanceTimersByTimeAsync(10_000);
     await expectativa;
     expect(fetchFalso).toHaveBeenCalledTimes(4); // 3 no modelo de áudio + 1 na reserva
+  });
+
+  it("cota esgotada no modelo de áudio: sem retentativa inútil — a reserva assume na hora", async () => {
+    const { transcribeWithGemini } = await carregarGemini();
+    fetchFalso
+      .mockResolvedValueOnce(resposta429Cota())
+      .mockResolvedValueOnce(respostaTranscricao("transcrito pela reserva"));
+
+    // sem avanço de relógio: cota esgotada não espera nada
+    expect((await transcribeWithGemini(audio)).text).toBe("transcrito pela reserva");
+    expect(fetchFalso).toHaveBeenCalledTimes(2);
+    expect(String(fetchFalso.mock.calls[1][0])).toContain("/models/gemini-flash-lite-latest:generateContent");
+  });
+
+  it("cota esgotada nos dois modelos: a mensagem explica o limite gratuito", async () => {
+    const { transcribeWithGemini } = await carregarGemini();
+    fetchFalso.mockResolvedValue(resposta429Cota());
+
+    await expect(transcribeWithGemini(audio)).rejects.toThrow(/limite de uso gratuito/i);
+    expect(fetchFalso).toHaveBeenCalledTimes(2);
+  });
+
+  it("429 sem marcador de cota continua sendo pico: retenta e resolve", async () => {
+    const { transcribeWithGemini } = await carregarGemini();
+    fetchFalso.mockResolvedValueOnce(resposta429Pico()).mockResolvedValueOnce(respostaTranscricao("ok"));
+
+    const promessa = transcribeWithGemini(audio);
+    await vi.advanceTimersByTimeAsync(2100);
+
+    expect((await promessa).text).toBe("ok");
+    expect(fetchFalso).toHaveBeenCalledTimes(2);
   });
 
   it("erro que não é de sobrecarga (400) sai na hora, sem retentar", async () => {
