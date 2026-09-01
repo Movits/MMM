@@ -22,7 +22,11 @@ export default function Memory() {
   const reindex = trpc.memory.reindex.useMutation({
     onSuccess: async (result) => {
       await utils.memory.status.invalidate();
-      toast.success(`Memória atualizada com ${result.indexed} registro(s).`);
+      const partes = [`${result.indexed} registro(s) novo(s)`];
+      if (result.removed) partes.push(`${result.removed} removido(s)`);
+      toast.success(`Memória atualizada: ${partes.join(" e ")}.`);
+      if (result.pending) toast.info(`${result.pending} registro(s) ficaram para a próxima atualização, respeitando o ritmo do serviço de IA.`);
+      if (result.truncated) toast.warning(`${result.truncated} registro(s) ficaram fora: sua conta passou do limite de documentos da memória.`);
     },
     onError: error => toast.error(error.message || "Não foi possível atualizar a memória."),
   });
