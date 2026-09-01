@@ -15,6 +15,13 @@
       "when": 1788209293107,
       "tag": "0001_indice-unico-de-match",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1788222191490,
+      "tag": "0002_selo-de-enriquecimento",
+      "breakpoints": true
     }
   ]
 }

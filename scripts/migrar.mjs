@@ -138,6 +138,14 @@ export async function migrar(databaseUrl, { relatarApenas = false } = {}) {
         try {
           await conexao.query(comando);
         } catch (erro) {
+          // Coluna ou índice que a migração cria e o banco JÁ TEM: herança da
+          // era dos scripts à mão, que a adoção tolera como extra. O estado
+          // final é idêntico, então a migração converge em vez de morrer —
+          // mesma filosofia do "já havia" do antigo criar-banco para tabelas.
+          if (erro.code === "ER_DUP_FIELDNAME" || erro.code === "ER_DUP_KEYNAME") {
+            process.stdout.write("(um comando já valia no banco) ");
+            continue;
+          }
           // DDL no MySQL não desfaz com rollback: parar aqui, sem anotar a
           // migração, é o que permite investigar e rodar de novo depois.
           console.error(`\n\nFALHOU em ${tag}:\n  ${erro.message}\n  comando: ${comando.slice(0, 160).replace(/\s+/g, " ")}`);

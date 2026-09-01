@@ -563,6 +563,12 @@ export const privateContacts = mysqlTable("private_contacts", {
   cardOcrText:  text("cardOcrText"),
 
   notes:        text("notes"),
+  // Selo "IA em andamento" na lista da Rede. A coluna sempre existiu no banco
+  // (era do Manus) mas não estava declarada aqui — o drizzle descartava a chave
+  // nos updates (sobrava UPDATE sem SET, erro de SQL ao iniciar o chat de
+  // enriquecimento) e nos selects (o selo nunca aparecia). O `as any` nos
+  // chamadores escondia tudo.
+  enrichmentStatus: varchar("enrichment_status", { length: 20 }),
 
   createdAt:    bigint("createdAt", { mode: "number" }).notNull(),
   updatedAt:    bigint("updatedAt", { mode: "number" }).notNull(),
