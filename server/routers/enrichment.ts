@@ -100,14 +100,33 @@ REGRAS DE OURO:
 
 NESTE TURNO, extraia SOMENTE o campo "${step.fieldType}". Não avance o roteiro; a interface avançará após uma única confirmação da usuária.
 FORMATO DE SAÍDA (JSON obrigatório):
-{"next_question": null, "extracted_entities": [{"field_type": "${step.fieldType}", "value": "valor extraído da resposta", "confidence": 0.0, "is_complete": true}], "pending_fields": ["array dos campos ainda não respondidos"], "session_status": "active", "notes_for_user": "texto curto e direto para confirmar o valor, máximo 15 palavras"}`;
+{"next_question": null, "extracted_entities": [{"field_type": "${step.fieldType}", "value": "valor extraído da resposta", "confidence": 0.9, "is_complete": true}], "pending_fields": ["array dos campos ainda não respondidos"], "session_status": "active", "notes_for_user": "texto curto e direto para confirmar o valor, máximo 15 palavras"}`;
 
       const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
         { role: "system", content: systemPrompt },
         ...historyAsc.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
       ];
 
-      const aiResp = await invokeLLM({ messages }).catch(() => null);
+      let falhaDaIA: string | null = null;
+      const aiResp = await invokeLLM({ messages }).catch((erro: unknown) => {
+        falhaDaIA = erro instanceof Error ? erro.message : String(erro);
+        return null;
+      });
+
+      // IA fora do ar NÃO é "não entendi". A versão anterior engolia o erro e
+      // caía no ramo que repete a pergunta — a usuária respondia para sempre,
+      // recebendo a mesma pergunta, sem nenhum sinal de que o problema era o
+      // sistema. Dizer a verdade custa uma frase.
+      if (falhaDaIA !== null) {
+        console.warn("[Enriquecimento] IA indisponível:", falhaDaIA);
+        const aviso =
+          "O assistente de IA está indisponível neste momento, então sua resposta ainda não foi processada. Tente de novo em instantes.";
+        const messageId = await saveEnrichmentMessage({
+          sessionId: input.sessionId, ownerId: ctx.user.openId, role: "assistant", content: aviso,
+          metadata: { questionIndex: session.questionsAnswered, fieldType: step.fieldType, aiUnavailable: true },
+        });
+        return { messageId, aiResponse: aviso, suggestions: [], sessionComplete: false, completionSummary: null, awaitingConfirmation: false };
+      }
 
       let aiText = `Confirme esta informação para continuar.`;
       let extracted: Array<{ field_type: string; value: string; confidence: number; display_label?: string; is_complete?: boolean }> = [];
@@ -135,21 +154,32 @@ FORMATO DE SAÍDA (JSON obrigatório):
         return { messageId, aiResponse: repeatQuestion, suggestions: [], sessionComplete: false, completionSummary: null, awaitingConfirmation: false };
       }
 
+      // Só vira cartão o que tem confiança >= 0.7 — e isso é decidido ANTES de
+      // salvar a resposta. A versão anterior decidia depois: devolvia
+      // "aguardando confirmação" com zero cartões, a tela escondia o campo de
+      // digitar e pedia para confirmar algo que não existia. Só recarregar a
+      // página destravava a conversa.
+      const suggestions = extracted.filter(e => e.confidence >= 0.7);
+      if (suggestions.length === 0) {
+        const pedido = "Não tenho certeza se entendi. Pode dizer de outro jeito?";
+        const messageId = await saveEnrichmentMessage({
+          sessionId: input.sessionId, ownerId: ctx.user.openId, role: "assistant", content: pedido,
+          metadata: { questionIndex: session.questionsAnswered, fieldType: step.fieldType, needsClarification: true, lowConfidence: true },
+        });
+        return { messageId, aiResponse: pedido, suggestions: [], sessionComplete: false, completionSummary: null, awaitingConfirmation: false };
+      }
+
       // Salvar resposta da IA
       const aiMsgId = await saveEnrichmentMessage({
         sessionId: input.sessionId, ownerId: ctx.user.openId, role: "assistant", content: aiText,
         metadata: { extracted_entities: extracted, questionIndex: session.questionsAnswered, fieldType: step.fieldType, awaitingConfirmation: true },
       });
 
-      // Criar sugestões para entidades extraídas com confiança >= 0.7
-      const suggestions = extracted.filter(e => e.confidence >= 0.7);
-      const suggestionIds = suggestions.length > 0
-        ? await saveEnrichmentSuggestions(suggestions.map(e => ({
-            sessionId: input.sessionId, messageId: aiMsgId, ownerId: ctx.user.openId,
-            contactId: input.contactId, fieldType: e.field_type, suggestedValue: e.value,
-            confidence: e.confidence,
-          })))
-        : [];
+      const suggestionIds = await saveEnrichmentSuggestions(suggestions.map(e => ({
+        sessionId: input.sessionId, messageId: aiMsgId, ownerId: ctx.user.openId,
+        contactId: input.contactId, fieldType: e.field_type, suggestedValue: e.value,
+        confidence: e.confidence,
+      })));
 
       return {
         messageId: aiMsgId,
