@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/i18n";
 import { NotificationBell } from "@/components/NotificationBell";
+import { SmartMatchConsent } from "@/components/SmartMatchConsent";
 import { GlobalMenu } from "@/components/AppHeader";
 import {
   DropdownMenu,
@@ -757,6 +758,10 @@ export default function Dashboard() {
 
   const profileQuery = trpc.profile.get.useQuery(undefined, { enabled: isAuthenticated });
   const matchesQuery = trpc.matches.list.useQuery({ limit: 20 }, { enabled: isAuthenticated });
+  // Etapa 11: com termo publicado e não aceito, matches.list devolve [] de
+  // propósito — sem isto o Dashboard esvaziaria em silêncio no dia da
+  // publicação, sem nada convidando a autorizar.
+  const consentQuery = trpc.consent.status.useQuery({ type: "termo_smart_match" }, { enabled: isAuthenticated });
   const statsQuery = trpc.matches.list.useQuery({ limit: 50 }, { enabled: isAuthenticated, select: (data) => ({
     total: data.length,
     unseen: data.filter(m => !m.userSeen).length,
@@ -819,6 +824,7 @@ export default function Dashboard() {
 
   const stats = statsQuery.data;
   const matches = matchesQuery.data || [];
+  const aguardandoTermo = Boolean(consentQuery.data?.document) && !consentQuery.data?.accepted;
   const connections = connectionsQuery.data || [];
   const profileData = profileQuery.data;
   const profile = profileData?.profile;
@@ -938,6 +944,12 @@ export default function Dashboard() {
                 <div className="grid md:grid-cols-2 gap-4">
                   {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
                 </div>
+              ) : aguardandoTermo ? (
+                // Etapa 11: quando o termo do Cruzamento existe e ainda não foi
+                // aceito, a lista viria vazia SEM EXPLICAÇÃO — a trava age em
+                // silêncio no servidor. O convite de autorização mora aqui,
+                // no caminho principal, não só em /intelligent-matches.
+                <SmartMatchConsent onAccepted={() => { consentQuery.refetch(); matchesQuery.refetch(); statsQuery.refetch(); }} />
               ) : matches.length === 0 ? (
                 <div className="text-center py-20 animate-fade-in-up">
                   <div className="text-6xl mb-5">🔍</div>
