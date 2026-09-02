@@ -5,10 +5,19 @@ const EMBEDDING_MODEL = "gemini-embedding-001";
 // Alias ativo listado pela API Gemini; evita o modelo 2.5 Flash descontinuado
 // para novas chaves e recebe as atualizações compatíveis da família Flash.
 const AUDIO_MODEL = "gemini-3.5-flash";
-// Reserva para quando o modelo de áudio está em pico de demanda (503): o mesmo
-// modelo que o resto do app usa via LLM_MODEL — se ele também estiver fora,
-// não há o que fazer além de pedir para tentar de novo.
-const AUDIO_MODEL_RESERVA = () => process.env.LLM_MODEL || "gemini-flash-lite-latest";
+// Reserva para quando o modelo de áudio está lotado (503) ou com a cota do dia
+// esgotada (429 do plano gratuito). Duas regras aprendidas a dor:
+//  1. Modelo CONCRETO, nunca alias -latest — um alias já apontou para modelo
+//     com cota gratuita de 20/dia e derrubou a IA em produção (CLAUDE.md).
+//  2. DIFERENTE do principal — a versão anterior lia LLM_MODEL, que em
+//     produção é exatamente o gemini-3.5-flash principal, e a guarda de
+//     igualdade lá embaixo pulava a reserva: ela NUNCA disparou na prática.
+// gemini-3.5-flash-lite aceita áudio (entradas: texto, imagem, vídeo, áudio e
+// PDF — docs oficiais do Gemini) e tem cota separada da do principal.
+// LLM_AUDIO_MODEL_RESERVA permite trocar sem deploy; se o valor apontado não
+// existir, o catch da reserva registra e devolve o erro original — nunca pior
+// do que não ter reserva.
+const AUDIO_MODEL_RESERVA = () => process.env.LLM_AUDIO_MODEL_RESERVA || "gemini-3.5-flash-lite";
 
 // "High demand" (503), rate limit (429) e soluço interno (500) são passageiros
 // por definição — o Google manda literalmente "try again later". Desistir na

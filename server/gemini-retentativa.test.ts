@@ -13,12 +13,15 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  * sem retentar.
  */
 
-const carregarGemini = async () => {
+const carregarGemini = async (reservaNoAmbiente?: string) => {
   vi.resetModules();
   vi.stubEnv("LLM_API_KEY", "chave-somente-para-testes");
-  // Reserva fixada: o teste não pode depender do LLM_MODEL do ambiente (se
-  // fosse igual ao modelo de áudio, a guarda pularia a reserva de propósito).
-  vi.stubEnv("LLM_MODEL", "gemini-flash-lite-latest");
+  // O CENÁRIO DE PRODUÇÃO, de propósito: LLM_MODEL igual ao modelo principal
+  // de áudio. A versão antiga da reserva lia LLM_MODEL e, com este ambiente,
+  // a guarda de igualdade a pulava — a reserva nunca disparava. Estes testes
+  // agora só passam se a reserva tiver variável e padrão PRÓPRIOS.
+  vi.stubEnv("LLM_MODEL", "gemini-3.5-flash");
+  if (reservaNoAmbiente !== undefined) vi.stubEnv("LLM_AUDIO_MODEL_RESERVA", reservaNoAmbiente);
   return import("./gemini");
 };
 
@@ -77,7 +80,10 @@ describe("Gemini — sobrecarga passageira não derruba a transcrição", () => 
 
     expect((await promessa).text).toBe("transcrito pela reserva");
     expect(fetchFalso).toHaveBeenCalledTimes(4);
-    expect(String(fetchFalso.mock.calls[3][0])).toContain("/models/gemini-flash-lite-latest:generateContent");
+    // O padrão da reserva é concreto (nada de -latest) e DIFERENTE do
+    // principal — mesmo com LLM_MODEL apontando para o principal, como em
+    // produção. É o pin que faltava quando a reserva nunca disparava.
+    expect(String(fetchFalso.mock.calls[3][0])).toContain("/models/gemini-3.5-flash-lite:generateContent");
   });
 
   it("tudo lotado: erro final em português claro, sem JSON cru", async () => {
@@ -100,7 +106,26 @@ describe("Gemini — sobrecarga passageira não derruba a transcrição", () => 
     // sem avanço de relógio: cota esgotada não espera nada
     expect((await transcribeWithGemini(audio)).text).toBe("transcrito pela reserva");
     expect(fetchFalso).toHaveBeenCalledTimes(2);
-    expect(String(fetchFalso.mock.calls[1][0])).toContain("/models/gemini-flash-lite-latest:generateContent");
+    expect(String(fetchFalso.mock.calls[1][0])).toContain("/models/gemini-3.5-flash-lite:generateContent");
+  });
+
+  it("LLM_AUDIO_MODEL_RESERVA troca o modelo da reserva sem deploy", async () => {
+    const { transcribeWithGemini } = await carregarGemini("gemini-3.1-flash-lite");
+    fetchFalso
+      .mockResolvedValueOnce(resposta429Cota())
+      .mockResolvedValueOnce(respostaTranscricao("reserva escolhida pelo ambiente"));
+
+    expect((await transcribeWithGemini(audio)).text).toBe("reserva escolhida pelo ambiente");
+    expect(String(fetchFalso.mock.calls[1][0])).toContain("/models/gemini-3.1-flash-lite:generateContent");
+  });
+
+  it("reserva apontada para o MESMO modelo do principal: a guarda pula o upload inútil", async () => {
+    const { transcribeWithGemini } = await carregarGemini("gemini-3.5-flash");
+    fetchFalso.mockResolvedValue(resposta429Cota());
+
+    await expect(transcribeWithGemini(audio)).rejects.toThrow(/limite de uso gratuito/i);
+    // 1 chamada só: sem 2ª ida ao mesmo modelo que acabou de esgotar a cota
+    expect(fetchFalso).toHaveBeenCalledTimes(1);
   });
 
   it("cota esgotada nos dois modelos: a mensagem explica o limite gratuito", async () => {
