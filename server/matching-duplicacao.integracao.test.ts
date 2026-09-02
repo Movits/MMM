@@ -9,15 +9,17 @@ import { generateMatchesForUser, dismissMatch } from "./matching";
 import { users, userProfiles, matches } from "../drizzle/schema";
 
 /**
- * Prova comportamental contra o banco real: a regeneração faz UPSERT (não
- * duplica) e preserva a decisão de dispensar. Roda no CI, que tem um MariaDB de
- * serviço; pulado quando não há banco. Semeia dois perfis próprios, exercita, e
- * limpa tudo no fim — não depende de nem toca dados de ninguém.
+ * Prova comportamental contra um banco real DE TESTE: a regeneração faz UPSERT
+ * (não duplica) e preserva a decisão de dispensar. Roda no CI, que tem um
+ * MariaDB de serviço em DATABASE_URL_TESTES; pulado quando essa variável não
+ * existe (server/test/setup-banco.ts já trocou DATABASE_URL por ela, então o
+ * .env de trabalho, que pode ser produção, nunca é usado aqui). Semeia dois
+ * perfis próprios, exercita, e limpa tudo no fim.
  */
 const A = 990001;
 const B = 990002;
 
-const temBanco = Boolean(process.env.DATABASE_URL);
+const temBanco = Boolean(process.env.DATABASE_URL_TESTES);
 
 describe.skipIf(!temBanco)("Match — regeneração não duplica (integração)", () => {
   beforeAll(async () => {

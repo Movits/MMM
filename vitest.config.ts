@@ -15,5 +15,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
+    // Troca DATABASE_URL por DATABASE_URL_TESTES antes de qualquer import:
+    // teste nunca fala com o banco do .env de trabalho (pode ser produção).
+    setupFiles: ["server/test/setup-banco.ts"],
   },
 });

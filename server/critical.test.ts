@@ -9,6 +9,44 @@ vi.hoisted(() => {
   process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
 });
 
+// Banco dublado: estes testes provam AUTORIZAÇÃO e VALIDAÇÃO, não SQL. Sem o
+// dublê, "allows role update when user is gold" executava um UPDATE de verdade
+// em users.id = 2 no banco do .env de trabalho (que já foi o de produção).
+const dbFalso: any = new Proxy(function () {}, {
+  get: (_alvo, prop) => {
+    if (prop === "then") return undefined; // não é uma Promise: `await` devolve o próprio dublê
+    if (prop === "chamadas") return chamadas;
+    return (...args: unknown[]) => {
+      chamadas.push({ metodo: String(prop), args });
+      return dbFalso;
+    };
+  },
+  apply: () => dbFalso,
+});
+const chamadas: { metodo: string; args: unknown[] }[] = [];
+vi.mock("./db", async () => {
+  const { BancoIndisponivel } = await import("./banco-indisponivel");
+  return new Proxy(
+    {},
+    {
+      has: () => true,
+      get: (_alvo, prop) => {
+        if (prop === "getDb") return async () => dbFalso;
+        if (prop === "exigirDb") return async () => dbFalso;
+        if (prop === "then" || prop === Symbol.toStringTag) return undefined;
+        if (prop === "BancoIndisponivel") return BancoIndisponivel;
+        return async () => undefined; // getUserByEmail etc.: "não existe"
+      },
+    }
+  );
+});
+vi.mock("./security", () => ({
+  createAuditLog: async () => {},
+  createSecurityEvent: async () => {},
+  checkLoginRateLimit: async () => ({ allowed: true }),
+  recordLoginAttempt: async () => {},
+}));
+
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 import { TRPCError } from "@trpc/server";
@@ -193,12 +231,14 @@ describe("admin.updateUserRole (Gold Access)", () => {
 
   it("allows role update when user is gold (Ouro = Presidente)", async () => {
     // Ouro = Presidente: membras Ouro têm acesso ao painel de governança e podem atualizar roles
+    chamadas.length = 0;
     const ctx = createAuthContext({ role: "gold" });
     const caller = appRouter.createCaller(ctx);
-    // Gold deve poder atualizar roles (não deve rejeitar)
+    // Gold deve poder atualizar roles (não deve rejeitar), e o UPDATE vai para o dublê
     await expect(
       caller.admin.updateUserRole({ userId: 2, role: "president" })
     ).resolves.toMatchObject({ success: true });
+    expect(chamadas.some(c => c.metodo === "update")).toBe(true);
   });
 });
 
