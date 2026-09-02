@@ -13,6 +13,7 @@ import {
   createNotification,
 } from "../db";
 import { createAuditLog } from "../security";
+import { exigirTextoSemContato } from "../bloqueio-de-contato";
 import { opportunityMatches, opportunities as opportunitiesTable, users } from "../../drizzle/schema";
 
 // ============================================================
@@ -90,6 +91,13 @@ export const opportunitiesRouter = router({
       isConfidential: z.boolean().default(false),
     }))
     .mutation(async ({ ctx, input }) => {
+      // A13: oportunidade é broadcast para o ecossistema inteiro — título,
+      // descrição e tags não carregam e-mail/telefone (a moderação humana
+      // continua por cima, mas a porta é a mesma dos outros canais).
+      await exigirTextoSemContato(
+        ctx.user.id, "opportunities.create",
+        [input.title, input.description, ...input.tags].join("\n"),
+      );
       // Análise de compliance pela IA
       let complianceLevel: "green" | "yellow" | "orange" | "red" | "pending" = "pending";
       let complianceExplanation = "";
@@ -210,6 +218,8 @@ Retorne um JSON estruturado com os campos: complianceLevel, explanation, riskAna
       message: z.string().max(500).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // A13: a mensagem de interesse chega à outra parte — sem contato nela.
+      await exigirTextoSemContato(ctx.user.id, "opportunities.expressInterest", input.message, input.opportunityId);
       const result = await expressInterest(input.opportunityId, ctx.user.id, input.message);
       if (result.alreadyExists) throw new TRPCError({ code: "CONFLICT", message: "Você já demonstrou interesse nesta oportunidade" });
       return { success: true };

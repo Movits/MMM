@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { exigirDb } from "../db";
+import { exigirTextoSemContato } from "../bloqueio-de-contato";
 import { createNotification } from "../db";
 import { storagePut } from "../storage";
 
@@ -27,6 +28,9 @@ export const dealRoomRouter = router({
       message: z.string().max(1000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // A13: a mensagem de apresentação chega à dona ANTES do NDA — é o canal
+      // gêmeo do expressInterest e passa pela mesma porta.
+      await exigirTextoSemContato(ctx.user.id, "deal_room.openRoom", input.message, input.opportunityId);
       const db = await exigirDb();
 
       const [opp] = await db.select().from(opportunities).where(eq(opportunities.id, input.opportunityId)).limit(1);
@@ -160,9 +164,13 @@ export const dealRoomRouter = router({
             // Ouro pode acessar qualquer sala
       if (!isGoldOrAbove(ctx.user.role) && room.ownerId !== ctx.user.id && room.interestedId !== ctx.user.id)
         throw new TRPCError({ code: "FORBIDDEN" });
-      const [owner] = await db.select({ id: users.id, name: users.name, email: users.email })
+      // A13/D3 (Glenda, 31/08): os contatos das partes aparecem somente para
+      // o consultor de negócios, JAMAIS entre as partes. O e-mail saía aqui no
+      // payload para a contraparte (a tela só mostrava o nome, mas o dado
+      // chegava ao navegador) — a coluna nem é mais selecionada.
+      const [owner] = await db.select({ id: users.id, name: users.name })
         .from(users).where(eq(users.id, room.ownerId)).limit(1);
-      const [interested] = await db.select({ id: users.id, name: users.name, email: users.email })
+      const [interested] = await db.select({ id: users.id, name: users.name })
         .from(users).where(eq(users.id, room.interestedId)).limit(1);
       const [opp] = await db.select({ id: opportunities.id, title: opportunities.title, type: opportunities.type })
         .from(opportunities).where(eq(opportunities.id, room.opportunityId)).limit(1);
@@ -208,6 +216,9 @@ export const dealRoomRouter = router({
         throw new TRPCError({ code: "FORBIDDEN" });
       if (room.status !== "active")
         throw new TRPCError({ code: "BAD_REQUEST", message: "O NDA precisa ser assinado por ambas as partes antes de enviar mensagens." });
+
+      // A13: e-mail/telefone não circulam entre as partes — recusa e registra.
+      await exigirTextoSemContato(ctx.user.id, "deal_room.sendMessage", input.content, input.roomId);
 
       await db.insert(dealRoomMessages).values({
         dealRoomId: input.roomId,
@@ -269,6 +280,11 @@ export const dealRoomRouter = router({
         throw new TRPCError({ code: "FORBIDDEN" });
       if (room.status !== "active")
         throw new TRPCError({ code: "BAD_REQUEST", message: "O NDA precisa ser assinado antes de compartilhar documentos." });
+
+      // A13: o NOME do documento também é texto livre que a contraparte lê
+      // ("planilha - liga 11 99999 8888.xlsx"). O conteúdo do arquivo não é
+      // varrido (fora do alcance); o nome, sim.
+      await exigirTextoSemContato(ctx.user.id, "deal_room.uploadDocument", input.name, input.roomId);
 
       const buffer = Buffer.from(input.fileBase64, "base64");
       const fileKey = `deal-rooms/${input.roomId}/${Date.now()}-${input.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
