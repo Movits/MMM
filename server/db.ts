@@ -16,6 +16,7 @@ import {
   enrichmentSessions, enrichmentMessages, enrichmentSuggestions,
   type EnrichmentSession, type EnrichmentMessage, type EnrichmentSuggestion,
   contactAssets, contactNeeds, aiMatchSuggestions,
+  meetings, meetingContactSuggestions,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import nodeCrypto from "node:crypto";
@@ -616,34 +617,99 @@ export async function updatePrivateContact(
   return (result as any).affectedRows > 0;
 }
 
+/**
+ * O rastro que um contato deixa fora da própria linha — e que a exclusão
+ * precisa levar junto. Exportada com o `db` como parâmetro para os testes
+ * executarem a lógica de verdade, sem banco.
+ *
+ * A revisão de 01/09 pegou o buraco: a primeira versão limpava possui/procura
+ * e sugestões de match, mas deixava intactos o vínculo com contextos e as
+ * tabelas do ENRIQUECIMENTO — justamente onde mora o dado pessoal extraído
+ * pela IA (telefone, instagram, empresa) e a conversa inteira sobre a pessoa.
+ * "Dado apagado não deixa fantasma" vale para LGPD, não só para a tela.
+ */
+export async function apagarRastroDoContato(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  ownerId: string,
+  contactId: number,
+): Promise<void> {
+  await db.delete(contactAssets)
+    .where(and(eq(contactAssets.ownerId, ownerId), eq(contactAssets.contactId, contactId)));
+  await db.delete(contactNeeds)
+    .where(and(eq(contactNeeds.ownerId, ownerId), eq(contactNeeds.contactId, contactId)));
+  await db.delete(aiMatchSuggestions)
+    .where(and(
+      eq(aiMatchSuggestions.ownerId, ownerId),
+      drizzleOr(
+        eq(aiMatchSuggestions.pairLowContactId, contactId),
+        eq(aiMatchSuggestions.pairHighContactId, contactId),
+      ),
+    ));
+  // Onde e como a pessoa foi conhecida: o vínculo é do contato, morre com ele.
+  await db.delete(contactContexts)
+    .where(and(eq(contactContexts.ownerId, ownerId), eq(contactContexts.contactId, contactId)));
+  // A sugestão de contato extraída da REUNIÃO guarda nome, cargo, empresa,
+  // telefone e e-mail que a IA tirou da gravação — a classe de dado que o
+  // cartão manda levar junto. A linha inteira sai: sem o contato, ela é só um
+  // fichário do que a IA ouviu sobre uma pessoa que a dona mandou apagar.
+  await db.delete(meetingContactSuggestions)
+    .where(and(
+      eq(meetingContactSuggestions.ownerId, ownerId),
+      eq(meetingContactSuggestions.existingContactId, contactId),
+    ));
+  // O enriquecimento: sugestões apontam o contato direto; as mensagens só
+  // conhecem a sessão, então primeiro a lista de sessões, depois as mensagens
+  // delas, e as sessões por último — nenhuma ordem deixa órfão se cair no meio.
+  await db.delete(enrichmentSuggestions)
+    .where(and(eq(enrichmentSuggestions.ownerId, ownerId), eq(enrichmentSuggestions.contactId, contactId)));
+  const sessoes = await db.select({ id: enrichmentSessions.id })
+    .from(enrichmentSessions)
+    .where(and(eq(enrichmentSessions.ownerId, ownerId), eq(enrichmentSessions.contactId, contactId)));
+  if (sessoes.length) {
+    await db.delete(enrichmentMessages)
+      .where(and(
+        eq(enrichmentMessages.ownerId, ownerId),
+        inArray(enrichmentMessages.sessionId, sessoes.map(sessao => sessao.id)),
+      ));
+    await db.delete(enrichmentSessions)
+      .where(and(eq(enrichmentSessions.ownerId, ownerId), eq(enrichmentSessions.contactId, contactId)));
+  }
+  // Ponteiros que sobrevivem por direito: a REUNIÃO e o PARTICIPANTE do
+  // contexto são registro da própria dona e continuam existindo. Só o vínculo
+  // com o contato apagado é anulado — deixá-lo apontando para um id que não
+  // existe é o mesmo "Contato A fantasma" que motivou o cartão.
+  await db.update(meetings).set({ contactId: null })
+    .where(and(eq(meetings.ownerId, ownerId), eq(meetings.contactId, contactId)));
+  await db.update(contextParticipants).set({ convertedContactId: null })
+    .where(and(eq(contextParticipants.ownerId, ownerId), eq(contextParticipants.convertedContactId, contactId)));
+}
+
 export async function deletePrivateContact(
   ownerId: string,
   contactId: number
 ): Promise<boolean> {
   const db = await exigirDb();
+  // A posse é conferida ANTES de tocar em qualquer coisa: contato de outra
+  // dona (ou inexistente) sai por aqui sem apagar nada.
+  const [alvo] = await db.select({ id: privateContacts.id })
+    .from(privateContacts)
+    .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)))
+    .limit(1);
+  if (!alvo) return false;
+
+  // O RASTRO SAI PRIMEIRO, e é por isso: são vários statements sem transação
+  // (o driver não abre uma aqui), e a ordem decide o que sobra se a conexão
+  // cair no meio. Apagando o contato antes, uma falha deixaria possui/procura
+  // vivos alimentando o cruzamento e o enriquecimento órfão PARA SEMPRE — a
+  // segunda tentativa não acharia mais o contato e a limpeza nunca rodaria.
+  // Nesta ordem, a falha deixa o contato de pé: a dona tenta de novo e a
+  // limpeza recomeça do zero, porque cada delete é idempotente.
+  await apagarRastroDoContato(db, ownerId, contactId);
+
   const [result] = await db
     .delete(privateContacts)
     .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)));
-  const apagou = (result as any).affectedRows > 0;
-  // Contato apagado leva o rastro junto: sem isto, os "possui/procura" dele
-  // continuavam alimentando o cruzamento para sempre, e a sugestão sobrevivia
-  // apontando para um contato que não existe ("Contato A" fantasma na tela).
-  // Não há FK/cascade no banco (colunas bigint sem references), então é aqui.
-  if (apagou) {
-    await db.delete(contactAssets)
-      .where(and(eq(contactAssets.ownerId, ownerId), eq(contactAssets.contactId, contactId)));
-    await db.delete(contactNeeds)
-      .where(and(eq(contactNeeds.ownerId, ownerId), eq(contactNeeds.contactId, contactId)));
-    await db.delete(aiMatchSuggestions)
-      .where(and(
-        eq(aiMatchSuggestions.ownerId, ownerId),
-        drizzleOr(
-          eq(aiMatchSuggestions.pairLowContactId, contactId),
-          eq(aiMatchSuggestions.pairHighContactId, contactId),
-        ),
-      ));
-  }
-  return apagou;
+  return (result as any).affectedRows > 0;
 }
 
 /**
