@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { createPrivateContact, getDb } from "../db";
+import { createPrivateContact, exigirDb } from "../db";
 import { meetingContactSuggestions, meetingEntities, meetings } from "../../drizzle/schema";
 import { protectedProcedure, router } from "../_core/trpc";
 import {
@@ -33,8 +33,7 @@ export const meetingsRouter = router({
   }),
 
   create: protectedProcedure.input(createMeetingInput).mutation(async ({ ctx, input }) => {
-    const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco indisponível." });
+    const db = await exigirDb();
     const timestamp = Date.now();
     const id = crypto.randomUUID();
     await db.insert(meetings).values({
@@ -75,8 +74,7 @@ export const meetingsRouter = router({
   decideEntity: protectedProcedure
     .input(z.object({ entityId: z.string().uuid(), status: z.enum(["confirmed", "ignored"]) }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
       const result = await db.update(meetingEntities)
         .set({ status: input.status, updatedAt: Date.now() })
         .where(and(eq(meetingEntities.id, input.entityId), eq(meetingEntities.ownerId, ctx.user.openId)));
@@ -91,8 +89,7 @@ export const meetingsRouter = router({
       contactId: z.number().int().positive().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
       const [suggestion] = await db.select().from(meetingContactSuggestions)
         .where(and(eq(meetingContactSuggestions.id, input.suggestionId), eq(meetingContactSuggestions.ownerId, ctx.user.openId))).limit(1);
       if (!suggestion) throw new TRPCError({ code: "NOT_FOUND", message: "Sugestão não encontrada." });

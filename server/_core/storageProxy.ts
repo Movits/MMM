@@ -18,7 +18,8 @@
 import type { Express } from "express";
 import { eq } from "drizzle-orm";
 import { sdk } from "./sdk";
-import { getDb } from "../db";
+import { exigirDb } from "../db";
+import { descreverErroDeBanco, ehErroDeBancoIndisponivel, MENSAGEM_BANCO_INDISPONIVEL } from "../banco-indisponivel";
 import { dealRooms } from "../../drizzle/schema";
 import { storageGetSignedUrl } from "../storage";
 
@@ -82,8 +83,7 @@ export async function podeBaixarChave(
 }
 
 async function buscarSalaNoBanco(roomId: number): Promise<Sala> {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirDb();
   const [sala] = await db
     .select({ ownerId: dealRooms.ownerId, interestedId: dealRooms.interestedId })
     .from(dealRooms)
@@ -105,7 +105,15 @@ export function registerStorageProxy(app: Express) {
     try {
       const autenticada = await sdk.authenticateRequest(req);
       usuaria = { id: autenticada.id, openId: autenticada.openId, role: autenticada.role };
-    } catch {
+    } catch (err) {
+      // Banco fora do ar não é "sem sessão": 401 mandaria a usuária logada para
+      // o login. Fora do tRPC não há middleware que traduza, então é aqui. Em
+      // produção a queda chega como erro do driver, não como BancoIndisponivel.
+      if (ehErroDeBancoIndisponivel(err)) {
+        console.error(`[StorageProxy] banco indisponível ao ler a sessão: ${descreverErroDeBanco(err)}`);
+        res.status(503).send(MENSAGEM_BANCO_INDISPONIVEL);
+        return;
+      }
       res.status(401).send("Não autenticado");
       return;
     }
@@ -117,6 +125,11 @@ export function registerStorageProxy(app: Express) {
         return;
       }
     } catch (err) {
+      if (ehErroDeBancoIndisponivel(err)) {
+        console.error(`[StorageProxy] banco indisponível ao verificar a posse: ${descreverErroDeBanco(err)}`);
+        res.status(503).send(MENSAGEM_BANCO_INDISPONIVEL);
+        return;
+      }
       console.error("[StorageProxy] verificação de posse falhou:", err);
       res.status(500).send("Erro ao verificar o acesso");
       return;

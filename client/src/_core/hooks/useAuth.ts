@@ -1,5 +1,6 @@
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
+import { UNAUTHED_ERR_MSG } from "@shared/const";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 
@@ -48,6 +49,11 @@ export function useAuth(options?: UseAuthOptions) {
     return {
       user: meQuery.data ?? null,
       loading: meQuery.isLoading || logoutMutation.isPending,
+      // `error` é como quem consome distingue "não autenticada" (data null,
+      // ou UNAUTHED_ERR_MSG) de "não deu para verificar" (banco de dados fora
+      // do ar, servidor inacessível): auth.me lança nesse caso em vez de
+      // devolver null, e a mensagem chega aqui em error.message. Quem trata
+      // é o ProtectedRoute; aqui só se garante que o erro não se perde.
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(meQuery.data),
     };
@@ -63,6 +69,9 @@ export function useAuth(options?: UseAuthOptions) {
     if (!redirectOnUnauthenticated) return;
     if (meQuery.isLoading || logoutMutation.isPending) return;
     if (state.user) return;
+    // A query falhou por outro motivo que não "sem sessão": a usuária pode
+    // estar logada, só não deu para saber. Mandar para o login a expulsaria.
+    if (meQuery.error && meQuery.error.message !== UNAUTHED_ERR_MSG) return;
     if (typeof window === "undefined") return;
     if (window.location.pathname === redirectPath) return;
 
@@ -73,6 +82,7 @@ export function useAuth(options?: UseAuthOptions) {
     redirectPath,
     logoutMutation.isPending,
     meQuery.isLoading,
+    meQuery.error,
     state.user,
   ]);
 

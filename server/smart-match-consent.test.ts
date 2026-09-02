@@ -33,11 +33,21 @@ const clienteFalso = {
 
 const bancoDeVerdade = drizzle(clienteFalso);
 
-vi.mock("./db", () => ({
-  getDb: vi.fn(),
-  upsertUser: vi.fn(),
-  getUserByOpenId: vi.fn(),
-}));
+vi.mock("./db", async () => {
+  const { BancoIndisponivel } = await import("./banco-indisponivel");
+  const getDb = vi.fn();
+  return {
+    getDb,
+    // O mesmo contrato do exigirDb real, sobre o getDb mockado: null vira exceção.
+    exigirDb: async () => {
+      const db = await getDb();
+      if (!db) throw new BancoIndisponivel();
+      return db;
+    },
+    upsertUser: vi.fn(),
+    getUserByOpenId: vi.fn(),
+  };
+});
 
 const { hasValidConsent, BancoIndisponivel } = await import("./routers/consent");
 const { getDb } = await import("./db");

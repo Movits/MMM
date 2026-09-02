@@ -5,7 +5,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { goldProcedure } from "./_procedures";
 import { invokeLLM } from "../_core/llm";
 import {
-  getDb,
+  exigirDb,
   listOpportunities, getOpportunityById, createOpportunity,
   getDocumentsByOpportunity,
   expressInterest, getInterestsByOpportunity,
@@ -69,8 +69,8 @@ export const opportunitiesRouter = router({
 
       // Incrementar view count apenas para oportunidades ativas e quando não é a própria criadora
       if (opp.status === "active" && !isOwner) {
-        const db = await getDb();
-        if (db) await db.update(opportunitiesTable).set({ viewCount: (opp.viewCount ?? 0) + 1 }).where(eq(opportunitiesTable.id, input.id));
+        const db = await exigirDb();
+        await db.update(opportunitiesTable).set({ viewCount: (opp.viewCount ?? 0) + 1 }).where(eq(opportunitiesTable.id, input.id));
       }
 
       const docs = await getDocumentsByOpportunity(input.id, isGold || isOwner);
@@ -180,22 +180,20 @@ Retorne um JSON estruturado com os campos: complianceLevel, explanation, riskAna
       // oportunidade nova esperava análise, e ela ficava parada indefinidamente.
       if (status === "pending") {
         try {
-          const db = await getDb();
-          if (db) {
-            const moderadoras = await db
-              .select({ id: users.id })
-              .from(users)
-              .where(inArray(users.role, ["president", "admin"]));
-            for (const mod of moderadoras) {
-              if (mod.id === ctx.user.id) continue;
-              await createNotification({
-                userId: mod.id,
-                type: "system",
-                title: "Nova oportunidade aguardando análise",
-                body: `"${input.title.slice(0, 120)}" foi publicada e espera validação no painel.`,
-                actionUrl: "/president",
-              });
-            }
+          const db = await exigirDb();
+          const moderadoras = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(inArray(users.role, ["president", "admin"]));
+          for (const mod of moderadoras) {
+            if (mod.id === ctx.user.id) continue;
+            await createNotification({
+              userId: mod.id,
+              type: "system",
+              title: "Nova oportunidade aguardando análise",
+              body: `"${input.title.slice(0, 120)}" foi publicada e espera validação no painel.`,
+              actionUrl: "/president",
+            });
           }
         } catch (e) {
           console.error("[Opportunities] Falha ao notificar a moderação:", e);
@@ -353,8 +351,7 @@ Analise a oportunidade de negócio e retorne um JSON com:
 
   // Minhas oportunidades publicadas
   myOpportunities: protectedProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
+    const db = await exigirDb();
     const { opportunities } = await import("../../drizzle/schema");
     return db.select().from(opportunities)
       .where(eq(opportunities.publishedBy, ctx.user.id))
@@ -372,8 +369,7 @@ Analise a oportunidade de negócio e retorne um JSON com:
       fileSize: z.number().int().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const db = await exigirDb();
       const { opportunities, opportunityDocuments } = await import("../../drizzle/schema");
       const [opp] = await db.select().from(opportunities).where(eq(opportunities.id, input.opportunityId)).limit(1);
       if (!opp) throw new TRPCError({ code: "NOT_FOUND", message: "Oportunidade não encontrada" });
@@ -445,8 +441,7 @@ Analise a oportunidade de negócio e retorne um JSON com:
       reason: z.string().max(500).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
       const { opportunities } = await import("../../drizzle/schema");
       // Verificar se a oportunidade existe
       const [opp] = await db.select({ id: opportunities.id, title: opportunities.title, publishedBy: opportunities.publishedBy })
@@ -472,8 +467,7 @@ Analise a oportunidade de negócio e retorne um JSON com:
   matches: goldProcedure
     .input(z.object({ opportunityId: z.number().int() }))
     .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) return [];
+      const db = await exigirDb();
       const { opportunities } = await import("../../drizzle/schema");
       return db.select({
         match: opportunityMatches,

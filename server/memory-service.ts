@@ -11,7 +11,7 @@ import {
   privateContacts,
 } from "../drizzle/schema";
 import { sql } from "drizzle-orm";
-import { getDb } from "./db";
+import { exigirDb } from "./db";
 import { embedManyWithGemini, embedWithGemini } from "./gemini";
 import { invokeLLM } from "./_core/llm";
 
@@ -74,8 +74,7 @@ async function embed(text: string, taskType: "RETRIEVAL_DOCUMENT" | "RETRIEVAL_Q
 }
 
 async function collectOwnerSources(ownerId: string): Promise<MemorySource[]> {
-  const db = await getDb();
-  if (!db) throw new Error("Banco de dados indisponível.");
+  const db = await exigirDb();
   const [contacts, privateContexts, transcripts, assets, needs, participantes, reunioes] = await Promise.all([
     db.select().from(privateContacts).where(eq(privateContacts.ownerId, ownerId)),
     db.select().from(contexts).where(and(eq(contexts.ownerId, ownerId), eq(contexts.visibility, "private"))),
@@ -180,7 +179,7 @@ export type ResultadoDaIndexacao = {
  */
 const assinaturaIndexada = new Map<string, { assinatura: string; truncated: number }>();
 
-async function assinaturaDaBase(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, ownerId: string) {
+async function assinaturaDaBase(db: Awaited<ReturnType<typeof exigirDb>>, ownerId: string) {
   const resumo = (tabela: typeof privateContacts | typeof contexts | typeof meetingTranscripts
     | typeof contactAssets | typeof contactNeeds | typeof contextParticipants | typeof meetings) =>
     db.select({ n: sql<number>`count(*)`, m: sql<number>`coalesce(max(${tabela.updatedAt}), 0)` })
@@ -215,8 +214,7 @@ export async function indexOwnerMemory(ownerId: string): Promise<ResultadoDaInde
 }
 
 async function executarIndexacao(ownerId: string): Promise<ResultadoDaIndexacao> {
-  const db = await getDb();
-  if (!db) throw new Error("Banco de dados indisponível.");
+  const db = await exigirDb();
 
   const assinatura = await assinaturaDaBase(db, ownerId);
   const lembrada = assinaturaIndexada.get(ownerId);
@@ -350,8 +348,7 @@ export type ResultadoDaBusca = { hits: SearchHit[]; pending: number; truncated: 
 export async function semanticSearch(ownerId: string, query: string, limit = 6): Promise<ResultadoDaBusca> {
   const cleanQuery = query.trim().slice(0, MAX_QUERY_LENGTH);
   if (!cleanQuery) return { hits: [], pending: 0, truncated: 0 };
-  const db = await getDb();
-  if (!db) throw new Error("Banco de dados indisponível.");
+  const db = await exigirDb();
   // O embedding da pergunta vem ANTES da reindexação: se o serviço de
   // embeddings estiver fora, a usuária recebe o erro claro em uma rodada de
   // retentativas — reindexar primeiro somaria as duas esperas e viraria

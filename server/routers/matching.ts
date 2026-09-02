@@ -2,7 +2,7 @@ import { z } from "zod";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
-import { getDb, createNotification } from "../db";
+import { exigirDb, createNotification } from "../db";
 import { opportunities, userProfiles, users } from "../../drizzle/schema";
 import { usersComConsentimento } from "./consent";
 
@@ -12,8 +12,7 @@ import { usersComConsentimento } from "./consent";
 export const matchingRouter = router({
   // Retorna oportunidades recomendadas para o usuário logado com score de compatibilidade
   getRecommendedOpportunities: protectedProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
+    const db = await exigirDb();
 
     const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.userId, ctx.user.id)).limit(1);
     if (!profile) return [];
@@ -120,8 +119,7 @@ export const matchingRouter = router({
 // create nunca produz (toda oportunidade nasce "pending").
 export async function notifyHighCompatibilityForOpportunity(opportunityId: number) {
   {
-      const db = await getDb();
-      if (!db) return { notified: 0 };
+      const db = await exigirDb();
 
       const [opp] = await db.select().from(opportunities).where(eq(opportunities.id, opportunityId)).limit(1);
       if (!opp || opp.status !== "active") return { notified: 0 };

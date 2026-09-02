@@ -44,9 +44,13 @@ node .claude/hooks/carimbo.mjs --status # estado da conferência (ver "Fluxo de 
 
 - **No Windows, use Git Bash**: `dev` e `start` definem `NODE_ENV` com sintaxe
   POSIX e falham no PowerShell. Se `pnpm` não estiver no PATH, `corepack pnpm`.
-- `DATABASE_URL`, `JWT_SECRET` e `VAULT_ENCRYPTION_KEY` são obrigatórias: o servidor
-  se recusa a iniciar sem elas (`requireSecret()` em `server/_core/env.ts`). Não há
-  valores padrão de propósito. `LLM_API_URL` também não tem fallback.
+- `JWT_SECRET` é obrigatória: o servidor se recusa a iniciar sem ela
+  (`requireSecret()` em `server/_core/env.ts`, chamado ao carregar `server/auth.ts`).
+  `VAULT_ENCRYPTION_KEY` deve existir em produção, mas o código não a exige: sem ela,
+  `server/security.ts` e `server/matching.ts` derivam a chave do cofre do `JWT_SECRET`.
+  Sem `DATABASE_URL` o servidor SOBE, e todo acesso ao banco responde "Banco de dados
+  indisponível" (ver "Acesso a dados"). Não há valores padrão de propósito.
+  `LLM_API_URL` também não tem fallback.
 - Com `.env` completo (banco + chave do Gemini), a suíte passa inteira; testes
   que dependem de credencial ausente (ex.: Resend) se auto-pulam com `skipIf`.
   Falha na suíte é regressão, sem exceções toleradas.
@@ -150,10 +154,22 @@ estão repetidas inline em `dealRoom.ts`, `matching.ts`, `opportunities.ts`,
 `storageProxy.ts` e no client.
 
 **Acesso a dados.** `server/db.ts` é a camada única (usuárias, oportunidades, Ouro,
-segurança, matches, rede privada, contextos, enriquecimento). `getDb()` não lança e a
-maioria dos helpers devolve vazio quando não há banco: banco fora do ar parece "sem
-dados". A exceção correta é `BancoIndisponivel` em `routers/consent.ts`, criada porque
-essa ambiguidade liberava o Smart Match para todo mundo.
+segurança, matches, rede privada, contextos, enriquecimento). Banco fora do ar é ERRO,
+nunca "sem dados": todo helper abre com `exigirDb()`, que lança `BancoIndisponivel`
+(classe em `server/banco-indisponivel.ts`) quando não há `DATABASE_URL`. Em produção a
+variável existe sempre e `drizzle(url)` não conecta ao criar o pool, então a queda real
+chega na primeira query como erro de conexão do driver (`DrizzleQueryError` com
+`cause.code` ECONNREFUSED, ETIMEDOUT, PROTOCOL_CONNECTION_LOST...);
+`ehErroDeBancoIndisponivel()` reconhece os dois casos na cadeia de `cause`. O middleware
+de `server/_core/trpc.ts` traduz qualquer um deles, em todo procedimento, num
+`INTERNAL_SERVER_ERROR` com `MENSAGEM_BANCO_INDISPONIVEL` (em português), e o
+`errorFormatter` do mesmo arquivo mascara os demais erros do driver ("Erro ao consultar
+o banco de dados") para o SQL nunca chegar ao navegador. Se a sessão não pôde ser lida
+por isso, `createContext` marca `ctx.bancoIndisponivel`, `auth.me` lança em vez de
+devolver `null` e o `ProtectedRoute` mostra "tentar de novo" em vez de mandar ao login.
+Exceções deliberadas: `system.health` (responde `ok:false` com HTTP 503) e
+`stats.platform` (zeros na página inicial) degradam em vez de lançar. Não crie novo
+`catch` que devolva vazio: se precisar de um, relance quando `ehErroDeBancoIndisponivel`.
 
 **Três motores de match convivem.** `server/match-service.ts` cruza contatos da mesma
 dona: `scoreMatch` aplica, nesta ordem, concorrentes → 0, slug exato → 100, mesmo
