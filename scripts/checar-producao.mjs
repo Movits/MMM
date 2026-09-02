@@ -174,7 +174,14 @@ try {
   if (COM_IA) {
     const faq = await fetch(BASE + "/api/trpc/faq.ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ json: { question: "O que é o MMM?" } }) });
     const faqBody = await faq.json().catch(() => null);
-    ok("IA responde (FAQ)", faq.status === 200 && !!faqBody?.result?.data?.json?.answer);
+    // O plano gratuito do Gemini limita as chamadas por minuto. Se o exame
+    // roda logo depois de outro uso da IA, o 429 é a cota falando, não o site
+    // quebrado: vira PULADO, como nas checagens de memória abaixo. Falha de
+    // verdade aqui é status diferente de 200 sem 429/cota na mensagem.
+    const faqErro = faqBody?.error?.json?.message || "";
+    const faqEmCota = /429|quota|RESOURCE_EXHAUSTED|limite|rate/i.test(faqErro);
+    ok("IA responde (FAQ)" + (faqEmCota ? " (PULADO: cota por minuto do Gemini)" : ""),
+      (faq.status === 200 && !!faqBody?.result?.data?.json?.answer) || faqEmCota);
     await espera(15000);
     const rei = await runner.post("memory.reindex", undefined);
     const limitada = /429|limite|rate|muitas/i.test(rei.erro || "");
