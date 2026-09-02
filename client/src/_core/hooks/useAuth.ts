@@ -21,12 +21,6 @@ export function useAuth(options?: UseAuthOptions) {
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
       utils.auth.me.setData(undefined, null);
-      // V-03: Limpar qualquer dado residual do localStorage ao fazer logout
-      try {
-        localStorage.removeItem("manus-runtime-user-info");
-      } catch {
-        // Ignorar erros de localStorage em ambientes restritos
-      }
     },
   });
 
@@ -44,12 +38,6 @@ export function useAuth(options?: UseAuthOptions) {
     } finally {
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
-      // V-03: Garantir limpeza do localStorage mesmo em caso de erro
-      try {
-        localStorage.removeItem("manus-runtime-user-info");
-      } catch {
-        // Ignorar
-      }
     }
   }, [logoutMutation, utils]);
 
@@ -70,15 +58,6 @@ export function useAuth(options?: UseAuthOptions) {
     logoutMutation.error,
     logoutMutation.isPending,
   ]);
-
-  // V-03: Limpar dados residuais do localStorage na montagem do componente
-  useEffect(() => {
-    try {
-      localStorage.removeItem("manus-runtime-user-info");
-    } catch {
-      // Ignorar
-    }
-  }, []);
 
   useEffect(() => {
     if (!redirectOnUnauthenticated) return;

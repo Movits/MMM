@@ -1,14 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-// O código lê a chave pela cadeia LLM_API_KEY > BUILT_IN_FORGE_API_KEY >
-// GOOGLE_API_KEY (server/_core/env.ts), então o teste valida a mesma cadeia.
+// O código lê a chave pela cadeia LLM_API_KEY > GOOGLE_API_KEY
+// (server/_core/env.ts), então o teste valida a mesma cadeia.
 // A chamada HTTPS real fica opt-in para a suíte não depender da
 // disponibilidade do provedor.
 describe("Credencial Google Gemini", () => {
-  const key =
-    process.env.LLM_API_KEY ||
-    process.env.BUILT_IN_FORGE_API_KEY ||
-    process.env.GOOGLE_API_KEY;
+  const key = process.env.LLM_API_KEY || process.env.GOOGLE_API_KEY;
 
   it.skipIf(!key)("expõe uma chave na cadeia de fallback do LLM", () => {
     expect(key).toBeTruthy();

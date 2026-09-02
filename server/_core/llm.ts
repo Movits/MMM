@@ -232,7 +232,7 @@ const resolveApiUrl = () => {
 const assertApiKey = () => {
   if (!ENV.llmApiKey) {
     throw new Error(
-      "Nenhuma chave de LLM configurada. Defina GOOGLE_API_KEY (ou BUILT_IN_FORGE_API_KEY) no .env"
+      "Nenhuma chave de LLM configurada. Defina LLM_API_KEY (ou GOOGLE_API_KEY) no .env"
     );
   }
 };

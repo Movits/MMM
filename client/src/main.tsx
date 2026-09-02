@@ -19,7 +19,7 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!isUnauthorized) return;
 
   // Não redirecionar se já está em páginas públicas (evita loop de login duplo)
-  const publicPaths = ["/login", "/register", "/forgot-password", "/reset-password", "/", "/oauth-error"];
+  const publicPaths = ["/login", "/register", "/forgot-password", "/reset-password", "/"];
   const currentPath = window.location.pathname;
   const isPublicPage = publicPaths.some(p => currentPath === p || currentPath.startsWith(p + "?"));
   if (isPublicPage) return;

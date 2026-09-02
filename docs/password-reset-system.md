@@ -67,7 +67,7 @@ forgotPassword: publicProcedure
     });
 
     // 6. Construir a URL de reset
-    const siteOrigin = input.origin || "https://mmmos-m2agtkvd.manus.space";
+    const siteOrigin = requireEnv("FRONTEND_URL"); // sem valor padrão: o domínio do Manus morreu
     const resetUrl = `${siteOrigin}/reset-password?token=${token}`;
 
     // 7. Enviar e-mail via Resend
@@ -103,7 +103,7 @@ export const passwordResetTokens = mysqlTable("password_reset_tokens", {
 ```typescript
 import { Resend } from "resend";
 
-const FROM_EMAIL = process.env.EMAIL_FROM || "MMM OS <noreply@mmmos-m2agtkvd.manus.space>";
+const FROM_EMAIL = process.env.EMAIL_FROM; // sem remetente, sendEmail devolve false com erro claro
 
 export async function sendEmail(params: {
   to: string;

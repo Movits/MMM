@@ -7,7 +7,6 @@ import compression from "compression";
 import rateLimit from "express-rate-limit";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -59,15 +58,6 @@ const apiLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: { error: "Limite de API excedido. Tente novamente em breve." },
-});
-
-// Rate limiter para OAuth: 10 req/min por IP (proteção anti-automação)
-const oauthLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { error: "Muitas tentativas de autenticação. Aguarde 1 minuto." },
 });
 
 // ============================================================
@@ -197,16 +187,14 @@ async function startServer() {
   app.use(express.json({ limit: "5mb" }));
   app.use(express.urlencoded({ limit: "5mb", extended: true }));
 
-  // Rate limiting específico para OAuth
-  app.use("/api/oauth", oauthLimiter);
-
   registerStorageProxy(app);
-  registerOAuthRoutes(app);
 
   // ============================================================
   // JOB PERIÓDICO: Limpeza de sessões expiradas
-  // Heartbeat cron: diariamente às 03:00 UTC
   // Endpoint: POST /api/scheduled/cleanup-sessions
+  // Exige sessão de cron: JWT assinado com o JWT_SECRET, openId "cron_..."
+  // e claim taskUid (ver sdk.authenticateRequest). Nenhum agendador externo
+  // está configurado hoje; o endpoint fica pronto para quando houver.
   // ============================================================
   app.post("/api/scheduled/cleanup-sessions", async (req: Request, res: Response) => {
     try {

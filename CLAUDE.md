@@ -61,13 +61,14 @@ regra de negócio deliberada (registrada em `docs/recuperacao-do-manus.md`), nã
 
 **`server/_core/` é a infraestrutura herdada do Manus** (o projeto nasceu na
 plataforma Manus e foi extraído: ver `docs/recuperacao-do-manus.md`): entrada
-(`index.ts`), auth/OAuth, cookies, e-mail (Resend), storage S3 com URLs assinadas,
+(`index.ts`), sessão JWT (`sdk.ts`), cookies, e-mail (Resend), storage S3 com URLs assinadas,
 integração com o Vite em dev. As chamadas de IA passam por `server/_core/llm.ts`,
 que aceita qualquer endpoint compatível com a API da OpenAI, configurado por
 `LLM_API_URL`, `LLM_API_KEY` e `LLM_MODEL`. Use sempre um modelo CONCRETO
 (ex.: `gemini-3.5-flash`), nunca um alias como `gemini-flash-latest`: o alias já
 apontou para um modelo com cota gratuita de 20 requisições/dia e derrubou a IA
-em produção. A Memória também usa o Gemini (não há mais SDK da Anthropic).
+em produção. A Memória também usa o Gemini. As chamadas usam `fetch`; não há SDK
+de IA no projeto.
 Arquivos (áudio de reunião, documentos) vão para storage compatível com S3
 (`STORAGE_*` no `.env`; Backblaze B2 em produção), servidos pelo proxy
 autenticado `/manus-storage/*` que exige sessão e posse.
@@ -90,9 +91,6 @@ por etapa vindas do Manus.
 **`vitrine/`** é uma página estática publicada no GitHub Pages pelo workflow
 `.github/workflows/pages.yml`. Não é a aplicação: a aplicação precisa de Node e
 MySQL e não roda em hospedagem estática.
-
-Os scripts Python na raiz (`fix_*.py`, `update_texts.py`, `add_*.py`) são
-utilitários pontuais de i18n, fora do build.
 
 ## Regras que não são estilo
 

@@ -11,9 +11,9 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
  *
  * Apagar a variável de ambiente no teste não bastava, por dois motivos que
  * valem registrar: `ENV` lê `process.env` no import, então mexer depois não tem
- * efeito; e a chave tem três fontes de fallback (`LLM_API_KEY`,
- * `BUILT_IN_FORGE_API_KEY`, `GOOGLE_API_KEY`), então apagar uma ou duas deixa a
- * terceira valendo. Por isso o módulo de ambiente é trocado por inteiro.
+ * efeito; e a chave tem duas fontes de fallback (`LLM_API_KEY`,
+ * `GOOGLE_API_KEY`), então apagar uma deixa a outra valendo. Por isso o
+ * módulo de ambiente é trocado por inteiro.
  *
  * A conferência contra a API real continua existindo, em
  * `server/gemini.integracao.test.ts`, fora do caminho de todo mundo.
