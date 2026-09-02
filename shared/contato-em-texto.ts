@@ -21,11 +21,17 @@
  *    zero) seguido de 9+8 dígitos (celular) ou [2-5]+7 (fixo). "12345678901"
  *    (CPF sem pontos) e "84670000001" (linha de boleto) não têm essa forma.
  *
+ * Telefone DITADO POR EXTENSO também casa: uma corrente de palavras-dígito
+ * ("nove meia meia cinco quatro três dois um zero" — "meia" é 6 no ditado
+ * brasileiro) com pelo menos 8 dígitos somados e 4 palavras. "Dois mil e
+ * quinhentos sacos" e "opção um, dois ou três" não chegam nem perto: "mil",
+ * "e" e qualquer palavra fora do vocabulário quebram a corrente.
+ *
  * O que NÃO casa, de propósito: intervalos de anos e faixas ("2025-2026",
  * "1000-5000"), CNPJ/CPF (pontuados ou crus), CEP (5-3), valores, datas — e
  * o fixo hifenizado SEM DDD ("3456-7890"), que é indistinguível de faixa
- * numérica; sem DDD ele tampouco serve como contato entre cidades. Quem
- * quiser burlar consegue ("nove nove nove..." por extenso) — o objetivo é o
+ * numérica; sem DDD ele tampouco serve como contato entre cidades. Burlar
+ * ainda dá (soletrar com erros de grafia, trocar por emoji) — o objetivo é o
  * caminho honesto e o registro, não uma fortaleza.
  */
 
@@ -48,18 +54,72 @@ const PADROES: Array<{ tipo: "email" | "telefone"; regex: RegExp }> = [
 
 export type ContatoEncontrado = { tipo: "email" | "telefone"; trecho: string };
 
+// Quantos DÍGITOS cada palavra do ditado representa. "meia" é 6 ("nove meia
+// meia..."); "onze" cobre o DDD falado como palavra única. "mil", "cem",
+// "vinte" etc. ficam FORA de propósito: são as palavras de quantidade e
+// preço, e entrar com elas aqui bloquearia proposta comercial.
+const PALAVRAS_DE_DIGITO: Record<string, number> = {
+  zero: 1, um: 1, uma: 1, dois: 1, duas: 1, tres: 1, quatro: 1,
+  cinco: 1, seis: 1, meia: 1, sete: 1, oito: 1, nove: 1, onze: 2,
+};
+const MINIMO_DE_DIGITOS_DITADOS = 8;
+const MINIMO_DE_PALAVRAS_NA_CORRENTE = 4;
+
+/**
+ * Telefone ditado por extenso: corrente de palavras-dígito (e grupos soltos
+ * de 1-2 algarismos no meio, como em "onze 9 nove nove...") somando 8+
+ * dígitos. Exigir 4+ PALAVRAS na corrente impede que listas numéricas
+ * legítimas ("tamanhos 36 38 40 42") caiam aqui — dígito puro tem os padrões
+ * próprios, com cara de telefone.
+ */
+function encontrarDitados(texto: string): ContatoEncontrado[] {
+  // Sem acentos, mantendo os índices: cada caractere pré-composto ("é")
+  // vira exatamente um caractere base ("e") depois de remover as marcas.
+  const semAcento = texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const achados: ContatoEncontrado[] = [];
+  let inicio = -1, fim = -1, digitos = 0, palavras = 0;
+  const fechar = () => {
+    if (inicio >= 0 && digitos >= MINIMO_DE_DIGITOS_DITADOS && palavras >= MINIMO_DE_PALAVRAS_NA_CORRENTE) {
+      achados.push({ tipo: "telefone", trecho: texto.slice(inicio, fim) });
+    }
+    inicio = -1; digitos = 0; palavras = 0;
+  };
+  for (const casamento of Array.from(semAcento.matchAll(/[a-z]+|\d+/g))) {
+    const token = casamento[0];
+    const posicao = casamento.index ?? 0;
+    const ehPalavra = PALAVRAS_DE_DIGITO[token] !== undefined;
+    const valor = ehPalavra ? PALAVRAS_DE_DIGITO[token] : (/^\d{1,2}$/.test(token) ? token.length : undefined);
+    // A corrente só continua atravessando separadores curtos e neutros;
+    // qualquer palavra fora do vocabulário ("mil", "toneladas", "e") quebra.
+    const emenda = inicio >= 0 && posicao - fim <= 3 && /^[\s.,;-]*$/.test(semAcento.slice(fim, posicao));
+    if (valor === undefined || (inicio >= 0 && !emenda)) fechar();
+    if (valor !== undefined) {
+      if (inicio < 0) inicio = posicao;
+      digitos += valor;
+      if (ehPalavra) palavras += 1;
+      fim = posicao + token.length;
+    }
+  }
+  fechar();
+  return achados;
+}
+
 export function encontrarContatosEmTexto(texto: string): ContatoEncontrado[] {
   const achados: ContatoEncontrado[] = [];
   const vistos = new Set<string>();
+  const candidatos: ContatoEncontrado[] = [];
   for (const { tipo, regex } of PADROES) {
     for (const casamento of Array.from(texto.matchAll(regex))) {
-      const trecho = casamento[0];
-      // Um telefone dentro de um e-mail já reportado (ou o mesmo trecho por
-      // dois padrões) não vira um segundo achado.
-      if (vistos.has(trecho) || achados.some(a => a.trecho.includes(trecho))) continue;
-      vistos.add(trecho);
-      achados.push({ tipo, trecho });
+      candidatos.push({ tipo, trecho: casamento[0] });
     }
+  }
+  candidatos.push(...encontrarDitados(texto));
+  for (const candidato of candidatos) {
+    // Um telefone dentro de um e-mail já reportado (ou o mesmo trecho por
+    // dois padrões) não vira um segundo achado.
+    if (vistos.has(candidato.trecho) || achados.some(a => a.trecho.includes(candidato.trecho))) continue;
+    vistos.add(candidato.trecho);
+    achados.push(candidato);
   }
   return achados;
 }

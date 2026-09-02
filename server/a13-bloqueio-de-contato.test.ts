@@ -48,6 +48,43 @@ describe("A13 — o detector acha contato de verdade", () => {
   });
 });
 
+describe("A13 — telefone DITADO por extenso também é contato", () => {
+  const casos: Array<[string, string]> = [
+    ["celular soletrado", "anota aí: nove nove nove nove nove oito oito oito oito"],
+    ["com 'meia' do ditado brasileiro", "meu número é nove meia meia cinco quatro três dois um zero"],
+    ["DDD como palavra (onze)", "chama no onze nove nove nove nove oito oito oito oito"],
+    ["misto de palavra e algarismo solto", "onze 9 nove nove nove 8 oito oito oito"],
+    ["separado por vírgulas", "liga: nove, nove, nove, nove, nove, oito, oito, oito, oito"],
+  ];
+  for (const [nome, texto] of casos) {
+    it(nome, () => {
+      const achados = encontrarContatosEmTexto(texto);
+      expect(achados.length).toBeGreaterThan(0);
+      expect(achados[0].tipo).toBe("telefone");
+    });
+  }
+
+  const legitimos: Array<[string, string]> = [
+    ["quantidade por extenso", "fecho dois mil e quinhentos sacos para a safra"],
+    ["enumeração curta", "temos as opções um, dois e três disponíveis"],
+    ["medidas e unidades", "cinco toneladas em seis contêineres de doze metros"],
+    ["preço falado", "sai por nove e noventa a unidade, oito no atacado"],
+    ["lista de tamanhos em dígitos", "temos tamanhos 36 38 40 42 no estoque"],
+  ];
+  for (const [nome, texto] of legitimos) {
+    it(`não bloqueia: ${nome}`, () => {
+      expect(encontrarContatosEmTexto(texto)).toEqual([]);
+    });
+  }
+
+  it("o ditado mascarado na bio some por inteiro", () => {
+    const bio = "Café premium. Zap nove nove nove nove nove oito oito oito oito, falou?";
+    const mascarada = mascararContatosEmTexto(bio);
+    expect(mascarada).toContain("Café premium");
+    expect(mascarada).not.toContain("nove nove nove nove nove oito oito oito oito");
+  });
+});
+
 describe("A13 — números legítimos de negócio NÃO são bloqueados", () => {
   const casos: Array<[string, string]> = [
     ["preço com milhares", "a proposta é de R$ 1.500.000,00 pelo lote"],
