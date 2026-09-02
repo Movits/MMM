@@ -22,7 +22,8 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import mysql from "mysql2/promise";
 
-const TIPOS = ["termo_smart_match", "acordo_intermediacao", "contrato_comissao", "termo_gravacao"];
+// Espelha o DOCUMENT_TYPES de server/routers/consent.ts (e o enum do banco).
+const TIPOS = ["termo_smart_match", "acordo_intermediacao", "contrato_comissao", "termo_gravacao", "termo_acesso_ouro"];
 
 // Provisório, para a mecânica poder ser construída e testada antes do texto
 // jurídico existir. Descreve o que o sistema realmente faz hoje.
@@ -33,14 +34,23 @@ substituído pela redação jurídica final.
 
 ## O que você está autorizando
 
-O Cruzamento Inteligente compara o que cada contato da **sua** base particular
-tem a oferecer com o que os outros contatos dessa mesma base procuram, e sugere
-a você as conexões que fazem sentido.
+Esta autorização liga os dois cruzamentos do MMM:
+
+1. **Na sua base particular:** o sistema compara o que cada contato da **sua**
+   base tem a oferecer com o que os outros contatos dessa mesma base procuram,
+   e sugere a você as conexões que fazem sentido.
+2. **Entre os perfis das membras:** o **seu perfil** (setores, o que você
+   oferece e procura, cidade e país) é comparado com os perfis de outras
+   membras que também autorizaram, e as afinidades aparecem no painel — para
+   você e para elas. Só participam do cruzamento membras com esta autorização
+   ativa, dos dois lados.
 
 ## O que não acontece
 
 - Sua base de contatos não é compartilhada com outras usuárias.
 - Nenhum contato seu é apresentado a ninguém sem que você decida apresentar.
+- No cruzamento de perfis, o que as outras membras veem são os campos do seu
+  perfil — nunca seu e-mail, telefone ou os contatos da sua base.
 - O cruzamento não envia mensagem a ninguém: ele mostra a sugestão a você.
 
 ## Enquanto a autorização estiver ativa
