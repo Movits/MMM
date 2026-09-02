@@ -30,7 +30,20 @@ export const memoryRouter = router({
 
   reindex: protectedProcedure.mutation(async ({ ctx }) => {
     enforceSearchLimit(ctx.user.openId);
-    return indexOwnerMemory(ctx.user.openId);
+    // O clique pode cair no meio de uma rodada que uma busca já tinha começado
+    // — e essa rodada fotografou a base ANTES da mudança que motivou o clique.
+    // A segunda chamada custa sete agregados quando nada mudou, e reindexa de
+    // verdade quando a rodada em voo era antiga demais para ver a mudança.
+    const primeira = await indexOwnerMemory(ctx.user.openId);
+    const segunda = await indexOwnerMemory(ctx.user.openId);
+    return {
+      indexed: primeira.indexed + segunda.indexed,
+      skipped: primeira.skipped + segunda.skipped,
+      removed: primeira.removed + segunda.removed,
+      pending: segunda.pending,
+      truncated: segunda.truncated,
+      total: Math.max(primeira.total, segunda.total),
+    };
   }),
 
   search: protectedProcedure

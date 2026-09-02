@@ -36,12 +36,19 @@ const TABELA_FORA_DO_AR = Symbol("tabela fora do ar");
 const tabelas = new Map<unknown, unknown>();
 const escritas = { inseridos: [] as Record<string, unknown>[], atualizados: [] as Record<string, unknown>[], delecoes: 0 };
 const fakeDb = {
-  select: () => ({
+  // A assinatura de mudança pede agregados {n, m} que o fake precisa CALCULAR:
+  // devolver linhas cruas faria cada tabela virar "undefined:undefined" e o
+  // teste da assinatura passaria com qualquer implementação.
+  select: (projecao?: Record<string, unknown>) => ({
     from: (tabela: unknown) => ({
       where: async () => {
         const linhas = tabelas.get(tabela) ?? [];
         if (linhas === TABELA_FORA_DO_AR) throw new Error("tabela fora do ar");
-        return linhas;
+        const cru = linhas as Record<string, unknown>[];
+        if (projecao && "n" in projecao && "m" in projecao) {
+          return [{ n: cru.length, m: cru.reduce((maior, linha) => Math.max(maior, Number(linha.updatedAt ?? 0)), 0) }];
+        }
+        return cru;
       },
     }),
   }),
@@ -69,9 +76,16 @@ beforeEach(() => {
   tabelas.set(schema.contexts, []);
   tabelas.set(schema.meetingTranscripts, []);
   tabelas.set(schema.memoryDocuments, []);
+  tabelas.set(schema.contactAssets, []);
+  tabelas.set(schema.contactNeeds, []);
+  tabelas.set(schema.contextParticipants, []);
+  tabelas.set(schema.meetings, []);
   escritas.inseridos = []; escritas.atualizados = []; escritas.delecoes = 0;
   embedWithGemini.mockReset(); embedManyWithGemini.mockReset(); invokeLLM.mockReset();
   embedManyWithGemini.mockImplementation(async (textos: string[]) => textos.map(() => vetor768()));
+  // A assinatura de mudança é estado de módulo; sem limpar, um teste herdaria
+  // o "nada mudou" do anterior e a indexação nem rodaria.
+  servico.esquecerAssinaturasDeIndexacao();
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 afterEach(() => {
@@ -119,6 +133,80 @@ describe("Memória — órfão não sobrevive à fonte", () => {
     expect(resultado.removed).toBe(1);
     expect(resultado.skipped).toBe(1);
     expect(embedManyWithGemini).not.toHaveBeenCalled();
+  });
+
+  it("o que o contato possui/procura entra no documento da memória (etapa 9)", async () => {
+    // "Quem exporta medicamentos?" mora no possui/procura, não no cargo — sem
+    // estas linhas no documento, a pesquisa do requisito não tinha resposta.
+    tabelas.set(schema.privateContacts, [{ id: 1, fullName: "Ana" }]);
+    tabelas.set(schema.contactAssets, [{ contactId: 1, tagLabel: "Exportar medicamentos" }]);
+    tabelas.set(schema.contactNeeds, [{ contactId: 1, tagLabel: "Distribuidores na Europa" }]);
+
+    await servico.indexOwnerMemory("dona");
+
+    expect(escritas.inseridos).toHaveLength(1);
+    const conteudo = escritas.inseridos[0].content as string;
+    expect(conteudo).toContain("Possui / oferece: Exportar medicamentos");
+    expect(conteudo).toContain("Procura: Distribuidores na Europa");
+  });
+
+  it("participantes do contexto entram no documento — 'quem conhece ministros' tem onde morar", async () => {
+    tabelas.set(schema.contexts, [{ id: "ctx-1", name: "Fórum de Investimentos", visibility: "private" }]);
+    tabelas.set(schema.contextParticipants, [{ contextId: "ctx-1", name: "Carlos Andrade", role: "Ministro da Saúde", company: null, notes: null }]);
+
+    await servico.indexOwnerMemory("dona");
+
+    const doc = escritas.inseridos.find(item => item.sourceType === "context");
+    expect(String(doc?.content)).toContain("Participantes: Carlos Andrade, Ministro da Saúde");
+  });
+
+  it("a transcrição ganha o título da reunião — deixa de ser um texto anônimo", async () => {
+    tabelas.set(schema.meetingTranscripts, [{ meetingId: "m-1", transcript: "Falamos de vinho e logística", language: "pt" }]);
+    tabelas.set(schema.meetings, [{ id: "m-1", title: "Reunião com a vinícola" }]);
+
+    await servico.indexOwnerMemory("dona");
+
+    const doc = escritas.inseridos.find(item => item.sourceType === "meeting");
+    expect(doc?.title).toBe("Reunião com a vinícola");
+    expect(String(doc?.content)).toContain("Reunião: Reunião com a vinícola");
+  });
+
+  it("nada mudou desde a última rodada: a seguinte nem carrega as fontes (assinatura)", async () => {
+    tabelas.set(schema.privateContacts, [{ id: 1, fullName: "Ana" }]);
+    await servico.indexOwnerMemory("dona");
+    embedManyWithGemini.mockClear();
+
+    const segunda = await servico.indexOwnerMemory("dona");
+
+    expect(segunda.indexed).toBe(0);
+    expect(embedManyWithGemini).not.toHaveBeenCalled();
+  });
+
+  it("edição sem linha nova também muda a assinatura: updatedAt maior reindexa", async () => {
+    tabelas.set(schema.privateContacts, [{ id: 1, fullName: "Ana", updatedAt: 10 }]);
+    await servico.indexOwnerMemory("dona");
+    embedManyWithGemini.mockClear();
+    tabelas.set(schema.privateContacts, [{ id: 1, fullName: "Ana Paula", updatedAt: 20 }]);
+
+    const segunda = await servico.indexOwnerMemory("dona");
+
+    expect(segunda.indexed).toBe(1);
+    expect(embedManyWithGemini).toHaveBeenCalled();
+  });
+
+  it("rodada interrompida NÃO congela o índice: a assinatura só é lembrada completa", async () => {
+    // Sem o guarda de pendência, a primeira rodada (cota estourada) carimbaria
+    // a assinatura e toda busca seguinte pularia a retomada prometida.
+    tabelas.set(schema.privateContacts, [{ id: 1, fullName: "Ana" }, { id: 2, fullName: "Bia" }]);
+    embedManyWithGemini.mockRejectedValueOnce(new Error("cota esgotada"));
+
+    const primeira = await servico.indexOwnerMemory("dona");
+    expect(primeira.pending).toBe(2);
+
+    const segunda = await servico.indexOwnerMemory("dona");
+
+    expect(segunda.indexed).toBe(2);
+    expect(segunda.pending).toBe(0);
   });
 
   it("cada documento recebe o vetor do seu próprio texto (ordem do lote)", async () => {
@@ -186,6 +274,12 @@ describe("Memória — ritmo dos embeddings", () => {
     const maiorLote = Math.max(...embedManyWithGemini.mock.calls.map(chamada => (chamada[0] as string[]).length));
     expect(maiorLote).toBeLessThanOrEqual(16);
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("acima do teto"));
+
+    // A rodada seguinte cai no atalho da assinatura — e o truncamento continua
+    // visível, em vez do zero fixo que o atalho devolveria sem memória dele.
+    const seguinte = await servico.indexOwnerMemory("dona");
+    expect(seguinte.indexed).toBe(0);
+    expect(seguinte.truncated).toBe(1);
   });
 
   it("orçamento de tempo estourado: para com pendência em vez de segurar a requisição", async () => {
@@ -213,11 +307,13 @@ describe("Memória — busca e resposta resilientes", () => {
     embedManyWithGemini.mockRejectedValue(new Error("IA fora do ar"));
     embedWithGemini.mockResolvedValue(vetor768());
 
-    const hits = await servico.semanticSearch("dona", "quem é a Ana?");
+    const { hits, pending } = await servico.semanticSearch("dona", "quem é a Ana?");
 
     expect(hits).toHaveLength(1);
     expect(hits[0].title).toBe("Ana");
     expect(hits[0].score).toBeCloseTo(1);
+    // e a pendência não é segredo: a busca conta o que ficou por indexar
+    expect(pending).toBe(1);
   });
 
   it("até um erro inesperado na reindexação não mata a busca", async () => {
@@ -225,7 +321,7 @@ describe("Memória — busca e resposta resilientes", () => {
     tabelas.set(schema.memoryDocuments, [docDeContato(1, "Ana")]);
     embedWithGemini.mockResolvedValue(vetor768());
 
-    const hits = await servico.semanticSearch("dona", "quem é a Ana?");
+    const { hits } = await servico.semanticSearch("dona", "quem é a Ana?");
 
     expect(hits).toHaveLength(1);
   });

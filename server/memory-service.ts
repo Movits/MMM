@@ -1,11 +1,16 @@
 import crypto from "crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import {
+  contactAssets,
+  contactNeeds,
+  contextParticipants,
   contexts,
+  meetings,
   meetingTranscripts,
   memoryDocuments,
   privateContacts,
 } from "../drizzle/schema";
+import { sql } from "drizzle-orm";
 import { getDb } from "./db";
 import { embedManyWithGemini, embedWithGemini } from "./gemini";
 import { invokeLLM } from "./_core/llm";
@@ -71,11 +76,34 @@ async function embed(text: string, taskType: "RETRIEVAL_DOCUMENT" | "RETRIEVAL_Q
 async function collectOwnerSources(ownerId: string): Promise<MemorySource[]> {
   const db = await getDb();
   if (!db) throw new Error("Banco de dados indisponível.");
-  const [contacts, privateContexts, transcripts] = await Promise.all([
+  const [contacts, privateContexts, transcripts, assets, needs, participantes, reunioes] = await Promise.all([
     db.select().from(privateContacts).where(eq(privateContacts.ownerId, ownerId)),
     db.select().from(contexts).where(and(eq(contexts.ownerId, ownerId), eq(contexts.visibility, "private"))),
-    db.select().from(meetingTranscripts).where(eq(meetingTranscripts.ownerId, ownerId)),
+    // Projeção explícita: `segments` (o JSON palavra-a-palavra) nunca entra no
+    // documento e é a coluna mais pesada da tabela — não viaja à toa.
+    db.select({ meetingId: meetingTranscripts.meetingId, transcript: meetingTranscripts.transcript, language: meetingTranscripts.language })
+      .from(meetingTranscripts).where(eq(meetingTranscripts.ownerId, ownerId)),
+    db.select().from(contactAssets).where(eq(contactAssets.ownerId, ownerId)),
+    db.select().from(contactNeeds).where(eq(contactNeeds.ownerId, ownerId)),
+    db.select({ contextId: contextParticipants.contextId, name: contextParticipants.name, company: contextParticipants.company, role: contextParticipants.role, notes: contextParticipants.notes })
+      .from(contextParticipants).where(eq(contextParticipants.ownerId, ownerId)),
+    db.select({ id: meetings.id, title: meetings.title }).from(meetings).where(eq(meetings.ownerId, ownerId)),
   ]);
+
+  // O que o contato possui/procura é O dado de negócio da base — "Quem exporta
+  // medicamentos?" mora aqui, não no cargo. Ficava fora do documento e a
+  // pesquisa da etapa 9 não tinha como responder o exemplo do requisito.
+  const porContato = (itens: Array<{ contactId: number; tagLabel: string }>) => {
+    const mapa = new Map<number, string[]>();
+    for (const item of itens) {
+      const lista = mapa.get(item.contactId) ?? [];
+      lista.push(item.tagLabel);
+      mapa.set(item.contactId, lista);
+    }
+    return mapa;
+  };
+  const possuiPorContato = porContato(assets);
+  const procuraPorContato = porContato(needs);
 
   const contactSources: MemorySource[] = contacts.map(contact => ({
     sourceType: "contact",
@@ -87,10 +115,22 @@ async function collectOwnerSources(ownerId: string): Promise<MemorySource[]> {
       contact.company && `Empresa: ${contact.company}`,
       [contact.city, contact.state, contact.country].filter(Boolean).join(" · "),
       Array.isArray(contact.profileTags) && contact.profileTags.length ? `Tags: ${contact.profileTags.join(", ")}` : "",
+      possuiPorContato.has(contact.id) ? `Possui / oferece: ${possuiPorContato.get(contact.id)!.join(", ")}` : "",
+      procuraPorContato.has(contact.id) ? `Procura: ${procuraPorContato.get(contact.id)!.join(", ")}` : "",
       contact.notes && `Notas: ${contact.notes}`,
     ].filter(Boolean).join("\n"),
     metadata: { href: "/network", contactId: contact.id, kind: "Contato" },
   }));
+
+  // Quem foi encontrado num contexto e ainda não virou contato só existe em
+  // context_participants — "Quem conhece ministros?" mora no role/notes dessas
+  // pessoas, e o documento do contexto não as nomeava.
+  const participantesPorContexto = new Map<string, string[]>();
+  for (const participante of participantes) {
+    const lista = participantesPorContexto.get(participante.contextId) ?? [];
+    lista.push([participante.name, participante.role, participante.company, participante.notes].filter(Boolean).join(", "));
+    participantesPorContexto.set(participante.contextId, lista);
+  }
 
   const contextSources: MemorySource[] = privateContexts.map(context => ({
     sourceType: "context",
@@ -101,25 +141,91 @@ async function collectOwnerSources(ownerId: string): Promise<MemorySource[]> {
       context.description && `Descrição: ${context.description}`,
       context.eventDate && `Data: ${context.eventDate}`,
       [context.city, context.country].filter(Boolean).join(" · "),
+      participantesPorContexto.has(context.id) ? `Participantes: ${participantesPorContexto.get(context.id)!.join("; ")}` : "",
       context.notes && `Notas: ${context.notes}`,
     ].filter(Boolean).join("\n"),
     metadata: { href: "/contexts", contextId: context.id, kind: "Contexto" },
   }));
 
+  // O título da reunião mora na tabela meetings; sem ele o documento era um
+  // texto anônimo ("Transcrição de reunião") difícil de casar com a pergunta.
+  const tituloDaReuniao = new Map(reunioes.map(reuniao => [reuniao.id, reuniao.title]));
+
   const transcriptSources: MemorySource[] = transcripts.map(transcript => ({
     sourceType: "meeting",
     sourceId: transcript.meetingId,
-    title: "Transcrição de reunião",
-    content: transcript.transcript,
+    title: tituloDaReuniao.get(transcript.meetingId) ?? "Transcrição de reunião",
+    content: [
+      tituloDaReuniao.has(transcript.meetingId) ? `Reunião: ${tituloDaReuniao.get(transcript.meetingId)}` : "",
+      transcript.transcript,
+    ].filter(Boolean).join("\n"),
     metadata: { href: "/meetings", meetingId: transcript.meetingId, kind: "Reunião", language: transcript.language },
   }));
 
   return [...contactSources, ...contextSources, ...transcriptSources].filter(source => source.content.trim().length > 2);
 }
 
-export async function indexOwnerMemory(ownerId: string) {
+export type ResultadoDaIndexacao = {
+  indexed: number; skipped: number; removed: number;
+  pending: number; truncated: number; total: number;
+};
+
+/**
+ * Assinatura barata da base: contagem e o updatedAt mais novo de cada tabela-
+ * fonte, coberto por índice. Se nada mudou desde a última rodada completa, a
+ * busca nem carrega as fontes — antes, TODA pergunta arrastava as 5 tabelas
+ * inteiras (transcrições completas incluídas) e fazia sha256 do corpus todo só
+ * para descobrir que não havia nada a fazer. Guardada em memória: um restart
+ * apenas custa uma rodada completa a mais.
+ */
+const assinaturaIndexada = new Map<string, { assinatura: string; truncated: number }>();
+
+async function assinaturaDaBase(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, ownerId: string) {
+  const resumo = (tabela: typeof privateContacts | typeof contexts | typeof meetingTranscripts
+    | typeof contactAssets | typeof contactNeeds | typeof contextParticipants | typeof meetings) =>
+    db.select({ n: sql<number>`count(*)`, m: sql<number>`coalesce(max(${tabela.updatedAt}), 0)` })
+      .from(tabela).where(eq(tabela.ownerId, ownerId));
+  // As SETE tabelas que alimentam os documentos, não só as cinco principais:
+  // participante novo e reunião renomeada mudam o conteúdo e precisam mudar a
+  // assinatura, senão o índice congela até outra coisa qualquer ser editada.
+  const linhas = await Promise.all([
+    resumo(privateContacts), resumo(contexts), resumo(meetingTranscripts),
+    resumo(contactAssets), resumo(contactNeeds),
+    resumo(contextParticipants), resumo(meetings),
+  ]);
+  return linhas.map(([linha]) => (linha ? `${linha.n}:${linha.m}` : "0:0")).join("|");
+}
+
+/** Só para os testes: o cache de assinatura é estado de módulo. */
+export function esquecerAssinaturasDeIndexacao() {
+  assinaturaIndexada.clear();
+}
+
+// Uma rodada por dona de cada vez: buscas simultâneas compartilham a mesma
+// indexação em vez de disparar rodadas concorrentes — que, com a chave
+// composta (owner, source) sem índice único no banco, duplicavam documentos.
+const indexacoesEmVoo = new Map<string, Promise<ResultadoDaIndexacao>>();
+
+export async function indexOwnerMemory(ownerId: string): Promise<ResultadoDaIndexacao> {
+  const emVoo = indexacoesEmVoo.get(ownerId);
+  if (emVoo) return emVoo;
+  const rodada = executarIndexacao(ownerId).finally(() => indexacoesEmVoo.delete(ownerId));
+  indexacoesEmVoo.set(ownerId, rodada);
+  return rodada;
+}
+
+async function executarIndexacao(ownerId: string): Promise<ResultadoDaIndexacao> {
   const db = await getDb();
   if (!db) throw new Error("Banco de dados indisponível.");
+
+  const assinatura = await assinaturaDaBase(db, ownerId);
+  const lembrada = assinaturaIndexada.get(ownerId);
+  if (lembrada?.assinatura === assinatura) {
+    // O truncamento não deixa de existir porque nada mudou: quem está acima do
+    // teto continua acima dele, e a busca precisa continuar contando isso.
+    return { indexed: 0, skipped: 0, removed: 0, pending: 0, truncated: lembrada.truncated, total: 0 };
+  }
+
   // O instante do retrato: buscas concorrentes também reindexam, e um documento
   // criado por outra rodada DEPOIS deste retrato não pode ser tratado como
   // órfão — a fonte dele só não aparece aqui porque a lista é mais antiga.
@@ -133,7 +239,16 @@ export async function indexOwnerMemory(ownerId: string) {
     console.warn(`[Memória] ${ownerId} tem ${allSources.length} fontes; ${truncated} acima do teto de ${MAX_DOCUMENTS_PER_OWNER} ficaram fora do índice.`);
   }
   const sources = allSources.slice(0, MAX_DOCUMENTS_PER_OWNER);
-  const existing = await db.select().from(memoryDocuments).where(eq(memoryDocuments.ownerId, ownerId));
+  // Projeção enxuta: a comparação incremental usa só chave, hash, vetor e
+  // createdAt — carregar content/metadata daqui dobrava a leitura do corpus.
+  const existing = await db.select({
+    id: memoryDocuments.id,
+    sourceType: memoryDocuments.sourceType,
+    sourceId: memoryDocuments.sourceId,
+    contentHash: memoryDocuments.contentHash,
+    embedding: memoryDocuments.embedding,
+    createdAt: memoryDocuments.createdAt,
+  }).from(memoryDocuments).where(eq(memoryDocuments.ownerId, ownerId));
   const byCompositeKey = new Map(existing.map(document => [`${document.sourceType}:${document.sourceId}`, document]));
 
   // Fonte apagada leva o documento junto: sem isto, notas de um contato
@@ -223,12 +338,18 @@ export async function indexOwnerMemory(ownerId: string) {
       indexed += 1;
     }
   }
-  return { indexed, skipped, removed: orphans.length, pending, truncated, total: sources.length };
+  const resultado = { indexed, skipped, removed: orphans.length, pending, truncated, total: sources.length };
+  // A assinatura só é lembrada quando a rodada terminou INTEIRA: com pendência,
+  // a próxima busca precisa voltar aqui para continuar de onde parou.
+  if (pending === 0) assinaturaIndexada.set(ownerId, { assinatura, truncated });
+  return resultado;
 }
 
-export async function semanticSearch(ownerId: string, query: string, limit = 6): Promise<SearchHit[]> {
+export type ResultadoDaBusca = { hits: SearchHit[]; pending: number; truncated: number };
+
+export async function semanticSearch(ownerId: string, query: string, limit = 6): Promise<ResultadoDaBusca> {
   const cleanQuery = query.trim().slice(0, MAX_QUERY_LENGTH);
-  if (!cleanQuery) return [];
+  if (!cleanQuery) return { hits: [], pending: 0, truncated: 0 };
   const db = await getDb();
   if (!db) throw new Error("Banco de dados indisponível.");
   // O embedding da pergunta vem ANTES da reindexação: se o serviço de
@@ -239,14 +360,21 @@ export async function semanticSearch(ownerId: string, query: string, limit = 6):
   // A reindexação é incremental: documentos sem alteração reutilizam o vetor já salvo.
   // Assim, uma busca sempre enxerga contatos, contextos e reuniões adicionados recentemente.
   // E é melhor-esforço: se o índice não puder ser atualizado agora, a busca
-  // segue com o que já está indexado em vez de morrer junto.
+  // segue com o que já está indexado em vez de morrer junto. O que ficou por
+  // indexar não pode ser segredo: pending/truncated seguem com os resultados,
+  // senão a primeira pergunta numa base grande respondia "não encontrei" sobre
+  // um índice pela metade, sem nenhuma pista.
+  let pending = 0;
+  let truncated = 0;
   try {
-    await indexOwnerMemory(ownerId);
+    const indexacao = await indexOwnerMemory(ownerId);
+    pending = indexacao.pending;
+    truncated = indexacao.truncated;
   } catch (error) {
     console.warn(`[Memória] reindexação adiada (${error instanceof Error ? error.message : error}); buscando no índice existente.`);
   }
   const documents = await db.select().from(memoryDocuments).where(eq(memoryDocuments.ownerId, ownerId));
-  return documents
+  const hits = documents
     .filter(document => Array.isArray(document.embedding) && document.embedding.length === queryEmbedding.length)
     .map(document => ({
       id: document.id,
@@ -259,6 +387,7 @@ export async function semanticSearch(ownerId: string, query: string, limit = 6):
     }))
     .sort((left, right) => right.score - left.score)
     .slice(0, Math.max(1, Math.min(limit, 12)));
+  return { hits, pending, truncated };
 }
 
 // Sem afirmar a causa: pode ser pico ou cota, mas também configuração — e
@@ -298,7 +427,7 @@ ${context}` },
 }
 
 export async function searchAndAnswer(ownerId: string, query: string) {
-  const hits = await semanticSearch(ownerId, query);
+  const { hits, pending, truncated } = await semanticSearch(ownerId, query);
   const answer = await answerFromMemory(query, hits);
-  return { answer, hits };
+  return { answer, hits, pending, truncated };
 }
