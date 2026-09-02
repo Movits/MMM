@@ -28,7 +28,6 @@ import {
 const SECURITY_CONFIG = {
   MAX_LOGIN_ATTEMPTS: 5,
   LOCKOUT_DURATION_MINUTES: 30,
-  SESSION_EXPIRY_HOURS: 24,
   ENCRYPTION_ALGORITHM: "aes-256-gcm",
   HASH_ALGORITHM: "sha256",
   SALT_ROUNDS: 12,
@@ -298,31 +297,6 @@ export async function getFromVault(userId: number): Promise<Record<string, unkno
 // ============================================================
 // GERENCIAMENTO DE SESSÕES SEGURAS
 // ============================================================
-export async function createSecureSession(
-  userId: number,
-  ipAddress: string,
-  userAgent: string
-): Promise<string> {
-  const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
-
-  const sessionToken = crypto.randomBytes(64).toString("hex");
-  const expiresAt = new Date(Date.now() + SECURITY_CONFIG.SESSION_EXPIRY_HOURS * 60 * 60 * 1000);
-  const deviceFingerprint = hashData(`${userAgent}${ipAddress}`);
-
-  await db.insert(sessions).values({
-    sessionToken,
-    userId,
-    ipAddress,
-    userAgent,
-    deviceFingerprint,
-    isActive: true,
-    expiresAt,
-  });
-
-  return sessionToken;
-}
-
 export async function validateSession(sessionToken: string): Promise<number | null> {
   const db = await getDb();
   if (!db) return null;

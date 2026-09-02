@@ -100,6 +100,11 @@ jobs:
             exit 1
           }
 
+      # Uma chave presente num idioma e ausente noutro vira texto de fallback
+      # silencioso em produção. O script sai com 1 e lista o que falta ou sobra.
+      - name: Os 10 idiomas têm as mesmas chaves
+        run: node scripts/conferir-locales.mjs
+
       - name: Tipos
         run: pnpm check
 
