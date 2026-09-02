@@ -4,6 +4,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { goldProcedure } from "./_procedures";
 import { exigirDb } from "../db";
+import { ehErroDeBancoIndisponivel } from "../banco-indisponivel";
 import { users } from "../../drizzle/schema";
 
 // ============================================================
@@ -93,12 +94,16 @@ export const connectionsRouter = router({
 
   getGroups: goldProcedure.query(async ({ ctx }) => {
     // Retornar grupos estratégicos (tabela strategic_groups se existir).
-    // Banco fora do ar sobe como BancoIndisponivel, por isso exigirDb fica FORA
-    // do try: o catch só cobre a consulta, para a tabela ausente não derrubar.
+    // O catch existe para a TABELA AUSENTE não derrubar a tela; a queda real do
+    // banco chega pela mesma consulta, como erro de conexão do driver, e essa
+    // não pode virar "nenhum grupo": sobe para o middleware traduzir.
     const db = await exigirDb();
     try {
       const { strategicGroups } = await import("../../drizzle/schema");
-      return db.select().from(strategicGroups).limit(50);
-    } catch { return []; }
+      return await db.select().from(strategicGroups).limit(50);
+    } catch (erro) {
+      if (ehErroDeBancoIndisponivel(erro)) throw erro;
+      return [];
+    }
   }),
 });

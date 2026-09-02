@@ -19,7 +19,7 @@ import type { Express } from "express";
 import { eq } from "drizzle-orm";
 import { sdk } from "./sdk";
 import { exigirDb } from "../db";
-import { BancoIndisponivel, MENSAGEM_BANCO_INDISPONIVEL } from "../banco-indisponivel";
+import { descreverErroDeBanco, ehErroDeBancoIndisponivel, MENSAGEM_BANCO_INDISPONIVEL } from "../banco-indisponivel";
 import { dealRooms } from "../../drizzle/schema";
 import { storageGetSignedUrl } from "../storage";
 
@@ -107,9 +107,10 @@ export function registerStorageProxy(app: Express) {
       usuaria = { id: autenticada.id, openId: autenticada.openId, role: autenticada.role };
     } catch (err) {
       // Banco fora do ar não é "sem sessão": 401 mandaria a usuária logada para
-      // o login. Fora do tRPC não há middleware que traduza, então é aqui.
-      if (err instanceof BancoIndisponivel) {
-        console.error("[StorageProxy] banco indisponível ao ler a sessão");
+      // o login. Fora do tRPC não há middleware que traduza, então é aqui. Em
+      // produção a queda chega como erro do driver, não como BancoIndisponivel.
+      if (ehErroDeBancoIndisponivel(err)) {
+        console.error(`[StorageProxy] banco indisponível ao ler a sessão: ${descreverErroDeBanco(err)}`);
         res.status(503).send(MENSAGEM_BANCO_INDISPONIVEL);
         return;
       }
@@ -124,8 +125,8 @@ export function registerStorageProxy(app: Express) {
         return;
       }
     } catch (err) {
-      if (err instanceof BancoIndisponivel) {
-        console.error("[StorageProxy] banco indisponível ao verificar a posse");
+      if (ehErroDeBancoIndisponivel(err)) {
+        console.error(`[StorageProxy] banco indisponível ao verificar a posse: ${descreverErroDeBanco(err)}`);
         res.status(503).send(MENSAGEM_BANCO_INDISPONIVEL);
         return;
       }

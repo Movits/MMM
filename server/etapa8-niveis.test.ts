@@ -26,7 +26,10 @@ const getMatchesForUser = vi.fn(async () => [
 ]);
 // Um mock só: os routers importam "../db", que resolve para o mesmo módulo
 // que este arquivo enxerga como "./db".
-vi.mock("./db", () => ({
+vi.mock("./db", async () => ({
+  // Sem banco: getDb devolve null e exigirDb lança, como o db.ts real.
+  getDb: async () => null,
+  exigirDb: async () => { throw new (await import("./banco-indisponivel")).BancoIndisponivel(); },
   createPrivateContact: (...args: unknown[]) => createPrivateContact(...(args as [])),
   updatePrivateContact: (...args: unknown[]) => updatePrivateContact(...(args as [])),
   deletePrivateContact: async () => true,

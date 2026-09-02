@@ -6,6 +6,11 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "../_core/cookies";
 import { publicProcedure, router } from "../_core/trpc";
 import { exigirDb } from "../db";
+import {
+  ehErroDeBancoIndisponivel,
+  ehErroDoDriverDeBanco,
+  MENSAGEM_BANCO_INDISPONIVEL,
+} from "../banco-indisponivel";
 import { createAuditLog, invalidateSession } from "../security";
 import { users, passwordResetTokens, passwordResetRequests } from "../../drizzle/schema";
 import { registerUser, loginUser, toPublicUser } from "../auth";
@@ -21,8 +26,25 @@ import {
 // ============================================================
 // AUTENTICAÇÃO
 // ============================================================
+// login e register embrulham o que loginUser/registerUser lançam em
+// UNAUTHORIZED/BAD_REQUEST com a mensagem original, porque essas funções falam
+// com a usuária por Error("E-mail ou senha incorretos."). Erro do banco não é
+// mensagem para a usuária: relançado cru, o middleware de _core/trpc.ts traduz
+// a queda em "banco indisponível" e o errorFormatter mascara o SQL dos demais.
+const ehErroDeBanco = (err: unknown) => ehErroDeBancoIndisponivel(err) || ehErroDoDriverDeBanco(err);
+
 export const authRouter = router({
-  me: publicProcedure.query(opts => toPublicUser(opts.ctx.user)),
+  // Público de propósito: sem sessão, devolve null e a tela manda para o login.
+  // Mas "sem sessão porque o banco caiu" (ctx.bancoIndisponivel, ver
+  // _core/context.ts) não pode virar null: null é exatamente o que o client
+  // lê como "não autenticada", e a usuária logada seria expulsa para o login
+  // enquanto o banco estivesse fora do ar.
+  me: publicProcedure.query(({ ctx }) => {
+    if (!ctx.user && ctx.bancoIndisponivel) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: MENSAGEM_BANCO_INDISPONIVEL });
+    }
+    return toPublicUser(ctx.user);
+  }),
 
   register: publicProcedure
     .input(z.object({
@@ -35,6 +57,7 @@ export const authRouter = router({
         const { userId } = await registerUser(input);
         return { success: true, userId };
       } catch (err: any) {
+        if (ehErroDeBanco(err)) throw err;
         throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
       }
     }),
@@ -54,6 +77,7 @@ export const authRouter = router({
         await createAuditLog({ userId: user.id, action: "LOGIN", resource: "auth", ipAddress: ip, userAgent: ua, status: "success", riskLevel: "low" });
         return { success: true, user: { id: user.id, name: user.name, email: user.email, role: user.role, onboardingCompleted: user.onboardingCompleted } };
       } catch (err: any) {
+        if (ehErroDeBanco(err)) throw err;
         throw new TRPCError({ code: "UNAUTHORIZED", message: err.message });
       }
     }),

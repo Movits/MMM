@@ -1,6 +1,6 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
-import { BancoIndisponivel } from "../banco-indisponivel";
+import { descreverErroDeBanco, ehErroDeBancoIndisponivel } from "../banco-indisponivel";
 import { sdk } from "./sdk";
 
 export type TrpcContext = {
@@ -10,7 +10,9 @@ export type TrpcContext = {
   /**
    * A sessão não pôde ser lida porque o banco caiu, e não porque não há
    * sessão. Quem consome é o protectedProcedure (server/_core/trpc.ts), que
-   * então responde "banco indisponível" em vez de "não autenticada".
+   * então responde "banco indisponível" em vez de "não autenticada", e o
+   * auth.me (routers/auth.ts), que lança em vez de devolver null — null
+   * mandaria a usuária logada para o login.
    */
   bancoIndisponivel?: boolean;
 };
@@ -26,12 +28,14 @@ export async function createContext(
   } catch (error) {
     // Authentication is optional for public procedures.
     user = null;
-    // Banco fora do ar não é "sem sessão". Não se relança daqui de propósito:
-    // os procedimentos públicos (estatísticas da página inicial, login)
-    // precisam continuar respondendo; o contexto só anota o motivo.
-    if (error instanceof BancoIndisponivel) {
+    // Banco fora do ar não é "sem sessão". Em produção ele chega como erro do
+    // driver na primeira query (getUserByOpenId), não como BancoIndisponivel;
+    // ehErroDeBancoIndisponivel reconhece os dois. Não se relança daqui de
+    // propósito: os procedimentos públicos (estatísticas da página inicial,
+    // login) precisam continuar respondendo; o contexto só anota o motivo.
+    if (ehErroDeBancoIndisponivel(error)) {
       bancoIndisponivel = true;
-      console.error("[Auth] Banco de dados indisponível ao ler a sessão.");
+      console.error(`[Auth] Banco de dados indisponível ao ler a sessão: ${descreverErroDeBanco(error)}`);
     }
   }
 

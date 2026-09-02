@@ -26,8 +26,10 @@ vi.mock("./_core/llm", () => ({ invokeLLM: (...args: unknown[]) => invokeLLM(...
 const saveEnrichmentMessage = vi.fn(async () => "msg-1");
 const saveEnrichmentSuggestions = vi.fn(async (itens: unknown[]) => itens.map((_, i) => `sug-${i}`));
 
-vi.mock("./db", () => ({
+vi.mock("./db", async () => ({
   getDb: vi.fn(async () => null),
+  // Derivado do getDb acima, como no db.ts real: sem banco, lança.
+  exigirDb: async () => { throw new (await import("./banco-indisponivel")).BancoIndisponivel(); },
   getEnrichmentSessionById: vi.fn(async () => ({
     id: "sessao-1", contactId: 42, status: "active", questionsAnswered: 2, summary: null,
   })),

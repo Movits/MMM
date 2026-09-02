@@ -24,12 +24,18 @@ import { BancoIndisponivel } from "./banco-indisponivel";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+// Devolve null SÓ quando não há DATABASE_URL. drizzle(url) cria um pool do
+// mysql2 sem abrir conexão nenhuma: com a variável definida, isto nunca falha,
+// e a queda real do banco aparece na PRIMEIRA QUERY, como erro do driver
+// (ECONNREFUSED, ETIMEDOUT, PROTOCOL_CONNECTION_LOST...) dentro de um
+// DrizzleQueryError. Quem reconhece esse caso é ehErroDeBancoIndisponivel
+// (server/banco-indisponivel.ts), não este null.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
       _db = drizzle(process.env.DATABASE_URL);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.warn("[Database] Failed to create the pool:", error);
       _db = null;
     }
   }
@@ -42,10 +48,14 @@ export async function getDb() {
  * []` (ou null, ou false), e uma queda do banco aparecia na tela como lista
  * vazia, perfil inexistente, contato apagado.
  *
+ * Só cobre a conexão NÃO CONFIGURADA (dev e teste sem DATABASE_URL). Em
+ * produção a queda chega como erro do driver na query seguinte, e é o
+ * middleware de server/_core/trpc.ts, via ehErroDeBancoIndisponivel, que
+ * traduz os dois casos para a usuária com a mesma frase.
+ *
  * getDb() continua devolvendo null para quem precisa decidir sozinho o que
  * fazer sem banco. Hoje são só stats.platform e system.health, que degradam
- * de propósito para não derrubar a página inicial; o middleware de
- * server/_core/trpc.ts traduz a exceção para a usuária.
+ * de propósito para não derrubar a página inicial.
  */
 export async function exigirDb() {
   const db = await getDb();
