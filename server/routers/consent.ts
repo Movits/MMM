@@ -11,6 +11,8 @@ export const DOCUMENT_TYPES = [
   "acordo_intermediacao",
   "contrato_comissao",
   "termo_gravacao",
+  // Etapa 10: autorização da dona para a leitura Ouro da sua base particular.
+  "termo_acesso_ouro",
 ] as const;
 
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];

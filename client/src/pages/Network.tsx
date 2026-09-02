@@ -50,7 +50,7 @@ type Contact = {
 // nada vira público sem a dona pedir, e dá para mudar a qualquer momento.
 const NIVEIS_DE_VISIBILIDADE = [
   { valor: "privado" as const, rotulo: "Privado", descricao: "Só você vê. O padrão de todo contato." },
-  { valor: "ouro" as const, rotulo: "Autorizadas (Ouro)", descricao: "Reservado para Usuárias Ouro autorizadas — as regras de acesso serão ativadas com a etapa 10." },
+  { valor: "ouro" as const, rotulo: "Autorizadas (Ouro)", descricao: "Usuárias Ouro veem nome, empresa e cargo, segmento, local e o que possui/procura no acervo Ouro — e o SEU nome aparece como quem compartilhou. Nunca telefone, e-mail, redes ou notas. Volte a privado quando quiser: o efeito é imediato." },
   { valor: "publico" as const, rotulo: "Público no MMM", descricao: "A oportunidade (o que possui/procura, cidade e país) entra na vitrine do ecossistema. Os dados pessoais nunca aparecem." },
 ];
 
@@ -114,6 +114,14 @@ function ContactCard({ contact, onView, onEdit, onDelete }: {
                 <span className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs animate-pulse">
                   <Sparkles size={9} /> IA
                 </span>
+              )}
+              {/* Etapa 10: o nível escolhido fica visível na lista — a dona
+                  enxerga de relance o que está compartilhado com quem. */}
+              {contact.nivelVisibilidade === "ouro" && (
+                <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-300/40 text-amber-300 text-xs">Ouro</span>
+              )}
+              {contact.nivelVisibilidade === "publico" && (
+                <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-sky-400/10 border border-sky-300/40 text-sky-300 text-xs">Público</span>
               )}
             </div>
             <button type="button"
@@ -433,6 +441,12 @@ function ContactDetail({ contact, onEdit, onClose }: {
                 <MapPin size={11} />{[contact.city, contact.state, contact.country].filter(Boolean).join(", ")}
               </p>
             )}
+            {/* Etapa 10: o nível também no detalhe — a lista e o formulário já mostram. */}
+            <p className="text-xs mt-1.5">
+              {contact.nivelVisibilidade === "ouro" && <span className="px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-300/40 text-amber-300">Compartilhado com Usuárias Ouro</span>}
+              {contact.nivelVisibilidade === "publico" && <span className="px-2 py-0.5 rounded-full bg-sky-400/10 border border-sky-300/40 text-sky-300">Público no MMM (só a oportunidade)</span>}
+              {(!contact.nivelVisibilidade || contact.nivelVisibilidade === "privado") && <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/15 text-white/45">Privado — só você vê</span>}
+            </p>
             {contact.profileTags && contact.profileTags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {contact.profileTags.map(tag => (

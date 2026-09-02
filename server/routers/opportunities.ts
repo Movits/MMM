@@ -217,8 +217,11 @@ Retorne um JSON estruturado com os campos: complianceLevel, explanation, riskAna
       return { success: true };
     }),
 
-  // Listar interessados (apenas dono da oportunidade ou Ouro)
-  getInterests: goldProcedure
+  // Listar interessados (apenas dona da oportunidade ou Ouro). Etapa 10: a
+  // procedure era goldProcedure, o que tornava a guarda interna código morto
+  // E trancava a própria criadora comum para fora da sua oportunidade — com
+  // protectedProcedure a guarda "dona OU Ouro" passa a ser quem decide.
+  getInterests: protectedProcedure
     .input(z.object({ opportunityId: z.number().int() }))
     .query(async ({ ctx, input }) => {
       const opp = await getOpportunityById(input.opportunityId);

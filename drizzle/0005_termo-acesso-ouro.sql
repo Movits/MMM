@@ -1,0 +1,1 @@
+ALTER TABLE `document_versions` MODIFY COLUMN `type` enum('termo_smart_match','acordo_intermediacao','contrato_comissao','termo_gravacao','termo_acesso_ouro') NOT NULL;
