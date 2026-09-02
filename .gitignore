@@ -45,6 +45,10 @@ dumps/
 
 # Configuração pessoal do Claude Code
 .claude/settings.local.json
+.claude/carimbo.local.json
+.claude/launch.json
+.claude/worktrees/
+CLAUDE.local.md
 
 # Dumps de banco — o dump do MMM contém dados pessoais reais
 *.sql
