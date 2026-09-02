@@ -3,7 +3,7 @@ import { z } from "zod";
 import { eq, and, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { goldProcedure } from "./_procedures";
-import { getDb } from "../db";
+import { exigirDb } from "../db";
 import { users } from "../../drizzle/schema";
 
 // ============================================================
@@ -42,8 +42,7 @@ export const connectionsRouter = router({
   getMessages: goldProcedure
     .input(z.object({ recipientId: z.number().int() }))
     .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) return [];
+      const db = await exigirDb();
       const { directMessages } = await import("../../drizzle/schema");
       const { or } = await import("drizzle-orm");
       const rows = await db.select().from(directMessages)
@@ -65,8 +64,7 @@ export const connectionsRouter = router({
       content: z.string().min(1).max(2000),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
       const { directMessages } = await import("../../drizzle/schema");
       await db.insert(directMessages).values({
         senderId: ctx.user.id,
@@ -77,8 +75,7 @@ export const connectionsRouter = router({
     }),
 
   getConversations: goldProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
+    const db = await exigirDb();
     const { directMessages } = await import("../../drizzle/schema");
     const { or, max, count } = await import("drizzle-orm");
     // Buscar todas as pessoas com quem o usuário trocou mensagens
@@ -95,10 +92,11 @@ export const connectionsRouter = router({
   }),
 
   getGroups: goldProcedure.query(async ({ ctx }) => {
-    // Retornar grupos estratégicos (tabela strategic_groups se existir)
+    // Retornar grupos estratégicos (tabela strategic_groups se existir).
+    // Banco fora do ar sobe como BancoIndisponivel, por isso exigirDb fica FORA
+    // do try: o catch só cobre a consulta, para a tabela ausente não derrubar.
+    const db = await exigirDb();
     try {
-      const db = await getDb();
-      if (!db) return [];
       const { strategicGroups } = await import("../../drizzle/schema");
       return db.select().from(strategicGroups).limit(50);
     } catch { return []; }

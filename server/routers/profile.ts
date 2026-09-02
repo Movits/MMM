@@ -3,7 +3,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { isValidCnpj, normalizeCnpj } from "../../shared/business-registration";
-import { getDb, getUserProfile, upsertUserProfile } from "../db";
+import { exigirDb, getUserProfile, upsertUserProfile } from "../db";
 import { users, userProfiles } from "../../drizzle/schema";
 import { toPublicUser } from "../auth";
 
@@ -67,8 +67,8 @@ export const profileRouter = router({
         : { ...updateData, companyCnpj: updateData.companyCnpj ? normalizeCnpj(updateData.companyCnpj) : undefined };
       await upsertUserProfile(ctx.user.id, businessData);
       // Atualizar company/position na tabela users também
-      const db = await getDb();
-      if (db && (input.company !== undefined || input.position !== undefined)) {
+      const db = await exigirDb();
+      if (input.company !== undefined || input.position !== undefined) {
         const updateData: any = {};
         if (input.company !== undefined) updateData.company = input.company;
         if (input.position !== undefined) updateData.position = input.position;
@@ -130,35 +130,33 @@ export const profileRouter = router({
       }
       const { company, position, jobTitle, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed, personType, companySize, companyCnpj, ...profileData } = input;
       await upsertUserProfile(ctx.user.id, profileData);
-      const db = await getDb();
-      if (db) {
-        await db.update(users).set({
-          onboardingCompleted: true,
-          company: company,
-          position: position,
-          country: input.country,
-        }).where(eq(users.id, ctx.user.id));
-        // Salvar campos v2 no user_profiles
-        const profileUpdates: Record<string, unknown> = {};
-        if (jobTitle !== undefined) profileUpdates.jobTitle = jobTitle;
-        if (activityArea !== undefined) profileUpdates.activityArea = activityArea;
-        if (currentResources !== undefined) profileUpdates.currentResources = currentResources;
-        if (personType !== undefined) profileUpdates.personType = personType;
-        if (personType === "individual") {
-          profileUpdates.companySize = null;
-          profileUpdates.companyCnpj = null;
-        } else {
-          if (companySize !== undefined) profileUpdates.companySize = companySize;
-          if (companyCnpj !== undefined) profileUpdates.companyCnpj = companyCnpj ? normalizeCnpj(companyCnpj) : null;
-        }
-        if (institutionalNetwork !== undefined) profileUpdates.institutionalNetwork = institutionalNetwork;
-        // Colunas json — o Drizzle serializa; passar já stringificado gravaria JSON duplo
-        if (interestSectors !== undefined) profileUpdates.interestSectors = interestSectors;
-        if (whatIHave !== undefined) profileUpdates.whatIHave = whatIHave;
-        if (whatINeed !== undefined) profileUpdates.whatINeed = whatINeed;
-        if (Object.keys(profileUpdates).length > 0) {
-          await db.update(userProfiles).set(profileUpdates as any).where(eq(userProfiles.userId, ctx.user.id));
-        }
+      const db = await exigirDb();
+      await db.update(users).set({
+        onboardingCompleted: true,
+        company: company,
+        position: position,
+        country: input.country,
+      }).where(eq(users.id, ctx.user.id));
+      // Salvar campos v2 no user_profiles
+      const profileUpdates: Record<string, unknown> = {};
+      if (jobTitle !== undefined) profileUpdates.jobTitle = jobTitle;
+      if (activityArea !== undefined) profileUpdates.activityArea = activityArea;
+      if (currentResources !== undefined) profileUpdates.currentResources = currentResources;
+      if (personType !== undefined) profileUpdates.personType = personType;
+      if (personType === "individual") {
+        profileUpdates.companySize = null;
+        profileUpdates.companyCnpj = null;
+      } else {
+        if (companySize !== undefined) profileUpdates.companySize = companySize;
+        if (companyCnpj !== undefined) profileUpdates.companyCnpj = companyCnpj ? normalizeCnpj(companyCnpj) : null;
+      }
+      if (institutionalNetwork !== undefined) profileUpdates.institutionalNetwork = institutionalNetwork;
+      // Colunas json — o Drizzle serializa; passar já stringificado gravaria JSON duplo
+      if (interestSectors !== undefined) profileUpdates.interestSectors = interestSectors;
+      if (whatIHave !== undefined) profileUpdates.whatIHave = whatIHave;
+      if (whatINeed !== undefined) profileUpdates.whatINeed = whatINeed;
+      if (Object.keys(profileUpdates).length > 0) {
+        await db.update(userProfiles).set(profileUpdates as any).where(eq(userProfiles.userId, ctx.user.id));
       }
       // Gerar matches automaticamente após onboarding
       try {

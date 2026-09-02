@@ -3,7 +3,7 @@ import { z } from "zod";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { router } from "../_core/trpc";
 import { presidentProcedure } from "./_procedures";
-import { getDb, grantGoldAccess, revokeGoldAccess, createNotification, listUsers } from "../db";
+import { exigirDb, grantGoldAccess, revokeGoldAccess, createNotification, listUsers } from "../db";
 import { createAuditLog } from "../security";
 import { users, goldAccessGrants, opportunities } from "../../drizzle/schema";
 import { notifyHighCompatibilityForOpportunity } from "./matching";
@@ -19,8 +19,8 @@ export const presidentRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       // Buscar nome da usuária para personalizar a mensagem
-      const db = await getDb();
-      const [targetUser] = db ? await db.select({ name: users.name }).from(users).where(eq(users.id, input.userId)).limit(1) : [];
+      const db = await exigirDb();
+      const [targetUser] = await db.select({ name: users.name }).from(users).where(eq(users.id, input.userId)).limit(1);
       const userName = targetUser?.name || "";
       const firstName = userName.split(" ")[0] || "";
       await grantGoldAccess(input.userId, ctx.user.id, input.reason || "Promovida pela Presidente do MMM");
@@ -38,14 +38,12 @@ export const presidentRouter = router({
       // Enviar mensagem direta na caixa de mensagens da usuária promovida
       try {
         const { directMessages } = await import("../../drizzle/schema");
-        if (db) {
-          const goldMsg = `⭐ Parabéns${firstName ? ", " + firstName : ""}! Você acaba de ser promovida ao nível OURO no MMM!\n\nUma membra Ouro do MMM reconheceu o seu potencial e concedeu a você o Selo de Exclusividade Institucional Ouro. A partir de agora você tem acesso completo a todas as funcionalidades da plataforma: Deal Rooms, Conexões Estratégicas, Painel Ouro e muito mais.\n\nMotivo da promoção: ${input.reason || "Promovida pela Presidente do MMM"}\n\nBem-vinda ao grupo mais seleto da plataforma! 🌟`;
-          await db.insert(directMessages).values({
-            senderId: ctx.user.id, // mensagem enviada pela presidente
-            recipientId: input.userId,
-            encryptedContent: goldMsg,
-          });
-        }
+        const goldMsg = `⭐ Parabéns${firstName ? ", " + firstName : ""}! Você acaba de ser promovida ao nível OURO no MMM!\n\nUma membra Ouro do MMM reconheceu o seu potencial e concedeu a você o Selo de Exclusividade Institucional Ouro. A partir de agora você tem acesso completo a todas as funcionalidades da plataforma: Deal Rooms, Conexões Estratégicas, Painel Ouro e muito mais.\n\nMotivo da promoção: ${input.reason || "Promovida pela Presidente do MMM"}\n\nBem-vinda ao grupo mais seleto da plataforma! 🌟`;
+        await db.insert(directMessages).values({
+          senderId: ctx.user.id, // mensagem enviada pela presidente
+          recipientId: input.userId,
+          encryptedContent: goldMsg,
+        });
       } catch (_) { /* não bloquear se mensagem falhar */ }
       return { success: true };
     }),
@@ -72,8 +70,7 @@ export const presidentRouter = router({
     }),
 
   getGoldGrants: presidentProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
+    const db = await exigirDb();
     return db.select({
       grant: goldAccessGrants,
       userName: users.name,
@@ -98,8 +95,7 @@ export const presidentRouter = router({
       offset: z.number().int().min(0).default(0),
     }))
     .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) return { users: [], total: 0 };
+      const db = await exigirDb();
       const conditions = [];
       if (input.role) conditions.push(eq(users.role, input.role));
       const query = db.select({
@@ -122,8 +118,7 @@ export const presidentRouter = router({
       note: z.string().max(1000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
       // Buscar oportunidade e nome da publicadora
       const [oppRow] = await db.select({
         opp: opportunities,
@@ -179,8 +174,7 @@ export const presidentRouter = router({
       infoNeeded: z.string().min(5).max(500), // ex: "detalhamento de custos"
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
       const [oppRow] = await db.select({
         opp: opportunities,
         publisherName: users.name,
@@ -207,8 +201,7 @@ export const presidentRouter = router({
 
   // Listar oportunidades pendentes de validação
   listPendingOpportunities: presidentProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
+    const db = await exigirDb();
     return db.select({
       opp: opportunities,
       publisherName: users.name,
@@ -229,8 +222,7 @@ export const presidentRouter = router({
       specialty: z.string().max(200).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
       // INSERT simples — permite múltiplos líderes (sem ON DUPLICATE KEY)
       await db.execute(
         sql`INSERT INTO national_leaders (userId, nominatedBy, region, specialty, isActive) VALUES (${input.userId}, ${ctx.user.id}, ${input.region}, ${input.specialty || ""}, 1)`
@@ -246,8 +238,7 @@ export const presidentRouter = router({
       reason: z.string().max(500).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
       await db.execute(
         sql`UPDATE national_leaders SET isActive=0, revokedAt=NOW(), revokedBy=${ctx.user.id}, revokeReason=${input.reason || ""} WHERE id=${input.leaderId}`
       );
@@ -262,8 +253,7 @@ export const presidentRouter = router({
       limit: z.number().int().min(1).max(50).default(20),
     }))
     .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) return [];
+      const db = await exigirDb();
       const [rows] = await db.execute(
         sql`SELECT o.id, o.title, o.type, o.status, o.complianceLevel, o.createdAt, o.country,
          u.name as publisherName, u.email as publisherEmail
@@ -278,8 +268,7 @@ export const presidentRouter = router({
 
   // Listar líderes nacionais (ativos)
   listLeaders: presidentProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
+    const db = await exigirDb();
     const [rows] = await db.execute(
       sql`SELECT nl.id, nl.userId, nl.region, nl.specialty, nl.isActive, nl.createdAt, u.name, u.email, u.country FROM national_leaders nl INNER JOIN users u ON u.id = nl.userId WHERE nl.isActive = 1 ORDER BY nl.createdAt DESC LIMIT 100`
     ) as unknown as [Record<string, unknown>[], unknown];
@@ -288,8 +277,7 @@ export const presidentRouter = router({
 
   // Estatísticas gerais de governança
   getGovernanceStats: presidentProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return null;
+    const db = await exigirDb();
     const [totalUsers] = await db.select({ count: sql<number>`COUNT(*)` }).from(users);
     const [bronzeCount] = await db.select({ count: sql<number>`COUNT(*)` }).from(users).where(eq(users.role, "bronze"));
     const [silverCount] = await db.select({ count: sql<number>`COUNT(*)` }).from(users).where(eq(users.role, "silver"));

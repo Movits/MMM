@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { exigirDb } from "../db";
 import { consents, documentVersions } from "../../drizzle/schema";
 import { getRequestIp } from "../password-reset-security";
 
@@ -19,24 +19,10 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
 const documentTypeInput = z.enum(DOCUMENT_TYPES);
 
-/**
- * Banco fora do ar. Existe como tipo próprio porque a diferença entre "não há
- * documento publicado" e "não consegui perguntar ao banco" decide se o
- * cruzamento libera ou barra — e as duas coisas eram `null` antes, o que fazia
- * a queda do banco liberar todo mundo.
- */
-export class BancoIndisponivel extends Error {
-  constructor() {
-    super("Banco de dados indisponível.");
-    this.name = "BancoIndisponivel";
-  }
-}
-
-async function exigirBanco() {
-  const db = await getDb();
-  if (!db) throw new BancoIndisponivel();
-  return db;
-}
+// A classe mora em ../banco-indisponivel (db.ts também precisa dela e importar
+// daqui viraria ciclo); o reexport mantém quem já importa deste módulo,
+// inclusive os testes. Quem lança é exigirDb(), de ../db.
+export { BancoIndisponivel } from "../banco-indisponivel";
 
 /**
  * Versão vigente de um documento, ou null se ainda não houver nenhuma
@@ -46,7 +32,7 @@ async function exigirBanco() {
  * distinguir as duas situações.
  */
 export async function getCurrentDocument(type: DocumentType) {
-  const db = await exigirBanco();
+  const db = await exigirDb();
   const [document] = await db
     .select()
     .from(documentVersions)
@@ -67,7 +53,7 @@ export async function getCurrentDocument(type: DocumentType) {
  * cruzamento não acontece: na dúvida, barra.
  */
 export async function hasValidConsent(userId: number, type: DocumentType) {
-  const db = await exigirBanco();
+  const db = await exigirDb();
 
   const [document] = await db
     .select({ id: documentVersions.id })
@@ -96,7 +82,7 @@ export async function hasValidConsent(userId: number, type: DocumentType) {
  */
 export async function usersComConsentimento(userIds: number[], type: DocumentType): Promise<Set<number>> {
   if (!userIds.length) return new Set();
-  const db = await exigirBanco();
+  const db = await exigirDb();
   const [document] = await db
     .select({ id: documentVersions.id })
     .from(documentVersions)
@@ -130,7 +116,7 @@ export const consentRouter = router({
         return { document: null, accepted: true, acceptedAt: null, pendingText: true, previousVersion: null };
       }
 
-      const db = await exigirBanco();
+      const db = await exigirDb();
       const [consent] = await db
         .select({ grantedAt: consents.grantedAt })
         .from(consents)
@@ -179,7 +165,7 @@ export const consentRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Não há versão vigente deste documento." });
       }
 
-      const db = await exigirBanco();
+      const db = await exigirDb();
 
       // Aceitar de novo o que já está aceito não pode criar uma segunda linha.
       // A verificação aqui poupa a ida ao banco no caso comum, mas quem GARANTE
@@ -212,7 +198,7 @@ export const consentRouter = router({
       const document = await getCurrentDocument(input.type);
       if (!document) return { success: true };
 
-      const db = await exigirBanco();
+      const db = await exigirDb();
       await db
         .update(consents)
         .set({ revokedAt: new Date() })
@@ -227,7 +213,7 @@ export const consentRouter = router({
 
   /** Histórico completo, inclusive o que foi revogado. */
   history: protectedProcedure.query(async ({ ctx }) => {
-    const db = await exigirBanco();
+    const db = await exigirDb();
     return db
       .select({
         id: consents.id,

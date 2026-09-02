@@ -8,7 +8,7 @@ import {
   meetingTranscripts,
   meetingTranscriptTranslations,
 } from "../drizzle/schema";
-import { getDb } from "./db";
+import { exigirDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 import { transcribeWithGemini } from "./gemini";
@@ -156,8 +156,7 @@ export async function translatePrivateMeetingTranscript(ownerId: string, meeting
   const normalizedLanguage = language === "pt" ? "pt-BR" : language;
   if (!(normalizedLanguage in MEETING_LANGUAGES)) throw new Error("Idioma de tradução não suportado.");
   const targetLanguage = MEETING_LANGUAGES[normalizedLanguage as keyof typeof MEETING_LANGUAGES];
-  const db = await getDb();
-  if (!db) throw new Error("Banco de dados indisponível.");
+  const db = await exigirDb();
   const [transcript] = await db.select().from(meetingTranscripts)
     .where(and(eq(meetingTranscripts.ownerId, ownerId), eq(meetingTranscripts.meetingId, meetingId))).limit(1);
   if (!transcript) throw new Error("Transcrição não encontrada.");
@@ -204,8 +203,7 @@ export async function processMeetingRecording(input: {
   if (input.durationSeconds < 1 || input.durationSeconds > MAX_MEETING_DURATION_SECONDS) {
     throw new Error("No modo atual, cada reunião pode ter no máximo 10 minutos.");
   }
-  const db = await getDb();
-  if (!db) throw new Error("Banco de dados indisponível.");
+  const db = await exigirDb();
   const [meeting] = await db.select().from(meetings).where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId))).limit(1);
   if (!meeting) throw new Error("Reunião não encontrada.");
   if (!meeting.consentGranted) throw new Error("O consentimento para gravação é obrigatório.");
@@ -283,14 +281,12 @@ export async function processMeetingRecording(input: {
 }
 
 export async function listPrivateMeetings(ownerId: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Banco de dados indisponível.");
+  const db = await exigirDb();
   return db.select().from(meetings).where(eq(meetings.ownerId, ownerId)).orderBy(desc(meetings.createdAt));
 }
 
 export async function getPrivateMeeting(ownerId: string, meetingId: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Banco de dados indisponível.");
+  const db = await exigirDb();
   const [meeting] = await db.select().from(meetings).where(and(eq(meetings.id, meetingId), eq(meetings.ownerId, ownerId))).limit(1);
   if (!meeting) return null;
   const [transcript] = await db.select().from(meetingTranscripts).where(and(eq(meetingTranscripts.meetingId, meetingId), eq(meetingTranscripts.ownerId, ownerId))).limit(1);
@@ -300,8 +296,7 @@ export async function getPrivateMeeting(ownerId: string, meetingId: string) {
 }
 
 export async function deletePrivateMeeting(ownerId: string, meetingId: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Banco de dados indisponível.");
+  const db = await exigirDb();
   const [meeting] = await db.select({ id: meetings.id }).from(meetings)
     .where(and(eq(meetings.id, meetingId), eq(meetings.ownerId, ownerId))).limit(1);
   if (!meeting) return false;

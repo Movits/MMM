@@ -10,8 +10,14 @@ import { users, opportunities, connections } from "../../drizzle/schema";
 export const statsRouter = router({
   platform: publicProcedure.query(async () => {
     const empty = { users: 0, opportunities: 0, connections: 0, countries: 0, bronze: 0, silver: 0, gold: 0 };
+    // Exceção deliberada ao exigirDb(): esta consulta alimenta a página inicial,
+    // pública. Banco fora do ar vira zeros com erro no log, em vez de derrubar a
+    // home para quem nem entrou. Todo o resto do servidor lança BancoIndisponivel.
     const db = await getDb();
-    if (!db) return empty;
+    if (!db) {
+      console.error("[Stats] Banco de dados indisponível; a página inicial mostra zeros.");
+      return empty;
+    }
 
     try {
       const count = async (query: Promise<Array<{ n: unknown }>>) =>

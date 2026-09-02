@@ -5,7 +5,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "../_core/cookies";
 import { publicProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { exigirDb } from "../db";
 import { createAuditLog, invalidateSession } from "../security";
 import { users, passwordResetTokens, passwordResetRequests } from "../../drizzle/schema";
 import { registerUser, loginUser, toPublicUser } from "../auth";
@@ -63,8 +63,7 @@ export const authRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
 
       const genericResponse = { success: true, message: PASSWORD_RESET_GENERIC_MESSAGE };
       const ipAddress = getRequestIp(ctx.req.headers["x-forwarded-for"], ctx.req.socket?.remoteAddress);
@@ -132,8 +131,7 @@ export const authRouter = router({
       newPassword: z.string().min(8),
     }))
     .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
       const tokenHash = hashPasswordResetToken(input.token);
       // Buscar token válido
       const [resetToken] = await db.select()

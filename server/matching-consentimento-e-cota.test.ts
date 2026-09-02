@@ -49,7 +49,7 @@ const fakeDb = {
   }),
   update: () => ({ set: () => ({ where: () => Promise.resolve() }) }),
 };
-vi.mock("./db", () => ({ getDb: async () => fakeDb as never }));
+vi.mock("./db", () => ({ getDb: async () => fakeDb as never, exigirDb: async () => fakeDb as never }));
 
 const motor = await import("./matching");
 

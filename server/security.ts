@@ -10,7 +10,7 @@
 
 import crypto from "crypto";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
-import { getDb } from "./db";
+import { exigirDb } from "./db";
 import { requireSecret } from "./_core/env";
 import {
   auditLogs,
@@ -96,8 +96,7 @@ export async function checkLoginRateLimit(
   identifier: string,
   ipAddress: string
 ): Promise<{ allowed: boolean; remainingAttempts: number; blockedUntil?: Date }> {
-  const db = await getDb();
-  if (!db) return { allowed: true, remainingAttempts: SECURITY_CONFIG.MAX_LOGIN_ATTEMPTS };
+  const db = await exigirDb();
 
   const windowStart = new Date(Date.now() - 60 * 60 * 1000); // Última hora
 
@@ -137,8 +136,7 @@ export async function recordLoginAttempt(
   ipAddress: string,
   success: boolean
 ): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
 
   const windowStart = new Date(Date.now() - 60 * 60 * 1000);
 
@@ -209,8 +207,7 @@ export async function createAuditLog(params: {
   riskLevel?: "low" | "medium" | "high" | "critical";
 }): Promise<void> {
   try {
-    const db = await getDb();
-    if (!db) return;
+    const db = await exigirDb();
 
     // x-forwarded-for can contain multiple IPs (client, proxy1, proxy2...)
     // Take only the first (real client IP) and truncate to 45 chars max (IPv6 max = 39 chars)
@@ -246,8 +243,7 @@ export async function createSecurityEvent(
   ipAddress?: string,
   details?: Record<string, unknown>
 ): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
 
   await db.insert(securityEvents).values({
     userId,
@@ -303,8 +299,7 @@ export async function createSecureSession(
   ipAddress: string,
   userAgent: string
 ): Promise<string> {
-  const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
+  const db = await exigirDb();
 
   const sessionToken = crypto.randomBytes(64).toString("hex");
   const expiresAt = new Date(Date.now() + SECURITY_CONFIG.SESSION_EXPIRY_HOURS * 60 * 60 * 1000);
@@ -324,8 +319,7 @@ export async function createSecureSession(
 }
 
 export async function validateSession(sessionToken: string): Promise<number | null> {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirDb();
 
   const result = await db
     .select()
@@ -351,8 +345,7 @@ export async function validateSession(sessionToken: string): Promise<number | nu
 }
 
 export async function invalidateSession(sessionToken: string): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
 
   await db
     .update(sessions)
@@ -364,8 +357,7 @@ export async function invalidateSession(sessionToken: string): Promise<void> {
 // QUERIES PARA PAINEL ADMINISTRATIVO
 // ============================================================
 export async function getAuditLogs(limit = 50, offset = 0, userId?: number) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
 
   const query = db
     .select({
@@ -410,8 +402,7 @@ export async function getAuditLogs(limit = 50, offset = 0, userId?: number) {
 }
 
 export async function getSecurityEvents(resolved = false, limit = 50) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
 
   return db
     .select({
@@ -432,8 +423,7 @@ export async function getSecurityEvents(resolved = false, limit = 50) {
 }
 
 export async function getSecurityStats() {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirDb();
 
   const [totalUsers] = await db.select({ count: sql<number>`count(*)` }).from(users);
   const [activeSessionsCount] = await db
@@ -458,8 +448,7 @@ export async function getSecurityStats() {
 }
 
 export async function getUserSecurityNotifications(userId: number) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
 
   return db
     .select()
@@ -471,8 +460,7 @@ export async function getUserSecurityNotifications(userId: number) {
 
 // V-02: markNotificationRead com verificação de ownership (IDOR fix)
 export async function markNotificationRead(notificationId: number, userId: number): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
 
   // Só atualiza se a notificação pertence ao usuário solicitante
   await db
@@ -482,8 +470,7 @@ export async function markNotificationRead(notificationId: number, userId: numbe
 }
 
 export async function resolveSecurityEvent(eventId: number, resolvedBy: number): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
 
   await db
     .update(securityEvents)
@@ -492,8 +479,7 @@ export async function resolveSecurityEvent(eventId: number, resolvedBy: number):
 }
 
 export async function getUserActiveSessions(userId: number) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
 
   return db
     .select()
@@ -509,8 +495,7 @@ export async function getUserActiveSessions(userId: number) {
 }
 
 export async function getAllUsers(limit = 100, offset = 0) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
 
   return db
     .select({
@@ -543,8 +528,7 @@ export async function detectSessionAnomaly(
   currentIp: string,
   currentUserAgent: string
 ): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
 
   // Buscar sessões ativas recentes do usuário (últimas 24h)
   const recentSessions = await db
@@ -631,8 +615,7 @@ export async function detectSessionAnomaly(
  * Deve ser chamado periodicamente (ex: job diário).
  */
 export async function cleanupExpiredSessions(): Promise<number> {
-  const db = await getDb();
-  if (!db) return 0;
+  const db = await exigirDb();
 
   const result = await db
     .update(sessions)
@@ -656,8 +639,7 @@ export async function cleanupExpiredSessions(): Promise<number> {
  * Usado em caso de comprometimento de conta ou logout forçado pelo admin.
  */
 export async function revokeAllUserSessions(userId: number): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
 
   await db
     .update(sessions)
@@ -678,8 +660,7 @@ export async function lockUserAccount(
   adminId: number,
   reason: string
 ): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
 
   // Desativar conta
   await db
@@ -723,8 +704,9 @@ export async function lockUserAccount(
  * Retorna null se a sessão foi revogada, expirou ou não existe.
  */
 export async function validateSessionToken(sessionToken: string): Promise<number | null> {
-  const db = await getDb();
-  if (!db) return null; // Fail open se DB indisponível (não bloqueia)
+  // Banco fora do ar lança BancoIndisponivel: a sessão não é validada e a
+  // requisição falha com a mensagem certa, em vez de parecer sessão revogada.
+  const db = await exigirDb();
 
   const result = await db
     .select({ userId: sessions.userId, isActive: sessions.isActive, expiresAt: sessions.expiresAt })
@@ -761,8 +743,7 @@ const AUTO_LOCK_WINDOW_MINUTES = 60; // Janela de tempo para contagem
  * Se o threshold for atingido, bloqueia a conta automaticamente.
  */
 export async function checkAutoLockThreshold(userId: number, ipAddress?: string): Promise<boolean> {
-  const db = await getDb();
-  if (!db) return false;
+  const db = await exigirDb();
 
   const windowStart = new Date(Date.now() - AUTO_LOCK_WINDOW_MINUTES * 60 * 1000);
 

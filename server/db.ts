@@ -20,6 +20,7 @@ import {
 import { ENV } from './_core/env';
 import nodeCrypto from "node:crypto";
 import { slugifyMatchTag } from "./match-service";
+import { BancoIndisponivel } from "./banco-indisponivel";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -35,11 +36,27 @@ export async function getDb() {
   return _db;
 }
 
+/**
+ * O banco, ou BancoIndisponivel. É o que todo helper deste arquivo usa: banco
+ * fora do ar é ERRO, não "sem dados". Antes cada helper fazia `if (!db) return
+ * []` (ou null, ou false), e uma queda do banco aparecia na tela como lista
+ * vazia, perfil inexistente, contato apagado.
+ *
+ * getDb() continua devolvendo null para quem precisa decidir sozinho o que
+ * fazer sem banco. Hoje são só stats.platform e system.health, que degradam
+ * de propósito para não derrubar a página inicial; o middleware de
+ * server/_core/trpc.ts traduz a exceção para a usuária.
+ */
+export async function exigirDb() {
+  const db = await getDb();
+  if (!db) throw new BancoIndisponivel();
+  return db;
+}
+
 // ─── Users ────────────────────────────────────────────────────
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   const values: InsertUser = { openId: user.openId };
   const updateSet: Record<string, unknown> = {};
   const textFields = ["name", "email", "loginMethod"] as const;
@@ -57,8 +74,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 }
 
 export async function getUserByOpenId(openId: string) {
-  const db = await getDb();
-  if (!db) return undefined;
+  const db = await exigirDb();
   // Não filtrar por isActive aqui: filtrar causava loop de login para contas reativadas.
   // A recusa de conta desativada é feita em sdk.authenticateRequest e em loginUser.
   const result = await db.select().from(users)
@@ -67,29 +83,25 @@ export async function getUserByOpenId(openId: string) {
 }
 
 export async function getUserById(id: number) {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirDb();
   const rows = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return rows[0] ?? null;
 }
 
 export async function getUserByEmail(email: string) {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirDb();
   const rows = await db.select().from(users).where(eq(users.email, email)).limit(1);
   return rows[0] ?? null;
 }
 
 export async function updateUser(id: number, data: Partial<InsertUser>) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   await db.update(users).set(data as any).where(eq(users.id, id));
 }
 
 // ─── User Profiles ────────────────────────────────────────────
 export async function getUserProfile(userId: number) {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirDb();
   const rows = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
   return rows[0] ?? null;
 }
@@ -110,8 +122,7 @@ export function computeProfileCompleteness(profile: Record<string, unknown> | nu
 }
 
 export async function upsertUserProfile(userId: number, data: Record<string, unknown>) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   const existing = await getUserProfile(userId);
   if (existing) {
     await db.update(userProfiles).set({ ...data, updatedAt: new Date() } as any).where(eq(userProfiles.userId, userId));
@@ -127,8 +138,7 @@ export async function upsertUserProfile(userId: number, data: Record<string, unk
 
 // ─── Opportunities ────────────────────────────────────────────
 export async function getOpportunityById(id: number) {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirDb();
   const rows = await db.select().from(opportunities).where(eq(opportunities.id, id)).limit(1);
   return rows[0] ?? null;
 }
@@ -148,8 +158,7 @@ export async function listOpportunities(filters: {
    *  engolir a oportunidade, porque a lista só mostrava as ativas. */
   viewerUserId?: number;
 }) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   const conditions: any[] = [];
   if (filters.status === undefined && filters.viewerUserId !== undefined) {
     conditions.push(
@@ -175,38 +184,33 @@ export async function listOpportunities(filters: {
 }
 
 export async function createOpportunity(data: Omit<typeof opportunities.$inferInsert, "id">) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const result = await db.insert(opportunities).values(data as any);
   return (result[0] as any).insertId as number;
 }
 
 export async function updateOpportunity(id: number, data: Partial<typeof opportunities.$inferInsert>) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   await db.update(opportunities).set(data as any).where(eq(opportunities.id, id));
 }
 
 // ─── Documents ────────────────────────────────────────────────
 export async function getDocumentsByOpportunity(opportunityId: number, includeConfidential = false) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   const conditions: any[] = [eq(opportunityDocuments.opportunityId, opportunityId)];
   if (!includeConfidential) conditions.push(eq(opportunityDocuments.isConfidential, false));
   return db.select().from(opportunityDocuments).where(and(...conditions));
 }
 
 export async function addDocument(data: typeof opportunityDocuments.$inferInsert) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const result = await db.insert(opportunityDocuments).values(data);
   return (result[0] as any).insertId as number;
 }
 
 // ─── Interests ────────────────────────────────────────────────
 export async function expressInterest(opportunityId: number, userId: number, message?: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const existing = await db.select({ id: opportunityInterests.id })
     .from(opportunityInterests)
     .where(and(eq(opportunityInterests.opportunityId, opportunityId), eq(opportunityInterests.userId, userId)))
@@ -219,8 +223,7 @@ export async function expressInterest(opportunityId: number, userId: number, mes
 }
 
 export async function getInterestsByOpportunity(opportunityId: number) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   return db.select({
     id: opportunityInterests.id,
     userId: opportunityInterests.userId,
@@ -239,8 +242,7 @@ export async function getInterestsByOpportunity(opportunityId: number) {
 
 // ─── Saved ────────────────────────────────────────────────────
 export async function toggleSaveOpportunity(userId: number, opportunityId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const existing = await db.select({ id: savedOpportunities.id })
     .from(savedOpportunities)
     .where(and(eq(savedOpportunities.userId, userId), eq(savedOpportunities.opportunityId, opportunityId)))
@@ -254,8 +256,7 @@ export async function toggleSaveOpportunity(userId: number, opportunityId: numbe
 }
 
 export async function getSavedOpportunities(userId: number) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   return db.select({ opportunity: opportunities })
     .from(savedOpportunities)
     .innerJoin(opportunities, eq(opportunities.id, savedOpportunities.opportunityId))
@@ -265,8 +266,7 @@ export async function getSavedOpportunities(userId: number) {
 
 // ─── Gold Access ──────────────────────────────────────────────
 export async function grantGoldAccess(grantedTo: number, grantedBy: number, reason?: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   // Usar Drizzle ORM diretamente com os campos do schema
   await db.insert(goldAccessGrants).values({
     grantedTo,
@@ -277,8 +277,7 @@ export async function grantGoldAccess(grantedTo: number, grantedBy: number, reas
 }
 
 export async function revokeGoldAccess(grantedTo: number, revokedBy: number, reason?: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   await db.update(goldAccessGrants)
     .set({ revokedAt: new Date(), revokedBy, revokeReason: reason })
     .where(and(eq(goldAccessGrants.grantedTo, grantedTo)));
@@ -287,28 +286,24 @@ export async function revokeGoldAccess(grantedTo: number, revokedBy: number, rea
 
 // ─── Sessions ────────────────────────────────────────────────
 export async function createSession(data: typeof sessions.$inferInsert) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   await db.insert(sessions).values(data);
 }
 
 export async function getSession(token: string) {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirDb();
   const rows = await db.select().from(sessions)
     .where(and(eq(sessions.sessionToken, token), eq(sessions.isActive, true))).limit(1);
   return rows[0] ?? null;
 }
 
 export async function invalidateSession(token: string) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   await db.update(sessions).set({ isActive: false }).where(eq(sessions.sessionToken, token));
 }
 
 export async function invalidateAllUserSessions(userId: number) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   await db.update(sessions).set({ isActive: false }).where(eq(sessions.userId, userId));
 }
 
@@ -324,8 +319,7 @@ export async function logAudit(data: {
   riskLevel?: "low" | "medium" | "high" | "critical";
 }) {
   try {
-    const db = await getDb();
-    if (!db) return;
+    const db = await exigirDb();
     await db.insert(auditLogs).values({
       ...data,
       status: data.status ?? "success",
@@ -336,8 +330,7 @@ export async function logAudit(data: {
 
 // ─── Login Attempts ──────────────────────────────────────────
 export async function checkLoginRateLimit(identifier: string, ip: string): Promise<{ blocked: boolean; blockedUntil?: Date }> {
-  const db = await getDb();
-  if (!db) return { blocked: false };
+  const db = await exigirDb();
   const rows = await db.select().from(loginAttempts)
     .where(and(eq(loginAttempts.identifier, identifier), eq(loginAttempts.ipAddress, ip))).limit(1);
   const record = rows[0];
@@ -347,8 +340,7 @@ export async function checkLoginRateLimit(identifier: string, ip: string): Promi
 }
 
 export async function recordLoginAttempt(identifier: string, ip: string, success: boolean) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   const rows = await db.select().from(loginAttempts)
     .where(and(eq(loginAttempts.identifier, identifier), eq(loginAttempts.ipAddress, ip))).limit(1);
   const record = rows[0];
@@ -369,14 +361,12 @@ export async function recordLoginAttempt(identifier: string, ip: string, success
 
 // ─── Notifications ────────────────────────────────────────────
 export async function createNotification(data: typeof platformNotifications.$inferInsert) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   await db.insert(platformNotifications).values(data);
 }
 
 export async function getNotifications(userId: number, limit = 20) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   return db.select().from(platformNotifications)
     .where(eq(platformNotifications.userId, userId))
     .orderBy(desc(platformNotifications.createdAt))
@@ -384,8 +374,7 @@ export async function getNotifications(userId: number, limit = 20) {
 }
 
 export async function markNotificationsRead(userId: number) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   await db.update(platformNotifications)
     .set({ isRead: true, readAt: new Date() })
     .where(and(eq(platformNotifications.userId, userId), eq(platformNotifications.isRead, false)));
@@ -393,8 +382,7 @@ export async function markNotificationsRead(userId: number) {
 
 // ─── Admin ────────────────────────────────────────────────────
 export async function listUsers(filters: { role?: string; search?: string; limit?: number; offset?: number }) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   const conditions: any[] = [];
   if (filters.role) conditions.push(eq(users.role, filters.role as any));
   if (filters.search) conditions.push(or(like(users.name, `%${filters.search}%`), like(users.email, `%${filters.search}%`)));
@@ -410,8 +398,7 @@ export async function listUsers(filters: { role?: string; search?: string; limit
 }
 
 export async function getAuditLogs(filters: { userId?: number; action?: string; limit?: number; offset?: number }) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   const conditions: any[] = [];
   if (filters.userId) conditions.push(eq(auditLogs.userId, filters.userId));
   if (filters.action) conditions.push(eq(auditLogs.action, filters.action));
@@ -424,8 +411,7 @@ export async function getAuditLogs(filters: { userId?: number; action?: string; 
 
 // ─── Matches (sistema original MMM) ────────────────────────────────────────────────
 export async function getMatchesForUser(userId: number, limit = 20) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   return db.select({
     matchId: matches.id,
     matchedUserId: matches.matchedUserId,
@@ -469,8 +455,7 @@ export async function getMatchesForUser(userId: number, limit = 20) {
 }
 
 export async function dismissMatch(userId: number, matchId: number) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   await db.update(matches)
     .set({ userDismissed: true })
     .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
@@ -483,8 +468,7 @@ export async function regenerateMatches(userId: number): Promise<number> {
 
 // ─── Connections ────────────────────────────────────────────────────────────────
 export async function getConnectionsForUser(userId: number) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   return db.select({
     id: connections.id,
     requesterId: connections.requesterId,
@@ -509,8 +493,7 @@ export async function getConnectionsForUser(userId: number) {
 }
 
 export async function sendConnectionRequest(requesterId: number, recipientId: number, message?: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const existing = await db.select({ id: connections.id })
     .from(connections)
     .where(and(eq(connections.requesterId, requesterId), eq(connections.recipientId, recipientId)))
@@ -521,8 +504,7 @@ export async function sendConnectionRequest(requesterId: number, recipientId: nu
 }
 
 export async function respondToConnection(connectionId: number, userId: number, accept: boolean) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   await db.update(connections)
     .set({ status: accept ? "accepted" : "declined" })
     .where(and(eq(connections.id, connectionId), eq(connections.recipientId, userId)));
@@ -535,8 +517,7 @@ export async function createPrivateContact(
   ownerId: string,
   data: Omit<InsertPrivateContact, "id" | "ownerId" | "createdAt" | "updatedAt">
 ): Promise<number> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const now = Date.now();
   const [result] = await db.insert(privateContacts).values({
     ...data,
@@ -551,8 +532,7 @@ export async function listPrivateContacts(
   ownerId: string,
   opts: { q?: string; tag?: string; country?: string; page?: number; limit?: number }
 ): Promise<{ data: PrivateContact[]; total: number }> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const { q, tag, country, page = 1, limit = 20 } = opts;
   const offset = (page - 1) * limit;
 
@@ -595,8 +575,7 @@ export async function getPrivateContactById(
   ownerId: string,
   contactId: number
 ): Promise<PrivateContact | null> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const [row] = await db
     .select()
     .from(privateContacts)
@@ -610,8 +589,7 @@ export async function updatePrivateContact(
   contactId: number,
   data: Partial<Omit<InsertPrivateContact, "id" | "ownerId" | "createdAt">>
 ): Promise<boolean> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const [result] = await db
     .update(privateContacts)
     .set({ ...data, updatedAt: Date.now() })
@@ -623,8 +601,7 @@ export async function deletePrivateContact(
   ownerId: string,
   contactId: number
 ): Promise<boolean> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const [result] = await db
     .delete(privateContacts)
     .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)));
@@ -686,8 +663,7 @@ export function filtrarAcervoPorAutorizacao<T extends { ownerId: string }>(
  * níveis não são cumulativos: 'publico' mora na vitrine, não aqui.
  */
 export async function listAcervoOuro() {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   // Ordem determinística (mais recentes primeiro) e folga de leitura: o corte
   // final de 200 acontece DEPOIS dos filtros de dona/termo, senão linhas que
   // serão descartadas consumiriam o teto e material autorizado sumiria ao
@@ -714,7 +690,7 @@ export async function listAcervoOuro() {
     .select({ id: users.id, openId: users.openId, name: users.name })
     .from(users)
     .where(inArray(users.openId, donasOpenIds));
-  // Import dinâmico: consent.ts importa getDb daqui — estático viraria ciclo.
+  // Import dinâmico: consent.ts importa exigirDb daqui; estático viraria ciclo.
   const { usersComConsentimento } = await import("./routers/consent");
   const autorizadas = await usersComConsentimento(donas.map(dona => dona.id), "termo_acesso_ouro");
   const donaPorOpenId = new Map(donas.map(dona => [dona.openId, dona]));
@@ -758,8 +734,7 @@ export async function listAcervoOuro() {
  * voltar para 'privado' remove da vitrine na requisição seguinte.
  */
 export async function listVitrineColetiva() {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   // Teto de leitura: a vitrine é uma tela, não uma exportação. Sem o limite,
   // cada visita carregaria o ecossistema inteiro.
   const publicos = await db
@@ -793,8 +768,7 @@ export async function listVitrineColetiva() {
 // ─── Contextos (Onde e Como Conheceu) ─────────────────────────────────────────
 
 export async function listContextTypes(): Promise<ContextType[]> {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   return db.select().from(contextTypes).where(eq(contextTypes.isActive, true)).orderBy(contextTypes.sortOrder);
 }
 
@@ -802,8 +776,7 @@ export async function listContexts(
   ownerId: string,
   opts: { q?: string; typeSlug?: string; year?: number; country?: string; page?: number; limit?: number }
 ): Promise<{ data: (Context & { typeName?: string; typeColor?: string; typeSlug?: string; contactCount: number })[]; total: number }> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const { q, typeSlug, year, country, page = 1, limit = 20 } = opts;
   const offset = (page - 1) * limit;
 
@@ -873,8 +846,7 @@ export async function createContext(
   ownerId: string,
   data: Omit<typeof contexts.$inferInsert, "id" | "ownerId" | "createdAt" | "updatedAt" | "isCustom">
 ): Promise<string> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const id = crypto.randomUUID();
   const now = Date.now();
   await db.insert(contexts).values({ ...data, id, ownerId, isCustom: true, createdAt: now, updatedAt: now });
@@ -882,8 +854,7 @@ export async function createContext(
 }
 
 export async function getContextById(ownerId: string, contextId: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const [row] = await db
     .select({ ctx: contexts, typeName: contextTypes.name, typeColor: contextTypes.colorToken, typeSlug: contextTypes.slug, typeIcon: contextTypes.iconName })
     .from(contexts)
@@ -915,8 +886,7 @@ export async function getContextById(ownerId: string, contextId: string) {
 }
 
 export async function updateContext(ownerId: string, contextId: string, data: Partial<typeof contexts.$inferInsert>): Promise<boolean> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const [r] = await db.update(contexts)
     .set({ ...data, updatedAt: Date.now() })
     .where(and(eq(contexts.id, contextId), eq(contexts.ownerId, ownerId), eq(contexts.isCustom, true)));
@@ -924,8 +894,7 @@ export async function updateContext(ownerId: string, contextId: string, data: Pa
 }
 
 export async function deleteContext(ownerId: string, contextId: string): Promise<boolean> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   // Os registros de anexos saem junto: não há FK/cascade no schema herdado, e
   // linha de mídia órfã esconderia arquivo que continua existindo no bucket.
   await db.delete(contextMedia)
@@ -936,8 +905,7 @@ export async function deleteContext(ownerId: string, contextId: string): Promise
 }
 
 export async function listContextMediaByContext(ownerId: string, contextId: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   return db.select().from(contextMedia)
     .where(and(eq(contextMedia.contextId, contextId), eq(contextMedia.ownerId, ownerId)));
 }
@@ -946,8 +914,7 @@ export async function linkContactToContext(
   ownerId: string,
   data: { contactId: number; contextId: string; eventDate?: string; city?: string; country?: string; notes?: string; relationshipType?: string }
 ): Promise<string> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   // Vincular duas vezes não duplica: o vínculo existente é atualizado com o
   // que veio preenchido e devolvido. Jogar fora o que a usuária digitou (data,
   // cidade, notas) com um toast de sucesso seria mentir para ela.
@@ -990,8 +957,7 @@ export async function linkContactToContext(
 }
 
 export async function unlinkContactFromContext(ownerId: string, linkId: string): Promise<boolean> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const [r] = await db.delete(contactContexts)
     .where(and(eq(contactContexts.id, linkId), eq(contactContexts.ownerId, ownerId)));
   return (r as any).affectedRows > 0;
@@ -999,8 +965,7 @@ export async function unlinkContactFromContext(ownerId: string, linkId: string):
 
 /** Os contextos em que um contato apareceu — é o que o perfil do contato exibe. */
 export async function listContextsByContact(ownerId: string, contactId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const rows = await db
     .select({
       link: contactContexts,
@@ -1032,8 +997,7 @@ export async function addContextParticipant(
   ownerId: string,
   data: { contextId: string; name: string; company?: string; role?: string; notes?: string }
 ): Promise<string> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const id = crypto.randomUUID();
   const now = Date.now();
   await db.insert(contextParticipants).values({ id, ownerId, ...data, createdAt: now, updatedAt: now });
@@ -1044,8 +1008,7 @@ export async function addContextParticipant(
 
 /** O contexto está visível para esta dona? (dela mesma, ou do catálogo global) */
 export async function contextIsVisible(ownerId: string, contextId: string): Promise<boolean> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const [row] = await db.select({ id: contexts.id }).from(contexts)
     .where(and(eq(contexts.id, contextId), drizzleOr(eq(contexts.ownerId, ownerId), isNull(contexts.ownerId))))
     .limit(1);
@@ -1059,8 +1022,7 @@ export async function addContextMedia(
     originalName: string; caption?: string | null;
   }
 ): Promise<string> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const id = crypto.randomUUID();
   const now = Date.now();
   await db.insert(contextMedia).values({
@@ -1078,8 +1040,7 @@ export async function addContextMedia(
 }
 
 export async function getContextMediaById(ownerId: string, mediaId: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const [row] = await db.select().from(contextMedia)
     .where(and(eq(contextMedia.id, mediaId), eq(contextMedia.ownerId, ownerId)))
     .limit(1);
@@ -1087,8 +1048,7 @@ export async function getContextMediaById(ownerId: string, mediaId: string) {
 }
 
 export async function deleteContextMedia(ownerId: string, mediaId: string): Promise<boolean> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const [r] = await db.delete(contextMedia)
     .where(and(eq(contextMedia.id, mediaId), eq(contextMedia.ownerId, ownerId)));
   return (r as any).affectedRows > 0;
@@ -1097,8 +1057,7 @@ export async function deleteContextMedia(ownerId: string, mediaId: string): Prom
 // ─── Enriquecimento com IA (Etapa 4) ──────────────────────────────────────────
 
 export async function getActiveEnrichmentSession(ownerId: string, contactId: number) {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirDb();
   const [row] = await db.select().from(enrichmentSessions)
     .where(and(eq(enrichmentSessions.ownerId, ownerId), eq(enrichmentSessions.contactId, contactId), eq(enrichmentSessions.status, "active")))
     .limit(1);
@@ -1106,8 +1065,7 @@ export async function getActiveEnrichmentSession(ownerId: string, contactId: num
 }
 
 export async function getEnrichmentSessionById(sessionId: string, ownerId: string) {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirDb();
   const [row] = await db.select().from(enrichmentSessions)
     .where(and(eq(enrichmentSessions.id, sessionId), eq(enrichmentSessions.ownerId, ownerId)))
     .limit(1);
@@ -1116,8 +1074,7 @@ export async function getEnrichmentSessionById(sessionId: string, ownerId: strin
 
 /** Avança exatamente uma etapa do roteiro. Retorna null quando a sessão não estiver ativa. */
 export async function advanceEnrichmentSession(sessionId: string, ownerId: string, skipped = false) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const session = await getEnrichmentSessionById(sessionId, ownerId);
   if (!session || session.status !== "active") return null;
 
@@ -1132,8 +1089,7 @@ export async function advanceEnrichmentSession(sessionId: string, ownerId: strin
 }
 
 export async function createEnrichmentSession(ownerId: string, contactId: number): Promise<string> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const id = crypto.randomUUID();
   const now = Date.now();
   await db.insert(enrichmentSessions).values({ id, ownerId, contactId, status: "active", questionsAnswered: 0, questionsSkipped: 0, lastActivityAt: now, createdAt: now, updatedAt: now });
@@ -1143,8 +1099,7 @@ export async function createEnrichmentSession(ownerId: string, contactId: number
 }
 
 export async function getEnrichmentMessages(sessionId: string, ownerId: string, limit = 10) {
-  const db = await getDb();
-  if (!db) return [];
+  const db = await exigirDb();
   return db.select().from(enrichmentMessages)
     .where(and(eq(enrichmentMessages.sessionId, sessionId), eq(enrichmentMessages.ownerId, ownerId)))
     .orderBy(desc(enrichmentMessages.createdAt))
@@ -1154,8 +1109,7 @@ export async function getEnrichmentMessages(sessionId: string, ownerId: string, 
 export async function saveEnrichmentMessage(data: {
   sessionId: string; ownerId: string; role: string; content: string; metadata?: unknown; tokenCount?: number;
 }): Promise<string> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const id = crypto.randomUUID();
   const now = Date.now();
   await db.insert(enrichmentMessages).values({ id, sessionId: data.sessionId, ownerId: data.ownerId, role: data.role, content: data.content, metadata: data.metadata ?? null, tokenCount: data.tokenCount ?? null, createdAt: now, updatedAt: now });
@@ -1168,8 +1122,7 @@ export async function saveEnrichmentSuggestions(suggestions: Array<{
   sessionId: string; messageId: string; ownerId: string; contactId: number;
   fieldType: string; suggestedValue: string; confidence: number; tagIsNew?: boolean; tagId?: string;
 }>): Promise<string[]> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const ids: string[] = [];
   const now = Date.now();
   for (const s of suggestions) {
@@ -1181,8 +1134,7 @@ export async function saveEnrichmentSuggestions(suggestions: Array<{
 }
 
 export async function getEnrichmentSuggestion(id: string, ownerId: string) {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirDb();
   const [row] = await db.select().from(enrichmentSuggestions)
     .where(and(eq(enrichmentSuggestions.id, id), eq(enrichmentSuggestions.ownerId, ownerId)))
     .limit(1);
@@ -1206,8 +1158,7 @@ export async function getEnrichmentSuggestion(id: string, ownerId: string) {
  * a sugestão mentindo que foi aplicada. Agora grava primeiro, marca depois.
  */
 export async function applyEnrichmentSuggestion(id: string, ownerId: string, editedValue?: string): Promise<boolean> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const sug = await getEnrichmentSuggestion(id, ownerId);
   if (!sug || sug.status !== "pending") return false;
   const finalValue = (editedValue ?? sug.suggestedValue).trim();
@@ -1358,8 +1309,7 @@ ${linha}` : linha;
 }
 
 export async function ignoreEnrichmentSuggestion(id: string, ownerId: string): Promise<boolean> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const now = Date.now();
   const [r] = await db.update(enrichmentSuggestions)
     .set({ status: "ignored", actionedAt: now, actionedBy: "user", updatedAt: now })
@@ -1368,8 +1318,7 @@ export async function ignoreEnrichmentSuggestion(id: string, ownerId: string): P
 }
 
 export async function completeEnrichmentSession(sessionId: string, ownerId: string, summary: string): Promise<boolean> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
+  const db = await exigirDb();
   const session = await getEnrichmentSessionById(sessionId, ownerId);
   if (!session) return false;
   // Encerramento idempotente: uma sessão já concluída não gera efeitos colaterais nem mensagens extras.
@@ -1391,8 +1340,7 @@ export async function completeEnrichmentSession(sessionId: string, ownerId: stri
 }
 
 export async function getEnrichmentHistory(ownerId: string, contactId: number, limit = 20, offset = 0) {
-  const db = await getDb();
-  if (!db) return { data: [], total: 0 };
+  const db = await exigirDb();
   const rows = await db.select().from(enrichmentSuggestions)
     .where(and(eq(enrichmentSuggestions.ownerId, ownerId), eq(enrichmentSuggestions.contactId, contactId), sql`${enrichmentSuggestions.status} IN ('applied', 'ignored', 'undone')`))
     .orderBy(desc(enrichmentSuggestions.createdAt))

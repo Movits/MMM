@@ -26,13 +26,20 @@ vi.mock("./routers/consent", async importarOriginal => ({
   hasValidConsent: vi.fn(async () => consentimentoValido),
 }));
 
-vi.mock("./db", () => ({
-  getDb: vi.fn(async () => null),
-  upsertUser: vi.fn(),
-  getUserByOpenId: vi.fn(),
-}));
+vi.mock("./db", async () => {
+  const { BancoIndisponivel } = await import("./banco-indisponivel");
+  return {
+    getDb: vi.fn(async () => null),
+    // Banco fora do ar de propósito: o que se testa é a trava, e depois dela o
+    // procedimento deve cair com BancoIndisponivel, nunca com lista vazia.
+    exigirDb: vi.fn(async () => { throw new BancoIndisponivel(); }),
+    upsertUser: vi.fn(),
+    getUserByOpenId: vi.fn(),
+  };
+});
 
 const { intelligentMatchesRouter } = await import("./routers/matches");
+const { MENSAGEM_BANCO_INDISPONIVEL } = await import("./banco-indisponivel");
 
 const contextoDeUsuariaLogada = {
   user: { id: 1, openId: "email_teste", email: "teste@local", role: "silver" },
@@ -69,8 +76,12 @@ describe("Etapa 11 — nenhum procedimento do cruzamento escapa da trava", () =>
     consentimentoValido = true;
     const caller = intelligentMatchesRouter.createCaller(contextoDeUsuariaLogada);
 
-    // `getDb` devolve null neste arquivo, então o procedimento vai falhar logo
-    // depois da trava. O que importa é que a falha NÃO seja mais FORBIDDEN.
-    await expect(caller.list()).rejects.not.toMatchObject({ code: "FORBIDDEN" });
+    // O banco está fora do ar neste arquivo, então o procedimento falha logo
+    // depois da trava, e falha do jeito certo: BancoIndisponivel traduzida pelo
+    // middleware do tRPC, não FORBIDDEN e não lista vazia.
+    await expect(caller.list()).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+      message: MENSAGEM_BANCO_INDISPONIVEL,
+    });
   });
 });

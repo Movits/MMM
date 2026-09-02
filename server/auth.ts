@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import * as jose from "jose";
 import { eq } from "drizzle-orm";
-import { getDb } from "./db";
+import { exigirDb } from "./db";
 import { users, sessions } from "../drizzle/schema";
 import { checkLoginRateLimit, recordLoginAttempt } from "./security";
 import { requireSecret } from "./_core/env";
@@ -21,8 +21,7 @@ export async function registerUser(params: {
   email: string;
   password: string;
 }) {
-  const db = await getDb();
-  if (!db) throw new Error("Banco de dados indisponível.");
+  const db = await exigirDb();
 
   // Verificar se email já existe
   const existing = await db
@@ -73,8 +72,7 @@ export async function loginUser(params: {
   ip?: string;
   userAgent?: string;
 }) {
-  const db = await getDb();
-  if (!db) throw new Error("Banco de dados indisponível.");
+  const db = await exigirDb();
 
   const safeIp = params.ip ? params.ip.split(",")[0].trim().substring(0, 45) : "unknown";
   const identifier = params.email.toLowerCase().trim();
@@ -171,8 +169,7 @@ export async function loginUser(params: {
 
 // ─── Invalidar sessão no banco ────────────────────────────────
 export async function invalidateSessionByToken(sessionToken: string) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   await db
     .update(sessions)
     .set({ isActive: false })

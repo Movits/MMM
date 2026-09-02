@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { and, eq, gte } from "drizzle-orm";
 import { aiMatchSuggestions, contactAssets, contactNeeds, privateContacts } from "../drizzle/schema";
 import { cosineSimilarity, normalizeVector } from "./memory-service";
-import { getDb } from "./db";
+import { exigirDb } from "./db";
 import { sendEmail } from "./_core/email";
 import { embedWithGemini } from "./gemini";
 import { analisarTermo, nucleoDoTermo, saoConcorrentes } from "@shared/direcao-do-termo";
@@ -142,8 +142,7 @@ async function semanticScore(
 }
 
 export async function recalculatePrivateMatches(ownerId: string, ownerEmail?: string | null) {
-  const db = await getDb();
-  if (!db) throw new Error("Banco de dados indisponível.");
+  const db = await exigirDb();
   const [assets, needs, contacts, existing] = await Promise.all([
     db.select().from(contactAssets).where(eq(contactAssets.ownerId, ownerId)),
     db.select().from(contactNeeds).where(eq(contactNeeds.ownerId, ownerId)),
