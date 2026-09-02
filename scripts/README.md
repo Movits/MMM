@@ -5,12 +5,17 @@ com `node` (os `.mjs`) ou `npx tsx` (os `.ts`), e leem a conexão de
 `DATABASE_URL` quando precisam de banco. O cabeçalho de cada arquivo tem o
 detalhe de uso; esta página é só o mapa.
 
-**Nunca rode script contra o banco de produção (Aiven) sem autorização
-explícita do Roberto.** Os que mudam dado relatam sem `--aplicar` ou aceitam
-`--simular`: use esse modo primeiro. `definir-senha-local.mjs` recusa banco
-remoto e `publicar-documento.mjs` exige `--confirmo-producao`; os outros não
-têm trava nenhuma. A única rotina prevista contra a produção é o exame
-`checar-producao.mjs` depois de um deploy, e mesmo ela com autorização.
+**Nunca rode script contra o banco de produção (Aiven) sem autorização explícita
+do Roberto.** Poucos têm modo de ensaio: `migrar.mjs` e `publicar-documento.mjs`
+aceitam `--simular`, e `nivelar-banco.mjs` só altera com `--aplicar`. Os outros
+gravam na chamada simples: `migrar-rotulos-para-chaves.mjs` faz UPDATE em todos
+os perfis, `semear-rede-de-teste.mjs` insere contatos (e `--limpar` apaga),
+`definir-senha-local.mjs` grava a senha (recusa banco que não seja local),
+`corrigir-colunas-json.mjs` altera colunas. Leia o cabeçalho antes de rodar.
+Três rotinas tocam a produção por desenho: `migrar.mjs` no boot do servidor,
+`checar-producao.mjs` depois de todo deploy (passo obrigatório do CLAUDE.md; cria
+e apaga uma conta QA) e `publicar-documento.mjs` quando o jurídico entrega texto
+novo, com `--confirmo-producao`.
 
 | Script | O que faz | Quando rodar |
 | --- | --- | --- |

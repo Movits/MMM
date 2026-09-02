@@ -40,6 +40,13 @@ describe("CSP: script-src por ambiente", () => {
     );
   });
 
+  it("media-src libera blob: para o player de gravação da tela de reuniões", () => {
+    for (const ambiente of [true, false]) {
+      const d = montarDiretivasCsp(ambiente);
+      expect(d.mediaSrc).toEqual(["'self'", "blob:"]);
+    }
+  });
+
   it("as fontes do Google seguem liberadas e style-src continua com 'unsafe-inline'", () => {
     const producao = montarDiretivasCsp(false);
     expect(producao.styleSrc).toContain("https://fonts.googleapis.com");

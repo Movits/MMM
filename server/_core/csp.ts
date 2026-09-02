@@ -37,6 +37,10 @@ export function montarDiretivasCsp(
     styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     fontSrc: ["'self'", "https://fonts.gstatic.com"],
     imgSrc: ["'self'", "data:", "https:", "blob:"],
+    // Meetings toca a gravação antes de transcrever com <audio src="blob:...">
+    // (URL.createObjectURL) e mede a duração do mesmo jeito; sem media-src o
+    // navegador cai em default-src 'self', que não cobre blob:, e bloqueia.
+    mediaSrc: ["'self'", "blob:"],
     connectSrc: ["'self'", "wss:", "https:"],
     frameSrc: ["'none'"],
     frameAncestors: ["'none'"], // Proteção adicional contra clickjacking

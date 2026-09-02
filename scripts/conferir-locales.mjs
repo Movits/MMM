@@ -20,7 +20,12 @@ function chaves(obj, prefixo = "") {
   return saida;
 }
 
+const IDIOMAS_ESPERADOS = 10;
 const arquivos = readdirSync(DIR).filter(f => f.endsWith(".json"));
+if (arquivos.length !== IDIOMAS_ESPERADOS) {
+  console.error(`${DIR} tem ${arquivos.length} arquivos de idioma; esperava ${IDIOMAS_ESPERADOS}.`);
+  process.exit(1);
+}
 const conjuntos = new Map();
 for (const f of arquivos) {
   const dados = JSON.parse(readFileSync(join(DIR, f), "utf8"));

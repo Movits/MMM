@@ -38,8 +38,11 @@ export default defineWorkspace([
     test: {
       name: "client",
       environment: "jsdom",
-      include: ["client/src/**/*.test.tsx"],
+      include: ["client/src/**/*.test.tsx", "client/src/**/*.test.ts"],
       setupFiles: ["client/src/test/setup.ts"],
+      // Um mockReturnValue esquecido não vaza para o teste seguinte: cada
+      // teste começa com os dublês zerados e precisa dizer o que espera.
+      mockReset: true,
     },
   },
 ]);

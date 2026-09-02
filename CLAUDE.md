@@ -30,12 +30,12 @@ node scripts/migrar.mjs --simular   # só relata o que aplicaria
 node scripts/nivelar-banco.mjs      # banco antigo desalinhado: relata; --aplicar cria o que falta
 pnpm dev               # http://localhost:3000
 pnpm check             # tsc --noEmit (não compila os *.test.ts)
-pnpm test              # vitest run (só server/**)
+pnpm test              # vitest run (server em Node + client em jsdom)
 pnpm vitest run server/match-service.test.ts   # um teste só
 pnpm build             # vite build + esbuild do servidor → dist/
 pnpm start             # roda o build de produção
 pnpm format            # prettier --write .
-node scripts/conferir-locales.mjs   # os 10 idiomas têm as mesmas chaves (NÃO roda no CI)
+node scripts/conferir-locales.mjs   # os 10 idiomas têm as mesmas chaves (o CI também roda)
 node scripts/checar-producao.mjs    # exame de saúde da produção (pós-deploy); --com-ia inclui as checagens de IA
 node scripts/semear-rede-de-teste.mjs   # contatos fictícios na rede de uma usuária; --limpar desfaz
 node scripts/definir-senha-local.mjs    # senha de conta em banco LOCAL (sem Resend em dev)
@@ -95,15 +95,18 @@ Só então marque a tarefa como concluída no Notion, com a comprovação.
 ## Testes
 
 O CI (`.github/workflows/testes.yml`, toda PR e push na `main`) roda, nesta ordem:
-`pnpm db:generate` (falha se criar arquivo em `drizzle/`) → banco do zero em MariaDB
-11.4 com `criar-banco.mjs` → `nivelar-banco.mjs` exigindo "Nada a nivelar" →
-`pnpm check` → `pnpm test` → `pnpm build`. Rode o mesmo antes da PR.
+`conferir-locales.mjs` (10 idiomas com as mesmas chaves) → `pnpm db:generate` (falha
+se criar arquivo em `drizzle/`) → banco do zero em MariaDB 11.4 com `criar-banco.mjs`
+→ `nivelar-banco.mjs` exigindo "Nada a nivelar" → `pnpm check` → `pnpm test` →
+`pnpm build`. Rode o mesmo antes da PR.
 
 **Servidor.** Lógica nova em `server/` ganha ou atualiza um `*.test.ts` ao lado
-(44 hoje). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
+(41 hoje). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
 `skipIf`; `*.integracao.test.ts` usa `DATABASE_URL` real; `RUN_LIVE_CREDENTIAL_TESTS=true`
-liga os testes de credencial viva. `pnpm check` NÃO compila testes (o `tsconfig`
-exclui `*.test.ts`): erro de tipo em teste só aparece no `pnpm test`.
+liga os testes de credencial viva. Ninguém checa os tipos dos testes: o `tsconfig`
+exclui `*.test.ts` e `*.test.tsx` do `pnpm check`, e o Vitest só transpila (esbuild
+remove os tipos sem conferir). Um mock com a forma errada passa em silêncio; escreva o
+dublê a partir do tipo real e prefira asserções que discriminem comportamento.
 
 **Front.** Há runner: `vitest.workspace.ts` divide a suíte em dois projetos, `server`
 (Node) e `client` (jsdom + Testing Library), e `pnpm test` roda os dois. Teste de
@@ -117,8 +120,8 @@ não dispensa o smoke manual: "testado" no front continua significando `pnpm che
 `pnpm dev`, logado com o nível certo (bronze, prata, ouro, admin) quando a tela depende
 de nível, exercitar a mudança e conferir o console sem erro; e uma seção "Como
 verifiquei" na PR listando as telas. Função pura do client pode ser testada em
-`server/*.test.ts` (padrão: `server/transcricao-destacada.test.ts`). Tarefa futura:
-`conferir-locales` no CI.
+`server/*.test.ts` (padrão: `server/transcricao-destacada.test.ts`) ou, sem JSX, em
+`client/src/**/*.test.ts`, que o projeto `client` também colhe.
 
 ## Arquitetura
 
