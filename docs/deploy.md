@@ -11,7 +11,7 @@ ao mesmo tempo:
 | O que | Onde |
 |---|---|
 | Front-end compilado | `dist/public`, servido pelo Express |
-| API tRPC | `/api/trpc`, no mesmo processo (`server/_core/index.ts:216`) |
+| API tRPC | `/api/trpc`, no mesmo processo (`server/_core/index.ts`) |
 
 O cliente chama a API na mesma origem, em `client/src/main.tsx:49`:
 
@@ -61,7 +61,7 @@ o MMM fala MySQL pelo driver `mysql2`.
 
 4. **Aplicação.** render.com → *New* → *Web Service* → conectar `Movits/MMM` →
    runtime **Docker**. Ele acha o `Dockerfile` sozinho e injeta a `PORT`, que o
-   servidor respeita em produção (`server/_core/index.ts:230`).
+   servidor respeita em produção (`server/_core/index.ts`).
 
 5. **Variáveis**, na tabela da próxima seção. A `DATABASE_URL` é a mesma do
    passo 2.
@@ -130,7 +130,7 @@ O repositório já tem `Dockerfile`, então o Railway não precisa adivinhar nad
 cofre for cifrado com o `JWT_SECRET` e um dia esse segredo for rotacionado por
 motivo de segurança, o conteúdo do cofre se torna ilegível.
 
-A recusa é proposital, em `server/_core/env.ts:20`. A versão do Manus caía para
+A recusa é proposital, em `server/_core/env.ts`. A versão do Manus caía para
 um valor padrão embutido no código, o que significa que qualquer pessoa com o
 código conseguia assinar uma sessão válida.
 

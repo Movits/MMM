@@ -2,21 +2,13 @@ export const ENV = {
   appId: process.env.VITE_APP_ID ?? "",
   cookieSecret: process.env.JWT_SECRET ?? "",
   databaseUrl: process.env.DATABASE_URL ?? "",
-  oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
-  ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
   isProduction: process.env.NODE_ENV === "production",
-  // LLM: qualquer endpoint compatível com a API da OpenAI. Fora do Manus, a
-  // chave do Google Gemini cobre as chamadas. SEM fallback para
-  // BUILT_IN_FORGE_API_URL de propósito: era assim que configurar o storage
-  // errado contaminava o endpoint da IA — as duas coisas nunca mais dividem
-  // variável.
+  // LLM: qualquer endpoint compatível com a API da OpenAI; a chave do Google
+  // Gemini cobre as chamadas quando LLM_API_KEY não está definida. O storage
+  // (STORAGE_*) nunca divide variável com o LLM, de propósito: era assim que
+  // configurar o storage errado contaminava o endpoint da IA.
   llmApiUrl: process.env.LLM_API_URL || "",
-  llmApiKey: process.env.LLM_API_KEY || process.env.BUILT_IN_FORGE_API_KEY || process.env.GOOGLE_API_KEY || "",
-  // Storage, data API e heartbeat continuam falando o protocolo do Forge, que
-  // saiu do ar junto com o Manus. Sem substituto configurado eles falham com
-  // mensagem própria, em vez de herdar o endpoint do LLM e errar de forma obscura.
-  forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL_STORAGE ?? "",
-  forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  llmApiKey: process.env.LLM_API_KEY || process.env.GOOGLE_API_KEY || "",
 };
 
 // Segredos não têm valor padrão: sem a variável definida, a inicialização falha.

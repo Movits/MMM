@@ -5,7 +5,9 @@
 import { Resend } from "resend";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.EMAIL_FROM || "MMM OS <noreply@mmmos-m2agtkvd.manus.space>";
+// Sem EMAIL_FROM não há remetente. O padrão antigo apontava para o domínio
+// morto do Manus, e a Resend recusaria o envio com um erro obscuro.
+const FROM_EMAIL = process.env.EMAIL_FROM;
 
 let resendClient: Resend | null = null;
 
@@ -32,6 +34,12 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   const client = getResendClient();
   if (!client) {
     console.warn("[Email] RESEND_API_KEY não configurada — e-mail não enviado.");
+    return false;
+  }
+  if (!FROM_EMAIL) {
+    console.error(
+      '[Email] EMAIL_FROM não configurada — e-mail não enviado. Defina o remetente no formato "Nome <endereco@dominio>".'
+    );
     return false;
   }
   try {

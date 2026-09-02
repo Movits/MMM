@@ -405,10 +405,9 @@ export const sivcRouter = router({
 
       const docId = (insertResult as any).insertId;
 
-      // Executar OCR assíncrono (não bloqueia a resposta)
-      const fullUrl = `${process.env.BUILT_IN_FORGE_API_URL?.replace(/\/+$/, "") || ""}/v1/storage/presign/get?path=${encodeURIComponent(fileKey)}`;
-      
-      // Processar OCR em background
+      // Executar OCR assíncrono (não bloqueia a resposta). O arquivo já está
+      // no storage S3 (storagePut acima) e é lido pela própria URL do proxy; o
+      // presign antigo do Manus (BUILT_IN_FORGE_API_URL) era código morto e saiu.
       (async () => {
         try {
           const ocrResult = await performOCR(url, input.docType, (input.declaredData || {}) as Record<string, string>);

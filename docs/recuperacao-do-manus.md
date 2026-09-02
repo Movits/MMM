@@ -19,8 +19,9 @@ o projeto saiu de lá.
 
 **Chamadas de IA.** Passavam por um proxy do Manus (`forge.manus.im`) que injetava
 as credenciais. Agora `server/_core/llm.ts` aceita qualquer endpoint compatível com
-a API da OpenAI — por padrão o Google Gemini, configurado por `BUILT_IN_FORGE_API_URL`
-e `GOOGLE_API_KEY`. A variável `LLM_MODEL` define o modelo usado em todas as chamadas.
+a API da OpenAI — por padrão o Google Gemini, configurado por `LLM_API_URL` e
+`LLM_API_KEY` (ou `GOOGLE_API_KEY`). A variável `LLM_MODEL` define o modelo usado em
+todas as chamadas.
 
 **Imagens da página inicial.** Estavam num CloudFront do Manus que hoje devolve 403,
 e o backup não trouxe nenhuma cópia local. As referências mortas foram removidas.
@@ -79,11 +80,16 @@ conta Ouro basta para criar Ouros ilimitados.
 
 ## O que ainda falta
 
-- `RESEND_API_KEY` — sem ela a recuperação de senha não envia e-mail. Os dois testes
-  que falham em `pnpm test` são exatamente as verificações de credencial dela e da
-  Anthropic.
-- `ANTHROPIC_API_KEY` — usada apenas pelo recurso de Memória.
-- As tabelas `sivc_*` foram criadas direto no MySQL e nunca declaradas em
-  `drizzle/schema.ts`. Enquanto isso não for feito, o SIVC depende de SQL escrito à
-  mão (parametrizado, mas fora do ORM).
+- `RESEND_API_KEY` — sem ela a recuperação de senha não envia e-mail. O teste de
+  credencial dela se auto-pula em `pnpm test` enquanto a chave não existir.
 - Hospedagem. O projeto precisa de Node e MySQL; GitHub Pages não roda.
+- 02/09/2026 — os resíduos do Manus foram removidos nesta limpeza: o login social
+  (OAuth e a página `/oauth-error`), a cadeia `_core` que falava com o Forge (data
+  API, geração de imagem, transcrição, mapa, heartbeat, notificação), os plugins
+  do Manus no Vite e o coletor de logs `.manus-logs/`, o patch do wouter, os SDKs
+  `openai` e `@anthropic-ai/sdk` (nada os importava; as chamadas de IA usam
+  `fetch`), os scripts Python de i18n e as variáveis `OAUTH_SERVER_URL`,
+  `OWNER_OPEN_ID`, `BUILT_IN_FORGE_API_KEY`, `ANTHROPIC_API_KEY` e
+  `OPENAI_API_KEY`. Ficou de propósito o prefixo de rota `/manus-storage/*`: ele
+  está gravado nas URLs de arquivo no banco de produção, e o proxy autenticado
+  atrás dele é código nosso.

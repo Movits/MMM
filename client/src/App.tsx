@@ -11,7 +11,6 @@ import { PrivacyPage, TermsPage } from "@/pages/LegalPage";
 
 // Lazy loading de todas as páginas para melhor performance
 const Home = lazy(() => import("./pages/Home"));
-const OAuthError = lazy(() => import("./pages/OAuthError"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -58,9 +57,6 @@ function Router() {
       <Switch>
         {/* Rota pública - landing page */}
         <Route path={"/"} component={Home} />
-
-        {/* Página de erro OAuth - domínio não autorizado */}
-        <Route path={"/oauth-error"} component={OAuthError} />
 
         {/* Páginas legais: placeholders até os textos jurídicos da cliente */}
         <Route path={"/privacidade"} component={PrivacyPage} />

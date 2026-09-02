@@ -1,6 +1,0 @@
-Projeto: MMM OS
-Origem: /home/ubuntu/mmm-os-site
-Data UTC: 2026-08-18T18:17:22Z
-Checkpoint de origem: 702d0c34
-Conteúdo: código-fonte, configurações não sigilosas, schema, documentação e testes.
-Excluídos: segredos .env, node_modules, builds, logs e caches.

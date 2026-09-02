@@ -51,7 +51,6 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   });
   if (user.lastSignedIn !== undefined) { values.lastSignedIn = user.lastSignedIn; updateSet.lastSignedIn = user.lastSignedIn; }
   if (user.role !== undefined) { values.role = user.role; updateSet.role = user.role; }
-  else if (user.openId === ENV.ownerOpenId) { values.role = 'president'; updateSet.role = 'president'; }
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
   if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
@@ -61,7 +60,7 @@ export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) return undefined;
   // Não filtrar por isActive aqui: filtrar causava loop de login para contas reativadas.
-  // A recusa de conta desativada é feita em sdk.authenticateRequest, no callback OAuth e em loginUser.
+  // A recusa de conta desativada é feita em sdk.authenticateRequest e em loginUser.
   const result = await db.select().from(users)
     .where(eq(users.openId, openId)).limit(1);
   return result[0] ?? undefined;

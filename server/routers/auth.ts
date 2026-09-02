@@ -97,7 +97,17 @@ export const authRouter = router({
       const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS); // 1 hora
       await db.insert(passwordResetTokens).values({ userId: user.id, token: tokenHash, expiresAt });
       // Não aceitar origem do cliente: evita que um link de reset aponte para domínio malicioso.
-      const siteOrigin = (process.env.FRONTEND_URL || "https://mmmos-m2agtkvd.manus.space").replace(/\/+$/, "");
+      // E sem FRONTEND_URL não se inventa domínio: o fallback antigo apontava para o
+      // endereço morto do Manus, e o link chegaria quebrado na caixa de entrada.
+      const frontendUrl = process.env.FRONTEND_URL;
+      if (!frontendUrl) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            "Variável de ambiente FRONTEND_URL não definida: ela é a origem dos links de recuperação de senha e não tem valor padrão.",
+        });
+      }
+      const siteOrigin = frontendUrl.replace(/\/+$/, "");
       const resetUrl = `${siteOrigin}/reset-password?token=${encodeURIComponent(rawToken)}`;
       // Enviar e-mail via Resend
       try {

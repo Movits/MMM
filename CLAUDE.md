@@ -159,8 +159,7 @@ Dashboard com trava de consentimento dos dois lados.
 plataforma Manus e foi extraído: ver `docs/recuperacao-do-manus.md`): entrada, auth
 por cookie HttpOnly (`sdk.ts`), e-mail (Resend), storage S3 com URLs assinadas, Vite
 em dev. As chamadas de IA passam por `server/_core/llm.ts`, que aceita qualquer
-endpoint compatível com a API da OpenAI via `fetch` (o SDK `openai` e o
-`@anthropic-ai/sdk` ainda estão no `package.json`, mas nada os importa), configurado
+endpoint compatível com a API da OpenAI via `fetch` (não há SDK de IA no projeto), configurado
 por `LLM_API_URL`, `LLM_API_KEY` e `LLM_MODEL`; retenta 4 vezes com backoff. Use sempre
 um modelo CONCRETO (ex.: `gemini-3.5-flash`), nunca um alias como
 `gemini-flash-latest`: o alias já apontou para um modelo com cota gratuita de 20
@@ -193,9 +192,7 @@ implementação e precisa de decisão de produto). As `docs/spec-*.md` são as s
 por etapa vindas do Manus.
 
 **`vitrine/`** é uma página estática publicada no GitHub Pages pelo workflow
-`.github/workflows/pages.yml`. Não é a aplicação. Os scripts Python na raiz
-(`fix_*.py`, `update_texts.py`, `add_*.py`) são migrações pontuais de i18n já
-aplicadas, fora do build.
+`.github/workflows/pages.yml`. Não é a aplicação.
 
 ## Banco e migrações
 
