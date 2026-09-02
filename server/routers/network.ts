@@ -6,6 +6,7 @@ import {
 } from "../db";
 import { recalculatePrivateMatches } from "../match-service";
 import { hasValidConsent } from "./consent";
+import { goldProcedure } from "./_procedures";
 
 // ─── Minha Rede de Relacionamentos (Base Particular de Contatos) ──────────────
 export const networkRouter = router({
@@ -41,6 +42,24 @@ export const networkRouter = router({
   vitrine: protectedProcedure.query(async () => {
     const { listVitrineColetiva } = await import("../db");
     return listVitrineColetiva();
+  }),
+
+  // Etapa 10 — o acervo Ouro. Quem lê: só Status Ouro (goldProcedure, checado
+  // a cada request). O que sai: só contatos que a dona marcou 'ouro', com o
+  // termo da dona vigente — os dois filtros rodam no banco em listAcervoOuro,
+  // então revogar qualquer um tira o acesso na leitura seguinte, sem cache.
+  acervoOuro: goldProcedure.query(async ({ ctx }) => {
+    const { listAcervoOuro } = await import("../db");
+    const itens = await listAcervoOuro();
+    // Primeira leitura NOMINAL que atravessa donas no app — fica na trilha de
+    // auditoria, como as ações sensíveis do admin: "quem viu meus contatos
+    // compartilhados?" precisa ter resposta.
+    const { createAuditLog } = await import("../security");
+    await createAuditLog({
+      userId: ctx.user.id, action: "GOLD_ACERVO_READ", resource: "private_contacts",
+      details: { itens: itens.length }, status: "success", riskLevel: "medium",
+    });
+    return itens;
   }),
 
   list: protectedProcedure

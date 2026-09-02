@@ -58,7 +58,10 @@ export async function migrar(databaseUrl, { relatarApenas = false } = {}) {
     urlFinal += (urlFinal.includes("?") ? "&" : "?") + 'ssl={"rejectUnauthorized":false}';
   }
 
-  const journal = JSON.parse(await readFile(join(PASTA, "meta", "_journal.json"), "utf8"));
+  // O BOM entra fácil quando o journal é tocado por editor no Windows — e o
+  // JSON.parse do Node não o tolera. Como este script roda no BOOT de produção
+  // (falha = deploy abortado), um byte invisível não pode derrubar o site.
+  const journal = JSON.parse((await readFile(join(PASTA, "meta", "_journal.json"), "utf8")).replace(/^\uFEFF/, ""));
   const tags = journal.entries.map(entrada => entrada.tag);
   if (!tags.length) throw new Error("drizzle/meta/_journal.json não tem nenhuma migração.");
 

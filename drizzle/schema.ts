@@ -559,13 +559,14 @@ export const privateContacts = mysqlTable("private_contacts", {
 
   profileTags:  jsonCompat("profileTags").$type<string[]>(),
 
-  // Etapa 8 — o nível de visibilidade escolhido pela DONA (privacidade.md):
+  // Etapas 8/10 — o nível de visibilidade escolhido pela DONA (privacidade.md):
   // 'privado' (só a dona — o padrão, nada vira público por omissão), 'publico'
   // (o contato entra na vitrine do ecossistema SÓ como oportunidade: país,
   // cidade e o que possui/procura — nenhuma coluna pessoal é sequer lida) e
-  // 'ouro' (guardado, mas AINDA sem leitura por ninguém além da dona: a
-  // política de exposição Ouro aguarda as decisões de produto do modelo de
-  // acesso em decisoes-em-aberto.md).
+  // 'ouro' (etapa 10: entra no acervo Ouro, lido apenas por membras com Status
+  // Ouro — listAcervoOuro em server/db.ts. Os níveis NÃO são cumulativos:
+  // 'publico' expõe só a oportunidade a todas, 'ouro' expõe os campos
+  // estratégicos do cartão só a Ouro — pendência nº 2 de decisoes-em-aberto.md).
   // O índice existe porque a vitrine consulta por nível SEM ownerId — é a
   // única leitura legítima que atravessa donas, e sem índice ela viraria um
   // full-scan da tabela inteira do ecossistema a cada visita à tela.
@@ -1087,6 +1088,11 @@ export const documentVersions = mysqlTable("document_versions", {
                  "acordo_intermediacao",
                  "contrato_comissao",
                  "termo_gravacao",
+                 // Etapa 10: o termo pelo qual a DONA autoriza que membras Ouro
+                 // vejam os contatos que ela marcar como compartilhados. Sem
+                 // versão publicada (o texto jurídico é da Cris), a regra da
+                 // etapa 11 vale: não há o que consentir e a leitura libera.
+                 "termo_acesso_ouro",
                ]).notNull(),
   version:     int("version").notNull(),
   text:        text("text").notNull(),

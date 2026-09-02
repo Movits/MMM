@@ -652,6 +652,102 @@ export async function deletePrivateContact(
 }
 
 /**
+ * Etapa 10 — a parte pura do filtro de autorização da dona, separada para os
+ * testes executarem de verdade (não só lerem o fonte): contato de dona órfã
+ * (conta apagada) sai; contato de dona sem o termo vigente sai.
+ */
+export function filtrarAcervoPorAutorizacao<T extends { ownerId: string }>(
+  compartilhados: T[],
+  donaPorOpenId: Map<string, { id: number }>,
+  autorizadas: Set<number>,
+): T[] {
+  return compartilhados.filter(contato => {
+    const dona = donaPorOpenId.get(contato.ownerId);
+    return dona !== undefined && autorizadas.has(dona.id);
+  });
+}
+
+/**
+ * Etapa 10 — o acervo Ouro: os contatos que as donas marcaram como
+ * "Compartilhado com Usuários Ouro" (nivelVisibilidade = 'ouro').
+ *
+ * Duas autorizações se encontram aqui, e as duas são reavaliadas A CADA
+ * requisição, no banco — revogar qualquer uma tira o acesso na hora:
+ *  1. A da dona, por contato: o filtro por nível roda em tempo de leitura;
+ *     voltar o contato para 'privado' o remove na requisição seguinte.
+ *  2. A da dona, pela plataforma: o termo_acesso_ouro (padrão da etapa 11 —
+ *     sem versão publicada não há o que consentir e a leitura libera; texto
+ *     jurídico com a Cris). Revogar o termo esconde a base inteira da dona.
+ * (Quem PODE ler é decidido na rota: goldProcedure, só Status Ouro.)
+ *
+ * A projeção segue o cartão da etapa 10: nome, empresa e cargo, segmento
+ * (tags do perfil), local e possui/procura — e NADA de telefone, whatsapp,
+ * e-mail, redes, foto, cartão ou notas: sem mecanismo de "dados pessoais
+ * disponibilizados" campo a campo, os canais pessoais ficam de fora. Os
+ * níveis não são cumulativos: 'publico' mora na vitrine, não aqui.
+ */
+export async function listAcervoOuro() {
+  const db = await getDb();
+  if (!db) return [];
+  // Ordem determinística (mais recentes primeiro) e folga de leitura: o corte
+  // final de 200 acontece DEPOIS dos filtros de dona/termo, senão linhas que
+  // serão descartadas consumiriam o teto e material autorizado sumiria ao
+  // acaso. A folga de 2x mantém a consulta limitada — o acervo é uma tela.
+  const compartilhados = await db
+    .select({
+      id: privateContacts.id,
+      fullName: privateContacts.fullName,
+      jobTitle: privateContacts.jobTitle,
+      company: privateContacts.company,
+      country: privateContacts.country,
+      city: privateContacts.city,
+      profileTags: privateContacts.profileTags,
+      ownerId: privateContacts.ownerId,
+    })
+    .from(privateContacts)
+    .where(eq(privateContacts.nivelVisibilidade, "ouro"))
+    .orderBy(desc(privateContacts.updatedAt))
+    .limit(400);
+  if (!compartilhados.length) return [];
+
+  const donasOpenIds = Array.from(new Set(compartilhados.map(contato => contato.ownerId)));
+  const donas = await db
+    .select({ id: users.id, openId: users.openId, name: users.name })
+    .from(users)
+    .where(inArray(users.openId, donasOpenIds));
+  // Import dinâmico: consent.ts importa getDb daqui — estático viraria ciclo.
+  const { usersComConsentimento } = await import("./routers/consent");
+  const autorizadas = await usersComConsentimento(donas.map(dona => dona.id), "termo_acesso_ouro");
+  const donaPorOpenId = new Map(donas.map(dona => [dona.openId, dona]));
+  const visiveis = filtrarAcervoPorAutorizacao(compartilhados, donaPorOpenId, autorizadas).slice(0, 200);
+  if (!visiveis.length) return [];
+
+  const ids = visiveis.map(contato => contato.id);
+  const [possuiTudo, procuraTudo] = await Promise.all([
+    db.select({ contactId: contactAssets.contactId, label: contactAssets.tagLabel, category: contactAssets.category })
+      .from(contactAssets).where(inArray(contactAssets.contactId, ids)),
+    db.select({ contactId: contactNeeds.contactId, label: contactNeeds.tagLabel, category: contactNeeds.category })
+      .from(contactNeeds).where(inArray(contactNeeds.contactId, ids)),
+  ]);
+  // Referência opaca com sal PRÓPRIO: nem correlaciona com o id sequencial,
+  // nem com a referência que o mesmo contato teria na vitrine coletiva.
+  const referenciaOpaca = (id: number) =>
+    nodeCrypto.createHash("sha256").update(`acervo-ouro:${ENV.cookieSecret}:${id}`).digest("hex").slice(0, 10);
+  return visiveis.map(contato => ({
+    contatoRef: referenciaOpaca(contato.id),
+    fullName: contato.fullName,
+    jobTitle: contato.jobTitle,
+    company: contato.company,
+    country: contato.country,
+    city: contato.city,
+    profileTags: contato.profileTags ?? [],
+    compartilhadoPor: donaPorOpenId.get(contato.ownerId)?.name ?? null,
+    possui: possuiTudo.filter(item => item.contactId === contato.id).map(({ label, category }) => ({ label, category })),
+    procura: procuraTudo.filter(item => item.contactId === contato.id).map(({ label, category }) => ({ label, category })),
+  }));
+}
+
+/**
  * Etapa 8 — a vitrine coletiva do ecossistema.
  *
  * O escopo é explícito: de um contato público "não pode aparecer os dados

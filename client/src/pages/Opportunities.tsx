@@ -13,7 +13,7 @@ import {
   Search, Plus, Bookmark, BookmarkCheck, Eye, TrendingUp,
   Globe, Briefcase, DollarSign, Users, Package, Star,
   ShieldCheck, AlertTriangle, AlertCircle, XCircle, Clock, Trash2,
-  Filter, ChevronRight, ArrowLeft
+  Filter, ChevronRight, ArrowLeft, Crown
 } from "lucide-react";
 
 // ============================================================
@@ -286,6 +286,11 @@ export default function Opportunities() {
   // nem seleciona os dados pessoais.
   const { data: vitrine } = trpc.network.vitrine.useQuery(undefined, { enabled: !!user });
 
+  // Etapa 10 — o acervo Ouro: contatos que as donas marcaram "Compartilhado
+  // com Usuários Ouro". A rota é goldProcedure; aqui só evitamos a chamada
+  // (e o erro FORBIDDEN no console) para quem não é Ouro.
+  const { data: acervoOuro } = trpc.network.acervoOuro.useQuery(undefined, { enabled: isGold });
+
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
@@ -530,6 +535,67 @@ export default function Opportunities() {
                   )}
                   {item.possui.length === 0 && item.procura.length === 0 && (
                     <p className="text-white/25 text-xs">Sem itens registrados ainda.</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Acervo Ouro (etapa 10): contatos compartilhados pelas donas com membras Ouro.
+            A seção aparece para toda Ouro — vazia, explica o que é, senão o recurso é invisível. */}
+        {!showSaved && isGold && acervoOuro !== undefined && (
+          <div className="mt-10">
+            <div className="flex items-center gap-2 mb-1">
+              <Crown size={16} className="text-amber-400" />
+              <h2 className="text-white font-semibold text-sm">Acervo Ouro</h2>
+              <span className="text-white/40 text-xs">({acervoOuro.length})</span>
+            </div>
+            <p className="text-white/35 text-xs mb-4">
+              Contatos que as membras compartilharam com Usuárias Ouro. A dona controla o nível e pode revogar a qualquer momento — o efeito é imediato.
+            </p>
+            {acervoOuro.length === 0 && (
+              <div className="rounded-xl border border-dashed border-amber-300/20 p-6 text-center text-white/35 text-xs">
+                Nenhum contato compartilhado ainda. Quando uma membra marcar um contato como "Autorizadas (Ouro)" na Rede dela, ele aparece aqui.
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {acervoOuro!.map(item => (
+                <div key={item.contatoRef} className="bg-amber-400/[.04] border border-amber-300/20 rounded-xl p-4">
+                  <p className="text-white font-semibold text-sm">{item.fullName}</p>
+                  <p className="text-white/50 text-xs mt-0.5">
+                    {[item.jobTitle, item.company].filter(Boolean).join(" · ") || "Sem cargo/empresa informados"}
+                  </p>
+                  <p className="text-white/40 text-xs mt-0.5 mb-2">
+                    {[item.city, item.country].filter(Boolean).join(", ") || "Local não informado"}
+                    {item.compartilhadoPor ? ` · rede de ${item.compartilhadoPor}` : ""}
+                  </p>
+                  {(item.profileTags?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {item.profileTags!.map((tag, i) => (
+                        <span key={i} className="rounded-full border border-white/15 px-2.5 py-0.5 text-xs text-white/60">{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                  {item.possui.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-emerald-300/80 text-xs font-semibold mb-1">Possui</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.possui.map((coisa, i) => (
+                          <span key={i} className="rounded-full border border-emerald-400/30 px-2.5 py-0.5 text-xs text-emerald-200/80">{coisa.label}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {item.procura.length > 0 && (
+                    <div>
+                      <p className="text-sky-300/80 text-xs font-semibold mb-1">Procura</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.procura.map((coisa, i) => (
+                          <span key={i} className="rounded-full border border-sky-300/30 px-2.5 py-0.5 text-xs text-sky-200/80">{coisa.label}</span>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}
