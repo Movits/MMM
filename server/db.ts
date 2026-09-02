@@ -20,6 +20,7 @@ import {
 import { ENV } from './_core/env';
 import nodeCrypto from "node:crypto";
 import { slugifyMatchTag } from "./match-service";
+import { mascararContatosEmTexto } from "@shared/contato-em-texto";
 import { BancoIndisponivel } from "./banco-indisponivel";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -422,7 +423,7 @@ export async function getAuditLogs(filters: { userId?: number; action?: string; 
 // ─── Matches (sistema original MMM) ────────────────────────────────────────────────
 export async function getMatchesForUser(userId: number, limit = 20) {
   const db = await exigirDb();
-  return db.select({
+  const linhas = await db.select({
     matchId: matches.id,
     matchedUserId: matches.matchedUserId,
     overallScore: matches.overallScore,
@@ -462,6 +463,14 @@ export async function getMatchesForUser(userId: number, limit = 20) {
     .where(and(eq(matches.userId, userId), eq(matches.userDismissed, false)))
     .orderBy(desc(matches.overallScore))
     .limit(limit);
+  // A13: a bio é texto livre da OUTRA usuária chegando a esta — quem escreveu
+  // telefone/e-mail na própria bio não pode usá-la como canal de contato nos
+  // matches. A dona segue vendo a própria bio inteira no perfil; aqui, a
+  // versão que circula sai mascarada.
+  return linhas.map(linha => ({
+    ...linha,
+    bio: linha.bio ? mascararContatosEmTexto(linha.bio) : linha.bio,
+  }));
 }
 
 export async function dismissMatch(userId: number, matchId: number) {

@@ -227,8 +227,12 @@ export async function createAuditLog(params: {
       status: params.status ?? "success",
       riskLevel: params.riskLevel ?? "low",
     });
-  } catch {
-    // Audit log failures must never crash the application
+  } catch (erro) {
+    // A falha da auditoria nunca derruba a aplicação — mas também não pode
+    // ser invisível: há registros (ex.: CONTACT_EXCHANGE_BLOCKED, A13) que
+    // sustentam cláusula contratual, e um buraco silencioso na trilha só
+    // seria descoberto quando ela fizesse falta.
+    console.error("[Auditoria] falha ao gravar registro:", params.action, erro instanceof Error ? erro.message : erro);
   }
 }
 

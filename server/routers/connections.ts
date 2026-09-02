@@ -5,6 +5,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { goldProcedure } from "./_procedures";
 import { exigirDb } from "../db";
 import { ehErroDeBancoIndisponivel } from "../banco-indisponivel";
+import { exigirTextoSemContato } from "../bloqueio-de-contato";
 import { users } from "../../drizzle/schema";
 
 // ============================================================
@@ -22,6 +23,8 @@ export const connectionsRouter = router({
       message: z.string().max(300).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // A13: o bilhete do pedido de conexão também é texto livre entre partes.
+      await exigirTextoSemContato(ctx.user.id, "connections.send", input.message, input.targetUserId);
       const { sendConnectionRequest } = await import("../db");
       const result = await sendConnectionRequest(ctx.user.id, input.targetUserId, input.message);
       if (result.alreadyExists) throw new TRPCError({ code: "CONFLICT", message: "Pedido de conexão já enviado" });
@@ -65,6 +68,8 @@ export const connectionsRouter = router({
       content: z.string().min(1).max(2000),
     }))
     .mutation(async ({ ctx, input }) => {
+      // A13: mensagem direta é o canal mais óbvio para trocar contato.
+      await exigirTextoSemContato(ctx.user.id, "connections.sendMessage", input.content, input.recipientId);
       const db = await exigirDb();
       const { directMessages } = await import("../../drizzle/schema");
       await db.insert(directMessages).values({
