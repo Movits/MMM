@@ -5,11 +5,15 @@ import { encryptData, decryptData, hashData } from "./security";
 process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
 
 // Mock do banco de dados para testes
-vi.mock("./db", () => ({
-  getDb: vi.fn().mockResolvedValue(null),
-  upsertUser: vi.fn(),
-  getUserByOpenId: vi.fn(),
-}));
+vi.mock("./db", async () => {
+  const { BancoIndisponivel } = await import("./banco-indisponivel");
+  return {
+    getDb: vi.fn().mockResolvedValue(null),
+    exigirDb: vi.fn().mockRejectedValue(new BancoIndisponivel()),
+    upsertUser: vi.fn(),
+    getUserByOpenId: vi.fn(),
+  };
+});
 
 describe("Cofre Digital - Criptografia", () => {
   it("deve criptografar e descriptografar dados corretamente", () => {

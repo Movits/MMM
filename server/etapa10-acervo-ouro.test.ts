@@ -26,13 +26,15 @@ const listAcervoOuro = vi.fn(async () => [{
   possui: [{ label: "Terras raras", category: null }], procura: [],
 }]);
 const listVitrineColetiva = vi.fn(async () => []);
-vi.mock("./db", () => ({
+vi.mock("./db", async () => ({
   createPrivateContact: async () => 7,
   updatePrivateContact: async () => true,
   deletePrivateContact: async () => true,
   listPrivateContacts: async () => ({ data: [], total: 0 }),
   getPrivateContactById: async () => null,
   getDb: async () => null,
+  // Derivado do getDb acima, como no db.ts real: sem banco, lança.
+  exigirDb: async () => { throw new (await import("./banco-indisponivel")).BancoIndisponivel(); },
   listVitrineColetiva: (...args: unknown[]) => listVitrineColetiva(...(args as [])),
   listAcervoOuro: (...args: unknown[]) => listAcervoOuro(...(args as [])),
 }));

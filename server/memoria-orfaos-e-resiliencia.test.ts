@@ -56,7 +56,7 @@ const fakeDb = {
   update: () => ({ set: (valores: Record<string, unknown>) => ({ where: async () => { escritas.atualizados.push(valores); } }) }),
   delete: () => ({ where: async () => { escritas.delecoes += 1; } }),
 };
-vi.mock("./db", () => ({ getDb: async () => fakeDb as never }));
+vi.mock("./db", () => ({ getDb: async () => fakeDb as never, exigirDb: async () => fakeDb as never }));
 
 const schema = await import("../drizzle/schema");
 const servico = await import("./memory-service");

@@ -11,6 +11,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { montarDiretivasCsp } from "./csp";
 import { sdk } from "./sdk";
 import { cleanupExpiredSessions, createAuditLog } from "../security";
 
@@ -125,25 +126,14 @@ async function startServer() {
   // Confiar no proxy reverso (necessário para rate limiting por IP real)
   app.set("trust proxy", 1);
 
-  // V-05: Headers de segurança HTTP via Helmet (CSP rigoroso)
+  // V-05: Headers de segurança HTTP via Helmet (CSP rigoroso). As diretivas
+  // vivem em csp.ts; o script-src só afrouxa quando o Vite roda em middleware
+  // (a mesma condição que escolhe setupVite lá embaixo). Sem NODE_ENV, ou em
+  // produção, os arquivos estáticos de dist/public recebem a política estrita.
   app.use(
     helmet({
       contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          // Em produção, remover 'unsafe-inline' e 'unsafe-eval' e usar nonces
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-          fontSrc: ["'self'", "https://fonts.gstatic.com"],
-          imgSrc: ["'self'", "data:", "https:", "blob:"],
-          connectSrc: ["'self'", "wss:", "https:"],
-          frameSrc: ["'none'"],
-          frameAncestors: ["'none'"], // Proteção adicional contra clickjacking
-          objectSrc: ["'none'"],
-          baseUri: ["'self'"], // Proteção contra base tag injection
-          formAction: ["'self'"], // Formulários só podem enviar para o próprio domínio
-          upgradeInsecureRequests: [],
-        },
+        directives: montarDiretivasCsp(process.env.NODE_ENV === "development"),
         useDefaults: false,
       },
       crossOriginEmbedderPolicy: false, // Necessário para Vite HMR

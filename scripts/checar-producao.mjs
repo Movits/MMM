@@ -75,6 +75,12 @@ try {
     const asset = await fetch(`${BASE}/${bundle}`, { method: "HEAD" });
     ok("assets com cache de 1 ano", /immutable/.test(asset.headers.get("cache-control") || ""));
   }
+  {
+    // A CSP de produção não pode voltar a afrouxar o script-src (server/_core/csp.ts).
+    const csp = home.headers.get("content-security-policy") || "";
+    const scriptSrc = (csp.split(";").map(d => d.trim()).find(d => d.startsWith("script-src ")) || "").replace(/^script-src\s+/, "");
+    ok("CSP estrita (script-src só 'self')", scriptSrc === "'self'", scriptSrc || "sem cabeçalho CSP");
+  }
   ok("página de privacidade", (await fetch(BASE + "/privacidade")).status === 200);
   ok("html declara pt-BR (tradutor do Chrome quieto)", /<html lang="pt-BR"/.test(html));
 

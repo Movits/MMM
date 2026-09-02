@@ -70,6 +70,12 @@ jobs:
       - name: Instalar dependências
         run: pnpm install --frozen-lockfile
 
+      # Texto de tela entra nos 10 JSONs de idioma ou não entra: uma chave que
+      # falta num idioma vira fallback silencioso em produção. Roda antes do
+      # banco porque só depende do checkout e falha barato.
+      - name: Os 10 idiomas têm as mesmas chaves
+        run: node scripts/conferir-locales.mjs
+
       # Quem muda drizzle/schema.ts e esquece o `pnpm db:generate` deixa as
       # migrações para trás — e o banco de produção nunca receberia a mudança.
       # Com schema e migrações em dia, o generate não cria arquivo nenhum.
@@ -99,6 +105,7 @@ jobs:
             echo "::error::Banco recém-criado precisaria de nivelamento — baseline inconsistente ou leitor quebrado."
             exit 1
           }
+
 
       - name: Tipos
         run: pnpm check

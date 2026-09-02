@@ -4,7 +4,7 @@
  */
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { exigirDb } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { storagePut } from "../storage";
 import { TRPCError } from "@trpc/server";
@@ -252,8 +252,7 @@ export const sivcRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Consentimento explícito é obrigatório para iniciar a verificação." });
       }
 
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const db = await exigirDb();
 
       // Verificar se já existe uma verificação ativa
       const [existing] = await db.execute(
@@ -297,8 +296,7 @@ export const sivcRouter = router({
   // Obter status completo da verificação
   getStatus: protectedProcedure
     .query(async ({ ctx }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const db = await exigirDb();
 
       const [verRows] = await db.execute(sql`
         SELECT * FROM sivc_verifications
@@ -381,8 +379,7 @@ export const sivcRouter = router({
       declaredData: z.record(z.string(), z.string()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const db = await exigirDb();
 
       // Verificar que a verificação pertence ao usuário
       const [verRows] = await db.execute(sql`
@@ -486,8 +483,7 @@ export const sivcRouter = router({
       value: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const db = await exigirDb();
 
       // Verificar que a verificação pertence ao usuário
       const [verRows] = await db.execute(sql`

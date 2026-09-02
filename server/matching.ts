@@ -1,4 +1,4 @@
-import { getDb } from "./db";
+import { exigirDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { requireSecret } from "./_core/env";
 import {
@@ -53,8 +53,7 @@ export async function saveUserProfile(userId: number, data: Partial<UserProfile>
   const filled = fields.filter(f => f !== null && f !== undefined && f !== "" && !(Array.isArray(f) && f.length === 0)).length;
   const profileCompleteness = Math.round((filled / fields.length) * 100);
 
-  const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
+  const db = await exigirDb();
 
   const existing = await db.select({ id: userProfiles.id })
     .from(userProfiles)
@@ -90,8 +89,7 @@ export async function saveUserProfile(userId: number, data: Partial<UserProfile>
 
 // ─── Get user profile (safe, no sensitive data) ──────────────
 export async function getUserProfile(userId: number) {
-  const db = await getDb();
-  if (!db) return null;
+  const db = await exigirDb();
 
   const [profile] = await db.select({
     id: userProfiles.id,
@@ -451,8 +449,7 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
   // (userId, matchedUserId). Antes havia aqui uma subconsulta de "já casei" com
   // `ne(matchedUserId, null)` — que em SQL é sempre falso, devolvia zero linhas,
   // e o insert puro duplicava o conjunto inteiro a cada clique.
-  const db = await getDb();
-  if (!db) return 0;
+  const db = await exigirDb();
 
   const candidates = await db.select({
     userId: userProfiles.userId,
@@ -552,7 +549,7 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
   }
 
   // Update lastAiAnalysisAt
-  await (await getDb())?.update(userProfiles)
+  await db.update(userProfiles)
     .set({ lastAiAnalysisAt: new Date() })
     .where(eq(userProfiles.userId, userId));
 
@@ -566,8 +563,7 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
 
 // ─── Dismiss a match ─────────────────────────────────────────
 export async function dismissMatch(userId: number, matchId: number) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   await db.update(matches)
     .set({ userDismissed: true })
     .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
@@ -575,8 +571,7 @@ export async function dismissMatch(userId: number, matchId: number) {
 
 // ─── Mark match as seen ───────────────────────────────────────
 export async function markMatchSeen(userId: number, matchId: number) {
-  const db = await getDb();
-  if (!db) return;
+  const db = await exigirDb();
   await db.update(matches)
     .set({ userSeen: true })
     .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
@@ -584,8 +579,7 @@ export async function markMatchSeen(userId: number, matchId: number) {
 
 // ─── Get match stats for dashboard ───────────────────────────
 export async function getMatchStats(userId: number) {
-  const db = await getDb();
-  if (!db) return { total: 0, unseen: 0, highScore: 0, avgScore: 0, distribution: [0,0,0,0,0] };
+  const db = await exigirDb();
 
   const allMatches = await db.select({
     overallScore: matches.overallScore,

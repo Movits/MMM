@@ -30,12 +30,12 @@ node scripts/migrar.mjs --simular   # só relata o que aplicaria
 node scripts/nivelar-banco.mjs      # banco antigo desalinhado: relata; --aplicar cria o que falta
 pnpm dev               # http://localhost:3000
 pnpm check             # tsc --noEmit (não compila os *.test.ts)
-pnpm test              # vitest run (só server/**)
+pnpm test              # vitest run (server em Node + client em jsdom)
 pnpm vitest run server/match-service.test.ts   # um teste só
 pnpm build             # vite build + esbuild do servidor → dist/
 pnpm start             # roda o build de produção
 pnpm format            # prettier --write .
-node scripts/conferir-locales.mjs   # os 10 idiomas têm as mesmas chaves (NÃO roda no CI)
+node scripts/conferir-locales.mjs   # os 10 idiomas têm as mesmas chaves (o CI também roda)
 node scripts/checar-producao.mjs    # exame de saúde da produção (pós-deploy); --com-ia inclui as checagens de IA
 node scripts/semear-rede-de-teste.mjs   # contatos fictícios na rede de uma usuária; --limpar desfaz
 node scripts/definir-senha-local.mjs    # senha de conta em banco LOCAL (sem Resend em dev)
@@ -44,9 +44,13 @@ node .claude/hooks/carimbo.mjs --status # estado da conferência (ver "Fluxo de 
 
 - **No Windows, use Git Bash**: `dev` e `start` definem `NODE_ENV` com sintaxe
   POSIX e falham no PowerShell. Se `pnpm` não estiver no PATH, `corepack pnpm`.
-- `DATABASE_URL`, `JWT_SECRET` e `VAULT_ENCRYPTION_KEY` são obrigatórias: o servidor
-  se recusa a iniciar sem elas (`requireSecret()` em `server/_core/env.ts`). Não há
-  valores padrão de propósito. `LLM_API_URL` também não tem fallback.
+- `JWT_SECRET` é obrigatória: o servidor se recusa a iniciar sem ela
+  (`requireSecret()` em `server/_core/env.ts`, chamado ao carregar `server/auth.ts`).
+  `VAULT_ENCRYPTION_KEY` deve existir em produção, mas o código não a exige: sem ela,
+  `server/security.ts` e `server/matching.ts` derivam a chave do cofre do `JWT_SECRET`.
+  Sem `DATABASE_URL` o servidor SOBE, e todo acesso ao banco responde "Banco de dados
+  indisponível" (ver "Acesso a dados"). Não há valores padrão de propósito.
+  `LLM_API_URL` também não tem fallback.
 - Com `.env` completo (banco + chave do Gemini), a suíte passa inteira; testes
   que dependem de credencial ausente (ex.: Resend) se auto-pulam com `skipIf`.
   Falha na suíte é regressão, sem exceções toleradas.
@@ -95,25 +99,33 @@ Só então marque a tarefa como concluída no Notion, com a comprovação.
 ## Testes
 
 O CI (`.github/workflows/testes.yml`, toda PR e push na `main`) roda, nesta ordem:
-`pnpm db:generate` (falha se criar arquivo em `drizzle/`) → banco do zero em MariaDB
-11.4 com `criar-banco.mjs` → `nivelar-banco.mjs` exigindo "Nada a nivelar" →
-`pnpm check` → `pnpm test` → `pnpm build`. Rode o mesmo antes da PR.
+`conferir-locales.mjs` (10 idiomas com as mesmas chaves) → `pnpm db:generate` (falha
+se criar arquivo em `drizzle/`) → banco do zero em MariaDB 11.4 com `criar-banco.mjs`
+→ `nivelar-banco.mjs` exigindo "Nada a nivelar" → `pnpm check` → `pnpm test` →
+`pnpm build`. Rode o mesmo antes da PR.
 
 **Servidor.** Lógica nova em `server/` ganha ou atualiza um `*.test.ts` ao lado
-(44 hoje). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
+(41 hoje). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
 `skipIf`; `*.integracao.test.ts` usa `DATABASE_URL` real; `RUN_LIVE_CREDENTIAL_TESTS=true`
-liga os testes de credencial viva. `pnpm check` NÃO compila testes (o `tsconfig`
-exclui `*.test.ts`): erro de tipo em teste só aparece no `pnpm test`.
+liga os testes de credencial viva. Ninguém checa os tipos dos testes: o `tsconfig`
+exclui `*.test.ts` e `*.test.tsx` do `pnpm check`, e o Vitest só transpila (esbuild
+remove os tipos sem conferir). Um mock com a forma errada passa em silêncio; escreva o
+dublê a partir do tipo real e prefira asserções que discriminem comportamento.
 
-**Front.** Não há runner para `client/` (o Vitest só colhe `server/**`; não há jsdom
-nem Testing Library). "Testado" no front significa, obrigatoriamente: `pnpm check` e
+**Front.** Há runner: `vitest.workspace.ts` divide a suíte em dois projetos, `server`
+(Node) e `client` (jsdom + Testing Library), e `pnpm test` roda os dois. Teste de
+front fica em `client/src/**/*.test.tsx`, ao lado do componente (padrão:
+`client/src/components/ProtectedRoute.test.tsx`, que mocka `useAuth` com `vi.mock` e
+troca `window.location` por um dublê para ler o redirecionamento sem navegar);
+`client/src/test/setup.ts` carrega o jest-dom, limpa o DOM entre testes e fixa o i18n
+em pt-BR. O `tsconfig` exclui `*.test.tsx` como exclui `*.test.ts`. Teste automatizado
+não dispensa o smoke manual: "testado" no front continua significando `pnpm check` e
 `pnpm build` verdes; `conferir-locales` se tocou em texto; abrir cada tela afetada com
 `pnpm dev`, logado com o nível certo (bronze, prata, ouro, admin) quando a tela depende
 de nível, exercitar a mudança e conferir o console sem erro; e uma seção "Como
 verifiquei" na PR listando as telas. Função pura do client pode ser testada em
-`server/*.test.ts` (padrão: `server/transcricao-destacada.test.ts`). Tarefa futura:
-`vitest.workspace.ts` (o Vitest é 2.1.9) + jsdom + Testing Library, e
-`conferir-locales` no CI.
+`server/*.test.ts` (padrão: `server/transcricao-destacada.test.ts`) ou, sem JSX, em
+`client/src/**/*.test.ts`, que o projeto `client` também colhe.
 
 ## Arquitetura
 
@@ -142,10 +154,22 @@ estão repetidas inline em `dealRoom.ts`, `matching.ts`, `opportunities.ts`,
 `storageProxy.ts` e no client.
 
 **Acesso a dados.** `server/db.ts` é a camada única (usuárias, oportunidades, Ouro,
-segurança, matches, rede privada, contextos, enriquecimento). `getDb()` não lança e a
-maioria dos helpers devolve vazio quando não há banco: banco fora do ar parece "sem
-dados". A exceção correta é `BancoIndisponivel` em `routers/consent.ts`, criada porque
-essa ambiguidade liberava o Smart Match para todo mundo.
+segurança, matches, rede privada, contextos, enriquecimento). Banco fora do ar é ERRO,
+nunca "sem dados": todo helper abre com `exigirDb()`, que lança `BancoIndisponivel`
+(classe em `server/banco-indisponivel.ts`) quando não há `DATABASE_URL`. Em produção a
+variável existe sempre e `drizzle(url)` não conecta ao criar o pool, então a queda real
+chega na primeira query como erro de conexão do driver (`DrizzleQueryError` com
+`cause.code` ECONNREFUSED, ETIMEDOUT, PROTOCOL_CONNECTION_LOST...);
+`ehErroDeBancoIndisponivel()` reconhece os dois casos na cadeia de `cause`. O middleware
+de `server/_core/trpc.ts` traduz qualquer um deles, em todo procedimento, num
+`INTERNAL_SERVER_ERROR` com `MENSAGEM_BANCO_INDISPONIVEL` (em português), e o
+`errorFormatter` do mesmo arquivo mascara os demais erros do driver ("Erro ao consultar
+o banco de dados") para o SQL nunca chegar ao navegador. Se a sessão não pôde ser lida
+por isso, `createContext` marca `ctx.bancoIndisponivel`, `auth.me` lança em vez de
+devolver `null` e o `ProtectedRoute` mostra "tentar de novo" em vez de mandar ao login.
+Exceções deliberadas: `system.health` (responde `ok:false` com HTTP 503) e
+`stats.platform` (zeros na página inicial) degradam em vez de lançar. Não crie novo
+`catch` que devolva vazio: se precisar de um, relance quando `ehErroDeBancoIndisponivel`.
 
 **Três motores de match convivem.** `server/match-service.ts` cruza contatos da mesma
 dona: `scoreMatch` aplica, nesta ordem, concorrentes → 0, slug exato → 100, mesmo

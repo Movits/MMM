@@ -3,7 +3,8 @@ import { z } from "zod";
 import { eq, and, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { goldProcedure } from "./_procedures";
-import { getDb } from "../db";
+import { exigirDb } from "../db";
+import { ehErroDeBancoIndisponivel } from "../banco-indisponivel";
 import { users } from "../../drizzle/schema";
 
 // ============================================================
@@ -42,8 +43,7 @@ export const connectionsRouter = router({
   getMessages: goldProcedure
     .input(z.object({ recipientId: z.number().int() }))
     .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) return [];
+      const db = await exigirDb();
       const { directMessages } = await import("../../drizzle/schema");
       const { or } = await import("drizzle-orm");
       const rows = await db.select().from(directMessages)
@@ -65,8 +65,7 @@ export const connectionsRouter = router({
       content: z.string().min(1).max(2000),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
       const { directMessages } = await import("../../drizzle/schema");
       await db.insert(directMessages).values({
         senderId: ctx.user.id,
@@ -77,8 +76,7 @@ export const connectionsRouter = router({
     }),
 
   getConversations: goldProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
+    const db = await exigirDb();
     const { directMessages } = await import("../../drizzle/schema");
     const { or, max, count } = await import("drizzle-orm");
     // Buscar todas as pessoas com quem o usuário trocou mensagens
@@ -95,12 +93,17 @@ export const connectionsRouter = router({
   }),
 
   getGroups: goldProcedure.query(async ({ ctx }) => {
-    // Retornar grupos estratégicos (tabela strategic_groups se existir)
+    // Retornar grupos estratégicos (tabela strategic_groups se existir).
+    // O catch existe para a TABELA AUSENTE não derrubar a tela; a queda real do
+    // banco chega pela mesma consulta, como erro de conexão do driver, e essa
+    // não pode virar "nenhum grupo": sobe para o middleware traduzir.
+    const db = await exigirDb();
     try {
-      const db = await getDb();
-      if (!db) return [];
       const { strategicGroups } = await import("../../drizzle/schema");
-      return db.select().from(strategicGroups).limit(50);
-    } catch { return []; }
+      return await db.select().from(strategicGroups).limit(50);
+    } catch (erro) {
+      if (ehErroDeBancoIndisponivel(erro)) throw erro;
+      return [];
+    }
   }),
 });

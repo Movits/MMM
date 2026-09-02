@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { exigirDb } from "../db";
 import { createNotification } from "../db";
 import { storagePut } from "../storage";
 
@@ -27,8 +27,7 @@ export const dealRoomRouter = router({
       message: z.string().max(1000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
 
       const [opp] = await db.select().from(opportunities).where(eq(opportunities.id, input.opportunityId)).limit(1);
       if (!opp) throw new TRPCError({ code: "NOT_FOUND", message: "Oportunidade não encontrada" });
@@ -70,8 +69,7 @@ export const dealRoomRouter = router({
   acceptNDA: protectedProcedure
     .input(z.object({ roomId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
 
       const [room] = await db.select().from(dealRooms).where(eq(dealRooms.id, input.roomId)).limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
@@ -155,8 +153,7 @@ export const dealRoomRouter = router({
   getRoom: protectedProcedure
     .input(z.object({ roomId: z.number().int() }))
     .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
 
       const [room] = await db.select().from(dealRooms).where(eq(dealRooms.id, input.roomId)).limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
@@ -175,8 +172,7 @@ export const dealRoomRouter = router({
 
   // Listar Deal Rooms da usuária logada
   listRooms: protectedProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
+    const db = await exigirDb();
 
     const rooms = await db.select().from(dealRooms)
       .where(sql`(${dealRooms.ownerId} = ${ctx.user.id} OR ${dealRooms.interestedId} = ${ctx.user.id})`)
@@ -203,8 +199,7 @@ export const dealRoomRouter = router({
       content: z.string().min(1).max(5000),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
 
       const [room] = await db.select().from(dealRooms).where(eq(dealRooms.id, input.roomId)).limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
@@ -237,8 +232,7 @@ export const dealRoomRouter = router({
   getMessages: protectedProcedure
     .input(z.object({ roomId: z.number().int() }))
     .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) return [];
+      const db = await exigirDb();
 
       const [room] = await db.select().from(dealRooms).where(eq(dealRooms.id, input.roomId)).limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
@@ -267,8 +261,7 @@ export const dealRoomRouter = router({
       sizeBytes: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
 
       const [room] = await db.select().from(dealRooms).where(eq(dealRooms.id, input.roomId)).limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
@@ -298,8 +291,7 @@ export const dealRoomRouter = router({
   listDocuments: protectedProcedure
     .input(z.object({ roomId: z.number().int() }))
     .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) return [];
+      const db = await exigirDb();
       const [room] = await db.select().from(dealRooms).where(eq(dealRooms.id, input.roomId)).limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
       // Ouro pode acessar qualquer sala
@@ -315,8 +307,7 @@ export const dealRoomRouter = router({
   listAllRooms: protectedProcedure.query(async ({ ctx }) => {
     if (!isGoldOrAbove(ctx.user.role))
       throw new TRPCError({ code: "FORBIDDEN", message: "Acesso exclusivo para membras Ouro" });
-    const db = await getDb();
-    if (!db) return [];
+    const db = await exigirDb();
     const rooms = await db.select().from(dealRooms)
       .orderBy(desc(dealRooms.updatedAt))
       .limit(200);

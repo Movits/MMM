@@ -12,15 +12,21 @@ const getOpportunityById = vi.fn();
 const getInterestsByOpportunity = vi.fn(async () => [{ userId: 9, name: "Interessada" }]);
 // O router de oportunidades importa dezenas de nomes de ../db; o Proxy entrega
 // um stub para qualquer um e mantém reais só os dois que este teste observa.
-vi.mock("./db", () => new Proxy({}, {
-  has: () => true, // o vitest confere `prop in mock` antes de entregar o export
-  get: (_alvo, prop) => {
-    if (prop === "getOpportunityById") return (...args: unknown[]) => getOpportunityById(...(args as []));
-    if (prop === "getInterestsByOpportunity") return (...args: unknown[]) => getInterestsByOpportunity(...(args as []));
-    if (prop === "then" || prop === Symbol.toStringTag) return undefined; // não é uma Promise
-    return async () => undefined;
-  },
-}));
+vi.mock("./db", async () => {
+  const { BancoIndisponivel } = await import("./banco-indisponivel");
+  return new Proxy({}, {
+    has: () => true, // o vitest confere `prop in mock` antes de entregar o export
+    get: (_alvo, prop) => {
+      if (prop === "getOpportunityById") return (...args: unknown[]) => getOpportunityById(...(args as []));
+      if (prop === "getInterestsByOpportunity") return (...args: unknown[]) => getInterestsByOpportunity(...(args as []));
+      // Sem banco: como no db.ts real, getDb é null e exigirDb lança.
+      if (prop === "getDb") return async () => null;
+      if (prop === "exigirDb") return async () => { throw new BancoIndisponivel(); };
+      if (prop === "then" || prop === Symbol.toStringTag) return undefined; // não é uma Promise
+      return async () => undefined;
+    },
+  });
+});
 vi.mock("./security", () => ({ createAuditLog: async () => {} }));
 
 const { opportunitiesRouter } = await import("./routers/opportunities");

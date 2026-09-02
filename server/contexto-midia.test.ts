@@ -35,7 +35,12 @@ const deleteContextMedia = vi.fn(async () => true);
 const listContextMediaByContext = vi.fn(async () => [] as Array<{ id: string; storagePath: string }>);
 const deleteContext = vi.fn(async () => true);
 
-vi.mock("./db", () => ({
+// Sem banco: getDb devolve null e exigirDb lança, como o db.ts real faz sem
+// DATABASE_URL. Um caminho não coberto aqui que fosse ao banco falha alto, e
+// não com "export não definido no mock".
+vi.mock("./db", async () => ({
+  getDb: async () => null,
+  exigirDb: async () => { throw new (await import("./banco-indisponivel")).BancoIndisponivel(); },
   listContextTypes: vi.fn(async () => []),
   listContexts: vi.fn(async () => ({ data: [], total: 0 })),
   createContext: vi.fn(),

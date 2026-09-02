@@ -3,7 +3,7 @@ import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
 import { router } from "../_core/trpc";
 import { adminProcedure } from "./_procedures";
-import { getDb, listUsers, updateOpportunity } from "../db";
+import { exigirDb, listUsers, updateOpportunity } from "../db";
 import {
   createAuditLog,
   getAuditLogs as getSecurityAuditLogs,
@@ -58,8 +58,7 @@ export const adminRouter = router({
       role: z.enum(["bronze", "silver", "gold", "admin", "president"]),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
 
       // Ouro = Presidente: membras Ouro podem conceder/revogar Status Ouro para outras
       if (input.role === "gold" && ctx.user.role !== "president" && ctx.user.role !== "gold" && ctx.user.role !== "admin") {
@@ -102,8 +101,7 @@ export const adminRouter = router({
   toggleUserStatus: adminProcedure
     .input(z.object({ userId: z.number(), isActive: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const db = await exigirDb();
       await db.update(users).set({ isActive: input.isActive }).where(eq(users.id, input.userId));
       await createAuditLog({ userId: ctx.user.id, action: input.isActive ? "ADMIN_ACTIVATE_USER" : "ADMIN_DEACTIVATE_USER", resource: "users", resourceId: String(input.userId), status: "success", riskLevel: "high" });
       return { success: true };
@@ -126,8 +124,7 @@ export const adminRouter = router({
 
   // Moderar oportunidades pendentes
   getPendingOpportunities: adminProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    if (!db) return [];
+    const db = await exigirDb();
     const { opportunities } = await import("../../drizzle/schema");
     return db.select().from(opportunities)
       .where(eq(opportunities.status, "pending"))
@@ -161,8 +158,7 @@ export const adminRouter = router({
     .input(z.object({ limit: z.number().int().min(1).max(200).default(100) }))
     .query(async ({ ctx, input }) => {
       await createAuditLog({ userId: ctx.user.id, action: "ADMIN_VIEW_SESSIONS", resource: "sessions", status: "success", riskLevel: "medium" });
-      const db = await getDb();
-      if (!db) return [];
+      const db = await exigirDb();
       const { sessions: sessionsTable } = await import("../../drizzle/schema");
       if (!sessionsTable) return [];
       return db.select({
