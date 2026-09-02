@@ -241,11 +241,122 @@ const CABECAS_TRANSPARENTES = new Set([
 ]);
 
 /**
+ * Lugares que NUNCA são a substância de um termo (achado da revisão de 01/09:
+ * "Fornecedor da China" era reduzido a "china", e dois contatos sem nada em
+ * comum além do país casavam em 100 — a nota reservada a quem tem exatamente
+ * a mesma coisa — passando do corte de e-mail). É o mesmo erro que o
+ * comentário dos LOCATIVOS descreve como o caso COMUM em comércio exterior:
+ * o complemento do termo é quase sempre o lugar, não a mercadoria.
+ *
+ * Lista curada (sem acentos, como tudo aqui): continentes e regiões, países
+ * do circuito de comércio da plataforma, gentílicos e estados brasileiros.
+ * Não precisa ser o atlas inteiro — precisa cobrir o que aparece em tag de
+ * possui/procura; na dúvida, um lugar fora da lista mantém o comportamento
+ * de hoje, que é o risco conhecido.
+ */
+const LUGARES = new Set([
+  // continentes e regiões
+  "africa", "europa", "asia", "america", "americas", "oceania", "mercosul",
+  "latam", "caribe", "iberia", "balcas", "magrebe", "nordeste", "amazonia",
+  // países — pt/en/es correntes
+  "brasil", "brazil", "china", "india", "japao", "japan", "alemanha",
+  "germany", "franca", "france", "espanha", "spain", "italia", "italy",
+  "portugal", "angola", "mocambique", "nigeria", "egito", "marrocos",
+  "argelia", "gana", "quenia", "etiopia", "senegal", "argentina", "chile",
+  "uruguai", "paraguai", "bolivia", "peru", "colombia", "venezuela",
+  "equador", "mexico", "canada", "eua", "usa", "russia", "turquia",
+  "ucrania", "polonia", "grecia", "irlanda", "inglaterra", "holanda",
+  "belgica", "suica", "suecia", "noruega", "dinamarca", "finlandia",
+  "austria", "israel", "catar", "dubai", "coreia", "vietna", "tailandia",
+  "indonesia", "malasia", "singapura", "filipinas", "australia", "panama",
+  "cuba", "haiti", "jamaica", "guiana", "suriname", "taiwan", "vietnam",
+  "uganda", "tanzania", "camaroes", "cameroon", "zambia", "zimbabue",
+  "botsuana", "namibia", "ruanda", "sudao", "libia", "tunisia", "tunes",
+  "netherlands", "germany", "sweden", "norway", "denmark", "finland",
+  "switzerland", "austria", "greece", "ireland", "scotland", "wales",
+  "belgium", "poland", "ukraine", "turkey", "japon", "alemania", "francia",
+  "espana", "paises", "reino", "emirados", "arabia", "kuwait", "omã", "oma",
+  // regiões e pontos cardeais usados como lugar
+  "sul", "norte", "leste", "oeste", "ocidente", "oriente", "south", "north",
+  "east", "west", "sur", "norte-africa",
+  // gentílicos correntes (masc/fem/plural mais comuns)
+  "chines", "chinesa", "chineses", "chinesas", "brasileiro", "brasileira",
+  "brasileiros", "brasileiras", "americano", "americana", "americanos",
+  "americanas", "argentino", "argentina", "argentinos", "argentinas",
+  "europeu", "europeia", "europeus", "europeias", "africano", "africana",
+  "africanos", "africanas", "asiatico", "asiatica", "asiaticos", "asiaticas",
+  "portugues", "portuguesa", "portugueses", "portuguesas", "frances",
+  "francesa", "franceses", "francesas", "alemao", "alema", "alemaes",
+  "italiano", "italiana", "italianos", "italianas", "espanhol", "espanhola",
+  "espanhois", "japones", "japonesa", "japoneses", "indiano", "indiana",
+  "mexicano", "mexicana", "canadense", "canadenses", "russo", "russa",
+  "turco", "turca", "arabe", "arabes", "coreano", "coreana", "australiano",
+  "australiana", "angolano", "angolana", "nigeriano", "nigeriana",
+  // estados brasileiros de uma palavra
+  "bahia", "ceara", "pernambuco", "amazonas", "parana", "goias", "tocantins",
+  "rondonia", "roraima", "acre", "amapa", "maranhao", "piaui", "alagoas",
+  "sergipe", "paraiba",
+]);
+
+const LUGARES_COMPOSTOS = new Set([
+  "estados unidos", "reino unido", "nova zelandia", "coreia do sul",
+  "coreia do norte", "africa do sul", "america latina", "america do sul",
+  "america do norte", "america central", "oriente medio", "arabia saudita",
+  "emirados arabes", "emirados arabes unidos", "hong kong", "porto rico",
+  "costa rica", "el salvador", "republica dominicana", "cabo verde",
+  "guine bissau", "timor leste", "sri lanka", "uniao europeia",
+  "sao paulo", "rio de janeiro", "minas gerais", "rio grande do sul",
+  "rio grande do norte", "mato grosso", "mato grosso do sul",
+  "santa catarina", "espirito santo", "distrito federal",
+  // formas em inglês e espanhol dos mesmos lugares — o motor recebe tag em
+  // três idiomas (CABECAS_TRANSPARENTES tem supplier/proveedor)
+  "united states", "united kingdom", "south africa", "south korea",
+  "north korea", "new zealand", "latin america", "south america",
+  "middle east", "saudi arabia", "european union", "ivory coast",
+  "estados unidos de america", "corea del sur", "reino de espana",
+  "america del sur", "medio oriente", "union europea", "paises baixos",
+  "paises bajos", "costa do marfim",
+]);
+
+/**
+ * A substância inteira é um lugar? (uma palavra da lista, ou um composto)
+ *
+ * O plural conta: sem isto, "Fazenda de perus" reduzia e "Fornecedor de peru"
+ * não — mesma mercadoria, comportamentos opostos. A regra vale para os dois.
+ *
+ * TROCA ACEITA: mercadoria homônima de lugar perde a redução — "peru" (a ave),
+ * "chile" (a pimenta, em espanhol), "china" (a louça, em inglês). O par
+ * legítimo continua casando por slug exato quando as duas pontas escrevem o
+ * mesmo termo; o que se perde é o 100 por núcleo. É o lado conservador de
+ * propósito: o erro oposto (100 para quem só divide geografia) chega a e-mail
+ * de oportunidade e foi o que motivou o cartão.
+ */
+function ehLugar(palavras: string[]): boolean {
+  if (!palavras.length) return false;
+  const frase = palavras.join(" ");
+  if (LUGARES_COMPOSTOS.has(frase) || LUGARES_COMPOSTOS.has(semPluralFinal(frase))) return true;
+  if (palavras.length !== 1) return false;
+  const palavra = palavras[0];
+  return LUGARES.has(palavra) || LUGARES.has(semPluralFinal(palavra));
+}
+
+/** "perus" → "peru". Só o plural simples; não é lematizador. */
+function semPluralFinal(texto: string): string {
+  return texto.endsWith("s") ? texto.slice(0, -1) : texto;
+}
+
+/**
  * O núcleo do termo: a substância de que ele trata, atravessando uma cabeça
  * transparente quando houver. "Mina de terras raras" → "terras-raras";
  * "Fornecedor de terras raras" → "terras-raras"; "Terras raras" → "terras-raras".
  * Sem cabeça transparente seguida de genitivo, o núcleo é o próprio objeto —
  * nada muda para quem já casava antes.
+ *
+ * E a substância NÃO pode ser lugar: "Fornecedor da China" fala de um
+ * fornecedor, não da China — reduzir ao país casaria em 100 qualquer par que
+ * só compartilha geografia. Com lugar no genitivo, o termo vale por inteiro.
+ * ("Fornecedor de vinhos da Europa" segue reduzindo a "vinhos-da-europa": a
+ * substância começa na mercadoria, e o lugar é só o complemento dela.)
  */
 export function nucleoDoTermo(rotulo: string): string {
   const { objeto } = analisarTermo(rotulo);
@@ -255,7 +366,8 @@ export function nucleoDoTermo(rotulo: string): string {
   // cabeça comprovadamente não é a mercadoria. Qualquer outra forma fica inteira.
   if (!CABECAS_TRANSPARENTES.has(palavras[0]) || !GENITIVOS.has(palavras[1])) return objeto;
   const substancia = objetoDepoisDe(palavras.slice(1));
-  return substancia ? substancia.join("-") : objeto;
+  if (!substancia || ehLugar(substancia)) return objeto;
+  return substancia.join("-");
 }
 
 /**

@@ -101,12 +101,16 @@ describe("Ciclo de vida — contato apagado leva o rastro e recalcula", () => {
 
   it("deletePrivateContact apaga possui, procura e sugestões do contato", () => {
     const db = fonte("db.ts");
-    const corpo = db.slice(db.indexOf("export async function deletePrivateContact"), db.indexOf("// ─── Contextos"));
+    // O rastro mora em apagarRastroDoContato (exclusão-sem-fantasma a executa
+    // de verdade); aqui fica pinado que a exclusão chama a limpeza e que os
+    // deletes originais continuam lá.
+    const corpo = db.slice(db.indexOf("export async function apagarRastroDoContato"), db.indexOf("// ─── Contextos"));
     expect(corpo).toContain("delete(contactAssets)");
     expect(corpo).toContain("delete(contactNeeds)");
     expect(corpo).toContain("delete(aiMatchSuggestions)");
     expect(corpo).toContain("pairLowContactId");
     expect(corpo).toContain("pairHighContactId");
+    expect(corpo).toContain("await apagarRastroDoContato(db, ownerId, contactId)");
   });
 
   it("network.delete dispara o recálculo (com a trava da etapa 11)", () => {
