@@ -189,11 +189,23 @@ try {
     await espera(15000);
     const pergunta = await runner.post("memory.search", { query: "Quem eu conheci na Antártida em 1990?" });
     const honesta = /não encontrei|não há|nenhum|não localiz|não tenho|não constam/i.test(pergunta.dado?.answer || "");
-    // Com o LLM em cota, a busca não estoura mais: devolve as fontes com um
-    // aviso no lugar da resposta (memory-service.ts). Para o exame, isso é o
-    // mesmo "pulado por ritmo" do erro antigo — não uma falha no ar.
-    const limitada2 = /429|limite|rate|muitas/i.test(pergunta.erro || "") || /não conseguiu redigir/i.test(pergunta.dado?.answer || "");
-    ok("memória responde com honestidade" + (limitada2 ? " (PULADO: ritmo do embedding)" : ""), honesta || limitada2);
+    // Três desfechos diferentes, e o exame precisa distinguir os três:
+    //   erro 429 na requisição  -> cota, PULADO
+    //   resposta AI_UNAVAILABLE -> a busca funcionou mas a IA não redigiu.
+    //     Isso é ALERTA, não pulado: se a Memória passar dias sem responder,
+    //     o exame tem que dizer. Rotular como "ritmo do embedding" escondia
+    //     a falha e ainda apontava o subsistema errado.
+    //   resposta redigida       -> checa a honestidade de verdade
+    const emCota = /429|quota|RESOURCE_EXHAUSTED|limite|rate|muitas/i.test(pergunta.erro || "");
+    const iaMuda = /não conseguiu redigir/i.test(pergunta.dado?.answer || "");
+    if (emCota) {
+      ok("memória responde com honestidade (PULADO: cota da IA)", true);
+    } else if (iaMuda) {
+      ok("memória responde com honestidade", false,
+        "ALERTA: a busca achou as fontes mas a IA não redigiu a resposta (conferir a chave e a cota do Gemini)");
+    } else {
+      ok("memória responde com honestidade", honesta, (pergunta.dado?.answer || pergunta.erro || "").slice(0, 60));
+    }
   } else {
     resultados.push("INFO  checagens de IA puladas (rode com --com-ia para incluí-las)");
   }
