@@ -110,9 +110,13 @@ function textoDeBloqueio(motivo) {
 
 // --------------------------------------------------------- detecção -----
 
+// Só shells e wrappers que executam OUTRO comando recebem a busca por texto
+// (sh -c "git push"). node, npm, pnpm, npx e yarn ficaram de fora de propósito:
+// um `node script.mjs --texto "gh pr merge"` não empurra nada, e a busca cega
+// bloqueava o próprio --carimbar quando o relato citava um merge.
 const RUNNERS = new Set([
   "sh", "bash", "zsh", "pwsh", "powershell", "powershell.exe", "cmd", "cmd.exe",
-  "eval", "exec", "xargs", "env", "npx", "pnpm", "npm", "yarn", "node",
+  "eval", "exec", "xargs", "env",
 ]);
 const REGEX_GIT = /\bgit\s+(?:-[^\s]+\s+)*(commit|push|merge)\b/;
 const REGEX_GH = /\bgh\s+(?:pr\s+merge|repo\s+sync|api\b[^\n]*merge)/;
@@ -385,6 +389,9 @@ function modoTestar() {
     ['grep -n "git push" docs/x.md', null],
     ['echo "git commit"', null],
     ['echo \'{"command":"git add -A && git commit -m x"}\' | node hook.mjs', null],
+    ['node .claude/hooks/carimbo.mjs --carimbar --github "PRs mergeadas por gh pr merge" --notion "x" --whatsapp "y"', null],
+    ["pnpm exec tsx scripts/x.ts --nota 'git push feito'", null],
+    ['bash -c "git push origin main"', "push"],
     ["pnpm test", null],
   ];
   let falhas = 0;
