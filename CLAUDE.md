@@ -105,14 +105,19 @@ O CI (`.github/workflows/testes.yml`, toda PR e push na `main`) roda, nesta orde
 liga os testes de credencial viva. `pnpm check` NÃO compila testes (o `tsconfig`
 exclui `*.test.ts`): erro de tipo em teste só aparece no `pnpm test`.
 
-**Front.** Não há runner para `client/` (o Vitest só colhe `server/**`; não há jsdom
-nem Testing Library). "Testado" no front significa, obrigatoriamente: `pnpm check` e
+**Front.** Há runner: `vitest.workspace.ts` divide a suíte em dois projetos, `server`
+(Node) e `client` (jsdom + Testing Library), e `pnpm test` roda os dois. Teste de
+front fica em `client/src/**/*.test.tsx`, ao lado do componente (padrão:
+`client/src/components/ProtectedRoute.test.tsx`, que mocka `useAuth` com `vi.mock` e
+troca `window.location` por um dublê para ler o redirecionamento sem navegar);
+`client/src/test/setup.ts` carrega o jest-dom, limpa o DOM entre testes e fixa o i18n
+em pt-BR. O `tsconfig` exclui `*.test.tsx` como exclui `*.test.ts`. Teste automatizado
+não dispensa o smoke manual: "testado" no front continua significando `pnpm check` e
 `pnpm build` verdes; `conferir-locales` se tocou em texto; abrir cada tela afetada com
 `pnpm dev`, logado com o nível certo (bronze, prata, ouro, admin) quando a tela depende
 de nível, exercitar a mudança e conferir o console sem erro; e uma seção "Como
 verifiquei" na PR listando as telas. Função pura do client pode ser testada em
 `server/*.test.ts` (padrão: `server/transcricao-destacada.test.ts`). Tarefa futura:
-`vitest.workspace.ts` (o Vitest é 2.1.9) + jsdom + Testing Library, e
 `conferir-locales` no CI.
 
 ## Arquitetura
