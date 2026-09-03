@@ -40,10 +40,14 @@ describe("CSP: script-src por ambiente", () => {
     );
   });
 
-  it("media-src libera blob: para o player de gravação da tela de reuniões", () => {
+  it("media-src libera blob: (áudio recém-gravado) e https: (gravação servida pelo proxy com 307)", () => {
     for (const ambiente of [true, false]) {
       const d = montarDiretivasCsp(ambiente);
-      expect(d.mediaSrc).toEqual(["'self'", "blob:"]);
+      // blob: o player de conferência antes de transcrever;
+      // https: o playback da gravação guardada — o proxy responde 307 para a
+      // URL assinada do bucket e o CSP reavalia a origem após o redirect.
+      // Mesmo motivo do imgSrc, que já precisava disso para as fotos.
+      expect(d.mediaSrc).toEqual(["'self'", "blob:", "https:"]);
     }
   });
 

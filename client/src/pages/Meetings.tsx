@@ -267,6 +267,7 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
   const { i18n } = useTranslation();
   const { data, isLoading } = trpc.meetings.get.useQuery({ meetingId });
   const [tab, setTab] = useState<"summary" | "transcript" | "contacts">("summary");
+  const [falhaNoAudio, setFalhaNoAudio] = useState(false);
   const initialLanguage = LANGUAGES.some(language => language.code === i18n.language) ? i18n.language : "pt-BR";
   const [translationLanguage, setTranslationLanguage] = useState(initialLanguage);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
@@ -287,7 +288,7 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
   }, [data?.transcript?.id, meetingId, translationLanguage]);
 
   if (isLoading || !data) return <main className="min-h-screen grid place-items-center text-white"><Loader2 className="animate-spin"/></main>;
-  const { meeting, transcript, entities, suggestions } = data;
+  const { meeting, transcript, entities, suggestions, recording, recordingExpired } = data;
   const displayTranscript = translationLanguage === "pt-BR" ? transcript?.transcript : translatedText;
   // Destaques valem só para o texto original: os valores extraídos pela IA não
   // batem com o texto traduzido.
@@ -302,7 +303,25 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
     <div className="flex flex-col md:flex-row justify-between gap-4 mb-6"><div><p className="text-amber-300 text-xs font-semibold">REUNIÃO PRIVADA</p><h1 className="text-3xl font-bold mt-1">{meeting.title}</h1><p className="text-sm text-white/45 mt-2">{new Date(meeting.createdAt).toLocaleString(i18n.language)}</p></div><div className="flex items-start gap-2"><span className={`h-fit border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(meeting.status)}</span><button onClick={() => deleteMeeting.mutate({ meetingId })} disabled={deleteMeeting.isPending} className="rounded-full border border-red-400/25 px-3 py-1 text-xs text-red-200 hover:bg-red-400/10 disabled:opacity-50">Excluir</button></div></div>
     {meeting.status === "failed" && <div className="rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-red-200">{meeting.processingError || "O processamento não foi concluído. Tente novamente com uma gravação curta."}</div>}
     <div className="flex gap-2 border-b border-white/10 mb-6">{([ ["summary", "Resumo", FileText], ["transcript", "Transcrição", Clock3], ["contacts", `Contatos (${suggestions.length})`, Users] ] as const).map(([id,label,Icon]) => <button key={id} onClick={() => setTab(id)} className={`inline-flex items-center gap-2 px-4 py-3 text-sm border-b-2 ${tab === id ? "border-amber-300 text-amber-300" : "border-transparent text-white/50"}`}><Icon size={16}/>{label}</button>)}</div>
-    {tab === "summary" && <div className="grid md:grid-cols-2 gap-4"><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">Nomes e empresas citados na conversa</h2><div className="flex flex-wrap gap-2 mt-4">{entities.length ? entities.map(entity => { const tipo = TIPOS_DE_ENTIDADE[entity.entityType as TipoEntidade]; return <span key={entity.id} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${tipo ? tipo.classes : "border border-white/10 bg-white/5 text-white/75"}`}>{tipo && <span className="text-[10px] font-semibold uppercase tracking-wider opacity-75">{tipo.rotulo}</span>}<span>{entity.value}</span></span>; }) : <p className="text-sm text-white/45">Nenhuma entidade pendente.</p>}</div></section><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">Proteção do áudio</h2><p className="text-sm text-white/50 mt-3">O áudio fica restrito à sua conta e expira automaticamente após 30 dias. A transcrição permanece privada na sua rede.</p></section></div>}
+    {tab === "summary" && <div className="grid md:grid-cols-2 gap-4"><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">Nomes e empresas citados na conversa</h2><div className="flex flex-wrap gap-2 mt-4">{entities.length ? entities.map(entity => { const tipo = TIPOS_DE_ENTIDADE[entity.entityType as TipoEntidade]; return <span key={entity.id} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${tipo ? tipo.classes : "border border-white/10 bg-white/5 text-white/75"}`}>{tipo && <span className="text-[10px] font-semibold uppercase tracking-wider opacity-75">{tipo.rotulo}</span>}<span>{entity.value}</span></span>; }) : <p className="text-sm text-white/45">Nenhuma entidade pendente.</p>}</div></section><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">Gravação</h2>
+      {recording ? <>
+        {/* Sem onError o player falha MUDO: sessão vencida, limite de
+            requisições ou storage fora do ar desenham os controles e
+            simplesmente não tocam, e a usuária não tem o que reportar. */}
+        <audio controls preload="metadata" src={recording.url} className="w-full mt-4"
+          onError={() => setFalhaNoAudio(true)}
+          onLoadedData={() => setFalhaNoAudio(false)}>
+          Seu navegador não consegue tocar este áudio.
+        </audio>
+        {falhaNoAudio
+          ? <p className="text-xs text-amber-200/80 mt-2">Não foi possível carregar o áudio agora. Recarregue a página; se a sessão tiver expirado, entre de novo.</p>
+          : <p className="text-xs text-white/45 mt-2">Duração: {formatDuration(recording.durationSeconds)} · disponível até {new Date(recording.expiresAt).toLocaleDateString(i18n.language)}</p>}
+      </> : recordingExpired ? (
+        <p className="text-sm text-white/50 mt-3">Esta gravação passou dos 30 dias e foi apagada, como o app promete. A transcrição continua aqui.</p>
+      ) : (
+        <p className="text-sm text-white/50 mt-3">Nenhum áudio guardado para esta reunião.</p>
+      )}
+      <p className="text-sm text-white/50 mt-3">O áudio fica restrito à sua conta e expira automaticamente após 30 dias. A transcrição permanece privada na sua rede.</p></section></div>}
     {tab === "transcript" && <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
       <h2 className="font-semibold mb-4">Transcrição</h2>
       {transcript ? <>
