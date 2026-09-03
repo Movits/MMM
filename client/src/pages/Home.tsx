@@ -54,22 +54,22 @@ function useInView(threshold = 0.2) {
 const MOSTRAR_CARTAO_DO_HERO = false;
 
 /**
- * Progresso de rolagem da PÁGINA inteira (0 no topo, 1 no fim), escrito em
- * `--pg`. É o que faz o fio de ouro se desenhar: a rolagem controla o traço,
- * como no vídeo em que a rolagem controla o café caindo.
+ * Progresso de rolagem da PÁGINA inteira (0 no topo, 1 no fim). É o que faz o
+ * planeta girar: a rolagem controla o ângulo, como no vídeo em que a rolagem
+ * controla o café caindo.
  *
- * Mesmas três precauções do parallax: sem `useState` por pixel rolado, no
- * máximo uma medição por quadro, e `prefers-reduced-motion` checado no JS.
- * Aqui, porém, quem pediu menos movimento recebe `--pg = 1`: o fio aparece
- * inteiro e parado. Deixar em 0 esconderia o desenho e a pessoa veria um mapa
- * sem as ligações, que é informação a menos, não movimento a menos.
+ * Devolve uma FUNÇÃO, não um número: o valor muda a cada quadro de rolagem, e
+ * o único consumidor hoje (GloboDoMundo) lê dentro do próprio laço de
+ * animação em canvas — repassar por `useState` forçaria um render do React a
+ * cada pixel rolado, e a página engasgaria.
+ *
+ * Mesmas duas precauções do parallax: no máximo uma medição por quadro, e
+ * `prefers-reduced-motion` checado no JS. Aqui, porém, quem pediu menos
+ * movimento recebe progresso = 1 (não 0): o planeta aparece na posição final,
+ * parado, em vez de escondido no início — informação a menos, não movimento a
+ * menos.
  */
-function useProgressoDaPagina<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-  // O mesmo número serve a dois consumidores com necessidades opostas: o CSS
-  // quer uma custom property, e o globo (que desenha em canvas) quer ler o
-  // valor dentro do próprio laço de animação. Guardar num ref atende os dois
-  // sem nenhum render extra do React.
+function useProgressoDaPagina() {
   const valor = useRef(0);
   const progresso = useRef(() => valor.current).current;
   const [semMovimento, setSemMovimento] = useState(
@@ -84,11 +84,8 @@ function useProgressoDaPagina<T extends HTMLElement>() {
   }, []);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
     if (semMovimento) {
       valor.current = 1;
-      el.style.setProperty("--pg", "1");
       return;
     }
 
@@ -96,9 +93,7 @@ function useProgressoDaPagina<T extends HTMLElement>() {
     const medir = () => {
       quadro = 0;
       const alcance = document.documentElement.scrollHeight - window.innerHeight;
-      const pg = alcance > 0 ? Math.min(Math.max(window.scrollY / alcance, 0), 1) : 0;
-      valor.current = pg;
-      el.style.setProperty("--pg", pg.toFixed(4));
+      valor.current = alcance > 0 ? Math.min(Math.max(window.scrollY / alcance, 0), 1) : 0;
     };
     const aoRolar = () => {
       if (quadro) return;
@@ -116,7 +111,7 @@ function useProgressoDaPagina<T extends HTMLElement>() {
     };
   }, [semMovimento]);
 
-  return { ref, progresso };
+  return progresso;
 }
 
 /**
@@ -368,19 +363,6 @@ function FAQSection() {
 }
 
 /**
- * Fundo da página: o mapa bordado atrás de TODO o conteúdo, e o fio de ouro
- * que se desenha conforme a rolagem.
- *
- * O alinhamento entre foto e traço é a parte que costuma dar errado. A foto usa
- * `object-fit: cover` e o SVG usa `preserveAspectRatio="xMidYMid slice"` sobre
- * o MESMO viewBox de 1000×1336 — que é a proporção real do arquivo. Isso faz os
- * dois recortarem de forma idêntica em qualquer tela, então o fio continua
- * caindo sobre os mesmos continentes no celular e no monitor largo.
- *
- * `pathLength={1}` normaliza o comprimento do traço para 1, o que dispensa
- * medir a curva em JavaScript: o desenho é só `stroke-dashoffset: 1 - --pg`.
- */
-/**
  * O planeta só é baixado quando alguém abre a home: são ~600 KB de three.js
  * mais os contornos do Natural Earth, e nenhuma outra tela do sistema precisa
  * disso. `lazy` faz o Vite cortar num pedaço separado.
@@ -420,19 +402,20 @@ function movimentoPadrao(): boolean {
 
 /** Botão discreto para ligar e desligar o movimento do fundo. */
 function ChaveDoMovimento({ ativo, alternar }: { ativo: boolean; alternar: () => void }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       onClick={alternar}
       aria-pressed={ativo}
       className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-[#0a1424]/85 px-3.5 py-2 text-[11px] font-medium text-white/55 backdrop-blur-xl transition-colors duration-200 hover:border-white/25 hover:text-white/85"
-      title={ativo ? "Desligar o movimento do fundo" : "Ligar o movimento do fundo"}
+      title={ativo ? t("hero.motionTurnOff") : t("hero.motionTurnOn")}
     >
       <span
         className={`h-1.5 w-1.5 rounded-full ${ativo ? "bg-[#f5a623]" : "bg-white/30"}`}
         aria-hidden="true"
       />
-      {ativo ? "Movimento ligado" : "Movimento desligado"}
+      {ativo ? t("hero.motionOn") : t("hero.motionOff")}
     </button>
   );
 }
@@ -460,56 +443,6 @@ function FundoDoPlaneta({ progresso, animar }: { progresso: () => number; animar
   );
 }
 
-// Versão anterior (mapa chapado com o fio de ouro em SVG). Fica no arquivo
-// enquanto comparamos os dois caminhos; sai quando a decisão for tomada.
-function FundoDoMapa() {
-  // Pontos aproximados sobre a imagem atual (Brasil → Lagos → Lisboa →
-  // Frankfurt). São estimativas a olho: se a gente seguir com este caminho,
-  // o certo é gerar o mapa SEM os arcos e então acertar as coordenadas.
-  const paradas = [
-    { x: 315, y: 610, em: 0.02 },
-    { x: 545, y: 585, em: 0.38 },
-    { x: 470, y: 355, em: 0.74 },
-    // O limiar da última parada precisa sobrar espaço para a opacidade subir de
-    // 0 a 1 ANTES do fim da página: com 0,97 ela chegava ao pé da rolagem ainda
-    // a 42% e nunca acendia de todo.
-    { x: 560, y: 285, em: 0.90 },
-  ];
-
-  return (
-    <div className="fixed inset-0 pointer-events-none" aria-hidden="true">
-      <img src={HERO_IMG} alt=""
-        className="absolute inset-0 w-full h-full object-cover" />
-
-      {/* Véu: sem ele o texto branco perde contraste sobre o bordado claro.
-          É o ponto que mais vai precisar de ajuste fino se seguirmos. */}
-      <div className="absolute inset-0"
-        style={{ background: "linear-gradient(180deg, rgba(6,11,20,0.72) 0%, rgba(6,11,20,0.86) 45%, rgba(6,11,20,0.94) 100%)" }} />
-
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1000 1336"
-        preserveAspectRatio="xMidYMid slice" fill="none">
-        {/* Halo largo e difuso por baixo do fio, para o traço parecer aceso e
-            não uma linha desenhada por cima da foto. */}
-        <path d="M315,610 Q430,500 545,585 Q560,450 470,355 Q505,295 560,285"
-          pathLength={1} stroke="#f5a623" strokeWidth={14} strokeOpacity={0.18}
-          strokeLinecap="round"
-          style={{ strokeDasharray: 1, strokeDashoffset: "calc(1 - var(--pg, 0))", filter: "blur(6px)" }} />
-        <path d="M315,610 Q430,500 545,585 Q560,450 470,355 Q505,295 560,285"
-          pathLength={1} stroke="#ffd489" strokeWidth={3} strokeLinecap="round"
-          style={{ strokeDasharray: 1, strokeDashoffset: "calc(1 - var(--pg, 0))" }} />
-
-        {paradas.map((parada, i) => (
-          <g key={i}
-            style={{ opacity: `clamp(0, calc((var(--pg, 0) - ${parada.em}) * 14), 1)` }}>
-            <circle cx={parada.x} cy={parada.y} r={13} fill="#f5a623" opacity={0.22} />
-            <circle cx={parada.x} cy={parada.y} r={4.5} fill="#ffe6b0" />
-          </g>
-        ))}
-      </svg>
-    </div>
-  );
-}
-
 export default function Home() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
@@ -517,7 +450,7 @@ export default function Home() {
   const { ref: stepsRef, inView: stepsInView } = useInView();
   const { ref: oppsRef, inView: oppsInView } = useInView();
   const heroRef = useParallax<HTMLElement>();
-  const { ref: paginaRef, progresso: progressoDaPagina } = useProgressoDaPagina<HTMLDivElement>();
+  const progressoDaPagina = useProgressoDaPagina();
   const [movimentoAtivo, setMovimentoAtivo] = useState(movimentoPadrao);
   const alternarMovimento = () => {
     setMovimentoAtivo(atual => {
@@ -567,7 +500,7 @@ export default function Home() {
   ];
 
   return (
-    <div ref={paginaRef} className="min-h-screen bg-[#060b14] text-white overflow-x-hidden antialiased">
+    <div className="min-h-screen bg-[#060b14] text-white overflow-x-hidden antialiased">
       <FundoDoPlaneta progresso={progressoDaPagina} animar={movimentoAtivo} />
       <ChaveDoMovimento ativo={movimentoAtivo} alternar={alternarMovimento} />
 

@@ -16,7 +16,11 @@
     "headline4": "Finde deine nächste große Chance",
     "subtitle": "Sagen Sie uns, wer Sie sind, was Sie suchen und was Sie anzubieten haben. Unsere künstliche Intelligenz analysiert Ihr Profil tiefgehend, um Sie mit Führungspersönlichkeiten und Möglichkeiten mit hoher echter Kompatibilität zu verbinden: weit über einfache Schlüsselwörter hinaus.",
     "cta": "Mein Profil erstellen →",
-    "ctaSecondary": "Mehr erfahren"
+    "ctaSecondary": "Mehr erfahren",
+    "motionOn": "Bewegung an",
+    "motionOff": "Bewegung aus",
+    "motionTurnOn": "Hintergrundbewegung einschalten",
+    "motionTurnOff": "Hintergrundbewegung ausschalten"
   },
   "stats": {
     "users": "Aktive Nutzerinnen",
