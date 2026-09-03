@@ -40,6 +40,8 @@ const ehOuroOuAcima = (role?: string | null) =>
  *   meetings/{openId}/...     só a dona da reunião (meeting-service.ts:219)
  *   contexts/{openId}/...     só a dona — fotos e documentos de contexto
  *                             (routers/contexts.ts, uploadMedia)
+ *   contacts/{openId}/...     só a dona — foto e cartão de visita de um
+ *                             contato privado (routers/network.ts, etapa 1)
  *   sivc/{userId}/...         só a dona dos documentos (sivc.ts:397)
  *   deal-rooms/{roomId}/...   partes da sala, ou Ouro+ (dealRoom.ts:306)
  *   generated/...             qualquer usuária logada — são imagens geradas
@@ -57,6 +59,10 @@ export async function podeBaixarChave(
   }
 
   if (partes[0] === "contexts") {
+    return partes.length >= 2 && partes[1] === usuaria.openId;
+  }
+
+  if (partes[0] === "contacts") {
     return partes.length >= 2 && partes[1] === usuaria.openId;
   }
 

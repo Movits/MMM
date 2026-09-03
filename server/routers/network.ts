@@ -7,13 +7,23 @@ import {
 import { recalculatePrivateMatches } from "../match-service";
 import { hasValidConsent } from "./consent";
 import { goldProcedure } from "./_procedures";
+import { storagePut } from "../storage";
+import {
+  ALLOWED_CONTACT_IMAGE_TYPES, decodeContactImage, extensionForContactImage,
+} from "../contact-media";
+
+// Caminho do proxy (/manus-storage/contacts/{openId}/...), não uma URL http
+// completa — por isso os dois campos abaixo usam `.max(512)` simples, não
+// `.url()`. Compartilhado entre create/update/upload para não desalinhar.
+const chaveDaImagem = z.string().max(512).optional().nullable();
 
 // ─── Minha Rede de Relacionamentos (Base Particular de Contatos) ──────────────
 export const networkRouter = router({
   create: protectedProcedure
     .input(z.object({
       fullName:    z.string().min(1).max(200),
-      photoUrl:    z.string().url().optional().nullable(),
+      photoUrl:    chaveDaImagem,
+      cardImageUrl: chaveDaImagem,
       jobTitle:    z.string().max(200).optional().nullable(),
       company:     z.string().max(200).optional().nullable(),
       country:     z.string().max(100).optional().nullable(),
@@ -32,6 +42,38 @@ export const networkRouter = router({
     .mutation(async ({ ctx, input }) => {
       const id = await createPrivateContact(ctx.user.openId, input);
       return { id };
+    }),
+
+  // Foto do contato e cartão de visita (etapa 1, critérios 4 e 5) — mesmo
+  // caminho da mídia de contexto: base64 numa requisição, validação aqui,
+  // storage S3 com a dona na chave (o storageProxy só serve
+  // contacts/{dona}/... para a própria dona). Sem contactId: o upload
+  // acontece ANTES de o contato existir (a tela de criação já tem os campos
+  // de imagem), a URL fica no formulário até "Salvar" gravar de fato.
+  uploadPhoto: protectedProcedure
+    .input(z.object({
+      fileName:   z.string().min(1).max(255),
+      mimeType:   z.enum(ALLOWED_CONTACT_IMAGE_TYPES),
+      dataBase64: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dados = decodeContactImage(input.dataBase64, input.mimeType);
+      const extensao = extensionForContactImage(input.mimeType);
+      const uploaded = await storagePut(`contacts/${ctx.user.openId}/foto.${extensao}`, dados, input.mimeType);
+      return { url: uploaded.url };
+    }),
+
+  uploadCard: protectedProcedure
+    .input(z.object({
+      fileName:   z.string().min(1).max(255),
+      mimeType:   z.enum(ALLOWED_CONTACT_IMAGE_TYPES),
+      dataBase64: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dados = decodeContactImage(input.dataBase64, input.mimeType);
+      const extensao = extensionForContactImage(input.mimeType);
+      const uploaded = await storagePut(`contacts/${ctx.user.openId}/cartao.${extensao}`, dados, input.mimeType);
+      return { url: uploaded.url };
     }),
 
   // Etapa 8 — a vitrine coletiva: o que o ecossistema vê de um contato marcado
@@ -86,7 +128,7 @@ export const networkRouter = router({
     .input(z.object({
       id:          z.number().int(),
       fullName:    z.string().min(1).max(200).optional(),
-      photoUrl:    z.string().url().optional().nullable(),
+      photoUrl:    chaveDaImagem,
       jobTitle:    z.string().max(200).optional().nullable(),
       company:     z.string().max(200).optional().nullable(),
       country:     z.string().max(100).optional().nullable(),
@@ -98,7 +140,7 @@ export const networkRouter = router({
       linkedinUrl: z.string().url().optional().nullable(),
       instagram:   z.string().max(100).optional().nullable(),
       profileTags: z.array(z.string()).optional().nullable(),
-      cardImageUrl: z.string().optional().nullable(),
+      cardImageUrl: chaveDaImagem,
       notes:       z.string().max(5000).optional().nullable(),
       // Etapa 8: o nível muda a qualquer momento, e o efeito é imediato — a
       // vitrine filtra na leitura, então 'privado' some na requisição seguinte.

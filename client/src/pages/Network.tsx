@@ -56,7 +56,7 @@ const NIVEIS_DE_VISIBILIDADE = [
 
 // ─── Formulário vazio ─────────────────────────────────────────────────────────
 const emptyForm = () => ({
-  fullName: "", photoUrl: "", jobTitle: "", company: "",
+  fullName: "", photoUrl: "", cardImageUrl: "", jobTitle: "", company: "",
   country: "", state: "", city: "",
   phone: "", whatsapp: "", email: "",
   linkedinUrl: "", instagram: "",
@@ -176,6 +176,7 @@ function ContactForm({ initial, onSave, onClose, loading }: {
   const [form, setForm] = useState<ReturnType<typeof emptyForm>>({
     fullName:    initial?.fullName    ?? "",
     photoUrl:    initial?.photoUrl    ?? "",
+    cardImageUrl: initial?.cardImageUrl ?? "",
     jobTitle:    initial?.jobTitle    ?? "",
     company:     initial?.company     ?? "",
     country:     initial?.country     ?? "",
@@ -192,6 +193,46 @@ function ContactForm({ initial, onSave, onClose, loading }: {
   });
 
   const set = (k: keyof typeof form, v: unknown) => setForm(p => ({ ...p, [k]: v }));
+
+  // Foto e cartão de visita (etapa 1, critérios 4 e 5): upload real de
+  // arquivo. O contato pode nem existir ainda (tela de criação) — por isso o
+  // endpoint devolve só a URL do proxy, sem contactId, e ela fica guardada
+  // no formulário até "Salvar" gravar de fato, exatamente como o campo de
+  // texto funcionava antes.
+  const TIPOS_DE_IMAGEM = ["image/jpeg", "image/png", "image/webp"] as const;
+  const uploadPhotoMut = trpc.network.uploadPhoto.useMutation();
+  const uploadCardMut = trpc.network.uploadCard.useMutation();
+  const enviarImagem = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    campo: "photoUrl" | "cardImageUrl",
+    mut: typeof uploadPhotoMut,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite escolher o mesmo arquivo de novo
+    if (!file) return;
+    if (!(TIPOS_DE_IMAGEM as readonly string[]).includes(file.type)) {
+      toast.error("Formato não suportado: envie JPG, PNG ou WebP.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("O arquivo deve ter no máximo 10 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => toast.error("Não foi possível ler o arquivo. Tente de novo.");
+    reader.onload = () => {
+      const conteudo = String(reader.result ?? "");
+      if (!conteudo) { toast.error("Não foi possível ler o arquivo. Tente de novo."); return; }
+      mut.mutate(
+        { fileName: file.name, mimeType: file.type as (typeof TIPOS_DE_IMAGEM)[number], dataBase64: conteudo },
+        {
+          onSuccess: res => set(campo, res.url),
+          onError: err => toast.error(err.message || "Não foi possível enviar a imagem."),
+        },
+      );
+    };
+    reader.readAsDataURL(file);
+  };
   const toggleTag = (tag: string) => {
     set("profileTags", form.profileTags.includes(tag)
       ? form.profileTags.filter(t => t !== tag)
@@ -315,12 +356,45 @@ function ContactForm({ initial, onSave, onClose, loading }: {
 
           {step === 4 && (
             <>
-              <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">URL do Cartão de Visita</label>
-                <Input value={form.photoUrl} onChange={e => set("photoUrl", e.target.value)}
-                  placeholder="https://... (URL da imagem do cartão)"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
-                <p className="text-xs text-white/25 mt-1">Upload direto de arquivo disponível em breve (OCR automático)</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Foto do Contato</label>
+                  {form.photoUrl ? (
+                    <div className="relative">
+                      <img src={form.photoUrl} alt="Foto do contato" className="w-full h-24 rounded-xl object-cover border border-white/10" />
+                      <button type="button" onClick={() => set("photoUrl", "")}
+                        className="absolute top-1 right-1 bg-black/70 rounded-full p-1 text-white/70 hover:text-white">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center h-24 rounded-xl border border-dashed border-white/15 bg-white/5 cursor-pointer hover:border-amber-500/40 text-white/40 text-xs gap-1">
+                      {uploadPhotoMut.isPending ? "Enviando..." : "Enviar foto"}
+                      <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                        disabled={uploadPhotoMut.isPending}
+                        onChange={e => enviarImagem(e, "photoUrl", uploadPhotoMut)} />
+                    </label>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Cartão de Visita</label>
+                  {form.cardImageUrl ? (
+                    <div className="relative">
+                      <img src={form.cardImageUrl} alt="Cartão de visita" className="w-full h-24 rounded-xl object-cover border border-white/10" />
+                      <button type="button" onClick={() => set("cardImageUrl", "")}
+                        className="absolute top-1 right-1 bg-black/70 rounded-full p-1 text-white/70 hover:text-white">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center h-24 rounded-xl border border-dashed border-white/15 bg-white/5 cursor-pointer hover:border-amber-500/40 text-white/40 text-xs gap-1">
+                      {uploadCardMut.isPending ? "Enviando..." : "Enviar cartão"}
+                      <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                        disabled={uploadCardMut.isPending}
+                        onChange={e => enviarImagem(e, "cardImageUrl", uploadCardMut)} />
+                    </label>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Notas / Observações</label>
@@ -681,6 +755,7 @@ export default function Network() {
     const payload = {
       fullName:    form.fullName,
       photoUrl:    form.photoUrl || null,
+      cardImageUrl: form.cardImageUrl || null,
       jobTitle:    form.jobTitle || null,
       company:     form.company  || null,
       country:     form.country  || null,
