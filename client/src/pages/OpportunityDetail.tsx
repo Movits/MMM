@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,54 +16,16 @@ import {
   Clock, MessageSquare, ChevronRight, Lock
 } from "lucide-react";
 
-const TYPE_LABELS: Record<string, string> = {
-  offer: "Oferta",
-  demand: "Demanda",
-  investment: "Investimento",
-  partnership: "Parceria",
-  distribution: "Distribuição",
-  other: "Outro",
-};
-
-const COMPLIANCE_INFO: Record<string, { icon: React.ReactNode; label: string; color: string; bg: string; desc: string }> = {
-  green: {
-    icon: <ShieldCheck size={16} />,
-    label: "Confiável",
-    color: "#22c55e",
-    bg: "rgba(34,197,94,0.1)",
-    desc: "Esta oportunidade passou pela análise de compliance da IA e apresenta indicadores de alta confiabilidade.",
-  },
-  yellow: {
-    icon: <AlertTriangle size={16} />,
-    label: "Atenção",
-    color: "#eab308",
-    bg: "rgba(234,179,8,0.1)",
-    desc: "A IA identificou pontos de atenção. Verifique a documentação antes de prosseguir.",
-  },
-  orange: {
-    icon: <AlertCircle size={16} />,
-    label: "Suspeita",
-    color: "#f97316",
-    bg: "rgba(249,115,22,0.1)",
-    desc: "A IA identificou indicadores suspeitos. Proceda com cautela e solicite documentação adicional.",
-  },
-  red: {
-    icon: <XCircle size={16} />,
-    label: "Bloqueada",
-    color: "#ef4444",
-    bg: "rgba(239,68,68,0.1)",
-    desc: "Esta oportunidade foi bloqueada pela análise de compliance. Não é possível demonstrar interesse.",
-  },
-  pending: {
-    icon: <Clock size={16} />,
-    label: "Analisando",
-    color: "#9ca3af",
-    bg: "rgba(107,114,128,0.1)",
-    desc: "A análise de compliance ainda está em andamento.",
-  },
+type ComplianceInfo = {
+  icon: React.ReactNode;
+  label: string;
+  color: string;
+  bg: string;
+  desc: string;
 };
 
 export default function OpportunityDetail() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -73,12 +36,59 @@ export default function OpportunityDetail() {
   const [showNDAModal, setShowNDAModal] = useState(false);
   const [ndaMessage, setNdaMessage] = useState("");
 
+  const TYPE_LABELS: Record<string, string> = {
+    offer: t("opportunityDetail.typeOffer"),
+    demand: t("opportunityDetail.typeDemand"),
+    investment: t("opportunityDetail.typeInvestment"),
+    partnership: t("opportunityDetail.typePartnership"),
+    distribution: t("opportunityDetail.typeDistribution"),
+    other: t("opportunityDetail.typeOther"),
+  };
+
+  const COMPLIANCE_INFO: Record<string, ComplianceInfo> = {
+    green: {
+      icon: <ShieldCheck size={16} />,
+      label: t("opportunityDetail.complianceGreenLabel"),
+      color: "#22c55e",
+      bg: "rgba(34,197,94,0.1)",
+      desc: t("opportunityDetail.complianceGreenDesc"),
+    },
+    yellow: {
+      icon: <AlertTriangle size={16} />,
+      label: t("opportunityDetail.complianceYellowLabel"),
+      color: "#eab308",
+      bg: "rgba(234,179,8,0.1)",
+      desc: t("opportunityDetail.complianceYellowDesc"),
+    },
+    orange: {
+      icon: <AlertCircle size={16} />,
+      label: t("opportunityDetail.complianceOrangeLabel"),
+      color: "#f97316",
+      bg: "rgba(249,115,22,0.1)",
+      desc: t("opportunityDetail.complianceOrangeDesc"),
+    },
+    red: {
+      icon: <XCircle size={16} />,
+      label: t("opportunityDetail.complianceRedLabel"),
+      color: "#ef4444",
+      bg: "rgba(239,68,68,0.1)",
+      desc: t("opportunityDetail.complianceRedDesc"),
+    },
+    pending: {
+      icon: <Clock size={16} />,
+      label: t("opportunityDetail.compliancePendingLabel"),
+      color: "#9ca3af",
+      bg: "rgba(107,114,128,0.1)",
+      desc: t("opportunityDetail.compliancePendingDesc"),
+    },
+  };
+
   const { data: rawData, isLoading, error } = trpc.opportunities.get.useQuery({ id: Number(id) });
   const data = rawData as any;
 
   const expressInterest = trpc.opportunities.expressInterest.useMutation({
     onSuccess: () => {
-      toast.success("Interesse demonstrado! A publicadora foi notificada.");
+      toast.success(t("opportunityDetail.toastInterestSuccess"));
       setShowInterestForm(false);
       setInterestMessage("");
     },
@@ -88,7 +98,7 @@ export default function OpportunityDetail() {
   const openDealRoom = trpc.dealRoom.openRoom.useMutation({
     onSuccess: (res) => {
       setShowNDAModal(false);
-      toast.success(res.isNew ? "Deal Room criado! Assine o NDA para ativar a sala." : "Você já tem um Deal Room para esta oportunidade.");
+      toast.success(res.isNew ? t("opportunityDetail.toastDealRoomCreated") : t("opportunityDetail.toastDealRoomExists"));
       navigate(`/deal-room/${res.roomId}`);
     },
     onError: (err) => toast.error(err.message),
@@ -97,7 +107,7 @@ export default function OpportunityDetail() {
   const toggleSave = trpc.opportunities.toggleSave.useMutation({
     onSuccess: (res: any) => {
       setSaved(res.saved);
-      toast.success(res.saved ? "Salvo nos favoritos!" : "Removido dos favoritos");
+      toast.success(res.saved ? t("opportunityDetail.toastSaved") : t("opportunityDetail.toastUnsaved"));
     },
   });
 
@@ -119,10 +129,10 @@ export default function OpportunityDetail() {
       <div className="min-h-screen bg-transparent text-white flex items-center justify-center">
         <div className="text-center">
           <Lock size={40} className="text-white/20 mx-auto mb-4" />
-          <p className="text-white/60 text-sm">{error?.message ?? "Oportunidade não encontrada"}</p>
+          <p className="text-white/60 text-sm">{error?.message ?? t("opportunityDetail.notFound")}</p>
           <Link href="/opportunities">
             <Button size="sm" variant="outline" className="mt-4 border-white/20 text-white/60">
-              Voltar
+              {t("opportunityDetail.back")}
             </Button>
           </Link>
         </div>
@@ -142,7 +152,7 @@ export default function OpportunityDetail() {
           <Link href="/opportunities">
             <button className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm">
               <ArrowLeft size={16} />
-              Oportunidades
+              {t("opportunityDetail.backToOpportunities")}
             </button>
           </Link>
           <div className="flex items-center gap-2">
@@ -162,8 +172,8 @@ export default function OpportunityDetail() {
           <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 flex items-start gap-3">
             <span className="text-amber-400 text-lg mt-0.5">⏳</span>
             <div>
-              <p className="text-amber-300 font-semibold text-sm">Aguardando validação</p>
-              <p className="text-amber-200/70 text-xs mt-0.5">Sua oportunidade está em análise pelas membras Ouro. Apenas você pode visualizá-la até ser aprovada.</p>
+              <p className="text-amber-300 font-semibold text-sm">{t("opportunityDetail.pendingBannerTitle")}</p>
+              <p className="text-amber-200/70 text-xs mt-0.5">{t("opportunityDetail.pendingBannerDesc")}</p>
             </div>
           </div>
         )}
@@ -171,8 +181,8 @@ export default function OpportunityDetail() {
           <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 flex items-start gap-3">
             <span className="text-red-400 text-lg mt-0.5">❌</span>
             <div>
-              <p className="text-red-300 font-semibold text-sm">Oportunidade rejeitada</p>
-              <p className="text-red-200/70 text-xs mt-0.5">Esta oportunidade foi rejeitada pelas membras Ouro e não está visível para outras membras.</p>
+              <p className="text-red-300 font-semibold text-sm">{t("opportunityDetail.rejectedBannerTitle")}</p>
+              <p className="text-red-200/70 text-xs mt-0.5">{t("opportunityDetail.rejectedBannerDesc")}</p>
             </div>
           </div>
         )}
@@ -192,21 +202,21 @@ export default function OpportunityDetail() {
                 )}
                 {opp.isConfidential && (
                   <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-xs">
-                    ★ Exclusivo Ouro
+                    {t("opportunityDetail.exclusiveGoldBadge")}
                   </Badge>
                 )}
               </div>
               <h1 className="text-2xl font-bold text-white leading-tight mb-2">{opp.title}</h1>
               <div className="flex items-center gap-4 text-xs text-white/40">
-                <span className="flex items-center gap-1"><Eye size={11} />{Number(opp.viewCount ?? 0)} visualizações</span>
-                <span className="flex items-center gap-1"><Star size={11} />{Number(opp.interestCount ?? 0)} interesses</span>
+                <span className="flex items-center gap-1"><Eye size={11} />{Number(opp.viewCount ?? 0)} {t("opportunityDetail.viewsSuffix")}</span>
+                <span className="flex items-center gap-1"><Star size={11} />{Number(opp.interestCount ?? 0)} {t("opportunityDetail.interestsSuffix")}</span>
                 {opp.country && <span className="flex items-center gap-1"><Globe size={11} />{opp.country}</span>}
               </div>
             </div>
 
             {/* Descrição */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-              <h2 className="text-white font-semibold text-sm mb-3">Descrição</h2>
+              <h2 className="text-white font-semibold text-sm mb-3">{t("opportunityDetail.descriptionTitle")}</h2>
               <p className="text-white/70 text-sm leading-relaxed whitespace-pre-wrap">{opp.description}</p>
             </div>
 
@@ -226,7 +236,7 @@ export default function OpportunityDetail() {
               <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
                 <h2 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
                   <FileText size={14} className="text-amber-400" />
-                  Documentos recomendados pela IA
+                  {t("opportunityDetail.suggestedDocsTitle")}
                 </h2>
                 <ul className="space-y-2">
                   {(opp.suggestedDocuments as string[]).map((doc, i) => (
@@ -244,7 +254,7 @@ export default function OpportunityDetail() {
               <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
                 <h2 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
                   <FileText size={14} className="text-amber-400" />
-                  Documentos ({opp.documents.length})
+                  {t("opportunityDetail.documentsTitle", { count: opp.documents.length })}
                 </h2>
                 <div className="space-y-2">
                   {opp.documents.map((doc: any) => (
@@ -269,9 +279,9 @@ export default function OpportunityDetail() {
             {/* Formulário de interesse */}
             {showInterestForm && (
               <div className="bg-white/5 border border-amber-500/20 rounded-2xl p-5">
-                <h2 className="text-white font-semibold text-sm mb-3">Mensagem de interesse (opcional)</h2>
+                <h2 className="text-white font-semibold text-sm mb-3">{t("opportunityDetail.interestFormTitle")}</h2>
                 <Textarea
-                  placeholder="Apresente-se brevemente e explique por que esta oportunidade é relevante para você..."
+                  placeholder={t("opportunityDetail.interestPlaceholder")}
                   value={interestMessage}
                   onChange={(e) => setInterestMessage(e.target.value)}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/30 text-sm resize-none"
@@ -286,7 +296,7 @@ export default function OpportunityDetail() {
                     disabled={expressInterest.isPending}
                     className="bg-amber-500 hover:bg-amber-400 text-black font-semibold"
                   >
-                    {expressInterest.isPending ? "Enviando..." : "Confirmar interesse"}
+                    {expressInterest.isPending ? t("opportunityDetail.sendingInterest") : t("opportunityDetail.confirmInterest")}
                   </Button>
                   <Button
                     size="sm"
@@ -294,7 +304,7 @@ export default function OpportunityDetail() {
                     onClick={() => setShowInterestForm(false)}
                     className="border-white/20 text-white/60"
                   >
-                    Cancelar
+                    {t("opportunityDetail.cancel")}
                   </Button>
                 </div>
               </div>
@@ -306,7 +316,7 @@ export default function OpportunityDetail() {
             {/* FTS Card */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
               <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-4">
-                Nota de confiança
+                {t("opportunityDetail.trustScoreTitle")}
               </h3>
               <div className="flex flex-col items-center gap-3">
                 <FTSBadge
@@ -344,17 +354,17 @@ export default function OpportunityDetail() {
             {canInterest && (
               <div className="bg-white/5 border border-amber-500/20 rounded-2xl p-5">
                 <h3 className="text-amber-400 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <Lock size={12} /> Deal Room Privado
+                  <Lock size={12} /> {t("opportunityDetail.dealRoomCardTitle")}
                 </h3>
                 <p className="text-white/50 text-xs mb-4 leading-relaxed">
-                  Ao demonstrar interesse, você e a publicadora assinarão um <strong className="text-amber-400">Termo de Confidencialidade (NDA)</strong> e uma sala de negociação privada será aberta entre vocês.
+                  {t("opportunityDetail.dealRoomIntroPre")}<strong className="text-amber-400">{t("opportunityDetail.ndaTermStrong")}</strong>{t("opportunityDetail.dealRoomIntroPost")}
                 </p>
                 <Button
                   className="w-full bg-amber-500 hover:bg-amber-400 text-black font-semibold"
                   onClick={() => setShowNDAModal(true)}
                 >
                   <Star size={14} className="mr-1.5" />
-                  Demonstrar Interesse
+                  {t("opportunityDetail.expressInterestButton")}
                 </Button>
               </div>
             )}
@@ -363,23 +373,23 @@ export default function OpportunityDetail() {
               <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
                 <div className="flex items-center gap-2 text-red-400 mb-2">
                   <XCircle size={14} />
-                  <span className="text-sm font-semibold">Oportunidade bloqueada</span>
+                  <span className="text-sm font-semibold">{t("opportunityDetail.blockedTitle")}</span>
                 </div>
                 <p className="text-red-400/60 text-xs leading-relaxed">
-                  Esta oportunidade foi bloqueada pela análise de compliance. Não é possível demonstrar interesse.
+                  {t("opportunityDetail.complianceRedDesc")}
                 </p>
               </div>
             )}
 
             {/* Informações */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-3">
-              <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider">Informações</h3>
+              <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider">{t("opportunityDetail.infoTitle")}</h3>
               {[
-                { label: "Tipo", value: TYPE_LABELS[opp.type] ?? opp.type },
-                { label: "Setor", value: opp.sector ?? "-" },
-                { label: "País", value: opp.country ?? "-" },
-                { label: "Região", value: opp.region ?? "-" },
-                { label: "Status", value: opp.status === "active" ? "✅ Ativa" : opp.status === "pending" ? "⏳ Pendente" : opp.status },
+                { label: t("opportunityDetail.labelType"), value: TYPE_LABELS[opp.type] ?? opp.type },
+                { label: t("opportunityDetail.labelSector"), value: opp.sector ?? "-" },
+                { label: t("opportunityDetail.labelCountry"), value: opp.country ?? "-" },
+                { label: t("opportunityDetail.labelRegion"), value: opp.region ?? "-" },
+                { label: t("opportunityDetail.labelStatus"), value: opp.status === "active" ? t("opportunityDetail.statusActive") : opp.status === "pending" ? t("opportunityDetail.statusPending") : opp.status },
               ].map((item, i) => (
                 <div key={i} className="flex items-center justify-between text-xs">
                   <span className="text-white/40">{item.label}</span>
@@ -400,27 +410,27 @@ export default function OpportunityDetail() {
                 <Lock size={18} className="text-amber-400" />
               </div>
               <div>
-                <h2 className="text-white font-bold text-lg">Termo de Confidencialidade</h2>
-                <p className="text-white/40 text-xs">NDA com aceite digital obrigatório</p>
+                <h2 className="text-white font-bold text-lg">{t("opportunityDetail.ndaModalTitle")}</h2>
+                <p className="text-white/40 text-xs">{t("opportunityDetail.ndaModalSubtitle")}</p>
               </div>
             </div>
 
             <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-4 max-h-64 overflow-y-auto text-xs text-white/60 leading-relaxed space-y-3">
-              <p className="text-amber-400 font-semibold text-sm">TERMO DE CONFIDENCIALIDADE E NÃO DIVULGAÇÃO (NDA)</p>
-              <p>Ao aceitar este termo, as partes envolvidas (“Divulgadora” e “Receptora”) concordam em manter sigilo absoluto sobre todas as informações compartilhadas no contexto desta negociação, incluindo dados financeiros, estratégicos, operacionais e comerciais.</p>
-              <p><strong className="text-white/80">1. Obrigação de Sigilo:</strong> As partes se comprometem a não divulgar, reproduzir ou utilizar as informações confidenciais para fins alheios à negociação em curso, sob pena das sanções previstas em lei.</p>
-              <p><strong className="text-white/80">2. Cláusula Anti-Bypass (Antiburla):</strong> As partes se comprometem expressamente a não realizar qualquer transação, acordo ou negócio decorrente deste contato fora do ecossistema MMM, reconhecendo a obrigatoriedade do pagamento da <strong className="text-amber-400">taxa de sucesso (success fee)</strong> sobre quaisquer negócios fechados que tenham se originado desta conexão.</p>
-              <p><strong className="text-white/80">3. Vigência:</strong> Este acordo tem validade de 24 (vinte e quatro) meses a partir da data de aceite digital.</p>
-              <p><strong className="text-white/80">4. Aceite Digital:</strong> O clique no botão “Aceitar e Abrir Deal Room” constitui aceite digital válido e juridicamente vinculante, com registro de data, hora e identidade das partes.</p>
-              <p className="text-white/40 text-xs border-t border-white/10 pt-3">Oportunidade: <strong className="text-white/60">{opp.title}</strong> • Data: {new Date().toLocaleDateString("pt-BR")} • Usuária: {user?.name}</p>
+              <p className="text-amber-400 font-semibold text-sm">{t("opportunityDetail.ndaLegalTitle")}</p>
+              <p>{t("opportunityDetail.ndaIntro")}</p>
+              <p><strong className="text-white/80">{t("opportunityDetail.ndaItem1Title")}</strong> {t("opportunityDetail.ndaItem1Text")}</p>
+              <p><strong className="text-white/80">{t("opportunityDetail.ndaItem2Title")}</strong> {t("opportunityDetail.ndaItem2TextPre")}<strong className="text-amber-400">{t("opportunityDetail.ndaItem2Strong")}</strong>{t("opportunityDetail.ndaItem2TextPost")}</p>
+              <p><strong className="text-white/80">{t("opportunityDetail.ndaItem3Title")}</strong> {t("opportunityDetail.ndaItem3Text")}</p>
+              <p><strong className="text-white/80">{t("opportunityDetail.ndaItem4Title")}</strong> {t("opportunityDetail.ndaItem4Text")}</p>
+              <p className="text-white/40 text-xs border-t border-white/10 pt-3">{t("opportunityDetail.ndaFooterOpportunityLabel")} <strong className="text-white/60">{opp.title}</strong> • {t("opportunityDetail.ndaFooterDateLabel")} {new Date().toLocaleDateString("pt-BR")} • {t("opportunityDetail.ndaFooterUserLabel")} {user?.name}</p>
             </div>
 
             <div className="mb-4">
-              <label className="text-white/60 text-xs mb-1.5 block">Mensagem de apresentação (opcional)</label>
+              <label className="text-white/60 text-xs mb-1.5 block">{t("opportunityDetail.ndaMessageLabel")}</label>
               <textarea
                 value={ndaMessage}
                 onChange={(e) => setNdaMessage(e.target.value)}
-                placeholder="Apresente-se brevemente e explique por que esta oportunidade é relevante para você..."
+                placeholder={t("opportunityDetail.interestPlaceholder")}
                 className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-xs placeholder:text-white/30 resize-none focus:outline-none focus:border-amber-500/40"
                 rows={3}
                 maxLength={500}
@@ -433,14 +443,14 @@ export default function OpportunityDetail() {
                 onClick={() => openDealRoom.mutate({ opportunityId: opp.id, message: ndaMessage || undefined })}
                 disabled={openDealRoom.isPending}
               >
-                {openDealRoom.isPending ? "Abrindo..." : "🔐 Aceitar e Abrir Deal Room"}
+                {openDealRoom.isPending ? t("opportunityDetail.openingDealRoom") : t("opportunityDetail.acceptNdaButton")}
               </Button>
               <Button
                 variant="outline"
                 className="border-white/20 text-white/60 bg-transparent"
                 onClick={() => setShowNDAModal(false)}
               >
-                Cancelar
+                {t("opportunityDetail.cancel")}
               </Button>
             </div>
           </div>

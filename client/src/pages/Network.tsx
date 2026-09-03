@@ -17,10 +17,32 @@ import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
 
 // ─── Tags de perfil predefinidas ─────────────────────────────────────────────
+// Os valores em si permanecem em português: é o que fica salvo no contato
+// (profileTags) e usado para comparação/seleção. A chave de i18n abaixo só
+// controla o RÓTULO exibido — troque o idioma sem migrar dado nenhum.
 const PROFILE_TAGS = [
   "Empresária", "Investidora", "Diplomata", "Autoridade Pública",
   "Advogada", "Pesquisadora", "Fornecedora", "Compradora", "Executiva", "Outro"
 ];
+
+const PROFILE_TAG_LABEL_KEYS: Record<string, string> = {
+  "Empresária": "network.tagEmpresaria",
+  "Investidora": "network.tagInvestidora",
+  "Diplomata": "network.tagDiplomata",
+  "Autoridade Pública": "network.tagAutoridadePublica",
+  "Advogada": "network.tagAdvogada",
+  "Pesquisadora": "network.tagPesquisadora",
+  "Fornecedora": "network.tagFornecedora",
+  "Compradora": "network.tagCompradora",
+  "Executiva": "network.tagExecutiva",
+  "Outro": "network.tagOutro",
+};
+
+// Traduz o rótulo visível de uma tag de perfil, mantendo o valor salvo intacto.
+function tagLabel(t: (key: string) => string, tag: string): string {
+  const key = PROFILE_TAG_LABEL_KEYS[tag];
+  return key ? t(key) : tag;
+}
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 type Contact = {
@@ -48,11 +70,14 @@ type Contact = {
 
 // Etapa 8 — os três níveis, na linguagem de quem escolhe. O padrão é privado:
 // nada vira público sem a dona pedir, e dá para mudar a qualquer momento.
-const NIVEIS_DE_VISIBILIDADE = [
-  { valor: "privado" as const, rotulo: "Privado", descricao: "Só você vê. O padrão de todo contato." },
-  { valor: "ouro" as const, rotulo: "Autorizadas (Ouro)", descricao: "Usuárias Ouro veem nome, empresa e cargo, segmento, local e o que possui/procura no acervo Ouro — e o SEU nome aparece como quem compartilhou. Nunca telefone, e-mail, redes ou notas. Volte a privado quando quiser: o efeito é imediato." },
-  { valor: "publico" as const, rotulo: "Público no MMM", descricao: "A oportunidade (o que possui/procura, cidade e país) entra na vitrine do ecossistema. Os dados pessoais nunca aparecem." },
-];
+// Função (não constante) porque rotulo/descricao dependem de t() — só existe dentro de um componente.
+function getNiveisDeVisibilidade(t: (key: string) => string) {
+  return [
+    { valor: "privado" as const, rotulo: t("network.nivelPrivadoRotulo"), descricao: t("network.nivelPrivadoDescricao") },
+    { valor: "ouro" as const, rotulo: t("network.nivelOuroRotulo"), descricao: t("network.nivelOuroDescricao") },
+    { valor: "publico" as const, rotulo: t("network.nivelPublicoRotulo"), descricao: t("network.nivelPublicoDescricao") },
+  ];
+}
 
 // ─── Formulário vazio ─────────────────────────────────────────────────────────
 const emptyForm = () => ({
@@ -100,6 +125,7 @@ function ContactCard({ contact, onView, onEdit, onDelete }: {
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="relative p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all duration-200 cursor-pointer group"
@@ -112,16 +138,16 @@ function ContactCard({ contact, onView, onEdit, onDelete }: {
               <p className="font-semibold text-white truncate">{contact.fullName}</p>
               {contact.enrichmentStatus === "active" && (
                 <span className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs animate-pulse">
-                  <Sparkles size={9} /> IA
+                  <Sparkles size={9} /> {t("network.badgeIA")}
                 </span>
               )}
               {/* Etapa 10: o nível escolhido fica visível na lista — a dona
                   enxerga de relance o que está compartilhado com quem. */}
               {contact.nivelVisibilidade === "ouro" && (
-                <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-300/40 text-amber-300 text-xs">Ouro</span>
+                <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-300/40 text-amber-300 text-xs">{t("network.badgeOuro")}</span>
               )}
               {contact.nivelVisibilidade === "publico" && (
-                <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-sky-400/10 border border-sky-300/40 text-sky-300 text-xs">Público</span>
+                <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-sky-400/10 border border-sky-300/40 text-sky-300 text-xs">{t("network.badgePublico")}</span>
               )}
             </div>
             <button type="button"
@@ -138,7 +164,7 @@ function ContactCard({ contact, onView, onEdit, onDelete }: {
               </span>
             )}
             {contact.profileTags?.slice(0, 2).map(tag => (
-              <span key={tag} className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400/80 text-xs">{tag}</span>
+              <span key={tag} className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400/80 text-xs">{tagLabel(t, tag)}</span>
             ))}
           </div>
         </div>
@@ -149,15 +175,15 @@ function ContactCard({ contact, onView, onEdit, onDelete }: {
           onClick={e => e.stopPropagation()}>
           <button className="w-full px-4 py-2 text-sm text-white/70 hover:bg-white/8 text-left flex items-center gap-2"
             onClick={() => { setMenuOpen(false); onView(); }}>
-            <User size={13} /> Ver perfil
+            <User size={13} /> {t("network.verPerfil")}
           </button>
           <button className="w-full px-4 py-2 text-sm text-white/70 hover:bg-white/8 text-left flex items-center gap-2"
             onClick={() => { setMenuOpen(false); onEdit(); }}>
-            <Edit2 size={13} /> Editar
+            <Edit2 size={13} /> {t("network.editar")}
           </button>
           <button className="w-full px-4 py-2 text-sm text-red-400/80 hover:bg-red-500/10 text-left flex items-center gap-2"
             onClick={() => { setMenuOpen(false); onDelete(); }}>
-            <Trash2 size={13} /> Excluir
+            <Trash2 size={13} /> {t("network.excluir")}
           </button>
         </div>
       )}
@@ -172,6 +198,7 @@ function ContactForm({ initial, onSave, onClose, loading }: {
   onClose: () => void;
   loading: boolean;
 }) {
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<ReturnType<typeof emptyForm>>({
     fullName:    initial?.fullName    ?? "",
@@ -239,7 +266,13 @@ function ContactForm({ initial, onSave, onClose, loading }: {
       : [...form.profileTags, tag]);
   };
 
-  const STEPS = ["Informações Básicas", "Localização e Contato", "Digital e Perfil", "Cartão e Notas"];
+  const STEPS = [
+    t("network.formStepBasico"),
+    t("network.formStepLocalizacao"),
+    t("network.formStepDigital"),
+    t("network.formStepCartao"),
+  ];
+  const NIVEIS_DE_VISIBILIDADE = getNiveisDeVisibilidade(t);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
@@ -248,8 +281,8 @@ function ContactForm({ initial, onSave, onClose, loading }: {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <div>
-            <h2 className="font-bold text-white">{initial?.id ? "Editar Contato" : "Novo Contato"}</h2>
-            <p className="text-xs text-white/40 mt-0.5">Etapa {step} de {STEPS.length}: {STEPS[step - 1]}</p>
+            <h2 className="font-bold text-white">{initial?.id ? t("network.formTituloEditar") : t("network.formTituloNovo")}</h2>
+            <p className="text-xs text-white/40 mt-0.5">{t("network.formEtapaProgresso", { step, total: STEPS.length, etapa: STEPS[step - 1] })}</p>
           </div>
           <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors p-1">
             <X size={18} />
@@ -266,21 +299,21 @@ function ContactForm({ initial, onSave, onClose, loading }: {
           {step === 1 && (
             <>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Nome Completo *</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelNomeCompleto")}</label>
                 <Input value={form.fullName} onChange={e => set("fullName", e.target.value)}
-                  placeholder="Nome completo do contato"
+                  placeholder={t("network.placeholderNomeCompleto")}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
               </div>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Cargo</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelCargo")}</label>
                 <Input value={form.jobTitle} onChange={e => set("jobTitle", e.target.value)}
-                  placeholder="Ex: CEO, Embaixadora, Diretora..."
+                  placeholder={t("network.placeholderCargo")}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
               </div>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Empresa / Instituição</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelEmpresa")}</label>
                 <Input value={form.company} onChange={e => set("company", e.target.value)}
-                  placeholder="Nome da empresa ou instituição"
+                  placeholder={t("network.placeholderEmpresa")}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
               </div>
             </>
@@ -290,40 +323,40 @@ function ContactForm({ initial, onSave, onClose, loading }: {
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">País</label>
+                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelPais")}</label>
                   <Input value={form.country} onChange={e => set("country", e.target.value)}
-                    placeholder="Brasil, EUA..."
+                    placeholder={t("network.placeholderPais")}
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                 </div>
                 <div>
-                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Estado</label>
+                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelEstado")}</label>
                   <Input value={form.state} onChange={e => set("state", e.target.value)}
-                    placeholder="SP, RJ..."
+                    placeholder={t("network.placeholderEstado")}
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                 </div>
               </div>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Cidade</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelCidade")}</label>
                 <Input value={form.city} onChange={e => set("city", e.target.value)}
-                  placeholder="São Paulo, Rio de Janeiro..."
+                  placeholder={t("network.placeholderCidade")}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
               </div>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Telefone</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelTelefone")}</label>
                 <Input value={form.phone} onChange={e => set("phone", e.target.value)}
-                  placeholder="+55 11 9 9999-9999"
+                  placeholder={t("network.placeholderTelefone")}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
               </div>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">WhatsApp</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelWhatsapp")}</label>
                 <Input value={form.whatsapp} onChange={e => set("whatsapp", e.target.value)}
-                  placeholder="+55 11 9 9999-9999"
+                  placeholder={t("network.placeholderTelefone")}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
               </div>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">E-mail</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelEmail")}</label>
                 <Input value={form.email} onChange={e => set("email", e.target.value)}
-                  placeholder="contato@empresa.com"
+                  placeholder={t("network.placeholderEmail")}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
               </div>
             </>
@@ -332,22 +365,22 @@ function ContactForm({ initial, onSave, onClose, loading }: {
           {step === 3 && (
             <>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">LinkedIn URL</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelLinkedin")}</label>
                 <Input value={form.linkedinUrl} onChange={e => set("linkedinUrl", e.target.value)}
-                  placeholder="https://linkedin.com/in/nome"
+                  placeholder={t("network.placeholderLinkedin")}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
               </div>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Instagram</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelInstagram")}</label>
                 <Input value={form.instagram} onChange={e => set("instagram", e.target.value.replace(/^@/, ""))}
-                  placeholder="@handle (sem @)"
+                  placeholder={t("network.placeholderInstagram")}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
               </div>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-3 block">Perfil / Tags</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-3 block">{t("network.labelPerfilTags")}</label>
                 <div className="flex flex-wrap gap-2">
                   {PROFILE_TAGS.map(tag => (
-                    <TagChip key={tag} label={tag} selected={form.profileTags.includes(tag)} onClick={() => toggleTag(tag)} />
+                    <TagChip key={tag} label={tagLabel(t, tag)} selected={form.profileTags.includes(tag)} onClick={() => toggleTag(tag)} />
                   ))}
                 </div>
               </div>
@@ -358,10 +391,10 @@ function ContactForm({ initial, onSave, onClose, loading }: {
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Foto do Contato</label>
+                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelFotoContato")}</label>
                   {form.photoUrl ? (
                     <div className="relative">
-                      <img src={form.photoUrl} alt="Foto do contato" className="w-full h-24 rounded-xl object-cover border border-white/10" />
+                      <img src={form.photoUrl} alt={t("network.altFotoContato")} className="w-full h-24 rounded-xl object-cover border border-white/10" />
                       <button type="button" onClick={() => set("photoUrl", "")}
                         className="absolute top-1 right-1 bg-black/70 rounded-full p-1 text-white/70 hover:text-white">
                         <X size={12} />
@@ -369,7 +402,7 @@ function ContactForm({ initial, onSave, onClose, loading }: {
                     </div>
                   ) : (
                     <label className="flex flex-col items-center justify-center h-24 rounded-xl border border-dashed border-white/15 bg-white/5 cursor-pointer hover:border-amber-500/40 text-white/40 text-xs gap-1">
-                      {uploadPhotoMut.isPending ? "Enviando..." : "Enviar foto"}
+                      {uploadPhotoMut.isPending ? t("network.enviandoImagem") : t("network.enviarFoto")}
                       <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
                         disabled={uploadPhotoMut.isPending}
                         onChange={e => enviarImagem(e, "photoUrl", uploadPhotoMut)} />
@@ -377,10 +410,10 @@ function ContactForm({ initial, onSave, onClose, loading }: {
                   )}
                 </div>
                 <div>
-                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Cartão de Visita</label>
+                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.tituloCartaoVisita")}</label>
                   {form.cardImageUrl ? (
                     <div className="relative">
-                      <img src={form.cardImageUrl} alt="Cartão de visita" className="w-full h-24 rounded-xl object-cover border border-white/10" />
+                      <img src={form.cardImageUrl} alt={t("network.altCartaoVisita")} className="w-full h-24 rounded-xl object-cover border border-white/10" />
                       <button type="button" onClick={() => set("cardImageUrl", "")}
                         className="absolute top-1 right-1 bg-black/70 rounded-full p-1 text-white/70 hover:text-white">
                         <X size={12} />
@@ -388,7 +421,7 @@ function ContactForm({ initial, onSave, onClose, loading }: {
                     </div>
                   ) : (
                     <label className="flex flex-col items-center justify-center h-24 rounded-xl border border-dashed border-white/15 bg-white/5 cursor-pointer hover:border-amber-500/40 text-white/40 text-xs gap-1">
-                      {uploadCardMut.isPending ? "Enviando..." : "Enviar cartão"}
+                      {uploadCardMut.isPending ? t("network.enviandoImagem") : t("network.enviarCartao")}
                       <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
                         disabled={uploadCardMut.isPending}
                         onChange={e => enviarImagem(e, "cardImageUrl", uploadCardMut)} />
@@ -397,14 +430,14 @@ function ContactForm({ initial, onSave, onClose, loading }: {
                 </div>
               </div>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Notas / Observações</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelNotas")}</label>
                 <Textarea value={form.notes} onChange={e => set("notes", e.target.value)}
-                  placeholder="Como nos conhecemos, contexto, próximos passos..."
+                  placeholder={t("network.placeholderNotas")}
                   rows={5}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50 resize-none" />
               </div>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Quem pode ver este contato</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("network.labelVisibilidade")}</label>
                 <div className="space-y-2">
                   {NIVEIS_DE_VISIBILIDADE.map(nivel => (
                     <button key={nivel.valor} type="button"
@@ -424,18 +457,18 @@ function ContactForm({ initial, onSave, onClose, loading }: {
         <div className="flex items-center justify-between px-6 py-4 border-t border-white/10 bg-white/2">
           <Button variant="ghost" onClick={step === 1 ? onClose : () => setStep(s => s - 1)}
             className="text-white/50 hover:text-white/80">
-            {step === 1 ? "Cancelar" : "← Voltar"}
+            {step === 1 ? t("network.cancelar") : t("network.voltar")}
           </Button>
           {step < STEPS.length ? (
             <Button onClick={() => setStep(s => s + 1)}
               disabled={step === 1 && !form.fullName.trim()}
               className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold">
-              Próximo →
+              {t("network.proximo")}
             </Button>
           ) : (
             <Button onClick={() => onSave(form)} disabled={loading || !form.fullName.trim()}
               className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold">
-              {loading ? "Salvando..." : "✓ Salvar"}
+              {loading ? t("network.salvando") : t("network.salvar")}
             </Button>
           )}
         </div>
@@ -450,6 +483,7 @@ function ContactDetail({ contact, onEdit, onClose }: {
   onEdit: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"info" | "history">("info");
 
   // Histórico de enriquecimento
@@ -465,7 +499,7 @@ function ContactDetail({ contact, onEdit, onClose }: {
   );
 
   const confirmMut = trpc.enrichment.confirmSuggestion.useMutation({
-    onError: () => toast.error("Erro ao desfazer."),
+    onError: () => toast.error(t("network.erroDesfazer")),
   });
   const ignoreMut = trpc.enrichment.ignoreSuggestion.useMutation();
 
@@ -476,11 +510,11 @@ function ContactDetail({ contact, onEdit, onClose }: {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors flex items-center gap-1.5 text-sm">
-            <ChevronLeft size={16} /> Minha Rede
+            <ChevronLeft size={16} /> {t("network.minhaRede")}
           </button>
           <Button size="sm" onClick={onEdit} variant="outline"
             className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 bg-transparent">
-            <Edit2 size={13} className="mr-1" /> Editar
+            <Edit2 size={13} className="mr-1" /> {t("network.editar")}
           </Button>
         </div>
 
@@ -490,13 +524,13 @@ function ContactDetail({ contact, onEdit, onClose }: {
             className={`flex-1 py-2.5 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
               activeTab === "info" ? "text-amber-400 border-b-2 border-amber-400" : "text-white/40 hover:text-white/60"
             }`}>
-            <User size={12} /> Perfil
+            <User size={12} /> {t("network.abaPerfil")}
           </button>
           <button onClick={() => setActiveTab("history")}
             className={`flex-1 py-2.5 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
               activeTab === "history" ? "text-amber-400 border-b-2 border-amber-400" : "text-white/40 hover:text-white/60"
             }`}>
-            <History size={12} /> Histórico IA
+            <History size={12} /> {t("network.abaHistoricoIA")}
             {historyData && historyData.total > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs">{historyData.total}</span>
             )}
@@ -517,14 +551,14 @@ function ContactDetail({ contact, onEdit, onClose }: {
             )}
             {/* Etapa 10: o nível também no detalhe — a lista e o formulário já mostram. */}
             <p className="text-xs mt-1.5">
-              {contact.nivelVisibilidade === "ouro" && <span className="px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-300/40 text-amber-300">Compartilhado com Usuárias Ouro</span>}
-              {contact.nivelVisibilidade === "publico" && <span className="px-2 py-0.5 rounded-full bg-sky-400/10 border border-sky-300/40 text-sky-300">Público no MMM (só a oportunidade)</span>}
-              {(!contact.nivelVisibilidade || contact.nivelVisibilidade === "privado") && <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/15 text-white/45">Privado — só você vê</span>}
+              {contact.nivelVisibilidade === "ouro" && <span className="px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-300/40 text-amber-300">{t("network.detalheNivelOuro")}</span>}
+              {contact.nivelVisibilidade === "publico" && <span className="px-2 py-0.5 rounded-full bg-sky-400/10 border border-sky-300/40 text-sky-300">{t("network.detalheNivelPublico")}</span>}
+              {(!contact.nivelVisibilidade || contact.nivelVisibilidade === "privado") && <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/15 text-white/45">{t("network.detalheNivelPrivado")}</span>}
             </p>
             {contact.profileTags && contact.profileTags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {contact.profileTags.map(tag => (
-                  <span key={tag} className="px-2.5 py-0.5 rounded-full bg-amber-500/12 border border-amber-500/25 text-amber-400/90 text-xs font-medium">{tag}</span>
+                  <span key={tag} className="px-2.5 py-0.5 rounded-full bg-amber-500/12 border border-amber-500/25 text-amber-400/90 text-xs font-medium">{tagLabel(t, tag)}</span>
                 ))}
               </div>
             )}
@@ -534,17 +568,17 @@ function ContactDetail({ contact, onEdit, onClose }: {
         {/* Comunicação */}
         {(contact.phone || contact.whatsapp || contact.email) && (
           <div className="px-6 py-4 border-t border-white/8">
-            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Phone size={11} /> Comunicação</p>
+            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Phone size={11} /> {t("network.tituloComunicacao")}</p>
             <div className="space-y-2">
               {contact.phone && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-white/60">Telefone</span>
+                  <span className="text-sm text-white/60">{t("network.labelTelefone")}</span>
                   <span className="text-sm text-white font-medium">{contact.phone}</span>
                 </div>
               )}
               {contact.whatsapp && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-white/60">WhatsApp</span>
+                  <span className="text-sm text-white/60">{t("network.labelWhatsapp")}</span>
                   <a href={`https://wa.me/${contact.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer"
                     className="text-sm text-green-400 font-medium flex items-center gap-1 hover:text-green-300">
                     {contact.whatsapp} <ExternalLink size={11} />
@@ -553,7 +587,7 @@ function ContactDetail({ contact, onEdit, onClose }: {
               )}
               {contact.email && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-white/60">E-mail</span>
+                  <span className="text-sm text-white/60">{t("network.labelEmail")}</span>
                   <a href={`mailto:${contact.email}`}
                     className="text-sm text-amber-400 font-medium flex items-center gap-1 hover:text-amber-300">
                     {contact.email} <ExternalLink size={11} />
@@ -567,20 +601,20 @@ function ContactDetail({ contact, onEdit, onClose }: {
         {/* Presença digital */}
         {(contact.linkedinUrl || contact.instagram) && (
           <div className="px-6 py-4 border-t border-white/8">
-            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Globe size={11} /> Presença Digital</p>
+            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Globe size={11} /> {t("network.tituloPresencaDigital")}</p>
             <div className="space-y-2">
               {contact.linkedinUrl && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-white/60 flex items-center gap-1.5"><Linkedin size={13} /> LinkedIn</span>
+                  <span className="text-sm text-white/60 flex items-center gap-1.5"><Linkedin size={13} /> {t("network.rotuloLinkedin")}</span>
                   <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer"
                     className="text-sm text-blue-400 font-medium flex items-center gap-1 hover:text-blue-300">
-                    Abrir perfil <ExternalLink size={11} />
+                    {t("network.abrirPerfil")} <ExternalLink size={11} />
                   </a>
                 </div>
               )}
               {contact.instagram && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-white/60 flex items-center gap-1.5"><Instagram size={13} /> Instagram</span>
+                  <span className="text-sm text-white/60 flex items-center gap-1.5"><Instagram size={13} /> {t("network.labelInstagram")}</span>
                   <a href={`https://instagram.com/${contact.instagram}`} target="_blank" rel="noopener noreferrer"
                     className="text-sm text-pink-400 font-medium flex items-center gap-1 hover:text-pink-300">
                     @{contact.instagram} <ExternalLink size={11} />
@@ -594,15 +628,15 @@ function ContactDetail({ contact, onEdit, onClose }: {
         {/* Cartão de visita */}
         {contact.cardImageUrl && (
           <div className="px-6 py-4 border-t border-white/8">
-            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><FileText size={11} /> Cartão de Visita</p>
-            <img src={contact.cardImageUrl} alt="Cartão de visita" className="w-full rounded-xl border border-white/10 object-contain max-h-48" />
+            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><FileText size={11} /> {t("network.tituloCartaoVisita")}</p>
+            <img src={contact.cardImageUrl} alt={t("network.altCartaoVisita")} className="w-full rounded-xl border border-white/10 object-contain max-h-48" />
           </div>
         )}
 
         {/* Contextos — onde e como se conheceram (etapa 5) */}
         {contextosDoContato && contextosDoContato.length > 0 && (
           <div className="px-6 py-4 border-t border-white/8">
-            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Calendar size={11} /> Contextos</p>
+            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Calendar size={11} /> {t("network.tituloContextos")}</p>
             <div className="space-y-2">
               {contextosDoContato.map(cc => (
                 <div key={cc.linkId} className="flex items-center justify-between gap-2">
@@ -619,7 +653,7 @@ function ContactDetail({ contact, onEdit, onClose }: {
         {/* Notas */}
         {contact.notes && (
           <div className="px-6 py-4 border-t border-white/8">
-            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><FileText size={11} /> Notas</p>
+            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><FileText size={11} /> {t("network.tituloNotas")}</p>
             <p className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">{contact.notes}</p>
           </div>
         )}
@@ -627,7 +661,10 @@ function ContactDetail({ contact, onEdit, onClose }: {
         {/* Rodapé */}
         <div className="px-6 py-3 border-t border-white/8 bg-white/2">
           <p className="text-xs text-white/25">
-            Adicionado em {new Date(contact.createdAt).toLocaleDateString("pt-BR")} · Atualizado em {new Date(contact.updatedAt).toLocaleDateString("pt-BR")}
+            {t("network.rodapeDatas", {
+              criado: new Date(contact.createdAt).toLocaleDateString("pt-BR"),
+              atualizado: new Date(contact.updatedAt).toLocaleDateString("pt-BR"),
+            })}
           </p>
         </div>
         {/* Chat de Enriquecimento com IA */}
@@ -640,21 +677,21 @@ function ContactDetail({ contact, onEdit, onClose }: {
             {!historyData || historyData.data.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Sparkles size={36} className="text-white/15 mb-3" />
-                <p className="text-sm text-white/40">Nenhum enriquecimento via IA ainda.</p>
-                <p className="text-xs text-white/25 mt-1">Abra a aba Perfil e inicie o chat de enriquecimento.</p>
+                <p className="text-sm text-white/40">{t("network.semHistoricoIA")}</p>
+                <p className="text-xs text-white/25 mt-1">{t("network.dicaIniciarChat")}</p>
               </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <History size={11} /> {historyData.total} alterações via IA
+                  <History size={11} /> {t("network.totalAlteracoesIA", { total: historyData.total })}
                 </p>
                 {historyData.data.map((item: any) => {
                   const fieldLabels: Record<string, string> = {
-                    phone: "📞 Telefone", whatsapp: "💬 WhatsApp", email: "📧 E-mail",
-                    company: "🏢 Empresa", job_title: "💼 Cargo", city: "📍 Cidade",
-                    country: "🌍 País", linkedin_url: "🔗 LinkedIn", instagram_handle: "📸 Instagram",
-                    asset_tag: "✨ Ativo", need_tag: "🎯 Necessidade", context_link: "📅 Contexto",
-                    relationship_type: "🤝 Relacionamento",
+                    phone: t("network.campoTelefoneIA"), whatsapp: t("network.campoWhatsappIA"), email: t("network.campoEmailIA"),
+                    company: t("network.campoEmpresaIA"), job_title: t("network.campoCargoIA"), city: t("network.campoCidadeIA"),
+                    country: t("network.campoPaisIA"), linkedin_url: t("network.campoLinkedinIA"), instagram_handle: t("network.campoInstagramIA"),
+                    asset_tag: t("network.campoAtivoIA"), need_tag: t("network.campoNecessidadeIA"), context_link: t("network.campoContextoIA"),
+                    relationship_type: t("network.campoRelacionamentoIA"),
                   };
                   const label = fieldLabels[item.fieldType] ?? item.fieldType;
                   const isUndone = item.status === "undone";
@@ -669,19 +706,19 @@ function ContactDetail({ contact, onEdit, onClose }: {
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-amber-400/80 font-medium">{label}</p>
                           <p className={`text-sm mt-0.5 ${isUndone ? "line-through text-white/30" : isIgnored ? "text-white/30 italic" : "text-white"}`}>
-                            {isIgnored ? "(não preenchido)" : (item.appliedValue ?? item.suggestedValue)}
+                            {isIgnored ? t("network.naoPreenchido") : (item.appliedValue ?? item.suggestedValue)}
                           </p>
                           <p className="text-xs text-white/25 mt-1">
-                            {isIgnored ? "IA perguntou → você ignorou" :
-                             isUndone ? "Aplicado → desfeito" :
-                             item.status === "edited" ? "IA sugeriu → você editou → aplicado" :
-                             "IA sugeriu → você confirmou"}
+                            {isIgnored ? t("network.statusIgnorado") :
+                             isUndone ? t("network.statusDesfeito") :
+                             item.status === "edited" ? t("network.statusEditado") :
+                             t("network.statusConfirmado")}
                             {item.actionedAt && ` · ${new Date(item.actionedAt).toLocaleDateString("pt-BR")}`}
                           </p>
                         </div>
                         {!isIgnored && !isUndone && (
                           <button className="flex-shrink-0 p-1.5 rounded-lg text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                            title="Desfazer">
+                            title={t("network.tituloDesfazer")}>
                             <RotateCcw size={12} />
                           </button>
                         )}
@@ -700,6 +737,7 @@ function ContactDetail({ contact, onEdit, onClose }: {
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function Network() {
+  const { t } = useTranslation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [search, setSearch] = useState("");
   const [filterTag, setFilterTag] = useState("");
@@ -725,7 +763,7 @@ export default function Network() {
 
   const createMut = trpc.network.create.useMutation({
     onSuccess: (data) => {
-      toast.success("Contato adicionado!");
+      toast.success(t("network.toastContatoAdicionado"));
       setShowForm(false);
       refetch();
       // Iniciar enriquecimento automaticamente
@@ -733,22 +771,22 @@ export default function Network() {
         startEnrichMut.mutate({ contactId: data.id });
       }
     },
-    onError: (e) => toast.error("Erro ao salvar: " + e.message),
+    onError: (e) => toast.error(t("network.toastErroSalvar") + e.message),
   });
   const startEnrichMut = trpc.enrichment.startSession.useMutation({
     onSuccess: () => {
-      toast.success("✨ Enriquecimento iniciado! Abra o contato para continuar.", { duration: 4000 });
+      toast.success(t("network.toastEnriquecimentoIniciado"), { duration: 4000 });
       refetch();
     },
     onError: () => { /* silencioso — pode já existir sessão */ },
   });
   const updateMut = trpc.network.update.useMutation({
-    onSuccess: () => { toast.success("Contato atualizado!"); setEditContact(null); refetch(); },
-    onError: (e) => toast.error("Erro ao atualizar: " + e.message),
+    onSuccess: () => { toast.success(t("network.toastContatoAtualizado")); setEditContact(null); refetch(); },
+    onError: (e) => toast.error(t("network.toastErroAtualizar") + e.message),
   });
   const deleteMut = trpc.network.delete.useMutation({
-    onSuccess: () => { toast.success("Contato removido."); setDeleteId(null); refetch(); },
-    onError: (e) => toast.error("Erro ao excluir: " + e.message),
+    onSuccess: () => { toast.success(t("network.toastContatoRemovido")); setDeleteId(null); refetch(); },
+    onError: (e) => toast.error(t("network.toastErroExcluir") + e.message),
   });
 
   const handleSave = (form: ReturnType<typeof emptyForm>) => {
@@ -787,10 +825,10 @@ export default function Network() {
     <div className="min-h-screen flex items-center justify-center bg-[#060e1a] p-6">
       <div className="text-center">
         <Lock size={40} className="text-amber-500/60 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Área restrita</h2>
-        <p className="text-white/50 mb-6">Faça login para acessar sua rede de contatos.</p>
+        <h2 className="text-xl font-bold text-white mb-2">{t("network.areaRestrita")}</h2>
+        <p className="text-white/50 mb-6">{t("network.mensagemLogin")}</p>
         <a href={getLoginUrl()} className="px-6 py-3 bg-amber-500 text-[#060e1a] font-bold rounded-xl hover:bg-amber-400 transition-colors">
-          Entrar
+          {t("network.botaoEntrar")}
         </a>
       </div>
     </div>
@@ -809,15 +847,15 @@ export default function Network() {
               <ChevronLeft size={20} />
             </Link>
             <div>
-              <h1 className="font-bold text-white text-lg leading-tight">Minha Rede</h1>
+              <h1 className="font-bold text-white text-lg leading-tight">{t("network.minhaRede")}</h1>
               <p className="text-xs text-white/35 flex items-center gap-1">
-                <Shield size={10} /> Privado e criptografado
+                <Shield size={10} /> {t("network.privadoCriptografado")}
               </p>
             </div>
           </div>
           <Button onClick={() => { setEditContact(null); setShowForm(true); }}
             className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold gap-1.5">
-            <Plus size={16} /> Novo
+            <Plus size={16} /> {t("network.botaoNovo")}
           </Button>
         </div>
       </div>
@@ -827,7 +865,7 @@ export default function Network() {
         <div className="relative">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
           <Input value={search} onChange={e => handleSearch(e.target.value)}
-            placeholder="Buscar por nome, empresa ou cargo..."
+            placeholder={t("network.placeholderBusca")}
             className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-amber-500/50" />
           {search && (
             <button onClick={() => { setSearch(""); setDebouncedSearch(""); setPage(1); }}
@@ -843,14 +881,14 @@ export default function Network() {
             className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
               !filterTag ? "bg-amber-500 border-amber-500 text-[#060e1a] font-bold" : "bg-white/5 border-white/20 text-white/60 hover:border-white/40"
             }`}>
-            Todos
+            {t("network.filtroTodos")}
           </button>
           {PROFILE_TAGS.map(tag => (
             <button key={tag} onClick={() => { setFilterTag(tag === filterTag ? "" : tag); setPage(1); }}
               className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
                 filterTag === tag ? "bg-amber-500 border-amber-500 text-[#060e1a] font-bold" : "bg-white/5 border-white/20 text-white/60 hover:border-white/40"
               }`}>
-              {tag}
+              {tagLabel(t, tag)}
             </button>
           ))}
         </div>
@@ -858,8 +896,11 @@ export default function Network() {
         {/* Contador */}
         {!isLoading && (
           <p className="text-xs text-white/30">
-            {total === 0 ? "Nenhum contato encontrado" : `${total} contato${total !== 1 ? "s" : ""}`}
-            {(debouncedSearch || filterTag) ? " encontrado" + (total !== 1 ? "s" : "") : ""}
+            {total === 0
+              ? t("network.contadorZero")
+              : (debouncedSearch || filterTag)
+                ? t("network.contadorContatosEncontrados", { count: total })
+                : t("network.contadorContatos", { count: total })}
           </p>
         )}
 
@@ -876,17 +917,17 @@ export default function Network() {
               <User size={28} className="text-amber-500/50" />
             </div>
             <h3 className="text-white/60 font-medium mb-1">
-              {debouncedSearch || filterTag ? "Nenhum contato encontrado" : "Sua rede está vazia"}
+              {debouncedSearch || filterTag ? t("network.contadorZero") : t("network.redeVazia")}
             </h3>
             <p className="text-white/30 text-sm mb-6">
               {debouncedSearch || filterTag
-                ? "Tente outros termos de busca ou remova os filtros."
-                : "Adicione seu primeiro contato estratégico."}
+                ? t("network.dicaSemResultado")
+                : t("network.dicaRedeVazia")}
             </p>
             {!debouncedSearch && !filterTag && (
               <Button onClick={() => setShowForm(true)}
                 className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold gap-1.5">
-                <Plus size={16} /> Adicionar contato
+                <Plus size={16} /> {t("network.botaoAdicionarContato")}
               </Button>
             )}
           </div>
@@ -907,12 +948,12 @@ export default function Network() {
           <div className="flex items-center justify-center gap-3 pt-4">
             <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}
               className="border-white/15 text-white/60 bg-transparent hover:bg-white/8">
-              ← Anterior
+              {t("network.paginaAnterior")}
             </Button>
-            <span className="text-xs text-white/40">Página {page} de {Math.ceil(total / 20)}</span>
+            <span className="text-xs text-white/40">{t("network.paginaContador", { page, total: Math.ceil(total / 20) })}</span>
             <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / 20)} onClick={() => setPage(p => p + 1)}
               className="border-white/15 text-white/60 bg-transparent hover:bg-white/8">
-              Próxima →
+              {t("network.paginaProxima")}
             </Button>
           </div>
         )}
@@ -940,15 +981,15 @@ export default function Network() {
       {deleteId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#0a1628] border border-white/15 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="font-bold text-white mb-2">Excluir contato?</h3>
-            <p className="text-sm text-white/50 mb-6">Esta ação não pode ser desfeita. O contato será removido permanentemente da sua rede.</p>
+            <h3 className="font-bold text-white mb-2">{t("network.confirmarExclusaoTitulo")}</h3>
+            <p className="text-sm text-white/50 mb-6">{t("network.confirmarExclusaoTexto")}</p>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setDeleteId(null)} className="flex-1 border-white/15 text-white/60 bg-transparent hover:bg-white/8">
-                Cancelar
+                {t("network.cancelar")}
               </Button>
               <Button onClick={() => deleteMut.mutate({ id: deleteId! })} disabled={deleteMut.isPending}
                 className="flex-1 bg-red-500 hover:bg-red-400 text-white font-bold">
-                {deleteMut.isPending ? "Excluindo..." : "Excluir"}
+                {deleteMut.isPending ? t("network.excluindo") : t("network.excluir")}
               </Button>
             </div>
           </div>

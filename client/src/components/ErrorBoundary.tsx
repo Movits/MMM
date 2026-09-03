@@ -1,6 +1,7 @@
 import { Component, ReactNode } from "react";
+import { withTranslation, WithTranslation } from "react-i18next";
 
-interface Props {
+interface Props extends WithTranslation {
   children: ReactNode;
 }
 
@@ -21,6 +22,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   render() {
+    const { t } = this.props;
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-[#060e1a] text-white flex items-center justify-center px-6">
@@ -52,17 +54,17 @@ class ErrorBoundary extends Component<Props, State> {
 
             {/* Title */}
             <h1 className="text-2xl font-black mb-3">
-              Algo inesperado aconteceu
+              {t("errorBoundary.title")}
             </h1>
 
             {/* Description */}
             <p className="text-white/40 mb-3 leading-relaxed">
-              Encontramos um problema técnico ao carregar esta página. Nossa equipe foi notificada automaticamente.
+              {t("errorBoundary.description")}
             </p>
 
             {/* Error ID */}
             <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-8">
-              <span className="text-white/30 text-xs">Código de referência:</span>
+              <span className="text-white/30 text-xs">{t("errorBoundary.errorIdLabel")}</span>
               <code className="text-[#f5a623] text-xs font-bold">{this.state.errorId}</code>
             </div>
 
@@ -72,19 +74,19 @@ class ErrorBoundary extends Component<Props, State> {
                 onClick={() => window.location.reload()}
                 className="group relative bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] font-black px-7 py-3 rounded-xl text-sm transition-all duration-200 active:scale-95 shadow-xl shadow-[#f5a623]/20 overflow-hidden"
               >
-                <span className="relative z-10">↻ Tentar novamente</span>
+                <span className="relative z-10">{t("errorBoundary.retryButton")}</span>
                 <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
               </button>
               <a href="/">
                 <button className="w-full border border-white/15 hover:border-[#f5a623]/40 text-white/60 hover:text-white px-7 py-3 rounded-xl text-sm transition-all duration-200">
-                  ← Voltar ao início
+                  {t("errorBoundary.backHome")}
                 </button>
               </a>
             </div>
 
             {/* Tip */}
             <p className="text-white/20 text-xs mt-8">
-              Se o problema persistir, tente limpar o cache do navegador (Ctrl+Shift+R).
+              {t("errorBoundary.tip")}
             </p>
           </div>
         </div>
@@ -95,4 +97,4 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-export default ErrorBoundary;
+export default withTranslation()(ErrorBoundary);

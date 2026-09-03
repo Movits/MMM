@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   Plus, Search, X, MapPin, Calendar, Users, ChevronLeft,
   Edit2, Trash2, UserPlus, Image, Lock, Globe, Briefcase,
@@ -102,9 +103,10 @@ function ContextForm({ initial, types, onSave, onClose, loading }: {
   onClose: () => void;
   loading: boolean;
 }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState<ReturnType<typeof emptyForm>>({
     name:          initial?.name ?? "",
-    contextTypeId: initial?.typeSlug ? (types.find(t => t.slug === initial.typeSlug)?.id ?? "") : "",
+    contextTypeId: initial?.typeSlug ? (types.find(ct => ct.slug === initial.typeSlug)?.id ?? "") : "",
     eventDate:     initial?.eventDate ?? "",
     city:          initial?.city ?? "",
     country:       initial?.country ?? "",
@@ -117,7 +119,7 @@ function ContextForm({ initial, types, onSave, onClose, loading }: {
   // chegam, o campo é re-derivado (sem atropelar uma escolha já feita).
   useEffect(() => {
     if (!form.contextTypeId && initial?.typeSlug && types.length > 0) {
-      const idDoTipo = types.find(t => t.slug === initial.typeSlug)?.id;
+      const idDoTipo = types.find(ct => ct.slug === initial.typeSlug)?.id;
       if (idDoTipo) setForm(p => (p.contextTypeId ? p : { ...p, contextTypeId: idDoTipo }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,57 +130,57 @@ function ContextForm({ initial, types, onSave, onClose, loading }: {
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-lg bg-[#0a1628] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <h2 className="font-bold text-white">{initial?.id ? "Editar Contexto" : "Novo Contexto"}</h2>
+          <h2 className="font-bold text-white">{initial?.id ? t("contexts.editarContextoTitulo") : t("contexts.novoContextoTitulo")}</h2>
           <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors"><X size={18} /></button>
         </div>
         <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
           <div>
-            <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Nome *</label>
+            <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("contexts.labelNome")}</label>
             <Input value={form.name} onChange={e => set("name", e.target.value)} maxLength={100}
-              placeholder="Ex: CPHI 2024, Roadshow Europa..."
+              placeholder={t("contexts.placeholderNomeExemplo")}
               className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
-            <p className="text-xs text-white/25 mt-1 text-right">{form.name.length}/100</p>
+            <p className="text-xs text-white/25 mt-1 text-right">{t("contexts.contadorCaracteres", { count: form.name.length })}</p>
           </div>
           <div>
-            <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Tipo de Contexto</label>
+            <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("contexts.labelTipoContexto")}</label>
             <select value={form.contextTypeId} onChange={e => set("contextTypeId", e.target.value)}
               className="w-full bg-white/5 border border-white/10 text-white rounded-md px-3 py-2 text-sm focus:border-amber-500/50 focus:outline-none">
-              <option className="bg-white text-[#2D3E50]" value="">Selecione um tipo...</option>
-              {types.map(t => <option className="bg-white text-[#2D3E50]" key={t.id} value={t.id}>{t.name}</option>)}
+              <option className="bg-white text-[#2D3E50]" value="">{t("contexts.selecioneTipo")}</option>
+              {types.map(t2 => <option className="bg-white text-[#2D3E50]" key={t2.id} value={t2.id}>{t2.name}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Data do Evento</label>
+              <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("contexts.labelDataEvento")}</label>
               <Input type="date" value={form.eventDate} onChange={e => set("eventDate", e.target.value)}
                 max={new Date().toISOString().split("T")[0]}
                 className="bg-white/5 border-white/10 text-white focus:border-amber-500/50" />
             </div>
             <div>
-              <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">País</label>
+              <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("contexts.labelPais")}</label>
               <Input value={form.country} onChange={e => set("country", e.target.value)}
-                placeholder="Brasil, EUA..."
+                placeholder={t("contexts.placeholderPais")}
                 className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
             </div>
           </div>
           <div>
-            <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Cidade</label>
+            <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("contexts.labelCidade")}</label>
             <Input value={form.city} onChange={e => set("city", e.target.value)}
-              placeholder="São Paulo, Madrid, Paris..."
+              placeholder={t("contexts.placeholderCidade")}
               className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
           </div>
           <div>
-            <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Notas</label>
+            <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("contexts.labelNotas")}</label>
             <Textarea value={form.notes} onChange={e => set("notes", e.target.value)}
-              placeholder="Descreva o contexto, objetivos, impressões..."
+              placeholder={t("contexts.placeholderNotas")}
               rows={3} className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50 resize-none" />
           </div>
         </div>
         <div className="flex items-center justify-between px-6 py-4 border-t border-white/10">
-          <Button variant="ghost" onClick={onClose} className="text-white/50 hover:text-white/80">Cancelar</Button>
+          <Button variant="ghost" onClick={onClose} className="text-white/50 hover:text-white/80">{t("contexts.botaoCancelar")}</Button>
           <Button onClick={() => onSave(form)} disabled={loading || !form.name.trim()}
             className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold">
-            {loading ? "Salvando..." : "✓ Salvar"}
+            {loading ? t("contexts.salvando") : t("contexts.botaoSalvar")}
           </Button>
         </div>
       </div>
@@ -190,6 +192,7 @@ function ContextForm({ initial, types, onSave, onClose, loading }: {
 function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
   contextId: string; contextName: string; onClose: () => void; onLinked: () => void;
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedContact, setSelectedContact] = useState<{ id: number; fullName: string } | null>(null);
@@ -211,16 +214,22 @@ function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
   );
 
   const linkMut = trpc.contexts.linkContact.useMutation({
-    onSuccess: () => { toast.success(`${selectedContact?.fullName} vinculada ao ${contextName}!`); onLinked(); onClose(); },
-    onError: (e) => toast.error("Erro ao vincular: " + e.message),
+    onSuccess: () => { toast.success(t("contexts.toastVinculadoSucesso", { name: selectedContact?.fullName, context: contextName })); onLinked(); onClose(); },
+    onError: (e) => toast.error(t("contexts.toastErroVincular", { message: e.message })),
   });
+
+  const relTypeLabels: Record<typeof relType, string> = {
+    pessoal: t("contexts.relTipoPessoal"),
+    profissional: t("contexts.relTipoProfissional"),
+    ambos: t("contexts.relTipoAmbos"),
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-lg bg-[#0a1628] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <h2 className="font-bold text-white">Vincular Contato</h2>
+          <h2 className="font-bold text-white">{t("contexts.vincularContatoTitulo")}</h2>
           <button onClick={onClose} className="text-white/40 hover:text-white/70"><X size={18} /></button>
         </div>
         <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
@@ -229,7 +238,7 @@ function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
               <div className="relative">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
                 <Input value={search} onChange={e => handleSearch(e.target.value)}
-                  placeholder="Buscar contato por nome..."
+                  placeholder={t("contexts.placeholderBuscarContato")}
                   className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-amber-500/50" />
               </div>
               {contacts?.data && contacts.data.length > 0 && (
@@ -249,7 +258,7 @@ function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
                 </div>
               )}
               {debouncedSearch && !contacts?.data?.length && (
-                <p className="text-sm text-white/40 text-center py-4">Nenhum contato encontrado.</p>
+                <p className="text-sm text-white/40 text-center py-4">{t("contexts.nenhumContatoEncontrado")}</p>
               )}
             </>
           ) : (
@@ -263,39 +272,39 @@ function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Data do Encontro</label>
+                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("contexts.labelDataEncontro")}</label>
                   <Input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)}
                     max={new Date().toISOString().split("T")[0]}
                     className="bg-white/5 border-white/10 text-white focus:border-amber-500/50" />
                 </div>
                 <div>
-                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Cidade</label>
-                  <Input value={city} onChange={e => setCity(e.target.value)} placeholder="Madrid..."
+                  <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("contexts.labelCidade")}</label>
+                  <Input value={city} onChange={e => setCity(e.target.value)} placeholder={t("contexts.placeholderCidadeCurto")}
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                 </div>
               </div>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">Tipo de Relacionamento</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-2 block">{t("contexts.labelTipoRelacionamento")}</label>
                 <div className="flex gap-2">
                   {(["pessoal", "profissional", "ambos"] as const).map(r => (
                     <button key={r} onClick={() => setRelType(r)}
                       className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${relType === r ? "bg-amber-500 border-amber-500 text-[#060e1a]" : "bg-white/5 border-white/15 text-white/60 hover:border-white/30"}`}>
-                      {r.charAt(0).toUpperCase() + r.slice(1)}
+                      {relTypeLabels[r]}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Notas do Encontro</label>
+                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("contexts.labelNotasEncontro")}</label>
                 <Textarea value={notes} onChange={e => setNotes(e.target.value)}
-                  placeholder="Observações sobre este encontro específico..."
+                  placeholder={t("contexts.placeholderNotasEncontro")}
                   rows={3} className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50 resize-none" />
               </div>
             </>
           )}
         </div>
         <div className="flex items-center justify-between px-6 py-4 border-t border-white/10">
-          <Button variant="ghost" onClick={onClose} className="text-white/50 hover:text-white/80">Cancelar</Button>
+          <Button variant="ghost" onClick={onClose} className="text-white/50 hover:text-white/80">{t("contexts.botaoCancelar")}</Button>
           {selectedContact && (
             <Button onClick={() => linkMut.mutate({
               contextId, contactId: selectedContact.id,
@@ -303,7 +312,7 @@ function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
               notes: notes || null, relationshipType: relType,
             })} disabled={linkMut.isPending}
               className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold">
-              {linkMut.isPending ? "Vinculando..." : "Vincular"}
+              {linkMut.isPending ? t("contexts.vinculando") : t("contexts.botaoVincular")}
             </Button>
           )}
         </div>
@@ -316,27 +325,28 @@ function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
 function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
   contextId: string; onEdit: () => void; onClose: () => void; onRefresh: () => void;
 }) {
+  const { t } = useTranslation();
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showParticipantForm, setShowParticipantForm] = useState(false);
   const [partName, setPartName] = useState(""); const [partCompany, setPartCompany] = useState(""); const [partRole, setPartRole] = useState("");
 
   const { data, isLoading, refetch } = trpc.contexts.get.useQuery({ id: contextId });
   const unlinkMut = trpc.contexts.unlinkContact.useMutation({
-    onSuccess: () => { toast.success("Vínculo removido."); refetch(); },
+    onSuccess: () => { toast.success(t("contexts.toastVinculoRemovido")); refetch(); },
   });
   const addPartMut = trpc.contexts.addParticipant.useMutation({
-    onSuccess: () => { toast.success("Participante adicionado!"); setShowParticipantForm(false); setPartName(""); setPartCompany(""); setPartRole(""); refetch(); },
+    onSuccess: () => { toast.success(t("contexts.toastParticipanteAdicionado")); setShowParticipantForm(false); setPartName(""); setPartCompany(""); setPartRole(""); refetch(); },
   });
   const deleteMut = trpc.contexts.delete.useMutation({
-    onSuccess: () => { toast.success("Contexto excluído."); onClose(); onRefresh(); },
+    onSuccess: () => { toast.success(t("contexts.toastContextoExcluido")); onClose(); onRefresh(); },
   });
   const uploadMut = trpc.contexts.uploadMedia.useMutation({
-    onSuccess: () => { toast.success("Arquivo anexado!"); refetch(); },
-    onError: err => toast.error(err.message || "Não foi possível anexar o arquivo."),
+    onSuccess: () => { toast.success(t("contexts.toastArquivoAnexado")); refetch(); },
+    onError: err => toast.error(err.message || t("contexts.toastErroAnexar")),
   });
   const deleteMediaMut = trpc.contexts.deleteMedia.useMutation({
-    onSuccess: () => { toast.success("Arquivo removido."); refetch(); },
-    onError: err => toast.error(err.message || "Não foi possível remover o arquivo."),
+    onSuccess: () => { toast.success(t("contexts.toastArquivoRemovido")); refetch(); },
+    onError: err => toast.error(err.message || t("contexts.toastErroRemoverArquivo")),
   });
 
   const TIPOS_DE_MIDIA = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
@@ -345,19 +355,19 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
     e.target.value = ""; // permite escolher o mesmo arquivo de novo
     if (!file) return;
     if (!(TIPOS_DE_MIDIA as readonly string[]).includes(file.type)) {
-      toast.error("Formato não suportado: envie JPG, PNG, WebP ou PDF.");
+      toast.error(t("contexts.toastFormatoNaoSuportado"));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("O arquivo deve ter no máximo 10 MB.");
+      toast.error(t("contexts.toastArquivoMuitoGrande"));
       return;
     }
     const reader = new FileReader();
-    reader.onerror = () => toast.error("Não foi possível ler o arquivo. Tente de novo.");
+    reader.onerror = () => toast.error(t("contexts.toastErroLerArquivo"));
     reader.onload = () => {
       const conteudo = String(reader.result ?? "");
       if (!conteudo) {
-        toast.error("Não foi possível ler o arquivo. Tente de novo.");
+        toast.error(t("contexts.toastErroLerArquivo"));
         return;
       }
       uploadMut.mutate({
@@ -385,7 +395,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <button onClick={onClose} className="text-white/40 hover:text-white/70 flex items-center gap-1.5 text-sm">
-            <ChevronLeft size={16} /> Contextos
+            <ChevronLeft size={16} /> {t("contexts.voltarContextos")}
           </button>
           {/* Contexto do catálogo (global) não é editável nem apagável — o
               backend recusaria e a tela só mostrava um erro sem explicação. */}
@@ -393,15 +403,15 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
             <div className="flex items-center gap-2">
               <Button size="sm" onClick={onEdit} variant="outline"
                 className="border-white/20 text-white/60 hover:bg-white/8 bg-transparent">
-                <Edit2 size={13} className="mr-1" /> Editar
+                <Edit2 size={13} className="mr-1" /> {t("contexts.botaoEditar")}
               </Button>
-              <Button size="sm" onClick={() => { if (confirm("Excluir este contexto?")) deleteMut.mutate({ id: contextId }); }}
+              <Button size="sm" onClick={() => { if (confirm(t("contexts.confirmExcluirContexto"))) deleteMut.mutate({ id: contextId }); }}
                 variant="outline" className="border-red-500/30 text-red-400/80 hover:bg-red-500/10 bg-transparent">
                 <Trash2 size={13} />
               </Button>
             </div>
           ) : (
-            <span className="text-xs text-white/30">Contexto do catálogo MMM</span>
+            <span className="text-xs text-white/30">{t("contexts.contextoCatalogoMmm")}</span>
           )}
         </div>
 
@@ -428,15 +438,15 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
         <div className="px-6 py-4 border-t border-white/8">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-white/35 uppercase tracking-wider flex items-center gap-1.5">
-              <Users size={11} /> Contatos Vinculados ({ctx.links.length})
+              <Users size={11} /> {t("contexts.tituloContatosVinculados", { count: ctx.links.length })}
             </p>
             <button onClick={() => setShowLinkModal(true)}
               className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1">
-              <UserPlus size={12} /> Adicionar
+              <UserPlus size={12} /> {t("contexts.botaoAdicionar")}
             </button>
           </div>
           {ctx.links.length === 0 ? (
-            <p className="text-sm text-white/30 py-2">Nenhum contato vinculado ainda.</p>
+            <p className="text-sm text-white/30 py-2">{t("contexts.nenhumContatoVinculado")}</p>
           ) : (
             <div className="space-y-2">
               {ctx.links.map(link => (
@@ -446,7 +456,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
                       {(link.contactName || "#").charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm text-white">{link.contactName ?? `Contato #${link.contactId}`}</p>
+                      <p className="text-sm text-white">{link.contactName ?? t("contexts.contatoFallback", { id: link.contactId })}</p>
                       <p className="text-xs text-white/40">{link.relationshipType}{link.city ? ` · ${link.city}` : ""}</p>
                     </div>
                   </div>
@@ -463,26 +473,26 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
         {/* Participantes avulsos */}
         <div className="px-6 py-4 border-t border-white/8">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-white/35 uppercase tracking-wider">Outros Participantes ({ctx.participants.length})</p>
+            <p className="text-xs text-white/35 uppercase tracking-wider">{t("contexts.tituloOutrosParticipantes", { count: ctx.participants.length })}</p>
             <button onClick={() => setShowParticipantForm(v => !v)}
               className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1">
-              <Plus size={12} /> Adicionar
+              <Plus size={12} /> {t("contexts.botaoAdicionar")}
             </button>
           </div>
           {showParticipantForm && (
             <div className="space-y-2 mb-3 p-3 rounded-xl bg-white/5 border border-white/10">
-              <Input value={partName} onChange={e => setPartName(e.target.value)} placeholder="Nome *"
+              <Input value={partName} onChange={e => setPartName(e.target.value)} placeholder={t("contexts.labelNome")}
                 className="bg-white/5 border-white/10 text-white placeholder:text-white/25 text-sm" />
               <div className="grid grid-cols-2 gap-2">
-                <Input value={partCompany} onChange={e => setPartCompany(e.target.value)} placeholder="Empresa"
+                <Input value={partCompany} onChange={e => setPartCompany(e.target.value)} placeholder={t("contexts.placeholderEmpresa")}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 text-sm" />
-                <Input value={partRole} onChange={e => setPartRole(e.target.value)} placeholder="Cargo"
+                <Input value={partRole} onChange={e => setPartRole(e.target.value)} placeholder={t("contexts.placeholderCargo")}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 text-sm" />
               </div>
               <Button size="sm" onClick={() => addPartMut.mutate({ contextId, name: partName, company: partCompany || null, role: partRole || null })}
                 disabled={!partName.trim() || addPartMut.isPending}
                 className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold w-full">
-                {addPartMut.isPending ? "Adicionando..." : "Adicionar"}
+                {addPartMut.isPending ? t("contexts.adicionando") : t("contexts.botaoAdicionar")}
               </Button>
             </div>
           )}
@@ -507,16 +517,16 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
         <div className="px-6 py-4 border-t border-white/8">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-white/35 uppercase tracking-wider flex items-center gap-1.5">
-              <Image size={11} /> Fotos e Documentos ({ctx.media.length})
+              <Image size={11} /> {t("contexts.tituloFotosDocumentos", { count: ctx.media.length })}
             </p>
             <label className={`text-xs flex items-center gap-1 ${uploadMut.isPending ? "text-white/30" : "text-amber-400 hover:text-amber-300 cursor-pointer"}`}>
-              <Plus size={12} /> {uploadMut.isPending ? "Enviando..." : "Anexar"}
+              <Plus size={12} /> {uploadMut.isPending ? t("contexts.enviando") : t("contexts.botaoAnexar")}
               <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
                 className="hidden" disabled={uploadMut.isPending} onChange={handleUploadFile} />
             </label>
           </div>
           {ctx.media.length === 0 ? (
-            <p className="text-sm text-white/30 py-1">Nenhum arquivo ainda. Anexe fotos do encontro ou documentos relacionados.</p>
+            <p className="text-sm text-white/30 py-1">{t("contexts.nenhumArquivo")}</p>
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {ctx.media.map(m => (
@@ -531,7 +541,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
                       </div>
                     )}
                   </a>
-                  <button onClick={() => { if (confirm("Remover este arquivo?")) deleteMediaMut.mutate({ mediaId: m.id }); }}
+                  <button onClick={() => { if (confirm(t("contexts.confirmRemoverArquivo"))) deleteMediaMut.mutate({ mediaId: m.id }); }}
                     className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white/60 hover:text-red-400 transition-colors">
                     <X size={11} />
                   </button>
@@ -552,6 +562,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function Contexts() {
+  const { t } = useTranslation();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -575,12 +586,12 @@ export default function Contexts() {
   );
 
   const createMut = trpc.contexts.create.useMutation({
-    onSuccess: () => { toast.success("Contexto criado!"); setShowForm(false); refetch(); },
-    onError: (e) => toast.error("Erro: " + e.message),
+    onSuccess: () => { toast.success(t("contexts.toastContextoCriado")); setShowForm(false); refetch(); },
+    onError: (e) => toast.error(t("contexts.toastErroGenerico", { message: e.message })),
   });
   const updateMut = trpc.contexts.update.useMutation({
-    onSuccess: () => { toast.success("Contexto atualizado!"); setEditCtx(null); setShowForm(false); refetch(); },
-    onError: (e) => toast.error("Erro: " + e.message),
+    onSuccess: () => { toast.success(t("contexts.toastContextoAtualizado")); setEditCtx(null); setShowForm(false); refetch(); },
+    onError: (e) => toast.error(t("contexts.toastErroGenerico", { message: e.message })),
   });
 
   const handleSave = (form: ReturnType<typeof emptyForm>) => {
@@ -606,9 +617,9 @@ export default function Contexts() {
     <div className="min-h-screen flex items-center justify-center bg-[#060e1a] p-6">
       <div className="text-center">
         <Lock size={40} className="text-amber-500/60 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Área restrita</h2>
+        <h2 className="text-xl font-bold text-white mb-2">{t("contexts.areaRestritaTitulo")}</h2>
         <a href={getLoginUrl()} className="px-6 py-3 bg-amber-500 text-[#060e1a] font-bold rounded-xl hover:bg-amber-400 transition-colors inline-block mt-4">
-          Entrar
+          {t("contexts.botaoEntrar")}
         </a>
       </div>
     </div>
@@ -628,13 +639,13 @@ export default function Contexts() {
               <ChevronLeft size={20} />
             </Link>
             <div>
-              <h1 className="font-bold text-white text-lg leading-tight">Meus Contextos</h1>
-              <p className="text-xs text-white/35">Onde e como conheceu cada contato</p>
+              <h1 className="font-bold text-white text-lg leading-tight">{t("contexts.tituloPagina")}</h1>
+              <p className="text-xs text-white/35">{t("contexts.subtituloPagina")}</p>
             </div>
           </div>
           <Button onClick={() => { setEditCtx(null); setShowForm(true); }}
             className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold gap-1.5">
-            <Plus size={16} /> Novo
+            <Plus size={16} /> {t("contexts.botaoNovo")}
           </Button>
         </div>
       </div>
@@ -644,7 +655,7 @@ export default function Contexts() {
         <div className="relative">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
           <Input value={search} onChange={e => handleSearch(e.target.value)}
-            placeholder="Buscar por nome ou notas..."
+            placeholder={t("contexts.placeholderBusca")}
             className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-amber-500/50" />
           {search && (
             <button onClick={() => { setSearch(""); setDebouncedSearch(""); setPage(1); }}
@@ -658,20 +669,20 @@ export default function Contexts() {
         <div className="flex gap-2 overflow-x-auto pb-1">
           <button onClick={() => { setFilterType(""); setPage(1); }}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${!filterType ? "bg-amber-500 border-amber-500 text-[#060e1a] font-bold" : "bg-white/5 border-white/20 text-white/60 hover:border-white/40"}`}>
-            Todos
+            {t("contexts.filtroTodos")}
           </button>
-          {typeList.map(t => (
-            <button key={t.id} onClick={() => { setFilterType(filterType === t.slug ? "" : t.slug); setPage(1); }}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${filterType === t.slug ? "font-bold" : "bg-white/5 border-white/20 text-white/60 hover:border-white/40"}`}
-              style={filterType === t.slug ? { background: (t.colorToken ?? "#F59E0B") + "30", borderColor: (t.colorToken ?? "#F59E0B") + "80", color: t.colorToken ?? "#F59E0B" } : {}}>
-              {t.name}
+          {typeList.map(ct => (
+            <button key={ct.id} onClick={() => { setFilterType(filterType === ct.slug ? "" : ct.slug); setPage(1); }}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${filterType === ct.slug ? "font-bold" : "bg-white/5 border-white/20 text-white/60 hover:border-white/40"}`}
+              style={filterType === ct.slug ? { background: (ct.colorToken ?? "#F59E0B") + "30", borderColor: (ct.colorToken ?? "#F59E0B") + "80", color: ct.colorToken ?? "#F59E0B" } : {}}>
+              {ct.name}
             </button>
           ))}
         </div>
 
         {/* Contador */}
         {!isLoading && (
-          <p className="text-xs text-white/30">{total === 0 ? "Nenhum contexto encontrado" : `${total} contexto${total !== 1 ? "s" : ""}`}</p>
+          <p className="text-xs text-white/30">{total === 0 ? t("contexts.nenhumContextoEncontrado") : t("contexts.contadorContextos", { count: total })}</p>
         )}
 
         {/* Lista */}
@@ -683,14 +694,14 @@ export default function Contexts() {
               <MapPin size={28} className="text-amber-500/50" />
             </div>
             <h3 className="text-white/60 font-medium mb-1">
-              {debouncedSearch || filterType ? "Nenhum contexto encontrado" : "Nenhum contexto ainda"}
+              {debouncedSearch || filterType ? t("contexts.nenhumContextoEncontrado") : t("contexts.nenhumContextoAinda")}
             </h3>
             <p className="text-white/30 text-sm mb-6">
-              {debouncedSearch || filterType ? "Tente outros termos ou remova os filtros." : "Registre onde e como conheceu seus contatos estratégicos."}
+              {debouncedSearch || filterType ? t("contexts.tenteOutrosTermos") : t("contexts.registreOndeConheceu")}
             </p>
             {!debouncedSearch && !filterType && (
               <Button onClick={() => setShowForm(true)} className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold gap-1.5">
-                <Plus size={16} /> Registrar primeiro encontro
+                <Plus size={16} /> {t("contexts.botaoRegistrarPrimeiro")}
               </Button>
             )}
           </div>
@@ -706,10 +717,10 @@ export default function Contexts() {
         {total > 20 && (
           <div className="flex items-center justify-center gap-3 pt-4">
             <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}
-              className="border-white/15 text-white/60 bg-transparent hover:bg-white/8">← Anterior</Button>
-            <span className="text-xs text-white/40">Página {page} de {Math.ceil(total / 20)}</span>
+              className="border-white/15 text-white/60 bg-transparent hover:bg-white/8">{t("contexts.botaoAnterior")}</Button>
+            <span className="text-xs text-white/40">{t("contexts.paginacaoInfo", { page, total: Math.ceil(total / 20) })}</span>
             <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / 20)} onClick={() => setPage(p => p + 1)}
-              className="border-white/15 text-white/60 bg-transparent hover:bg-white/8">Próxima →</Button>
+              className="border-white/15 text-white/60 bg-transparent hover:bg-white/8">{t("contexts.botaoProxima")}</Button>
           </div>
         )}
       </div>

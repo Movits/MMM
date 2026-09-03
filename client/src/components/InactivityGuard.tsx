@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { AlertTriangle, Clock } from "lucide-react";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 interface InactivityGuardProps {
@@ -14,6 +15,7 @@ interface InactivityGuardProps {
  * Protege contra acesso não autorizado em sessões esquecidas.
  */
 export default function InactivityGuard({ children }: InactivityGuardProps) {
+  const { t } = useTranslation();
   const { isAuthenticated, logout } = useAuth();
   const [warningShown, setWarningShown] = useState(false);
 
@@ -23,22 +25,22 @@ export default function InactivityGuard({ children }: InactivityGuardProps) {
 
     const mins = Math.ceil(remainingSeconds / 60);
     toast.warning(
-      `⏰ Sessão expirando em ${mins} minuto${mins > 1 ? 's' : ''}`,
+      t("inactivityGuard.warningTitle", { count: mins }),
       {
-        description: "Mova o mouse ou pressione uma tecla para permanecer conectado.",
+        description: t("inactivityGuard.warningDescription"),
         duration: 60000,
         icon: <Clock className="w-4 h-4" />,
         action: {
-          label: "Continuar conectado",
+          label: t("inactivityGuard.continueButton"),
           onClick: () => setWarningShown(false),
         },
       }
     );
-  }, [warningShown]);
+  }, [warningShown, t]);
 
   const handleTimeout = useCallback(async () => {
-    toast.error("🔒 Sessão encerrada por inatividade", {
-      description: "Por segurança, você foi desconectado após 30 minutos sem atividade. Faça login novamente para continuar.",
+    toast.error(t("inactivityGuard.timeoutTitle"), {
+      description: t("inactivityGuard.timeoutDescription"),
       duration: 12000,
       icon: <AlertTriangle className="w-4 h-4" />,
     });
@@ -49,7 +51,7 @@ export default function InactivityGuard({ children }: InactivityGuardProps) {
       // Forçar redirecionamento mesmo se o logout falhar
       window.location.href = "/";
     }
-  }, [logout]);
+  }, [logout, t]);
 
   useInactivityTimeout({
     warningMs: 25 * 60 * 1000, // Aviso aos 25 minutos

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { toast } from "sonner";
 import { MessageSquare, Users, Lock, Crown, ArrowLeft, Send, Search, Info } from "lucide-react";
 
 export default function Connections() {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"messages" | "groups">("messages");
@@ -39,9 +41,9 @@ export default function Connections() {
     onSuccess: () => {
       setNewMessage("");
       refetchMessages();
-      toast.success("Mensagem enviada");
+      toast.success(t("connections.messageSent"));
     },
-    onError: (err: any) => toast.error(err.message || "Erro ao enviar mensagem"),
+    onError: (err: any) => toast.error(err.message || t("connections.sendMessageError")),
   });
 
   if (!isGold) {
@@ -51,17 +53,17 @@ export default function Connections() {
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-700/20 border border-amber-500/30 flex items-center justify-center mx-auto mb-6">
             <Lock className="w-10 h-10 text-amber-400" />
           </div>
-          <h2 className="text-2xl font-bold text-amber-400 mb-3">Acesso Restrito ao Status Ouro</h2>
+          <h2 className="text-2xl font-bold text-amber-400 mb-3">{t("connections.goldRestrictedTitle")}</h2>
           <p className="text-gray-400 mb-6 leading-relaxed">
-            As Conexões Estratégicas são exclusivas para membras com Status Ouro, um reconhecimento institucional concedido por mérito pelas membras Ouro da plataforma.
+            {t("connections.goldRestrictedDescription")}
           </p>
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 text-left">
-            <p className="text-amber-300 text-sm font-medium mb-2">O que você passa a acessar:</p>
+            <p className="text-amber-300 text-sm font-medium mb-2">{t("connections.goldAccessListTitle")}</p>
             <ul className="text-gray-400 text-sm space-y-1">
-              <li>• Mensagens diretas com outras líderes</li>
-              <li>• Grupos estratégicos por setor e país</li>
-              <li>• Ver quem demonstrou interesse nas suas oportunidades</li>
-              <li>• Perfis completos de todas as membras</li>
+              <li>• {t("connections.goldAccessItemMessages")}</li>
+              <li>• {t("connections.goldAccessItemGroups")}</li>
+              <li>• {t("connections.goldAccessItemInterest")}</li>
+              <li>• {t("connections.goldAccessItemProfiles")}</li>
             </ul>
           </div>
           <Button
@@ -69,7 +71,7 @@ export default function Connections() {
             className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar ao Dashboard
+            {t("connections.backToDashboard")}
           </Button>
         </div>
       </div>
@@ -93,14 +95,14 @@ export default function Connections() {
             <div>
               <h1 className="text-xl font-bold text-white flex items-center gap-2">
                 <Crown className="w-5 h-5 text-amber-400" />
-                Conexões Estratégicas
+                {t("connections.title")}
               </h1>
-              <p className="text-xs text-amber-400">Acesso exclusivo do Status Ouro</p>
+              <p className="text-xs text-amber-400">{t("connections.goldExclusiveSubtitle")}</p>
             </div>
           </div>
           <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
             <Crown className="w-3 h-3 mr-1" />
-            Ouro
+            {t("connections.goldBadge")}
           </Badge>
         </div>
       </div>
@@ -117,7 +119,7 @@ export default function Connections() {
             }
           >
             <MessageSquare className="w-4 h-4 mr-2" />
-            Mensagens
+            {t("connections.tabMessages")}
           </Button>
           <Button
             onClick={() => setActiveTab("groups")}
@@ -128,7 +130,7 @@ export default function Connections() {
             }
           >
             <Users className="w-4 h-4 mr-2" />
-            Grupos Estratégicos
+            {t("connections.tabGroups")}
           </Button>
         </div>
 
@@ -138,11 +140,11 @@ export default function Connections() {
             <div className="lg:col-span-1">
               <Card className="bg-white/5 border-white/10">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm text-gray-400">Conversas</CardTitle>
+                  <CardTitle className="text-sm text-gray-400">{t("connections.conversationsTitle")}</CardTitle>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                     <Input
-                      placeholder="Buscar..."
+                      placeholder={t("connections.searchPlaceholder")}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-9 bg-white/5 border-white/10 text-white text-sm"
@@ -153,8 +155,8 @@ export default function Connections() {
                   {!conversations || conversations.length === 0 ? (
                     <div className="p-6 text-center text-gray-500 text-sm">
                       <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                      <p>Nenhuma conversa ainda.</p>
-                      <p className="text-xs mt-1">Demonstre interesse em oportunidades para iniciar conexões.</p>
+                      <p>{t("connections.noConversations")}</p>
+                      <p className="text-xs mt-1">{t("connections.noConversationsHint")}</p>
                     </div>
                   ) : (
                     <div className="divide-y divide-white/5">
@@ -171,8 +173,8 @@ export default function Connections() {
                                 {conv.otherUser?.name?.[0] ?? "?"}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-white text-sm font-medium truncate">{conv.otherUser?.name ?? "Usuária"}</p>
-                                <p className="text-gray-500 text-xs truncate">{conv.lastMessage ?? "Sem mensagens"}</p>
+                                <p className="text-white text-sm font-medium truncate">{conv.otherUser?.name ?? t("connections.defaultUserName")}</p>
+                                <p className="text-gray-500 text-xs truncate">{conv.lastMessage ?? t("connections.noMessagesPlaceholder")}</p>
                               </div>
                               {conv.unread > 0 && (
                                 <Badge className="ml-auto bg-amber-500 text-black text-xs px-1.5 py-0.5 min-w-[20px] text-center">
@@ -194,20 +196,20 @@ export default function Connections() {
                 <Card className="bg-white/5 border-white/10 h-full min-h-[400px] flex items-center justify-center">
                   <div className="text-center text-gray-500">
                     <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                    <p className="text-sm">Selecione uma conversa para começar</p>
+                    <p className="text-sm">{t("connections.selectConversationPrompt")}</p>
                   </div>
                 </Card>
               ) : (
                 <Card className="bg-white/5 border-white/10 flex flex-col" style={{ minHeight: "500px" }}>
                   <CardHeader className="border-b border-white/10 pb-3">
                     <CardTitle className="text-sm text-white">
-                      {conversations?.find((c: any) => c.userId === selectedConversation)?.otherUser?.name ?? "Conversa"}
+                      {conversations?.find((c: any) => c.userId === selectedConversation)?.otherUser?.name ?? t("connections.defaultConversationTitle")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex-1 overflow-y-auto p-4 space-y-3">
                     {!messages || messages.length === 0 ? (
                       <div className="text-center text-gray-500 text-sm py-8">
-                        <p>Nenhuma mensagem ainda. Inicie a conversa!</p>
+                        <p>{t("connections.emptyChat")}</p>
                       </div>
                     ) : (
                       messages.map((msg: any) => (
@@ -231,7 +233,7 @@ export default function Connections() {
                   </CardContent>
                   <div className="border-t border-white/10 p-4 flex gap-2">
                     <Textarea
-                      placeholder="Escreva sua mensagem..."
+                      placeholder={t("connections.messagePlaceholder")}
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       className="bg-white/5 border-white/10 text-white text-sm resize-none"
@@ -266,13 +268,13 @@ export default function Connections() {
         {activeTab === "groups" && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white">Grupos Estratégicos</h2>
+              <h2 className="text-lg font-semibold text-white">{t("connections.tabGroups")}</h2>
               <Button
                 className="bg-amber-500 hover:bg-amber-600 text-black text-sm"
-                onClick={() => toast.info("Criação de grupos estratégicos será disponibilizada em breve.")}
+                onClick={() => toast.info(t("connections.groupsComingSoon"))}
               >
                 <Users className="w-4 h-4 mr-2" />
-                Criar Grupo
+                {t("connections.createGroupButton")}
               </Button>
             </div>
 
@@ -280,9 +282,9 @@ export default function Connections() {
               <Card className="bg-white/5 border-white/10">
                 <CardContent className="py-16 text-center">
                   <Users className="w-12 h-12 mx-auto mb-4 text-gray-600" />
-                  <p className="text-gray-400 font-medium mb-2">Nenhum grupo ainda</p>
+                  <p className="text-gray-400 font-medium mb-2">{t("connections.noGroups")}</p>
                   <p className="text-gray-600 text-sm max-w-sm mx-auto">
-                    Os grupos estratégicos permitem colaboração focada entre líderes do mesmo setor ou país.
+                    {t("connections.noGroupsHint")}
                   </p>
                 </CardContent>
               </Card>
@@ -296,11 +298,11 @@ export default function Connections() {
                           <Users className="w-5 h-5 text-amber-400" />
                         </div>
                         <Badge variant="outline" className="text-xs border-amber-500/30 text-amber-400">
-                          {group.memberCount ?? 0} membras
+                          {t("connections.membersCount", { count: group.memberCount ?? 0 })}
                         </Badge>
                       </div>
                       <h3 className="text-white font-medium mb-1">{group.name}</h3>
-                      <p className="text-gray-500 text-xs">{group.description ?? "Grupo estratégico FRAUEN"}</p>
+                      <p className="text-gray-500 text-xs">{group.description ?? t("connections.defaultGroupDescription")}</p>
                     </CardContent>
                   </Card>
                 ))}

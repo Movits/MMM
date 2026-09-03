@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   Lock, Shield, FileText, MessageSquare, Upload, ArrowLeft,
   Send, CheckCircle, Clock, AlertTriangle, Download, User
@@ -13,6 +14,7 @@ export default function DealRoom() {
   const { id } = useParams<{ id: string }>();
   const roomId = Number(id);
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"nda" | "chat" | "docs">("nda");
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -36,7 +38,7 @@ export default function DealRoom() {
 
   const acceptNDA = trpc.dealRoom.acceptNDA.useMutation({
     onSuccess: () => {
-      toast.success("NDA assinado com sucesso!");
+      toast.success(t("dealRoom.ndaSignedSuccess"));
       refetchRoom();
     },
     onError: (err) => toast.error(err.message),
@@ -52,7 +54,7 @@ export default function DealRoom() {
 
   const uploadDocument = trpc.dealRoom.uploadDocument.useMutation({
     onSuccess: () => {
-      toast.success("Documento enviado com sucesso!");
+      toast.success(t("dealRoom.documentUploadedSuccess"));
       refetchDocs();
       setUploading(false);
     },
@@ -74,7 +76,7 @@ export default function DealRoom() {
 
   const uploadFile = (file: File) => {
     if (file.size > 16 * 1024 * 1024) {
-      toast.error(`"${file.name}" é muito grande. Máximo 16MB.`);
+      toast.error(t("dealRoom.fileTooLarge", { fileName: file.name }));
       return;
     }
     setUploading(true);
@@ -108,7 +110,7 @@ export default function DealRoom() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center">
-        <div className="text-white/40 text-sm">Carregando Deal Room...</div>
+        <div className="text-white/40 text-sm">{t("dealRoom.loadingRoom")}</div>
       </div>
     );
   }
@@ -117,10 +119,10 @@ export default function DealRoom() {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="text-center">
-          <p className="text-white/40 mb-4">Não encontramos esta sala de negociação. Ela pode ter sido encerrada, ou você não faz parte dela.</p>
+          <p className="text-white/40 mb-4">{t("dealRoom.roomNotFound")}</p>
           <Link href="/dashboard">
             <Button variant="outline" className="border-white/20 text-white/60 bg-transparent">
-              <ArrowLeft size={14} className="mr-1.5" /> Voltar para a página inicial
+              <ArrowLeft size={14} className="mr-1.5" /> {t("dealRoom.backToHome")}
             </Button>
           </Link>
         </div>
@@ -135,7 +137,7 @@ export default function DealRoom() {
   const opp = (room as any).opportunity;
 
   const statusColor = room.status === "active" ? "#22c55e" : room.status === "awaiting_nda" ? "#eab308" : "#9ca3af";
-  const statusLabel = room.status === "active" ? "Ativa" : room.status === "awaiting_nda" ? "Aguardando assinaturas do termo de sigilo" : "Encerrada";
+  const statusLabel = room.status === "active" ? t("dealRoom.statusActive") : room.status === "awaiting_nda" ? t("dealRoom.statusAwaitingNda") : t("dealRoom.statusClosed");
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -152,8 +154,8 @@ export default function DealRoom() {
               <Lock size={14} className="text-amber-400" />
             </div>
             <div>
-              <h1 className="text-white font-semibold text-sm">Sala de Negociação #{roomId}</h1>
-              <p className="text-white/40 text-xs">{opp?.title || "Oportunidade"}</p>
+              <h1 className="text-white font-semibold text-sm">{t("dealRoom.roomTitle", { roomId })}</h1>
+              <p className="text-white/40 text-xs">{opp?.title || t("dealRoom.opportunityFallback")}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -167,8 +169,8 @@ export default function DealRoom() {
         {/* Participantes */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           {[
-            { label: "Publicadora", person: (room as any).owner, accepted: room.ndaAcceptedByOwner, acceptedAt: room.ndaAcceptedByOwnerAt },
-            { label: "Interessada", person: (room as any).interested, accepted: room.ndaAcceptedByInterested, acceptedAt: room.ndaAcceptedByInterestedAt },
+            { label: t("dealRoom.ownerLabel"), person: (room as any).owner, accepted: room.ndaAcceptedByOwner, acceptedAt: room.ndaAcceptedByOwnerAt },
+            { label: t("dealRoom.interestedLabel"), person: (room as any).interested, accepted: room.ndaAcceptedByInterested, acceptedAt: room.ndaAcceptedByInterestedAt },
           ].map((p, i) => (
             <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
@@ -182,12 +184,12 @@ export default function DealRoom() {
                 {p.accepted ? (
                   <div className="flex items-center gap-1 text-green-400">
                     <CheckCircle size={14} />
-                    <span className="text-xs">NDA ✓</span>
+                    <span className="text-xs">{t("dealRoom.ndaCheckmark")}</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 text-amber-400/60">
                     <Clock size={14} />
-                    <span className="text-xs">Aguardando</span>
+                    <span className="text-xs">{t("dealRoom.waitingLabel")}</span>
                   </div>
                 )}
               </div>
@@ -198,9 +200,9 @@ export default function DealRoom() {
         {/* Tabs */}
         <div className="flex gap-1 mb-4 bg-white/5 rounded-xl p-1">
           {[
-            { key: "nda", icon: <Shield size={14} />, label: "Termo de Sigilo (NDA)" },
-            { key: "chat", icon: <MessageSquare size={14} />, label: "Chat Privado", disabled: room.status !== "active" },
-            { key: "docs", icon: <FileText size={14} />, label: "Documentos", disabled: room.status !== "active" },
+            { key: "nda", icon: <Shield size={14} />, label: t("dealRoom.tabNda") },
+            { key: "chat", icon: <MessageSquare size={14} />, label: t("dealRoom.tabChat"), disabled: room.status !== "active" },
+            { key: "docs", icon: <FileText size={14} />, label: t("dealRoom.tabDocs"), disabled: room.status !== "active" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -227,20 +229,20 @@ export default function DealRoom() {
             <div className="bg-white/5 border border-amber-500/20 rounded-2xl p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Shield size={18} className="text-amber-400" />
-                <h2 className="text-white font-bold">Termo de Confidencialidade (NDA)</h2>
+                <h2 className="text-white font-bold">{t("dealRoom.ndaTitle")}</h2>
               </div>
 
               <div className="bg-black/30 border border-white/10 rounded-xl p-4 mb-5 text-xs text-white/60 leading-relaxed space-y-3 max-h-72 overflow-y-auto">
-                <p className="text-amber-400 font-semibold text-sm">TERMO DE CONFIDENCIALIDADE E NÃO DIVULGAÇÃO (NDA)</p>
-                <p>Ao aceitar este termo, as partes envolvidas ("Divulgadora" e "Receptora") concordam em manter sigilo absoluto sobre todas as informações compartilhadas no contexto desta negociação, incluindo dados financeiros, estratégicos, operacionais e comerciais.</p>
-                <p><strong className="text-white/80">1. Obrigação de Sigilo:</strong> As partes se comprometem a não divulgar, reproduzir ou utilizar as informações confidenciais para fins alheios à negociação em curso, sob pena das sanções previstas em lei.</p>
-                <p><strong className="text-white/80">2. Cláusula Anti-Bypass (Antiburla):</strong> As partes se comprometem expressamente a não realizar qualquer transação, acordo ou negócio decorrente deste contato fora do ecossistema MMM, reconhecendo a obrigatoriedade do pagamento da <strong className="text-amber-400">taxa de sucesso (success fee)</strong> sobre quaisquer negócios fechados que tenham se originado desta conexão.</p>
-                <p><strong className="text-white/80">3. Vigência:</strong> Este acordo tem validade de 24 (vinte e quatro) meses a partir da data de aceite digital.</p>
-                <p><strong className="text-white/80">4. Aceite Digital:</strong> O aceite nesta plataforma constitui aceite digital válido e juridicamente vinculante, com registro de data, hora e identidade das partes.</p>
+                <p className="text-amber-400 font-semibold text-sm">{t("dealRoom.ndaHeading")}</p>
+                <p>{t("dealRoom.ndaIntro")}</p>
+                <p><strong className="text-white/80">{t("dealRoom.ndaClause1Title")}</strong> {t("dealRoom.ndaClause1Text")}</p>
+                <p><strong className="text-white/80">{t("dealRoom.ndaClause2Title")}</strong> {t("dealRoom.ndaClause2Text")} <strong className="text-amber-400">{t("dealRoom.ndaClause2Fee")}</strong> {t("dealRoom.ndaClause2TextEnd")}</p>
+                <p><strong className="text-white/80">{t("dealRoom.ndaClause3Title")}</strong> {t("dealRoom.ndaClause3Text")}</p>
+                <p><strong className="text-white/80">{t("dealRoom.ndaClause4Title")}</strong> {t("dealRoom.ndaClause4Text")}</p>
                 <p className="text-white/40 border-t border-white/10 pt-3">
-                  Oportunidade: <strong className="text-white/60">{opp?.title}</strong><br />
-                  Deal Room ID: #{roomId}<br />
-                  Data de criação: {room.createdAt ? new Date(room.createdAt).toLocaleDateString("pt-BR") : "-"}
+                  {t("dealRoom.ndaOpportunityLabel")} <strong className="text-white/60">{opp?.title}</strong><br />
+                  {t("dealRoom.ndaRoomIdLabel", { roomId })}<br />
+                  {t("dealRoom.ndaCreatedLabel")} {room.createdAt ? new Date(room.createdAt).toLocaleDateString("pt-BR") : "-"}
                 </p>
               </div>
 
@@ -248,16 +250,16 @@ export default function DealRoom() {
                 <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
                   <CheckCircle size={20} className="text-green-400 flex-shrink-0" />
                   <div>
-                    <p className="text-green-400 font-semibold text-sm">NDA assinado por ambas as partes</p>
-                    <p className="text-green-400/60 text-xs">A sala de negociação privada está ativa. Use as abas Chat e Documentos.</p>
+                    <p className="text-green-400 font-semibold text-sm">{t("dealRoom.ndaSignedBoth")}</p>
+                    <p className="text-green-400/60 text-xs">{t("dealRoom.ndaSignedBothDesc")}</p>
                   </div>
                 </div>
               ) : myNdaAccepted ? (
                 <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                   <Clock size={20} className="text-amber-400 flex-shrink-0" />
                   <div>
-                    <p className="text-amber-400 font-semibold text-sm">Você já assinou o NDA</p>
-                    <p className="text-amber-400/60 text-xs">Aguardando a outra parte assinar para ativar a sala.</p>
+                    <p className="text-amber-400 font-semibold text-sm">{t("dealRoom.ndaSignedByMe")}</p>
+                    <p className="text-amber-400/60 text-xs">{t("dealRoom.ndaSignedByMeDesc")}</p>
                   </div>
                 </div>
               ) : (
@@ -265,7 +267,7 @@ export default function DealRoom() {
                   {!otherNdaAccepted && (
                     <div className="flex items-center gap-2 text-white/40 text-xs">
                       <AlertTriangle size={12} />
-                      <span>A outra parte ainda não assinou o NDA.</span>
+                      <span>{t("dealRoom.ndaOtherPartyWaiting")}</span>
                     </div>
                   )}
                   <Button
@@ -273,10 +275,10 @@ export default function DealRoom() {
                     onClick={() => acceptNDA.mutate({ roomId })}
                     disabled={acceptNDA.isPending}
                   >
-                    {acceptNDA.isPending ? "Assinando..." : "🔐 Assinar NDA Digitalmente"}
+                    {acceptNDA.isPending ? t("dealRoom.signingNda") : t("dealRoom.signNdaButton")}
                   </Button>
                   <p className="text-white/30 text-xs text-center">
-                    Ao clicar, você confirma que leu e aceita todos os termos acima.
+                    {t("dealRoom.ndaConfirmHint")}
                   </p>
                 </div>
               )}
@@ -284,7 +286,7 @@ export default function DealRoom() {
 
             {room.interestMessage && (
               <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                <p className="text-white/40 text-xs mb-1">Mensagem de apresentação da interessada:</p>
+                <p className="text-white/40 text-xs mb-1">{t("dealRoom.interestMessageLabel")}</p>
                 <p className="text-white/70 text-sm italic">"{room.interestMessage}"</p>
               </div>
             )}
@@ -299,8 +301,8 @@ export default function DealRoom() {
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <MessageSquare size={32} className="text-white/20 mx-auto mb-2" />
-                    <p className="text-white/30 text-sm">Nenhuma mensagem ainda.</p>
-                    <p className="text-white/20 text-xs">Seja a primeira a enviar uma mensagem nesta sala privada.</p>
+                    <p className="text-white/30 text-sm">{t("dealRoom.noMessagesYet")}</p>
+                    <p className="text-white/20 text-xs">{t("dealRoom.beFirstToMessage")}</p>
                   </div>
                 </div>
               ) : (
@@ -337,7 +339,7 @@ export default function DealRoom() {
                     sendMessage.mutate({ roomId, content: message.trim() });
                   }
                 }}
-                placeholder="Digite sua mensagem confidencial..."
+                placeholder={t("dealRoom.messagePlaceholder")}
                 className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-amber-500/40"
               />
               <Button
@@ -359,7 +361,7 @@ export default function DealRoom() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-white font-semibold text-sm flex items-center gap-2">
                   <FileText size={16} className="text-amber-400" />
-                  Documentos Confidenciais
+                  {t("dealRoom.confidentialDocsTitle")}
                 </h3>
                 <Button
                   size="sm"
@@ -368,7 +370,7 @@ export default function DealRoom() {
                   disabled={uploading}
                 >
                   <Upload size={12} className="mr-1.5" />
-                  {uploading ? "Enviando..." : "Anexar Arquivo"}
+                  {uploading ? t("dealRoom.uploadingFile") : t("dealRoom.attachFileButton")}
                 </Button>
                 <input
                   ref={fileInputRef}
@@ -393,16 +395,16 @@ export default function DealRoom() {
               >
                 <Upload size={20} className={`mx-auto mb-1.5 ${isDragOver ? 'text-amber-400' : 'text-white/30'}`} />
                 <p className={`text-xs ${isDragOver ? 'text-amber-400' : 'text-white/30'}`}>
-                  {isDragOver ? 'Solte para enviar' : 'Arraste arquivos aqui ou clique para selecionar'}
+                  {isDragOver ? t("dealRoom.dropToUpload") : t("dealRoom.dragDropHint")}
                 </p>
-                <p className="text-white/20 text-xs mt-0.5">PDF, Word, Excel, imagens, ZIP (máx. 16MB por arquivo)</p>
+                <p className="text-white/20 text-xs mt-0.5">{t("dealRoom.fileTypesHint")}</p>
               </div>
 
               {documents.length === 0 ? (
                 <div className="text-center py-8">
                   <FileText size={32} className="text-white/20 mx-auto mb-2" />
-                  <p className="text-white/30 text-sm">Nenhum documento compartilhado ainda.</p>
-                  <p className="text-white/20 text-xs mt-1">Envie documentos confidenciais com segurança.</p>
+                  <p className="text-white/30 text-sm">{t("dealRoom.noDocsYet")}</p>
+                  <p className="text-white/20 text-xs mt-1">{t("dealRoom.sendDocsSecurely")}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -412,7 +414,7 @@ export default function DealRoom() {
                       <div className="flex-1 min-w-0">
                         <p className="text-white text-sm truncate">{doc.name}</p>
                         <p className="text-white/40 text-xs">
-                          {doc.uploadedBy === user?.id ? "Você" : otherParty?.name} •{" "}
+                          {doc.uploadedBy === user?.id ? t("dealRoom.youLabel") : otherParty?.name} •{" "}
                           {new Date(doc.createdAt).toLocaleDateString("pt-BR")}
                           {doc.sizeBytes && ` • ${(doc.sizeBytes / 1024).toFixed(0)} KB`}
                         </p>
@@ -431,7 +433,7 @@ export default function DealRoom() {
             <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
               <Shield size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
               <p className="text-amber-400/70 text-xs leading-relaxed">
-                Todos os documentos compartilhados nesta sala são protegidos pelo NDA assinado. O compartilhamento fora desta plataforma viola os termos acordados.
+                {t("dealRoom.docsProtectedNotice")}
               </p>
             </div>
           </div>
