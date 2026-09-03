@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, lte } from "drizzle-orm";
 import {
   meetingContactSuggestions,
   meetingEntities,
@@ -10,7 +10,7 @@ import {
 } from "../drizzle/schema";
 import { exigirDb } from "./db";
 import { invokeLLM } from "./_core/llm";
-import { storagePut } from "./storage";
+import { storageDelete, storagePut } from "./storage";
 import { transcribeWithGemini } from "./gemini";
 
 export const MAX_MEETING_AUDIO_BYTES = 10 * 1024 * 1024;
@@ -285,6 +285,106 @@ export async function listPrivateMeetings(ownerId: string) {
   return db.select().from(meetings).where(eq(meetings.ownerId, ownerId)).orderBy(desc(meetings.createdAt));
 }
 
+/**
+ * Apaga o arquivo de áudio do bucket. Devolve se conseguiu: quem chama decide
+ * o que fazer com a falha, e a diferença importa.
+ *
+ * Na EXCLUSÃO da reunião, falhar não pode travar a operação — a dona mandou
+ * apagar, e a reunião some (o objeto órfão vira aviso no log, mesmo padrão de
+ * routers/contexts.ts). Já na RETENÇÃO, apagar a linha com o arquivo intacto
+ * seria pior que não fazer nada: a linha é o único registro de onde o áudio
+ * está, e sem ela o objeto fica no bucket para sempre, invisível.
+ */
+async function apagarArquivoDaGravacao(storageKey: string): Promise<boolean> {
+  try {
+    await storageDelete(storageKey);
+    return true;
+  } catch (erro) {
+    console.warn("[Reuniões] o áudio ficou no bucket:", erro instanceof Error ? erro.message : erro);
+    return false;
+  }
+}
+
+/**
+ * A gravação que a dona pode ouvir agora — ou nada, quando não existe ou já
+ * passou dos 30 dias.
+ *
+ * O prazo era decorativo: `expiresAt` era gravado e nunca lido, e nada
+ * apagava o áudio do bucket, então a tela prometia "expira automaticamente
+ * após 30 dias" enquanto o arquivo ficava para sempre. Agora a promessa vira
+ * ação no momento em que alguém tenta ouvir: vencida, a gravação é apagada do
+ * bucket e do banco, e a tela recebe `expirada` para explicar por quê.
+ *
+ * Sai só o que a tela precisa — `storageKey` fica no servidor. A `url` é o
+ * caminho do proxy autenticado (/manus-storage/...), que confere sessão e
+ * posse a cada requisição; não é endereço público do bucket.
+ */
+async function gravacaoParaOuvir(
+  db: Awaited<ReturnType<typeof exigirDb>>,
+  ownerId: string,
+  meetingId: string,
+  criadaEm: number,
+) {
+  // Sem unicidade por reunião no banco: `orderBy` torna a escolha determinista
+  // (a mais recente), em vez de depender da ordem que o MySQL devolver.
+  const [gravacao] = await db.select().from(meetingRecordings)
+    .where(and(eq(meetingRecordings.meetingId, meetingId), eq(meetingRecordings.ownerId, ownerId)))
+    .orderBy(desc(meetingRecordings.createdAt))
+    .limit(1);
+
+  // Sem linha: ou nunca houve áudio, ou ele já foi descartado pelo prazo. A
+  // data da reunião distingue os dois casos sem guardar nada a mais — e sem
+  // isto a tela passaria a dizer "nunca houve áudio" logo depois de explicar
+  // que a gravação tinha expirado.
+  if (!gravacao) {
+    return { recording: null, recordingExpired: criadaEm + MEETING_AUDIO_TTL_MS <= now() };
+  }
+
+  if (gravacao.expiresAt <= now()) {
+    // A linha só sai se o arquivo saiu. Apagá-la com o objeto intacto deixaria
+    // o áudio no bucket para sempre, sem ninguém sabendo que ele existe.
+    const apagou = await apagarArquivoDaGravacao(gravacao.storageKey);
+    if (apagou) await db.delete(meetingRecordings).where(eq(meetingRecordings.id, gravacao.id));
+    return { recording: null, recordingExpired: true };
+  }
+
+  return {
+    recording: {
+      url: gravacao.storageUrl,
+      mimeType: gravacao.mimeType,
+      durationSeconds: gravacao.durationSeconds,
+      sizeBytes: gravacao.sizeBytes,
+      expiresAt: gravacao.expiresAt,
+    },
+    recordingExpired: false,
+  };
+}
+
+/**
+ * A varredura que faz os 30 dias valerem para TODA gravação — não só para as
+ * que alguém reabre. Sem ela, o áudio de uma reunião que ninguém visita mais
+ * (o caso comum) ficaria no bucket para sempre, e a promessa da tela seria
+ * verdadeira apenas por acaso. A voz das outras participantes não depende de
+ * a dona voltar na página.
+ *
+ * Roda pelo endpoint de tarefa agendada, ao lado da limpeza de sessões.
+ */
+export async function limparGravacoesVencidas(limite = 200) {
+  const db = await exigirDb();
+  const vencidas = await db.select({ id: meetingRecordings.id, storageKey: meetingRecordings.storageKey })
+    .from(meetingRecordings)
+    .where(lte(meetingRecordings.expiresAt, now()))
+    .limit(limite);
+
+  let apagadas = 0;
+  for (const gravacao of vencidas) {
+    if (!(await apagarArquivoDaGravacao(gravacao.storageKey))) continue;
+    await db.delete(meetingRecordings).where(eq(meetingRecordings.id, gravacao.id));
+    apagadas += 1;
+  }
+  return { encontradas: vencidas.length, apagadas };
+}
+
 export async function getPrivateMeeting(ownerId: string, meetingId: string) {
   const db = await exigirDb();
   const [meeting] = await db.select().from(meetings).where(and(eq(meetings.id, meetingId), eq(meetings.ownerId, ownerId))).limit(1);
@@ -292,7 +392,8 @@ export async function getPrivateMeeting(ownerId: string, meetingId: string) {
   const [transcript] = await db.select().from(meetingTranscripts).where(and(eq(meetingTranscripts.meetingId, meetingId), eq(meetingTranscripts.ownerId, ownerId))).limit(1);
   const entities = await db.select().from(meetingEntities).where(and(eq(meetingEntities.meetingId, meetingId), eq(meetingEntities.ownerId, ownerId))).orderBy(desc(meetingEntities.createdAt));
   const suggestions = await db.select().from(meetingContactSuggestions).where(and(eq(meetingContactSuggestions.meetingId, meetingId), eq(meetingContactSuggestions.ownerId, ownerId))).orderBy(desc(meetingContactSuggestions.createdAt));
-  return { meeting, transcript: transcript ?? null, entities, suggestions };
+  const { recording, recordingExpired } = await gravacaoParaOuvir(db, ownerId, meetingId, meeting.createdAt);
+  return { meeting, transcript: transcript ?? null, entities, suggestions, recording, recordingExpired };
 }
 
 export async function deletePrivateMeeting(ownerId: string, meetingId: string) {
@@ -300,9 +401,22 @@ export async function deletePrivateMeeting(ownerId: string, meetingId: string) {
   const [meeting] = await db.select({ id: meetings.id }).from(meetings)
     .where(and(eq(meetings.id, meetingId), eq(meetings.ownerId, ownerId))).limit(1);
   if (!meeting) return false;
+  // O ÁUDIO sai do bucket, não só a linha do banco: é a voz das pessoas que
+  // participaram da reunião, o dado mais sensível daqui. Antes, apagar a
+  // reunião deixava o arquivo lá — e sem a linha ninguém sabia que existia.
+  // Vem primeiro porque é a linha que diz onde o arquivo está: apagá-la antes
+  // tornaria o objeto inalcançável para sempre.
+  const gravacoes = await db.select({ id: meetingRecordings.id, storageKey: meetingRecordings.storageKey })
+    .from(meetingRecordings)
+    .where(and(eq(meetingRecordings.meetingId, meetingId), eq(meetingRecordings.ownerId, ownerId)));
+  for (const gravacao of gravacoes) await apagarArquivoDaGravacao(gravacao.storageKey);
+
   await db.delete(meetingContactSuggestions).where(and(eq(meetingContactSuggestions.meetingId, meetingId), eq(meetingContactSuggestions.ownerId, ownerId)));
   await db.delete(meetingEntities).where(and(eq(meetingEntities.meetingId, meetingId), eq(meetingEntities.ownerId, ownerId)));
   await db.delete(meetingTranscripts).where(and(eq(meetingTranscripts.meetingId, meetingId), eq(meetingTranscripts.ownerId, ownerId)));
+  // As TRADUÇÕES são cópias da transcrição em outros idiomas: apagar só o
+  // original deixaria o mesmo conteúdo vivo em até nove línguas.
+  await db.delete(meetingTranscriptTranslations).where(and(eq(meetingTranscriptTranslations.meetingId, meetingId), eq(meetingTranscriptTranslations.ownerId, ownerId)));
   await db.delete(meetingRecordings).where(and(eq(meetingRecordings.meetingId, meetingId), eq(meetingRecordings.ownerId, ownerId)));
   await db.delete(meetings).where(and(eq(meetings.id, meetingId), eq(meetings.ownerId, ownerId)));
   return true;

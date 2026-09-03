@@ -219,6 +219,47 @@ async function startServer() {
     }
   });
 
+  // ============================================================
+  // JOB PERIÓDICO: gravações de reunião que passaram dos 30 dias
+  // Endpoint: POST /api/scheduled/cleanup-recordings
+  // Mesma sessão de cron da limpeza de sessões.
+  //
+  // Existe porque a tela promete que o áudio "expira automaticamente após 30
+  // dias" e essa promessa é sobre a voz de TODAS as participantes — que não
+  // têm login e nunca vão abrir a página. Sem esta varredura, o descarte só
+  // aconteceria quando a dona reabrisse a reunião, e o caso comum (nunca mais
+  // voltar lá) deixaria o áudio no bucket para sempre.
+  // ============================================================
+  app.post("/api/scheduled/cleanup-recordings", async (req: Request, res: Response) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      if (!user.isCron) {
+        return res.status(403).json({ error: "cron-only endpoint" });
+      }
+
+      const { limparGravacoesVencidas } = await import("../meeting-service");
+      const resultado = await limparGravacoesVencidas();
+
+      await createAuditLog({
+        userId: null,
+        action: "CRON_CLEANUP_RECORDINGS",
+        resource: "meeting_recordings",
+        status: "success",
+        riskLevel: "low",
+        details: { ...resultado, taskUid: user.taskUid, triggeredAt: new Date().toISOString() },
+      }).catch(() => {});
+
+      return res.json({ ok: true, ...resultado, timestamp: new Date().toISOString() });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      return res.status(500).json({
+        error,
+        context: { url: req.url },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
   // Rate limiting específico para API tRPC
   app.use("/api/trpc", apiLimiter);
 

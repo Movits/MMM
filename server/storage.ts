@@ -121,12 +121,25 @@ export async function storageDelete(relKey: string): Promise<void> {
  * si dispensa autenticação, então quanto menos tempo viver, menor a janela para
  * um link colado num chat continuar funcionando.
  */
+/**
+ * Prazo da URL assinada. Cinco minutos servem para abrir um documento ou uma
+ * foto, mas NÃO para tocar uma gravação: o áudio de reunião chega a 10
+ * minutos, e toda requisição nova depois do prazo — arrastar a barra, ou
+ * pausar e retomar quando o navegador já fechou a conexão — bateria num 403
+ * do bucket, deixando o player travado sem explicação. Uma hora cobre a
+ * sessão de escuta inteira e continua muito abaixo de uma URL permanente.
+ *
+ * O prazo não é a proteção: quem protege é o proxy, que exige sessão e
+ * confere posse ANTES de assinar qualquer coisa.
+ */
+const SEGUNDOS_DA_URL_ASSINADA = 60 * 60;
+
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
   const config = getStorageConfig();
   const key = normalizeKey(relKey);
   return getSignedUrl(
     getClient(config),
     new GetObjectCommand({ Bucket: config.bucket, Key: key }),
-    { expiresIn: 300 },
+    { expiresIn: SEGUNDOS_DA_URL_ASSINADA },
   );
 }

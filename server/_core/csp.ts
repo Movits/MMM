@@ -40,7 +40,14 @@ export function montarDiretivasCsp(
     // Meetings toca a gravação antes de transcrever com <audio src="blob:...">
     // (URL.createObjectURL) e mede a duração do mesmo jeito; sem media-src o
     // navegador cai em default-src 'self', que não cobre blob:, e bloqueia.
-    mediaSrc: ["'self'", "blob:"],
+    //
+    // `https:` é pelo playback da gravação JÁ GUARDADA: o src é o proxy
+    // autenticado (/manus-storage/..., mesma origem), mas ele responde 307
+    // para a URL assinada do bucket, e o CSP reavalia a origem depois do
+    // redirect. Sem isto o áudio é bloqueado no navegador. É o mesmo motivo
+    // pelo qual imgSrc já tem `https:` — as fotos de contexto passam pelo
+    // mesmo proxy e só funcionam por causa dele.
+    mediaSrc: ["'self'", "blob:", "https:"],
     connectSrc: ["'self'", "wss:", "https:"],
     frameSrc: ["'none'"],
     frameAncestors: ["'none'"], // Proteção adicional contra clickjacking
