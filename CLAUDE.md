@@ -109,8 +109,11 @@ se criar arquivo em `drizzle/`) → banco do zero em MariaDB 11.4 com `criar-ban
 
 **Servidor.** Lógica nova em `server/` ganha ou atualiza um `*.test.ts` ao lado
 (41 hoje). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
-`skipIf`; `*.integracao.test.ts` usa `DATABASE_URL` real; `RUN_LIVE_CREDENTIAL_TESTS=true`
-liga os testes de credencial viva. Ninguém checa os tipos dos testes: o `tsconfig`
+`skipIf`; a suíte NUNCA lê `DATABASE_URL` (`server/test/setup-banco.ts` a troca por
+`DATABASE_URL_TESTES`, um banco descartável; sem ela o `*.integracao.test.ts` se pula),
+porque o `.env` de trabalho já apontou para produção e `pnpm test` chegou a promover
+uma usuária real; `RUN_LIVE_CREDENTIAL_TESTS=true` liga os testes que falam com a API
+real do Gemini (fora dele, `pnpm test` não gasta cota). Ninguém checa os tipos dos testes: o `tsconfig`
 exclui `*.test.ts` e `*.test.tsx` do `pnpm check`, e o Vitest só transpila (esbuild
 remove os tipos sem conferir). Um mock com a forma errada passa em silêncio; escreva o
 dublê a partir do tipo real e prefira asserções que discriminem comportamento.

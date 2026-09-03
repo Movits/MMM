@@ -16,9 +16,12 @@ import { embedWithGemini } from "./gemini";
  * suíte ficar verde faria o time aprender a ignorar vermelho, que é pior do que
  * não ter a conferência.
  *
- * Para rodar:  LLM_API_KEY=... pnpm test server/gemini.integracao.test.ts
+ * Para rodar:  RUN_LIVE_CREDENTIAL_TESTS=true pnpm test server/gemini.integracao.test.ts
+ * (a chave vem do .env; sem a opção, o `pnpm test` do dia a dia não gasta a
+ * cota do Gemini, que é a mesma da produção)
  */
-describe.skipIf(!ENV.llmApiKey)("Gemini — contra a API real", () => {
+const aoVivo = process.env.RUN_LIVE_CREDENTIAL_TESTS === "true";
+describe.skipIf(!aoVivo || !ENV.llmApiKey)("Gemini — contra a API real", () => {
   it("o modelo de embedding ainda existe e devolve 768 dimensões", async () => {
     const vetor = await embedWithGemini("Rede privada de contatos estratégicos do MMM.", "RETRIEVAL_DOCUMENT");
     expect(vetor).toHaveLength(768);
