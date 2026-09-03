@@ -148,6 +148,22 @@ código conseguia assinar uma sessão válida.
 
 `PORT` o Railway injeta sozinho. Não defina na mão.
 
+### Só para o exame de produção
+
+`scripts/checar-producao.mjs` roda na sua máquina, não no Render, e por isso não
+lê as variáveis do painel. Ele lê um arquivo `.env.producao` (ignorado pelo git,
+como todo `.env.*`), separado do `.env` de trabalho, com uma variável obrigatória
+e uma opcional:
+
+| Variável | Para quê | Valor |
+|---|---|---|
+| `DATABASE_URL` | criar e apagar as contas QA, ler auditoria e migrações | a URI do Aiven, com o `ssl` já ajustado |
+| `EXAME_BASE_URL` | opcional: o site examinado | padrão `https://mmm-gud5.onrender.com`; `http://localhost:3000` examina o `pnpm dev` |
+
+`EXAME_BASE_URL` também pode vir do ambiente (`EXAME_BASE_URL=... node ...`), e aí
+vence o valor do arquivo. `JWT_SECRET` não é necessário: o exame faz login pela
+API com as contas que ele mesmo cria.
+
 ## O que continua quebrado depois do deploy
 
 **Upload de arquivo — RESOLVIDO no código, falta configurar.**
@@ -185,5 +201,8 @@ pnpm test     # Vitest
 pnpm build    # gera dist/
 ```
 
-Depois de publicado, abrir o domínio, criar uma conta e fazer login. Se o login
-funciona, o banco, o JWT e a API estão de pé.
+Depois de publicado, rode `node scripts/checar-producao.mjs --env .env.producao`.
+Ele cria e apaga as próprias contas QA, então não é preciso criar conta real para
+conferir o login. A saída lista cada checagem e termina com o veredito e o código
+de saída: 0 só sem falha (ALERTA conta como falha), exceção, limite de requisições
+ou erro de limpeza.

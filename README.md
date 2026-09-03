@@ -33,17 +33,43 @@ reuniões, rede privada) estão soltas em `docs/`, como vieram do Manus.
 Depois de qualquer deploy, confirme em um comando que o site no ar está inteiro:
 
 ```bash
-node scripts/checar-producao.mjs            # bateria padrão, sem gastar cota de IA
-node scripts/checar-producao.mjs --com-ia   # inclui FAQ, memória e as checagens de IA
+node scripts/checar-producao.mjs --env .env.producao                   # bateria padrão
+node scripts/checar-producao.mjs --env .env.producao --com-ia          # inclui FAQ, memória e as checagens de IA
+node scripts/checar-producao.mjs --env .env.producao --somente-faxina  # só apaga resíduos de uma execução interrompida
 ```
 
-O exame confere site, cache, migrações do banco, login, contatos, o match por
-direção, contextos, a confidencialidade por nível de acesso e o isolamento entre
-contas, usando uma conta QA descartável que ele mesmo cria e apaga. Precisa do
-`.env` da produção (`DATABASE_URL` e `JWT_SECRET`). Saída: uma linha OK/FALHA
-por checagem; qualquer FALHA é problema real no ar e merece investigação antes
-de seguir. O código de saída é 0 só quando tudo passa, então dá para usar em
-automação.
+O exame precisa só da `DATABASE_URL` da produção, num arquivo `.env.producao`
+separado do `.env` de trabalho (o `.gitignore` já cobre todo `.env.*`); `JWT_SECRET`
+não é mais necessário, porque o exame faz login de verdade. Sem `--env` ele lê
+`.env.producao` se existir, senão o `.env`, com aviso. `EXAME_BASE_URL` (opcional, no
+arquivo ou no ambiente, que vence) aponta para outro endereço, como
+`http://localhost:3000`; o padrão é `https://mmm-gud5.onrender.com`.
+
+O que o exame prova: site, cache e migrações em dia; login real com duas contas QA
+(uma presidente, uma Prata) que ele cria e apaga na hora; isolamento entre contas
+com controle positivo (a dona vê os próprios dados, a outra vê zero e o acesso
+direto é barrado); storage B2 de ponta a ponta (upload, download pela URL assinada,
+posse e exclusão no bucket); consentimento do Smart Match, quando há termo
+publicado; conceder e revogar Ouro com trilha de auditoria; vitrine coletiva e
+acervo Ouro por nível de acesso. Saída: uma linha por checagem (OK, FALHA, PULADO,
+ALERTA, LIMITE, INFO, EXCECAO e LIMPEZA COM ERRO) e o veredito no fim; PULADO é
+bloco não provado e volta no resumo. O código de saída é 0 só sem falha (ALERTA
+conta como falha), exceção, limite de requisições ou erro de limpeza, então dá
+para usar em automação. Em `--somente-faxina` o ALERTA de resíduo encontrado é
+informativo, porque achar resíduo é o serviço desse modo: só erro de limpeza ou
+exceção devolvem 1.
+
+Efeitos colaterais conhecidos de cada execução, mesmo sem `--com-ia`: até duas
+chamadas de IA (o compliance na criação da oportunidade QA, sempre; o alerta de
+compatibilidade só quando a oportunidade é aprovada e há ao menos uma conta Ouro,
+presidente ou admin real com perfil, e o prompt dele leva setor, possui e procura
+dessas contas; o exame imprime esse número como INFO antes de criar); um e-mail do
+Smart Match para endereço `.invalid`, cuja entrega não é verificada; o contato QA
+marcado 'ouro' por poucos segundos e a oportunidade QA (confidencial, ativa) visível
+para contas Ouro reais até o fim da execução (dezenas de segundos, mais de dois
+minutos com `--com-ia` ou quando a sondagem do alerta espera os 120 s); e as linhas
+`GOLD_ACERVO_READ` e `REVOKED_SESSION_ACCESS_ATTEMPT` das contas QA, preservadas na
+trilha de auditoria.
 
 ## O que já está implementado
 

@@ -1,5 +1,26 @@
 # Histórico da documentação
 
+## v1.3 (02/09/2026)
+
+Exame de produção reescrito.
+
+- `scripts/checar-producao.mjs`: o exame cria duas contas QA próprias (presidente e
+  Prata), faz login de verdade pela API e as apaga ao final. Resultado honesto:
+  exceção, limite de requisições, alerta e erro de limpeza reprovam; PULADO é bloco
+  não provado, contado à parte. Checagens novas de storage B2 de ponta a ponta,
+  consentimento do Smart Match, conceder e revogar Ouro com auditoria, vitrine e
+  acervo Ouro por nível. `--somente-faxina` só apaga resíduos.
+- `scripts/exame/relatorio.mjs` e `scripts/exame/limpeza.mjs`: relatório e plano de
+  limpeza como módulos puros; o plano é declarado como dados, um par tabela/coluna
+  por vez, e `server/exame-de-producao.test.ts` o confere contra
+  `drizzle/schema.ts`.
+- Convenção `.env.producao`: o exame lê só a `DATABASE_URL` da produção, de um
+  arquivo separado do `.env` de trabalho e ignorado pelo git
+  (`--env .env.producao`); `JWT_SECRET` deixa de ser necessário; `EXAME_BASE_URL`
+  opcional.
+- Documentação atualizada: `README.md`, `scripts/README.md`, `CLAUDE.md`,
+  `docs/deploy.md` e `.env.example`.
+
 ## v1.2 (28/08/2026)
 
 Preparação do deploy.
