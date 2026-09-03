@@ -20,11 +20,14 @@ on:
   push:
     branches: [main]
 
-# Uma execução por branch; empurrar de novo cancela a anterior, que já não
-# interessa a ninguém.
+# Uma execução por branch: empurrar de novo cancela a anterior, que já não
+# interessa a ninguém. Na main, não: o run da main é o que carimba o commit que
+# foi para produção, e cancelá-lo apaga a única prova de que aquele deploy
+# passou (foi o que aconteceu com as PRs #40 e #41 em 02/09/2026, mergeadas em
+# 29 segundos). O preço é que dois merges seguidos rodam em fila, não em paralelo.
 concurrency:
   group: testes-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -112,6 +115,16 @@ jobs:
 
       - name: Tipos
         run: pnpm check
+
+      # O tsc só olha client/, shared/ e server/; os scripts de operação (.mjs)
+      # não passam por ninguém. Um erro de sintaxe no exame de produção apareceria
+      # pela primeira vez com contas QA já inseridas no Aiven.
+      - name: Sintaxe dos scripts
+        run: |
+          for f in scripts/*.mjs scripts/exame/*.mjs .claude/hooks/*.mjs; do
+            [ -e "$f" ] || continue
+            node --check "$f" || exit 1
+          done
 
       - name: Testes
         run: pnpm test
