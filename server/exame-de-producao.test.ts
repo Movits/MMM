@@ -668,6 +668,21 @@ describe("planejarLimpeza: SQL parametrizado, sem LIKE global, users por último
     expect(soOrfa[0].params).toEqual([77]);
   });
 
+  it("alertar não conta linha cuja dona principal é QA (grant da QA para a QA sai na passada de apagar)", () => {
+    const alertaGrant = comandos.find((c: any) => c.descricao === "gold_access_grants.grantedBy (id)");
+    expect(alertaGrant.acao).toBe("alertar");
+    expect(alertaGrant.sql).toBe("SELECT COUNT(*) AS n FROM `gold_access_grants` WHERE `grantedBy` IN (?, ?) AND `grantedTo` NOT IN (?, ?)");
+    expect(alertaGrant.params).toEqual([1, 2, 1, 2]);
+    const alertaSala = comandos.find((c: any) => c.descricao === "deal_rooms.opportunityId (opp)");
+    expect(alertaSala.sql).toBe("SELECT COUNT(*) AS n FROM `deal_rooms` WHERE `opportunityId` IN (?) AND `interestedId` NOT IN (?, ?)");
+    expect(alertaSala.params).toEqual([77, 1, 2]);
+    // Todo par que só alerta precisa dizer quem é a dona principal, senão conta a própria QA.
+    for (const par of PLANO_DE_LIMPEZA.filter((p: any) => p.acao === "alertar")) {
+      expect(par.excetoSe, `${par.tabela}.${par.coluna} sem excetoSe`).toBeDefined();
+      expect(tabelas[par.tabela].has(par.excetoSe.coluna), `${par.tabela}.${par.excetoSe.coluna} não existe`).toBe(true);
+    }
+  });
+
   it("deal_rooms só sai quando as DUAS pontas são QA (sala de conta real na oportunidade QA fica)", () => {
     const salas = comandos.filter((c: any) => c.sql.startsWith("DELETE FROM `deal_rooms`"));
     expect(salas.map((c: any) => c.sql)).toEqual([

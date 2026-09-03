@@ -51,9 +51,11 @@ export const PLANO_DE_LIMPEZA = [
   { tabela: "president_validations", coluna: "opportunityId", chave: "opp", acao: "apagar" },
   { tabela: "opportunity_documents", coluna: "opportunityId", chave: "opp", acao: "apagar" },
   // Interesse ou sala aberta por conta REAL na oportunidade do exame: humano decide.
-  { tabela: "opportunity_interests", coluna: "opportunityId", chave: "opp", acao: "alertar" },
-  { tabela: "saved_opportunities", coluna: "opportunityId", chave: "opp", acao: "alertar" },
-  { tabela: "deal_rooms", coluna: "opportunityId", chave: "opp", acao: "alertar" },
+  // `excetoSe` tira da contagem as linhas cuja dona principal é a própria QA (essas
+  // saem na passada de apagar); só sobra o que é de terceiros de verdade.
+  { tabela: "opportunity_interests", coluna: "opportunityId", chave: "opp", acao: "alertar", excetoSe: { coluna: "userId", chave: "id" } },
+  { tabela: "saved_opportunities", coluna: "opportunityId", chave: "opp", acao: "alertar", excetoSe: { coluna: "userId", chave: "id" } },
+  { tabela: "deal_rooms", coluna: "opportunityId", chave: "opp", acao: "alertar", excetoSe: { coluna: "interestedId", chave: "id" } },
 
   // ── módulo institucional: chave id (int) ────────────────────────────────
   { tabela: "consents", coluna: "userId", chave: "id", acao: "apagar" },
@@ -61,9 +63,9 @@ export const PLANO_DE_LIMPEZA = [
   { tabela: "sivc_consents", coluna: "userId", chave: "id", acao: "apagar" },
   { tabela: "sivc_verifications", coluna: "userId", chave: "id", acao: "apagar" },
   { tabela: "national_leaders", coluna: "userId", chave: "id", acao: "apagar" },
-  { tabela: "national_leaders", coluna: "nominatedBy", chave: "id", acao: "alertar" },
-  { tabela: "national_leaders", coluna: "revokedBy", chave: "id", acao: "alertar" },
-  { tabela: "president_validations", coluna: "validatedBy", chave: "id", acao: "alertar" },
+  { tabela: "national_leaders", coluna: "nominatedBy", chave: "id", acao: "alertar", excetoSe: { coluna: "userId", chave: "id" } },
+  { tabela: "national_leaders", coluna: "revokedBy", chave: "id", acao: "alertar", excetoSe: { coluna: "userId", chave: "id" } },
+  { tabela: "president_validations", coluna: "validatedBy", chave: "id", acao: "alertar", excetoSe: { coluna: "opportunityId", chave: "opp" } },
   { tabela: "deal_room_documents", coluna: "uploadedBy", chave: "id", acao: "apagar" },
   { tabela: "deal_room_messages", coluna: "senderId", chave: "id", acao: "apagar" },
   // Sala de negociação: só sai quando as DUAS pontas são QA. A sala que uma membra
@@ -79,7 +81,7 @@ export const PLANO_DE_LIMPEZA = [
   { tabela: "password_reset_tokens", coluna: "userId", chave: "id", acao: "apagar" },
   { tabela: "trusted_devices", coluna: "userId", chave: "id", acao: "apagar" },
   { tabela: "security_events", coluna: "userId", chave: "id", acao: "apagar" },
-  { tabela: "security_events", coluna: "resolvedBy", chave: "id", acao: "alertar" },
+  { tabela: "security_events", coluna: "resolvedBy", chave: "id", acao: "alertar", excetoSe: { coluna: "userId", chave: "id" } },
   { tabela: "sessions", coluna: "userId", chave: "id", acao: "apagar" },
   { tabela: "platform_notifications", coluna: "userId", chave: "id", acao: "apagar" },
   { tabela: "direct_messages", coluna: "senderId", chave: "id", acao: "apagar" },
@@ -88,11 +90,11 @@ export const PLANO_DE_LIMPEZA = [
   { tabela: "opportunity_interests", coluna: "userId", chave: "id", acao: "apagar" },
   { tabela: "opportunity_documents", coluna: "uploadedBy", chave: "id", acao: "apagar" },
   { tabela: "opportunities", coluna: "publishedBy", chave: "id", acao: "apagar" },
-  { tabela: "opportunities", coluna: "moderatedBy", chave: "id", acao: "alertar" },
+  { tabela: "opportunities", coluna: "moderatedBy", chave: "id", acao: "alertar", excetoSe: { coluna: "publishedBy", chave: "id" } },
   { tabela: "strategic_groups", coluna: "createdBy", chave: "id", acao: "apagar" },
   { tabela: "gold_access_grants", coluna: "grantedTo", chave: "id", acao: "apagar" },
-  { tabela: "gold_access_grants", coluna: "grantedBy", chave: "id", acao: "alertar" },
-  { tabela: "gold_access_grants", coluna: "revokedBy", chave: "id", acao: "alertar" },
+  { tabela: "gold_access_grants", coluna: "grantedBy", chave: "id", acao: "alertar", excetoSe: { coluna: "grantedTo", chave: "id" } },
+  { tabela: "gold_access_grants", coluna: "revokedBy", chave: "id", acao: "alertar", excetoSe: { coluna: "grantedTo", chave: "id" } },
   { tabela: "user_profiles", coluna: "userId", chave: "id", acao: "apagar" },
   // Trilha de auditoria: sai o ruído do exame (LOGIN, OPPORTUNITY_CREATE...), ficam
   // as leituras do acervo Ouro e as tentativas com sessão revogada (decisão do
@@ -152,6 +154,14 @@ export function planejarLimpeza({ ids = [], openIds = [], emails = [], oppIds = 
       if (!outros || !outros.length) continue;
       where.push("`" + par.filtroChave.coluna + "` IN (" + placeholders(outros) + ")");
       params.push(...outros);
+    }
+    if (par.excetoSe) {
+      // Linha cuja dona principal é QA não é "de terceiros": sai na passada de apagar.
+      const proprios = valoresPor[par.excetoSe.chave];
+      if (proprios && proprios.length) {
+        where.push("`" + par.excetoSe.coluna + "` NOT IN (" + placeholders(proprios) + ")");
+        params.push(...proprios);
+      }
     }
     const verbo = par.acao === "apagar" ? "DELETE FROM" : "SELECT COUNT(*) AS n FROM";
     comandos.push({
