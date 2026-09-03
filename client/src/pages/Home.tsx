@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/i18n";
 import { trpc } from "@/lib/trpc";
@@ -10,8 +10,10 @@ import {
   UserRound, BrainCircuit, Zap, Sparkles, ArrowRight, ChevronDown, Star, Send,
 } from "lucide-react";
 
-// Imagem do hero (gerada localmente — client/public/images)
-const HERO_IMG = "/images/hero-women.svg";
+// Imagem do hero (client/public/images). O mapa bordado em fio de ouro sobre
+// tecido escuro: a base do quadro é vazia de propósito, porque o gradiente do
+// container e o cartão flutuante caem justamente ali.
+const HERO_IMG = "/images/hero-globo.webp";
 
 // Animated counter hook
 function useCounter(target: number, duration = 2000, start = false) {
@@ -44,6 +46,155 @@ function useInView(threshold = 0.2) {
     return () => obs.disconnect();
   }, [threshold]);
   return { ref, inView };
+}
+
+// PROVA (não é decisão final): com o mapa virando fundo da página inteira, ter
+// o mesmo mapa também dentro do quadro do hero confunde a leitura do efeito.
+// Basta voltar para `true` para recuperar o cartão como estava.
+const MOSTRAR_CARTAO_DO_HERO = false;
+
+/**
+ * Progresso de rolagem da PÁGINA inteira (0 no topo, 1 no fim), escrito em
+ * `--pg`. É o que faz o fio de ouro se desenhar: a rolagem controla o traço,
+ * como no vídeo em que a rolagem controla o café caindo.
+ *
+ * Mesmas três precauções do parallax: sem `useState` por pixel rolado, no
+ * máximo uma medição por quadro, e `prefers-reduced-motion` checado no JS.
+ * Aqui, porém, quem pediu menos movimento recebe `--pg = 1`: o fio aparece
+ * inteiro e parado. Deixar em 0 esconderia o desenho e a pessoa veria um mapa
+ * sem as ligações, que é informação a menos, não movimento a menos.
+ */
+function useProgressoDaPagina<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  // O mesmo número serve a dois consumidores com necessidades opostas: o CSS
+  // quer uma custom property, e o globo (que desenha em canvas) quer ler o
+  // valor dentro do próprio laço de animação. Guardar num ref atende os dois
+  // sem nenhum render extra do React.
+  const valor = useRef(0);
+  const progresso = useRef(() => valor.current).current;
+  const [semMovimento, setSemMovimento] = useState(
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sincronizar = () => setSemMovimento(mq.matches);
+    mq.addEventListener("change", sincronizar);
+    return () => mq.removeEventListener("change", sincronizar);
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (semMovimento) {
+      valor.current = 1;
+      el.style.setProperty("--pg", "1");
+      return;
+    }
+
+    let quadro = 0;
+    const medir = () => {
+      quadro = 0;
+      const alcance = document.documentElement.scrollHeight - window.innerHeight;
+      const pg = alcance > 0 ? Math.min(Math.max(window.scrollY / alcance, 0), 1) : 0;
+      valor.current = pg;
+      el.style.setProperty("--pg", pg.toFixed(4));
+    };
+    const aoRolar = () => {
+      if (quadro) return;
+      quadro = requestAnimationFrame(medir);
+    };
+
+    window.addEventListener("scroll", aoRolar, { passive: true });
+    window.addEventListener("resize", aoRolar, { passive: true });
+    medir();
+
+    return () => {
+      window.removeEventListener("scroll", aoRolar);
+      window.removeEventListener("resize", aoRolar);
+      if (quadro) cancelAnimationFrame(quadro);
+    };
+  }, [semMovimento]);
+
+  return { ref, progresso };
+}
+
+/**
+ * Parallax do hero.
+ *
+ * Escreve o progresso do scroll dentro do hero (0 no topo, 1 quando ele já
+ * saiu) numa custom property `--p` do próprio elemento. Quem decide o que cada
+ * plano faz com esse número é o CSS lá embaixo — aqui só se mede.
+ *
+ * Três decisões que não são estilo, são o que faz isto não travar a página:
+ *
+ * 1. Nada de `useState` no scroll. Rerenderizar o React a cada pixel rolado
+ *    engasga a home inteira; o valor vai direto no DOM.
+ * 2. Uma medição por quadro, no máximo. O listener só agenda um
+ *    requestAnimationFrame se não houver outro pendente.
+ * 3. `prefers-reduced-motion` é checado AQUI, no JavaScript. O bloco de
+ *    index.css zera `animation` e `transition`, mas não alcança um `transform`
+ *    escrito por script: sem esta guarda, quem pediu menos movimento no
+ *    sistema receberia o parallax inteiro mesmo assim.
+ */
+function useParallax<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [semMovimento, setSemMovimento] = useState(
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sincronizar = () => setSemMovimento(mq.matches);
+    mq.addEventListener("change", sincronizar);
+    return () => mq.removeEventListener("change", sincronizar);
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Preferência respeitada: tudo fica no estado de repouso (--p = 0).
+    if (semMovimento) {
+      el.style.setProperty("--p", "0");
+      return;
+    }
+
+    let quadro = 0;
+    let visivel = true;
+
+    const medir = () => {
+      quadro = 0;
+      const r = el.getBoundingClientRect();
+      const p = Math.min(Math.max(-r.top / Math.max(r.height, 1), 0), 1);
+      el.style.setProperty("--p", p.toFixed(4));
+    };
+
+    const aoRolar = () => {
+      if (quadro || !visivel) return;
+      quadro = requestAnimationFrame(medir);
+    };
+
+    // Passou do hero, para de medir: o resto da home rola sem nenhum trabalho
+    // extra por quadro.
+    const obs = new IntersectionObserver(([entrada]) => {
+      visivel = entrada.isIntersecting;
+      if (visivel) aoRolar();
+    });
+    obs.observe(el);
+
+    window.addEventListener("scroll", aoRolar, { passive: true });
+    window.addEventListener("resize", aoRolar, { passive: true });
+    medir();
+
+    return () => {
+      obs.disconnect();
+      window.removeEventListener("scroll", aoRolar);
+      window.removeEventListener("resize", aoRolar);
+      if (quadro) cancelAnimationFrame(quadro);
+    };
+  }, [semMovimento]);
+
+  return ref;
 }
 
 // Rótulo de seção minimalista
@@ -166,7 +317,7 @@ function FAQSection() {
         {/* Perguntas pré-definidas */}
         <div className="space-y-2.5 mb-8">
           {FAQ_ITEMS.map((item, idx) => (
-            <div key={idx} className="bg-white/[0.02] border border-white/[0.06] rounded-2xl overflow-hidden transition-all duration-200 hover:border-white/15">
+            <div key={idx} className="bg-[#0a1424]/90 border border-white/[0.06] rounded-2xl overflow-hidden transition-all duration-200 hover:border-white/15">
               <button
                 onClick={() => handleToggle(idx)}
                 className="w-full flex items-center justify-between px-6 py-4 text-left"
@@ -184,7 +335,7 @@ function FAQSection() {
         </div>
 
         {/* Campo de pergunta personalizada */}
-        <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6">
+        <div className="bg-[#0a1424]/90 border border-white/[0.06] rounded-2xl p-6">
           <p className="text-white/50 text-sm mb-3 font-medium">Tem outra dúvida? Pergunte à IA:</p>
           <div className="flex gap-3">
             <input
@@ -216,12 +367,167 @@ function FAQSection() {
   );
 }
 
+/**
+ * Fundo da página: o mapa bordado atrás de TODO o conteúdo, e o fio de ouro
+ * que se desenha conforme a rolagem.
+ *
+ * O alinhamento entre foto e traço é a parte que costuma dar errado. A foto usa
+ * `object-fit: cover` e o SVG usa `preserveAspectRatio="xMidYMid slice"` sobre
+ * o MESMO viewBox de 1000×1336 — que é a proporção real do arquivo. Isso faz os
+ * dois recortarem de forma idêntica em qualquer tela, então o fio continua
+ * caindo sobre os mesmos continentes no celular e no monitor largo.
+ *
+ * `pathLength={1}` normaliza o comprimento do traço para 1, o que dispensa
+ * medir a curva em JavaScript: o desenho é só `stroke-dashoffset: 1 - --pg`.
+ */
+/**
+ * O planeta só é baixado quando alguém abre a home: são ~600 KB de three.js
+ * mais os contornos do Natural Earth, e nenhuma outra tela do sistema precisa
+ * disso. `lazy` faz o Vite cortar num pedaço separado.
+ */
+const GloboDoMundo = lazy(() => import("@/components/GloboDoMundo"));
+
+const CHAVE_DO_MOVIMENTO = "mmm:movimento-do-fundo";
+
+/**
+ * Decide se o planeta se mexe.
+ *
+ * A ordem importa. Primeiro a escolha explícita de quem visita, guardada no
+ * navegador — ela vence tudo, inclusive a detecção automática, porque quem
+ * clicou sabe o que quer. Depois `prefers-reduced-motion`, que é uma escolha
+ * feita no sistema operacional. Só então o palpite sobre o aparelho.
+ *
+ * O palpite é grosseiro de propósito: número de núcleos e memória são as duas
+ * únicas pistas que o navegador entrega, e nem sempre entrega. Na dúvida, o
+ * padrão é COM movimento — desligar por engano para quem tem máquina boa é um
+ * prejuízo silencioso, e quem tiver problema tem o botão à mão.
+ */
+function movimentoPadrao(): boolean {
+  try {
+    const guardado = localStorage.getItem(CHAVE_DO_MOVIMENTO);
+    if (guardado === "on") return true;
+    if (guardado === "off") return false;
+  } catch {
+    // Navegador em modo privado ou com armazenamento bloqueado: segue o fluxo.
+  }
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+  const nucleos = navigator.hardwareConcurrency;
+  const memoria = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  if (typeof nucleos === "number" && nucleos > 0 && nucleos <= 4) return false;
+  if (typeof memoria === "number" && memoria > 0 && memoria <= 4) return false;
+  return true;
+}
+
+/** Botão discreto para ligar e desligar o movimento do fundo. */
+function ChaveDoMovimento({ ativo, alternar }: { ativo: boolean; alternar: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={alternar}
+      aria-pressed={ativo}
+      className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-[#0a1424]/85 px-3.5 py-2 text-[11px] font-medium text-white/55 backdrop-blur-xl transition-colors duration-200 hover:border-white/25 hover:text-white/85"
+      title={ativo ? "Desligar o movimento do fundo" : "Ligar o movimento do fundo"}
+    >
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${ativo ? "bg-[#f5a623]" : "bg-white/30"}`}
+        aria-hidden="true"
+      />
+      {ativo ? "Movimento ligado" : "Movimento desligado"}
+    </button>
+  );
+}
+
+/**
+ * Fundo da página com o planeta girando conforme a rolagem.
+ *
+ * A imagem bordada continua atrás, bem apagada: ela dá textura ao fundo e é o
+ * que aparece se o WebGL não existir (aparelho antigo, GPU bloqueada) — assim
+ * a falha degrada para o desenho anterior em vez de um retângulo preto.
+ */
+function FundoDoPlaneta({ progresso, animar }: { progresso: () => number; animar: boolean }) {
+  return (
+    <div className="fixed inset-0 pointer-events-none" aria-hidden="true">
+      <img src={HERO_IMG} alt=""
+        className="absolute inset-0 w-full h-full object-cover opacity-25" />
+      <div className="absolute inset-0"
+        style={{ background: "linear-gradient(180deg, rgba(6,11,20,0.80) 0%, rgba(6,11,20,0.88) 45%, rgba(6,11,20,0.94) 100%)" }} />
+      <Suspense fallback={null}>
+        <div className="absolute inset-0">
+          <GloboDoMundo progresso={progresso} animar={animar} />
+        </div>
+      </Suspense>
+    </div>
+  );
+}
+
+// Versão anterior (mapa chapado com o fio de ouro em SVG). Fica no arquivo
+// enquanto comparamos os dois caminhos; sai quando a decisão for tomada.
+function FundoDoMapa() {
+  // Pontos aproximados sobre a imagem atual (Brasil → Lagos → Lisboa →
+  // Frankfurt). São estimativas a olho: se a gente seguir com este caminho,
+  // o certo é gerar o mapa SEM os arcos e então acertar as coordenadas.
+  const paradas = [
+    { x: 315, y: 610, em: 0.02 },
+    { x: 545, y: 585, em: 0.38 },
+    { x: 470, y: 355, em: 0.74 },
+    // O limiar da última parada precisa sobrar espaço para a opacidade subir de
+    // 0 a 1 ANTES do fim da página: com 0,97 ela chegava ao pé da rolagem ainda
+    // a 42% e nunca acendia de todo.
+    { x: 560, y: 285, em: 0.90 },
+  ];
+
+  return (
+    <div className="fixed inset-0 pointer-events-none" aria-hidden="true">
+      <img src={HERO_IMG} alt=""
+        className="absolute inset-0 w-full h-full object-cover" />
+
+      {/* Véu: sem ele o texto branco perde contraste sobre o bordado claro.
+          É o ponto que mais vai precisar de ajuste fino se seguirmos. */}
+      <div className="absolute inset-0"
+        style={{ background: "linear-gradient(180deg, rgba(6,11,20,0.72) 0%, rgba(6,11,20,0.86) 45%, rgba(6,11,20,0.94) 100%)" }} />
+
+      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1000 1336"
+        preserveAspectRatio="xMidYMid slice" fill="none">
+        {/* Halo largo e difuso por baixo do fio, para o traço parecer aceso e
+            não uma linha desenhada por cima da foto. */}
+        <path d="M315,610 Q430,500 545,585 Q560,450 470,355 Q505,295 560,285"
+          pathLength={1} stroke="#f5a623" strokeWidth={14} strokeOpacity={0.18}
+          strokeLinecap="round"
+          style={{ strokeDasharray: 1, strokeDashoffset: "calc(1 - var(--pg, 0))", filter: "blur(6px)" }} />
+        <path d="M315,610 Q430,500 545,585 Q560,450 470,355 Q505,295 560,285"
+          pathLength={1} stroke="#ffd489" strokeWidth={3} strokeLinecap="round"
+          style={{ strokeDasharray: 1, strokeDashoffset: "calc(1 - var(--pg, 0))" }} />
+
+        {paradas.map((parada, i) => (
+          <g key={i}
+            style={{ opacity: `clamp(0, calc((var(--pg, 0) - ${parada.em}) * 14), 1)` }}>
+            <circle cx={parada.x} cy={parada.y} r={13} fill="#f5a623" opacity={0.22} />
+            <circle cx={parada.x} cy={parada.y} r={4.5} fill="#ffe6b0" />
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 export default function Home() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const { ref: statsRef, inView: statsInView } = useInView();
   const { ref: stepsRef, inView: stepsInView } = useInView();
   const { ref: oppsRef, inView: oppsInView } = useInView();
+  const heroRef = useParallax<HTMLElement>();
+  const { ref: paginaRef, progresso: progressoDaPagina } = useProgressoDaPagina<HTMLDivElement>();
+  const [movimentoAtivo, setMovimentoAtivo] = useState(movimentoPadrao);
+  const alternarMovimento = () => {
+    setMovimentoAtivo(atual => {
+      const proximo = !atual;
+      // A escolha fica guardada: quem desligou por lentidão não precisa
+      // desligar de novo a cada visita.
+      try { localStorage.setItem(CHAVE_DO_MOVIMENTO, proximo ? "on" : "off"); } catch { /* sem armazenamento */ }
+      return proximo;
+    });
+  };
 
   // Números reais da plataforma — nunca valores fictícios.
   const { data: stats } = trpc.stats.platform.useQuery();
@@ -261,7 +567,10 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#060b14] text-white overflow-x-hidden antialiased">
+    <div ref={paginaRef} className="min-h-screen bg-[#060b14] text-white overflow-x-hidden antialiased">
+      <FundoDoPlaneta progresso={progressoDaPagina} animar={movimentoAtivo} />
+      <ChaveDoMovimento ativo={movimentoAtivo} alternar={alternarMovimento} />
+
       {/* ─── NAVBAR ─── */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.05] bg-[#060b14]/80 backdrop-blur-2xl">
         <div className="flex items-center justify-between px-6 md:px-12 py-3.5">
@@ -342,15 +651,35 @@ export default function Home() {
       </div>
 
       {/* ─── HERO ─── */}
-      <section className="relative min-h-screen flex items-center overflow-hidden pt-24 pb-16">
-        {/* glow sutil */}
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 60% 45% at 75% 40%, rgba(245,166,35,0.07) 0%, transparent 70%)" }} />
+      {/*
+        Parallax em três planos. `useParallax` escreve `--p` (0 → 1) aqui no
+        section; cada plano abaixo traduz esse número em deslocamento próprio.
+        Quem desce MENOS que a página parece estar longe; quem desce MAIS (valor
+        negativo) parece estar perto. Daí a profundidade: o glow fica para trás,
+        a imagem afunda um pouco, o cartão flutua para a frente.
+        Sempre `var(--p, 0)`: antes de o script rodar, o CSS precisa de um valor
+        válido, senão o calc inteiro é descartado e o transform não existe.
+      */}
+      <section ref={heroRef}
+        // --k é o fator de intensidade do parallax: 1 é o ajuste final, valores
+        // maiores exageram tudo proporcionalmente. Fica aqui, num lugar só, para
+        // dar para calibrar ao vivo no console sem recompilar:
+        //   document.querySelectorAll('section')[1].style.setProperty('--k', 3)
+        style={{ "--k": 3 } as React.CSSProperties}
+        className="relative min-h-screen flex items-center overflow-hidden pt-24 pb-16">
+        {/* glow sutil — plano de fundo, o que mais fica para trás */}
+        <div className="absolute inset-0 pointer-events-none will-change-transform"
+          style={{
+            background: "radial-gradient(ellipse 60% 45% at 75% 40%, rgba(245,166,35,0.07) 0%, transparent 70%)",
+            transform: "translate3d(0, calc(var(--p, 0) * var(--k, 1) * 64px), 0) scale(calc(1 + var(--p, 0) * var(--k, 1) * 0.18))",
+          }} />
 
         <div className="relative z-10 container mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-14 items-center max-w-6xl mx-auto">
-            {/* Texto */}
-            <div>
+            {/* Texto — desce um pouco mais devagar que a coluna da direita, só
+                o suficiente para as duas se descolarem durante a rolagem. */}
+            <div className="will-change-transform"
+              style={{ transform: "translate3d(0, calc(var(--p, 0) * var(--k, 1) * 22px), 0)" }}>
               <div className="inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.08] rounded-full px-4 py-1.5 mb-8 text-xs text-white/60 font-medium"
                 style={{ animation: "fadeInDown 0.8s cubic-bezier(0.23,1,0.32,1) both" }}>
                 <span className="w-1.5 h-1.5 bg-[#f5a623] rounded-full animate-pulse" />
@@ -405,16 +734,38 @@ export default function Home() {
             </div>
 
             {/* Imagem */}
+            {MOSTRAR_CARTAO_DO_HERO && (
             <div className="relative" style={{ animation: "fadeInUp 1s cubic-bezier(0.23,1,0.32,1) 0.25s both" }}>
               <div className="absolute -inset-6 bg-[#f5a623]/[0.06] rounded-[2.5rem] blur-3xl pointer-events-none" />
               <div className="relative rounded-3xl overflow-hidden border border-white/[0.08] shadow-2xl shadow-black/50">
-                <img src={HERO_IMG} alt="Três mulheres executivas de terno diante de uma metrópole"
-                  className="w-full h-auto block" />
+                {/*
+                  A moldura fica parada e a imagem deriva DENTRO dela — é o que
+                  dá a sensação de olhar por uma janela em movimento. O
+                  scale(1.16) de repouso existe para haver imagem sobrando dos
+                  dois lados: sem ela, a deriva descobriria a borda do container.
+
+                  A deriva é em PORCENTAGEM (da própria altura da imagem), não em
+                  pixels, e é isso que a torna segura em qualquer largura de tela:
+                  o scale deixa 8% sobrando de cada lado e a deriva usa 3,5%, então
+                  a folga é a mesma no desktop largo e na largura em que o grid
+                  ainda tem duas colunas. Com 34px fixos a folga caía para ~3px
+                  perto de 1024px de viewport e a borda do container aparecia.
+
+                  O mesmo `--k` que exagera a deriva também abre o scale, e por
+                  isso a folga sobrevive a qualquer intensidade: sobra k×8% de
+                  cada lado contra k×3,5% de deriva — a razão não muda com k.
+                */}
+                <img src={HERO_IMG}
+                  alt="Mapa-múndi bordado em fio de ouro sobre tecido escuro, com arcos luminosos ligando a América do Sul à África e à Europa"
+                  className="w-full h-auto block will-change-transform"
+                  style={{ transform: "translate3d(0, calc(var(--p, 0) * var(--k, 1) * 3.5%), 0) scale(calc(1 + var(--k, 1) * 0.16))" }} />
                 <div className="absolute inset-0 pointer-events-none"
                   style={{ background: "linear-gradient(180deg, transparent 60%, rgba(6,11,20,0.5) 100%)" }} />
               </div>
-              {/* badge flutuante */}
-              <div className="absolute -bottom-5 -left-5 bg-[#0a1424]/95 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-4 shadow-xl shadow-black/50">
+              {/* badge flutuante — plano da frente: sobe MAIS que a página, e é
+                  esse descolamento que faz a imagem parecer afundar atrás dele. */}
+              <div className="absolute -bottom-5 -left-5 bg-[#0a1424]/95 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-4 shadow-xl shadow-black/50 will-change-transform"
+                style={{ transform: "translate3d(0, calc(var(--p, 0) * var(--k, 1) * -42px), 0)" }}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-[#f5a623]/10 border border-[#f5a623]/25 flex items-center justify-center">
                     <Sparkles className="w-5 h-5 text-[#f5a623]" />
@@ -426,6 +777,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
+            )}
           </div>
         </div>
       </section>
@@ -450,7 +802,7 @@ export default function Home() {
                 }}>
                 <div className={`relative h-full p-8 rounded-3xl border transition-all duration-300 cursor-default ${activeStep === i
                   ? "bg-[#f5a623]/[0.05] border-[#f5a623]/30"
-                  : "bg-white/[0.02] border-white/[0.06] hover:border-white/15"
+                  : "bg-[#0a1424]/90 border-white/[0.06] hover:border-white/15"
                   }`}>
                   <div className="flex items-center justify-between mb-6">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors duration-300 ${activeStep === i ? "bg-[#f5a623]/15 border-[#f5a623]/30" : "bg-white/[0.03] border-white/[0.07]"}`}>
@@ -474,7 +826,7 @@ export default function Home() {
             {/* Mock de match minimalista */}
             <div className="relative">
               <div className="absolute -inset-4 bg-[#f5a623]/[0.05] rounded-[2rem] blur-2xl pointer-events-none" />
-              <div className="relative bg-white/[0.02] border border-white/[0.07] rounded-3xl p-7">
+              <div className="relative bg-[#0a1424]/90 border border-white/[0.07] rounded-3xl p-7">
                 <div className="flex items-center justify-between mb-7">
                   <div className="flex items-center gap-3">
                     <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#f5a623] to-[#ffd166] flex items-center justify-center text-[#060e1a] font-extrabold text-sm">AM</div>
@@ -535,7 +887,7 @@ export default function Home() {
           <div className="relative grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
             {opportunityTypes.map((opp, i) => (
               <div key={i}
-                className="group p-6 rounded-3xl bg-white/[0.02] border border-white/[0.06] hover:border-[#f5a623]/30 hover:bg-[#f5a623]/[0.03] transition-all duration-300 cursor-default"
+                className="group p-6 rounded-3xl bg-[#0a1424]/90 border border-white/[0.06] hover:border-[#f5a623]/30 hover:bg-[#f5a623]/[0.03] transition-all duration-300 cursor-default"
                 style={{
                   opacity: oppsInView ? 1 : 0,
                   transform: oppsInView ? "scale(1)" : "scale(0.95)",
@@ -572,7 +924,7 @@ export default function Home() {
                 { Icon: BadgeCheck, label: t("security.verification.title"), desc: t("security.verification.desc") },
                 { Icon: KeyRound, label: t("security.control.title"), desc: t("security.control.desc") },
               ].map((item, i) => (
-                <div key={i} className="p-6 rounded-3xl bg-white/[0.02] border border-white/[0.06] text-center hover:border-white/15 transition-colors duration-300">
+                <div key={i} className="p-6 rounded-3xl bg-[#0a1424]/90 border border-white/[0.06] text-center hover:border-white/15 transition-colors duration-300">
                   <div className="w-10 h-10 mx-auto rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center mb-3">
                     <item.Icon className="w-4.5 h-4.5 text-[#f5a623]" />
                   </div>
@@ -615,7 +967,7 @@ export default function Home() {
 
           <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
             {/* BRONZE */}
-            <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/[0.06] transition-all duration-300 hover:border-[#cd7f32]/30">
+            <div className="p-8 rounded-3xl bg-[#0a1424]/90 border border-white/[0.06] transition-all duration-300 hover:border-[#cd7f32]/30">
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-5 border" style={{ background: "rgba(205,127,50,0.08)", borderColor: "rgba(205,127,50,0.25)" }}>
                 <BadgeCheck className="w-5 h-5" style={{ color: "#cd7f32" }} />
               </div>
@@ -629,7 +981,7 @@ export default function Home() {
             </div>
 
             {/* PRATA */}
-            <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/[0.06] hover:border-white/20 transition-all duration-300">
+            <div className="p-8 rounded-3xl bg-[#0a1424]/90 border border-white/[0.06] hover:border-white/20 transition-all duration-300">
               <div className="w-11 h-11 rounded-2xl bg-slate-500/10 border border-slate-400/25 flex items-center justify-center mb-5">
                 <ShieldCheck className="w-5 h-5 text-slate-300" />
               </div>
