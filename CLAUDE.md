@@ -36,7 +36,7 @@ pnpm build             # vite build + esbuild do servidor → dist/
 pnpm start             # roda o build de produção
 pnpm format            # prettier --write .
 node scripts/conferir-locales.mjs   # os 10 idiomas têm as mesmas chaves (o CI também roda)
-node scripts/checar-producao.mjs    # exame de saúde da produção (pós-deploy); --com-ia inclui as checagens de IA
+node scripts/checar-producao.mjs --env .env.producao   # exame de saúde da produção (pós-deploy); --com-ia inclui as checagens de IA
 node scripts/semear-rede-de-teste.mjs   # contatos fictícios na rede de uma usuária; --limpar desfaz
 node scripts/definir-senha-local.mjs    # senha de conta em banco LOCAL (sem Resend em dev)
 node .claude/hooks/carimbo.mjs --status # estado da conferência (ver "Fluxo de trabalho")
@@ -94,10 +94,10 @@ que dizia: título de commit não é evidência.
   Notion e o grupo foram lidos; prova que a conferência foi registrada. O botão
   "Merge" do site passa ao largo, por isso merge só por `gh pr merge`.
 
-**Depois do merge**: espere o deploy do Render e rode `node scripts/checar-producao.mjs`.
-Só então mova a tarefa no Notion para "Feito (a validar)", com a comprovação (link da
-PR, saída do exame). Quem fez não conclui: outra pessoa do time valida no link de
-teste e só ela marca "Concluído".
+**Depois do merge**: espere o deploy do Render e rode
+`node scripts/checar-producao.mjs --env .env.producao`. Só então mova a tarefa no Notion
+para "Feito (a validar)", com a comprovação (link da PR, saída do exame). Quem fez não
+conclui: outra pessoa do time valida no link de teste e só ela marca "Concluído".
 
 ## Testes
 
@@ -108,7 +108,7 @@ se criar arquivo em `drizzle/`) → banco do zero em MariaDB 11.4 com `criar-ban
 `pnpm build`. Rode o mesmo antes da PR.
 
 **Servidor.** Lógica nova em `server/` ganha ou atualiza um `*.test.ts` ao lado
-(41 hoje). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
+(42 hoje, fora os dois `*.integracao.test.ts`). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
 `skipIf`; a suíte NUNCA lê `DATABASE_URL` (`server/test/setup-banco.ts` a troca por
 `DATABASE_URL_TESTES`, um banco descartável; sem ela o `*.integracao.test.ts` se pula),
 porque o `.env` de trabalho já apontou para produção e `pnpm test` chegou a promover
@@ -248,8 +248,10 @@ Schema e migrações em `drizzle/` (`schema.ts` + SQL versionado, com baseline
 Merge na `main` = deploy automático no Render (runtime Docker pelo `Dockerfile`; não
 há `render.yaml`, as variáveis vivem no painel; o plano gratuito hiberna e a primeira
 visita leva 30-60 s). Banco MySQL no Aiven; arquivos no Backblaze B2 via `STORAGE_*`;
-vitrine no GitHub Pages. Depois de todo deploy: `node scripts/checar-producao.mjs`.
-Passo a passo e tabela de variáveis em `docs/deploy.md`.
+vitrine no GitHub Pages. Depois de todo deploy:
+`node scripts/checar-producao.mjs --env .env.producao` (o exame só precisa de
+`DATABASE_URL`; nunca do `JWT_SECRET`). Passo a passo e tabela de variáveis em
+`docs/deploy.md`.
 
 ## Regras que não são estilo
 
