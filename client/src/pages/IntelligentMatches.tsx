@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Check, History, Lightbulb, Plus, RefreshCw, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { AppHeader } from "@/components/AppHeader";
 import { SmartMatchConsent } from "@/components/SmartMatchConsent";
@@ -16,11 +17,13 @@ type ItemDoMatch = { slug: string; label: string; category?: string | null };
  * direção passou a casar "Exportar vinho" com "Importar vinho": o objeto é o
  * mesmo, mas as tags são visivelmente diferentes, e chamar isso de tag exata é
  * dizer à usuária uma coisa que a linha de baixo desmente.
+ *
+ * Não é um componente de React (não usa hooks) — recebe `t` de quem chama.
  */
-export function seloDoMatch(match: { matchType: string; matchedAssets: ItemDoMatch[]; matchedNeeds: ItemDoMatch[] }) {
-  if (match.matchType === "mutual") return "↔ Conexão mútua";
-  if (match.matchType === "category") return "Mesma categoria";
-  if (match.matchType !== "exact") return "Significados parecidos";
+export function seloDoMatch(match: { matchType: string; matchedAssets: ItemDoMatch[]; matchedNeeds: ItemDoMatch[] }, t: (key: string) => string) {
+  if (match.matchType === "mutual") return t("intelligentMatches.seloMutuo");
+  if (match.matchType === "category") return t("intelligentMatches.seloCategoria");
+  if (match.matchType !== "exact") return t("intelligentMatches.seloSignificados");
 
   const porDirecaoOposta = match.matchedAssets.some(ativo =>
     match.matchedNeeds.some(necessidade => {
@@ -29,10 +32,11 @@ export function seloDoMatch(match: { matchType: string; matchedAssets: ItemDoMat
       return a.objeto === n.objeto && a.direcao !== "neutro" && n.direcao !== "neutro" && a.direcao !== n.direcao;
     }));
 
-  return porDirecaoOposta ? "Oferta e procura" : "Tag exata";
+  return porDirecaoOposta ? t("intelligentMatches.seloOfertaProcura") : t("intelligentMatches.seloTagExata");
 }
 
 export default function IntelligentMatches() {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   // Etapa 11: sem o termo aceito, o servidor recusa o cruzamento. A tela pergunta
@@ -44,31 +48,31 @@ export default function IntelligentMatches() {
   const { data: matches = [], isLoading } = trpc.intelligentMatches.list.useQuery(undefined, { enabled: authorized });
   const { data: contacts = [] } = trpc.intelligentMatches.contacts.useQuery(undefined, { enabled: authorized });
   const revoke = trpc.consent.revoke.useMutation({
-    onSuccess: () => { utils.consent.status.invalidate(); toast.success("Autorização revogada. O cruzamento foi desligado."); },
-    onError: error => toast.error(error.message || "Não foi possível revogar."),
+    onSuccess: () => { utils.consent.status.invalidate(); toast.success(t("intelligentMatches.toastRevogado")); },
+    onError: error => toast.error(error.message || t("intelligentMatches.erroRevogar")),
   });
   const [kind, setKind] = useState<EntryKind>("asset");
   const [contactId, setContactId] = useState("");
   const [tagLabel, setTagLabel] = useState("");
   const [category, setCategory] = useState("");
   const recalculate = trpc.intelligentMatches.recalculate.useMutation({
-    onSuccess: result => { utils.intelligentMatches.list.invalidate(); toast.success(`${result.total} oportunidade(s) analisada(s).`); },
-    onError: error => toast.error(error.message || "Não foi possível atualizar os matches."),
+    onSuccess: result => { utils.intelligentMatches.list.invalidate(); toast.success(t("intelligentMatches.toastRecalculado", { total: result.total })); },
+    onError: error => toast.error(error.message || t("intelligentMatches.erroAtualizarMatches")),
   });
   const createAsset = trpc.intelligentMatches.addAsset.useMutation({ onSuccess: refresh });
   const createNeed = trpc.intelligentMatches.addNeed.useMutation({ onSuccess: refresh });
   const aposRemover = () => {
     utils.intelligentMatches.list.invalidate();
     utils.intelligentMatches.contacts.invalidate();
-    toast.success("Item removido e sugestões atualizadas.");
+    toast.success(t("intelligentMatches.toastItemRemovido"));
   };
   const removeAsset = trpc.intelligentMatches.removeAsset.useMutation({
     onSuccess: aposRemover,
-    onError: error => toast.error(error.message || "Não foi possível remover o item."),
+    onError: error => toast.error(error.message || t("intelligentMatches.erroRemoverItem")),
   });
   const removeNeed = trpc.intelligentMatches.removeNeed.useMutation({
     onSuccess: aposRemover,
-    onError: error => toast.error(error.message || "Não foi possível remover o item."),
+    onError: error => toast.error(error.message || t("intelligentMatches.erroRemoverItem")),
   });
   const updateStatus = trpc.intelligentMatches.updateStatus.useMutation({ onSuccess: () => utils.intelligentMatches.list.invalidate() });
 
@@ -76,7 +80,7 @@ export default function IntelligentMatches() {
     utils.intelligentMatches.list.invalidate();
     utils.intelligentMatches.contacts.invalidate();
     setTagLabel(""); setCategory("");
-    toast.success(kind === "asset" ? "Pronto! Salvamos a oferta e atualizamos as sugestões." : "Pronto! Salvamos a necessidade e atualizamos as sugestões.");
+    toast.success(kind === "asset" ? t("intelligentMatches.toastOfertaSalva") : t("intelligentMatches.toastNecessidadeSalva"));
   }
   /**
    * Trocar de aba limpa o que foi digitado, mas mantém o contato escolhido.
@@ -99,17 +103,17 @@ export default function IntelligentMatches() {
 
   function submitEntry(event: React.FormEvent) {
     event.preventDefault();
-    if (!contactId || !tagLabel.trim()) return toast.error("Escolha o contato e descreva o item.");
+    if (!contactId || !tagLabel.trim()) return toast.error(t("intelligentMatches.erroFormularioIncompleto"));
     const input = { contactId: Number(contactId), tagLabel: tagLabel.trim(), category: category.trim() || undefined };
     if (kind === "asset") createAsset.mutate(input); else createNeed.mutate(input);
   }
 
-  return <><AppHeader title="Conexões Inteligentes" backTo="/dashboard"/>
+  return <><AppHeader title={t("intelligentMatches.titulo")} backTo="/dashboard"/>
   <main className="min-h-screen bg-transparent px-4 py-8 text-white md:px-8">
     <div className="mx-auto max-w-6xl">
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-        <div><p className="text-xs font-semibold tracking-wide text-amber-300">REDE PRIVADA</p><h1 className="mt-1 text-3xl font-bold md:text-4xl">Conexões Inteligentes</h1><p className="mt-2 max-w-2xl text-white/55">Encontre oportunidades de conexão entre os seus próprios contatos. Nada é compartilhado com outras usuárias.</p></div>
-        {authorized && <button disabled={recalculate.isPending} onClick={() => recalculate.mutate()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f5a623] px-5 py-3 font-bold text-[#08121f] disabled:opacity-50"><RefreshCw size={18} className={recalculate.isPending ? "animate-spin" : ""}/> Atualizar sugestões</button>}
+        <div><p className="text-xs font-semibold tracking-wide text-amber-300">{t("intelligentMatches.eyebrow")}</p><h1 className="mt-1 text-3xl font-bold md:text-4xl">{t("intelligentMatches.titulo")}</h1><p className="mt-2 max-w-2xl text-white/55">{t("intelligentMatches.subtitulo")}</p></div>
+        {authorized && <button disabled={recalculate.isPending} onClick={() => recalculate.mutate()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f5a623] px-5 py-3 font-bold text-[#08121f] disabled:opacity-50"><RefreshCw size={18} className={recalculate.isPending ? "animate-spin" : ""}/> {t("intelligentMatches.botaoAtualizar")}</button>}
       </div>
       {/*
         Falha ao carregar o status NÃO pode virar tela de aceite. Sem isto,
@@ -119,16 +123,16 @@ export default function IntelligentMatches() {
         antes do clique: prova de concordância com um texto que a usuária nunca
         viu, que é o oposto do que a etapa 11 existe para produzir.
       */}
-      {loadingConsent ? <p className="py-24 text-center text-white/45">Carregando…</p>
+      {loadingConsent ? <p className="py-24 text-center text-white/45">{t("intelligentMatches.carregandoConsentimento")}</p>
       : consentFalhou ? <div className="rounded-3xl border border-white/15 px-6 py-16 text-center">
-          <p className="text-white/70">Não foi possível carregar o termo de autorização.</p>
-          <p className="mt-2 text-sm text-white/40">Sua autorização, se já existia, continua valendo. Tente de novo daqui a pouco.</p>
+          <p className="text-white/70">{t("intelligentMatches.erroCarregarTermo")}</p>
+          <p className="mt-2 text-sm text-white/40">{t("intelligentMatches.avisoAutorizacaoExistente")}</p>
           <button onClick={() => utils.consent.status.invalidate()} className="mt-5 rounded-xl border border-amber-300/50 px-5 py-2.5 text-sm font-semibold text-amber-200 hover:bg-amber-300/10">
-            Tentar de novo
+            {t("intelligentMatches.botaoTentarNovo")}
           </button>
         </div>
       : !authorized ? <SmartMatchConsent onAccepted={() => utils.consent.status.invalidate()}/> : <>
-      <section className="mb-7 rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5"><div className="flex gap-3"><Lightbulb className="mt-0.5 shrink-0 text-amber-300" size={20}/><p className="text-sm leading-6 text-amber-100/80">Anote o que cada contato tem a oferecer e o que está procurando. O MMM compara essas informações e sugere quem pode ajudar quem.</p></div></section>
+      <section className="mb-7 rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5"><div className="flex gap-3"><Lightbulb className="mt-0.5 shrink-0 text-amber-300" size={20}/><p className="text-sm leading-6 text-amber-100/80">{t("intelligentMatches.explicacao")}</p></div></section>
       {/*
         O modo (possui / procura) decide o que o botão Adicionar faz, e modo
         escondido é armadilha: quem não percebe em qual está grava a informação
@@ -145,26 +149,27 @@ export default function IntelligentMatches() {
             onClick={() => trocarModo("asset")}
             className={`rounded-full px-4 py-2 text-sm transition-colors ${kind === "asset" ? "bg-emerald-400 font-bold text-[#08121f]" : "border border-white/15 text-white/65 hover:border-white/30"}`}
           >
-            O que possui
+            {t("intelligentMatches.abaPossui")}
           </button>
           <button
             type="button"
             onClick={() => trocarModo("need")}
             className={`rounded-full px-4 py-2 text-sm transition-colors ${kind === "need" ? "bg-sky-300 font-bold text-[#08121f]" : "border border-white/15 text-white/65 hover:border-white/30"}`}
           >
-            O que procura
+            {t("intelligentMatches.abaProcura")}
           </button>
         </div>
 
         <p className="mb-3 text-sm text-white/55">
           {contatoEscolhido
-            ? <>Registrando o que <strong className="text-white/85">{contatoEscolhido.fullName}</strong>{" "}
+            ? <>{t("intelligentMatches.registrandoPrefixo")}{" "}
+                <strong className="text-white/85">{contatoEscolhido.fullName}</strong>{" "}
                 <strong className={kind === "asset" ? "text-emerald-300" : "text-sky-300"}>
-                  {kind === "asset" ? "tem a oferecer" : "está procurando"}
+                  {kind === "asset" ? t("intelligentMatches.temAOferecer") : t("intelligentMatches.estaProcurando")}
                 </strong>.</>
-            : <>Escolha um contato para registrar o que ele{" "}
+            : <>{t("intelligentMatches.escolhaContatoPrefixo")}{" "}
                 <strong className={kind === "asset" ? "text-emerald-300" : "text-sky-300"}>
-                  {kind === "asset" ? "tem a oferecer" : "está procurando"}
+                  {kind === "asset" ? t("intelligentMatches.temAOferecer") : t("intelligentMatches.estaProcurando")}
                 </strong>.</>}
         </p>
 
@@ -174,7 +179,7 @@ export default function IntelligentMatches() {
             onChange={event => setContactId(event.target.value)}
             className="rounded-xl border border-white/15 bg-[#0b1725] px-3 py-3 text-white"
           >
-            <option className="bg-white text-[#2D3E50]" value="">Selecione um contato</option>
+            <option className="bg-white text-[#2D3E50]" value="">{t("intelligentMatches.selecioneContato")}</option>
             {contacts.map(contact => (
               <option className="bg-white text-[#2D3E50]" key={contact.id} value={contact.id}>
                 {contact.fullName}{contact.company ? ` (${contact.company})` : ""}
@@ -184,31 +189,31 @@ export default function IntelligentMatches() {
           <input
             value={tagLabel}
             onChange={event => setTagLabel(event.target.value)}
-            placeholder={kind === "asset" ? "Ex.: Armazenagem refrigerada" : "Ex.: Compradores no exterior"}
+            placeholder={kind === "asset" ? t("intelligentMatches.placeholderOferta") : t("intelligentMatches.placeholderNecessidade")}
             className={`rounded-xl border border-white/15 bg-white/5 px-3 py-3 outline-none ${kind === "asset" ? "focus:border-emerald-400" : "focus:border-sky-300"}`}
           />
           <input
             value={category}
             onChange={event => setCategory(event.target.value)}
-            placeholder="Categoria opcional"
+            placeholder={t("intelligentMatches.placeholderCategoria")}
             className={`rounded-xl border border-white/15 bg-white/5 px-3 py-3 outline-none ${kind === "asset" ? "focus:border-emerald-400" : "focus:border-sky-300"}`}
           />
           <button
             disabled={createAsset.isPending || createNeed.isPending}
             className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 font-bold text-[#08121f] transition-colors disabled:opacity-50 ${kind === "asset" ? "bg-emerald-400 hover:bg-emerald-300" : "bg-sky-300 hover:bg-sky-200"}`}
           >
-            <Plus size={17}/> {kind === "asset" ? "Adicionar ao que possui" : "Adicionar ao que procura"}
+            <Plus size={17}/> {kind === "asset" ? t("intelligentMatches.botaoAdicionarOferta") : t("intelligentMatches.botaoAdicionarNecessidade")}
           </button>
         </form>
 
         {contatoEscolhido && (
           <div className="mt-4 border-t border-white/10 pt-3">
             <p className="mb-2 text-xs text-white/40">
-              {contatoEscolhido.fullName} {kind === "asset" ? "já oferece" : "já procura"}:
+              {contatoEscolhido.fullName} {kind === "asset" ? t("intelligentMatches.jaOferece") : t("intelligentMatches.jaProcura")}:
             </p>
             {jaRegistrados.length === 0 ? (
               <p className="text-xs text-white/35">
-                Nada registrado ainda {kind === "asset" ? "no que possui" : "no que procura"}.
+                {t("intelligentMatches.nadaRegistradoPrefixo")} {kind === "asset" ? t("intelligentMatches.noQuePossui") : t("intelligentMatches.noQueProcura")}.
               </p>
             ) : (
               <ul className="flex flex-wrap gap-2">
@@ -220,8 +225,8 @@ export default function IntelligentMatches() {
                     {item.label}{item.category ? <span className="text-white/35"> · {item.category}</span> : null}
                     <button
                       type="button"
-                      aria-label={`Remover ${item.label}`}
-                      title="Remover este item e atualizar as sugestões"
+                      aria-label={t("intelligentMatches.removerAriaLabel", { label: item.label })}
+                      title={t("intelligentMatches.removerTooltip")}
                       disabled={removeAsset.isPending || removeNeed.isPending}
                       onClick={() => (kind === "asset" ? removeAsset.mutate({ id: item.id }) : removeNeed.mutate({ id: item.id }))}
                       className="rounded-full p-0.5 text-white/40 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
@@ -235,21 +240,55 @@ export default function IntelligentMatches() {
           </div>
         )}
       </section>
-      {isLoading ? <p className="py-16 text-center text-white/45">Carregando oportunidades…</p> : !matches.length ? <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center"><Sparkles className="mx-auto mb-4 text-amber-300" size={34}/><h2 className="text-xl font-semibold">Nenhuma oportunidade ainda</h2><p className="mt-2 text-white/45">Cadastre acima o que um contato oferece e o que outro procura. As sugestões de conexão vão aparecer aqui.</p></div> : <div className="grid gap-4">{matches.map(match => <article key={match.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="flex flex-col justify-between gap-4 md:flex-row"><div><div className="mb-2 flex flex-wrap items-center gap-2"><span className="rounded-full bg-amber-300 px-3 py-1 text-sm font-bold text-[#08121f]">{match.matchScore}% de compatibilidade</span><span className={`rounded-full px-3 py-1 text-xs ${match.matchType === "mutual" ? "border border-emerald-400/50 bg-emerald-400/10 font-semibold text-emerald-300" : "border border-white/15 text-white/60"}`}>{seloDoMatch(match)}</span></div><h2 className="text-lg font-semibold">{match.contactA?.name ?? "Contato A"} <span className="text-white/35">→</span> {match.contactB?.name ?? "Contato B"}</h2><p className="mt-2 text-sm text-white/65">{match.reasonText}</p><p className="mt-3 text-xs text-white/40">Oferece: {match.matchedAssets.map(item => item.label).join(", ")} · Procura: {match.matchedNeeds.map(item => item.label).join(", ")}</p></div>{match.status === "pending" || match.status === "viewed" ? <div className="flex shrink-0 flex-wrap gap-2 self-start"><button onClick={() => updateStatus.mutate({ id: match.id, status: "accepted" })} className="rounded-lg bg-emerald-400 px-3 py-2 text-sm font-bold text-[#08121f]"><Check size={15} className="mr-1 inline"/> Aceitar</button><button onClick={() => updateStatus.mutate({ id: match.id, status: "dismissed" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65"><X size={15} className="mr-1 inline"/> Dispensar</button></div> : <span className="text-sm text-white/45">{match.status === "accepted" ? "Conexão aceita" : "Dispensada"}</span>}</div></article>)}</div>}
+      {isLoading ? (
+        <p className="py-16 text-center text-white/45">{t("intelligentMatches.carregandoOportunidades")}</p>
+      ) : !matches.length ? (
+        <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center">
+          <Sparkles className="mx-auto mb-4 text-amber-300" size={34}/>
+          <h2 className="text-xl font-semibold">{t("intelligentMatches.semOportunidadesTitulo")}</h2>
+          <p className="mt-2 text-white/45">{t("intelligentMatches.semOportunidadesTexto")}</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {matches.map(match => (
+            <article key={match.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+              <div className="flex flex-col justify-between gap-4 md:flex-row">
+                <div>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-amber-300 px-3 py-1 text-sm font-bold text-[#08121f]">{t("intelligentMatches.percentualCompatibilidade", { score: match.matchScore })}</span>
+                    <span className={`rounded-full px-3 py-1 text-xs ${match.matchType === "mutual" ? "border border-emerald-400/50 bg-emerald-400/10 font-semibold text-emerald-300" : "border border-white/15 text-white/60"}`}>{seloDoMatch(match, t)}</span>
+                  </div>
+                  <h2 className="text-lg font-semibold">{match.contactA?.name ?? t("intelligentMatches.contatoAFallback")} <span className="text-white/35">→</span> {match.contactB?.name ?? t("intelligentMatches.contatoBFallback")}</h2>
+                  <p className="mt-2 text-sm text-white/65">{match.reasonText}</p>
+                  <p className="mt-3 text-xs text-white/40">{t("intelligentMatches.rotuloOferece")} {match.matchedAssets.map(item => item.label).join(", ")} {t("intelligentMatches.rotuloProcura")} {match.matchedNeeds.map(item => item.label).join(", ")}</p>
+                </div>
+                {match.status === "pending" || match.status === "viewed" ? (
+                  <div className="flex shrink-0 flex-wrap gap-2 self-start">
+                    <button onClick={() => updateStatus.mutate({ id: match.id, status: "accepted" })} className="rounded-lg bg-emerald-400 px-3 py-2 text-sm font-bold text-[#08121f]"><Check size={15} className="mr-1 inline"/> {t("intelligentMatches.botaoAceitar")}</button>
+                    <button onClick={() => updateStatus.mutate({ id: match.id, status: "dismissed" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65"><X size={15} className="mr-1 inline"/> {t("intelligentMatches.botaoDispensar")}</button>
+                  </div>
+                ) : (
+                  <span className="text-sm text-white/45">{match.status === "accepted" ? t("intelligentMatches.statusAceita") : t("intelligentMatches.statusDispensada")}</span>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
       {!consent?.pendingText && (
         <section className="mt-10 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
           <p className="text-sm text-white/55">
-            O Cruzamento Inteligente está autorizado por você{consent?.acceptedAt ? ` desde ${new Date(consent.acceptedAt).toLocaleDateString()}` : ""}.
+            {t("intelligentMatches.autorizadoTexto")}{consent?.acceptedAt ? ` ${t("intelligentMatches.autorizadoDesde", { data: new Date(consent.acceptedAt).toLocaleDateString() })}` : ""}.
           </p>
           <button
             disabled={revoke.isPending}
             onClick={() => revoke.mutate({ type: "termo_smart_match" })}
             className="mt-3 rounded-lg border border-white/15 px-4 py-2 text-sm text-white/60 transition-colors hover:border-red-400/40 hover:text-red-300 disabled:opacity-50"
           >
-            Revogar autorização
+            {t("intelligentMatches.botaoRevogar")}
           </button>
           <p className="mt-2 text-xs text-white/35">
-            Desliga só o cruzamento. Contatos, oportunidades e reuniões continuam funcionando.
+            {t("intelligentMatches.avisoRevogar")}
           </p>
 
           {/*
@@ -266,7 +305,7 @@ export default function IntelligentMatches() {
                 className="flex items-center gap-1.5 text-xs text-white/45 transition-colors hover:text-white/70"
               >
                 <History size={13}/>
-                {verHistorico ? "Ocultar" : "Ver"} o registro das autorizações ({historico.length})
+                {verHistorico ? t("intelligentMatches.ocultarHistorico") : t("intelligentMatches.verHistoricoBotao")} {t("intelligentMatches.registroAutorizacoesLabel", { count: historico.length })}
               </button>
 
               {verHistorico && (
@@ -280,14 +319,17 @@ export default function IntelligentMatches() {
                     // num registro que ela não tem como corrigir pela tela.
                     const vigente = registro.version === consent?.document?.version;
                     const situacao = registro.revokedAt ? "revogada" : vigente ? "ativa" : "substituída";
+                    const situacaoLabel = situacao === "revogada" ? t("intelligentMatches.situacaoRevogada")
+                      : situacao === "ativa" ? t("intelligentMatches.situacaoAtiva")
+                      : t("intelligentMatches.situacaoSubstituida");
                     const cor = situacao === "ativa" ? "text-emerald-300/70" : "text-white/35";
                     return (
                     <li key={registro.id} className="flex flex-wrap items-baseline gap-x-2 text-xs text-white/45">
-                      <span className={cor}>{situacao}</span>
-                      <span className="text-white/55">versão {registro.version}</span>
-                      <span>aceita em {new Date(registro.grantedAt).toLocaleString()}</span>
-                      {registro.revokedAt && <span>· revogada em {new Date(registro.revokedAt).toLocaleString()}</span>}
-                      {situacao === "substituída" && <span>· o termo mudou depois disso</span>}
+                      <span className={cor}>{situacaoLabel}</span>
+                      <span className="text-white/55">{t("intelligentMatches.versaoLabel")} {registro.version}</span>
+                      <span>{t("intelligentMatches.aceitaEm")} {new Date(registro.grantedAt).toLocaleString()}</span>
+                      {registro.revokedAt && <span>{t("intelligentMatches.revogadaEmData", { data: new Date(registro.revokedAt).toLocaleString() })}</span>}
+                      {situacao === "substituída" && <span>{t("intelligentMatches.termoMudouAviso")}</span>}
                     </li>
                   );})}
                 </ul>

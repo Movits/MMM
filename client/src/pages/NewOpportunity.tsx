@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -16,43 +17,49 @@ import {
   HelpCircle, AlertOctagon, Loader2, ChevronRight
 } from "lucide-react";
 
-const SECTORS = [
-  "Tecnologia", "Saúde", "Educação", "Finanças", "Agronegócio",
-  "Energia", "Varejo", "Imobiliário", "Indústria", "Serviços",
-  "Moda", "Alimentação", "Turismo", "Logística", "Jurídico",
-  "Commodities", "Exportação", "Importação", "Infraestrutura",
-  "Farmacêutico", "Consultoria", "Marketing", "Beleza & Cosméticos",
-];
-
-const COUNTRIES = [
-  { code: "BR", name: "Brasil" }, { code: "PT", name: "Portugal" },
-  { code: "US", name: "Estados Unidos" }, { code: "AR", name: "Argentina" },
-  { code: "CL", name: "Chile" }, { code: "CO", name: "Colômbia" },
-  { code: "MX", name: "México" }, { code: "ES", name: "Espanha" },
-  { code: "FR", name: "França" }, { code: "DE", name: "Alemanha" },
-  { code: "GB", name: "Reino Unido" }, { code: "IT", name: "Itália" },
-  { code: "JP", name: "Japão" }, { code: "CN", name: "China" },
-  { code: "IN", name: "Índia" }, { code: "ZA", name: "África do Sul" },
-  { code: "NG", name: "Nigéria" }, { code: "AE", name: "Emirados Árabes" },
-];
-
-const COMPLIANCE_COLORS = {
-  green:   { label: "Alta Confiabilidade",    color: "#22c55e", icon: <ShieldCheck size={14} />, bg: "bg-green-500/10",  border: "border-green-500/30",  text: "text-green-400"  },
-  yellow:  { label: "Confiabilidade Média",   color: "#eab308", icon: <AlertTriangle size={14} />, bg: "bg-yellow-500/10", border: "border-yellow-500/30", text: "text-yellow-400" },
-  orange:  { label: "Necessita Validação",    color: "#f97316", icon: <AlertCircle size={14} />, bg: "bg-orange-500/10", border: "border-orange-500/30", text: "text-orange-400" },
-  red:     { label: "Baixa Confiabilidade",   color: "#ef4444", icon: <XCircle size={14} />, bg: "bg-red-500/10",    border: "border-red-500/30",    text: "text-red-400"    },
-  pending: { label: "Analisando",             color: "#9ca3af", icon: <Clock size={14} />, bg: "bg-gray-500/10",   border: "border-gray-500/30",   text: "text-gray-400"   },
-};
-
-const RISK_COLORS = {
-  low:    { label: "Baixo Risco",   color: "#22c55e", icon: <ShieldCheck size={12} /> },
-  medium: { label: "Risco Médio",   color: "#eab308", icon: <AlertTriangle size={12} /> },
-  high:   { label: "Alto Risco",    color: "#ef4444", icon: <AlertOctagon size={12} /> },
-};
-
 export default function NewOpportunity() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const { t } = useTranslation();
+
+  const SECTORS = [
+    t("newOpportunity.sectorTecnologia"), t("newOpportunity.sectorSaude"), t("newOpportunity.sectorEducacao"),
+    t("newOpportunity.sectorFinancas"), t("newOpportunity.sectorAgronegocio"),
+    t("newOpportunity.sectorEnergia"), t("newOpportunity.sectorVarejo"), t("newOpportunity.sectorImobiliario"),
+    t("newOpportunity.sectorIndustria"), t("newOpportunity.sectorServicos"),
+    t("newOpportunity.sectorModa"), t("newOpportunity.sectorAlimentacao"), t("newOpportunity.sectorTurismo"),
+    t("newOpportunity.sectorLogistica"), t("newOpportunity.sectorJuridico"),
+    t("newOpportunity.sectorCommodities"), t("newOpportunity.sectorExportacao"), t("newOpportunity.sectorImportacao"),
+    t("newOpportunity.sectorInfraestrutura"),
+    t("newOpportunity.sectorFarmaceutico"), t("newOpportunity.sectorConsultoria"), t("newOpportunity.sectorMarketing"),
+    t("newOpportunity.sectorBelezaCosmeticos"),
+  ];
+
+  const COUNTRIES = [
+    { code: "BR", name: t("newOpportunity.countryBrasil") }, { code: "PT", name: t("newOpportunity.countryPortugal") },
+    { code: "US", name: t("newOpportunity.countryEstadosUnidos") }, { code: "AR", name: t("newOpportunity.countryArgentina") },
+    { code: "CL", name: t("newOpportunity.countryChile") }, { code: "CO", name: t("newOpportunity.countryColombia") },
+    { code: "MX", name: t("newOpportunity.countryMexico") }, { code: "ES", name: t("newOpportunity.countryEspanha") },
+    { code: "FR", name: t("newOpportunity.countryFranca") }, { code: "DE", name: t("newOpportunity.countryAlemanha") },
+    { code: "GB", name: t("newOpportunity.countryReinoUnido") }, { code: "IT", name: t("newOpportunity.countryItalia") },
+    { code: "JP", name: t("newOpportunity.countryJapao") }, { code: "CN", name: t("newOpportunity.countryChina") },
+    { code: "IN", name: t("newOpportunity.countryIndia") }, { code: "ZA", name: t("newOpportunity.countryAfricaDoSul") },
+    { code: "NG", name: t("newOpportunity.countryNigeria") }, { code: "AE", name: t("newOpportunity.countryEmiradosArabes") },
+  ];
+
+  const COMPLIANCE_COLORS = {
+    green:   { label: t("newOpportunity.complianceGreenLabel"),   color: "#22c55e", icon: <ShieldCheck size={14} />, bg: "bg-green-500/10",  border: "border-green-500/30",  text: "text-green-400"  },
+    yellow:  { label: t("newOpportunity.complianceYellowLabel"),  color: "#eab308", icon: <AlertTriangle size={14} />, bg: "bg-yellow-500/10", border: "border-yellow-500/30", text: "text-yellow-400" },
+    orange:  { label: t("newOpportunity.complianceOrangeLabel"),  color: "#f97316", icon: <AlertCircle size={14} />, bg: "bg-orange-500/10", border: "border-orange-500/30", text: "text-orange-400" },
+    red:     { label: t("newOpportunity.complianceRedLabel"),     color: "#ef4444", icon: <XCircle size={14} />, bg: "bg-red-500/10",    border: "border-red-500/30",    text: "text-red-400"    },
+    pending: { label: t("newOpportunity.compliancePendingLabel"), color: "#9ca3af", icon: <Clock size={14} />, bg: "bg-gray-500/10",   border: "border-gray-500/30",   text: "text-gray-400"   },
+  };
+
+  const RISK_COLORS = {
+    low:    { label: t("newOpportunity.riskLowLabel"),    color: "#22c55e", icon: <ShieldCheck size={12} /> },
+    medium: { label: t("newOpportunity.riskMediumLabel"), color: "#eab308", icon: <AlertTriangle size={12} /> },
+    high:   { label: t("newOpportunity.riskHighLabel"),   color: "#ef4444", icon: <AlertOctagon size={12} /> },
+  };
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -123,16 +130,16 @@ export default function NewOpportunity() {
         status: result.status,
       });
       if (result.complianceLevel === "red") {
-        toast.error("Sua oportunidade não pôde ser publicada. A análise automática encontrou um problema. Revise o texto, confira as diretrizes ao lado e tente novamente.");
+        toast.error(t("newOpportunity.toastRejected"));
       } else if (result.status === "pending") {
         // Toda oportunidade nasce em análise; dizer "publicada" fazia parecer
         // que ela tinha sumido, porque a lista pública só mostra as aprovadas.
-        toast.success("Oportunidade enviada para análise!", {
-          description: "Ela já aparece para você na lista com o selo Em análise e fica pública assim que a moderação aprovar.",
+        toast.success(t("newOpportunity.toastPendingTitle"), {
+          description: t("newOpportunity.toastPendingDescription"),
         });
         setTimeout(() => navigate(`/opportunities`), 2200);
       } else {
-        toast.success("Recebemos sua oportunidade! Ela fica pública assim que a análise for concluída.");
+        toast.success(t("newOpportunity.receivedMessage"));
         setTimeout(() => navigate(`/opportunities`), 1500);
       }
     },
@@ -142,12 +149,12 @@ export default function NewOpportunity() {
   // Sugestões simples por tipo, para reduzir tag inventada e vocabulário
   // fragmentado (tudo minúsculo, mesmo formato que handleAddTag grava).
   const SUGGESTED_TAGS: Record<string, string[]> = {
-    offer: ["produto", "serviço", "consultoria", "exportação"],
-    demand: ["fornecedor", "orçamento", "prazo curto", "recorrente"],
-    investment: ["aporte", "sociedade", "expansão", "capital de giro"],
-    partnership: ["parceria", "co-branding", "distribuição", "representação"],
-    distribution: ["logística", "revenda", "atacado", "varejo"],
-    other: ["networking", "mentoria", "evento", "projeto social"],
+    offer: [t("newOpportunity.tagSuggestionProduto"), t("newOpportunity.tagSuggestionServico"), t("newOpportunity.tagSuggestionConsultoria"), t("newOpportunity.tagSuggestionExportacao")],
+    demand: [t("newOpportunity.tagSuggestionFornecedor"), t("newOpportunity.tagSuggestionOrcamento"), t("newOpportunity.tagSuggestionPrazoCurto"), t("newOpportunity.tagSuggestionRecorrente")],
+    investment: [t("newOpportunity.tagSuggestionAporte"), t("newOpportunity.tagSuggestionSociedade"), t("newOpportunity.tagSuggestionExpansao"), t("newOpportunity.tagSuggestionCapitalGiro")],
+    partnership: [t("newOpportunity.tagSuggestionParceria"), t("newOpportunity.tagSuggestionCoBranding"), t("newOpportunity.tagSuggestionDistribuicao"), t("newOpportunity.tagSuggestionRepresentacao")],
+    distribution: [t("newOpportunity.tagSuggestionLogistica"), t("newOpportunity.tagSuggestionRevenda"), t("newOpportunity.tagSuggestionAtacado"), t("newOpportunity.tagSuggestionVarejo")],
+    other: [t("newOpportunity.tagSuggestionNetworking"), t("newOpportunity.tagSuggestionMentoria"), t("newOpportunity.tagSuggestionEvento"), t("newOpportunity.tagSuggestionProjetoSocial")],
   };
   const suggestedForType = (SUGGESTED_TAGS[type] ?? [])
     .concat(sector ? [sector.toLowerCase()] : [])
@@ -155,17 +162,17 @@ export default function NewOpportunity() {
     .slice(0, 5);
 
   const handleAddTag = () => {
-    const t = tagInput.trim().toLowerCase();
-    if (t && !tags.includes(t) && tags.length < 10) {
-      setTags([...tags, t]);
+    const newTag = tagInput.trim().toLowerCase();
+    if (newTag && !tags.includes(newTag) && tags.length < 10) {
+      setTags([...tags, newTag]);
       setTagInput("");
     }
   };
 
   const handleSubmit = () => {
-    if (!title.trim() || title.length < 10) return toast.error("Título muito curto (mínimo 10 caracteres)");
-    if (!description.trim() || description.length < 30) return toast.error("Descrição muito curta (mínimo 30 caracteres)");
-    if (!type) return toast.error("Selecione o tipo de oportunidade");
+    if (!title.trim() || title.length < 10) return toast.error(t("newOpportunity.toastTitleTooShort"));
+    if (!description.trim() || description.length < 30) return toast.error(t("newOpportunity.toastDescriptionTooShort"));
+    if (!type) return toast.error(t("newOpportunity.toastSelectType"));
 
     createMutation.mutate({
       title: title.trim(),
@@ -192,13 +199,13 @@ export default function NewOpportunity() {
               <ArrowLeft size={18} />
             </button>
             <div>
-              <h1 className="text-white font-bold text-lg leading-tight">Nova Oportunidade</h1>
-              <p className="text-white/40 text-xs">A IA analisa em tempo real enquanto você preenche</p>
+              <h1 className="text-white font-bold text-lg leading-tight">{t("newOpportunity.pageTitle")}</h1>
+              <p className="text-white/40 text-xs">{t("newOpportunity.pageSubtitle")}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-amber-400/70">
             <Sparkles size={12} />
-            <span>Análise automática de segurança ativa</span>
+            <span>{t("newOpportunity.securityBadge")}</span>
           </div>
         </div>
       </div>
@@ -210,9 +217,9 @@ export default function NewOpportunity() {
 
             {/* Título */}
             <div>
-              <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Título *</label>
+              <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">{t("newOpportunity.titleLabel")}</label>
               <Input
-                placeholder="Ex: Busco distribuidoras no mercado europeu para produtos orgânicos brasileiros"
+                placeholder={t("newOpportunity.titlePlaceholder")}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={300}
@@ -223,27 +230,27 @@ export default function NewOpportunity() {
 
             {/* Tipo */}
             <div>
-              <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Tipo de oportunidade *</label>
+              <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">{t("newOpportunity.typeLabel")}</label>
               <Select value={type} onValueChange={setType}>
                 <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                  <SelectValue placeholder="Selecione o tipo..." />
+                  <SelectValue placeholder={t("newOpportunity.typePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent className="bg-[#0d1628] border-white/10 text-white">
-                  <SelectItem value="offer">📦 Oferta: produto, serviço ou commodity</SelectItem>
-                  <SelectItem value="demand">📈 Demanda: busca de fornecedores</SelectItem>
-                  <SelectItem value="investment">💰 Investimento: projeto que busca capital</SelectItem>
-                  <SelectItem value="partnership">🤝 Parceria: colaboração estratégica</SelectItem>
-                  <SelectItem value="distribution">🌍 Distribuição: busca de distribuidoras</SelectItem>
-                  <SelectItem value="other">💡 Outro</SelectItem>
+                  <SelectItem value="offer">{t("newOpportunity.typeOfferOption")}</SelectItem>
+                  <SelectItem value="demand">{t("newOpportunity.typeDemandOption")}</SelectItem>
+                  <SelectItem value="investment">{t("newOpportunity.typeInvestmentOption")}</SelectItem>
+                  <SelectItem value="partnership">{t("newOpportunity.typePartnershipOption")}</SelectItem>
+                  <SelectItem value="distribution">{t("newOpportunity.typeDistributionOption")}</SelectItem>
+                  <SelectItem value="other">{t("newOpportunity.typeOtherOption")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Descrição */}
             <div>
-              <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Descrição detalhada *</label>
+              <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">{t("newOpportunity.descriptionLabel")}</label>
               <Textarea
-                placeholder="Conte o que você oferece ou busca: quantidade, condições, diferenciais e para quem é. Quanto mais detalhes, mais rápida e justa a análise."
+                placeholder={t("newOpportunity.descriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={5000}
@@ -263,13 +270,13 @@ export default function NewOpportunity() {
                   {isAnalyzing ? (
                     <>
                       <Loader2 size={14} className="text-amber-400 animate-spin" />
-                      <span className="text-amber-400 text-xs font-semibold">Analisando a segurança da sua oportunidade...</span>
+                      <span className="text-amber-400 text-xs font-semibold">{t("newOpportunity.analyzingSecurity")}</span>
                     </>
                   ) : risk ? (
                     <>
                       <span style={{ color: risk.color }}>{risk.icon}</span>
                       <span className="text-xs font-semibold" style={{ color: risk.color }}>
-                        Análise Prévia: {risk.label}
+                        {t("newOpportunity.previewAnalysisLabel", { label: risk.label })}
                       </span>
                     </>
                   ) : null}
@@ -281,7 +288,7 @@ export default function NewOpportunity() {
                     <div className="flex items-start gap-2.5">
                       <HelpCircle size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-1">Pergunta da IA</p>
+                        <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-1">{t("newOpportunity.aiQuestionLabel")}</p>
                         <p className="text-white/80 text-sm leading-relaxed">{preAnalysis.dynamicQuestion}</p>
                       </div>
                     </div>
@@ -290,7 +297,7 @@ export default function NewOpportunity() {
                     <div className="flex items-start gap-2.5">
                       <AlertTriangle size={14} className="text-white/30 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-1">Análise de Risco</p>
+                        <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-1">{t("newOpportunity.riskAnalysisLabel")}</p>
                         <p className="text-white/60 text-xs leading-relaxed">{preAnalysis.riskSummary}</p>
                       </div>
                     </div>
@@ -300,7 +307,7 @@ export default function NewOpportunity() {
                       <div className="flex items-center gap-2 mb-2.5">
                         <FileText size={13} className="text-amber-400" />
                         <p className="text-white/50 text-xs font-semibold uppercase tracking-wider">
-                          Documentos recomendados para este nicho
+                          {t("newOpportunity.recommendedDocsLabel")}
                         </p>
                       </div>
                       <div className="space-y-2">
@@ -317,7 +324,7 @@ export default function NewOpportunity() {
                         ))}
                       </div>
                       <p className="text-white/30 text-xs mt-2.5 italic">
-                        Guarde esses documentos: a moderação pode pedi-los durante a análise da sua oportunidade.
+                        {t("newOpportunity.saveDocsNote")}
                       </p>
                     </div>
                   </div>
@@ -328,10 +335,10 @@ export default function NewOpportunity() {
             {/* Setor e País */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Setor</label>
+                <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">{t("newOpportunity.sectorFieldLabel")}</label>
                 <Select value={sector} onValueChange={setSector}>
                   <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                    <SelectValue placeholder="Selecionar..." />
+                    <SelectValue placeholder={t("newOpportunity.selectPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent className="bg-[#0d1628] border-white/10 max-h-60 text-white">
                     {sortTextAlphabetically(SECTORS).map((s) => (
@@ -341,10 +348,10 @@ export default function NewOpportunity() {
                 </Select>
               </div>
               <div>
-                <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">País</label>
+                <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">{t("newOpportunity.countryFieldLabel")}</label>
                 <Select value={country} onValueChange={setCountry}>
                   <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                    <SelectValue placeholder="Selecionar..." />
+                    <SelectValue placeholder={t("newOpportunity.selectPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent className="bg-[#0d1628] border-white/10 max-h-60 text-white">
                     {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: country.name }))).map((c) => (
@@ -357,10 +364,10 @@ export default function NewOpportunity() {
 
             {/* Tags */}
             <div>
-              <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Palavras-chave (até 10)</label>
+              <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">{t("newOpportunity.tagsLabel")}</label>
               <div className="flex gap-2 mb-2">
                 <Input
-                  placeholder="Adicionar tag..."
+                  placeholder={t("newOpportunity.tagInputPlaceholder")}
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
@@ -374,7 +381,7 @@ export default function NewOpportunity() {
               </div>
               {suggestedForType.length > 0 && tags.length < 10 && (
                 <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                  <span className="text-white/30 text-xs">Sugestões:</span>
+                  <span className="text-white/30 text-xs">{t("newOpportunity.tagSuggestionsLabel")}</span>
                   {suggestedForType.map((sug) => (
                     <button key={sug} type="button"
                       className="text-xs px-2 py-0.5 rounded-full border border-white/15 text-white/50 hover:border-amber-500/40 hover:text-amber-300 transition-colors"
@@ -389,7 +396,7 @@ export default function NewOpportunity() {
                   {tags.map((tag) => (
                     <Badge key={tag} variant="outline"
                       className="border-amber-500/30 text-amber-300 bg-amber-500/10 text-xs gap-1 cursor-pointer hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-300 transition-colors"
-                      onClick={() => setTags(tags.filter((t) => t !== tag))}>
+                      onClick={() => setTags(tags.filter((tg) => tg !== tag))}>
                       #{tag} <X size={10} />
                     </Badge>
                   ))}
@@ -408,9 +415,9 @@ export default function NewOpportunity() {
                 <div>
                   <p className="text-white text-sm font-medium flex items-center gap-1.5">
                     <Lock size={13} className="text-amber-400" />
-                    Oportunidade confidencial
+                    {t("newOpportunity.confidentialLabel")}
                   </p>
-                  <p className="text-white/40 text-xs mt-0.5">Visível apenas para membros com Status Ouro</p>
+                  <p className="text-white/40 text-xs mt-0.5">{t("newOpportunity.confidentialDescription")}</p>
                 </div>
               </div>
             </div>
@@ -421,16 +428,16 @@ export default function NewOpportunity() {
               onClick={handleSubmit}
               disabled={isLoading}>
               {isLoading ? (
-                <><div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />Analisando com IA...</>
+                <><div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />{t("newOpportunity.submittingLabel")}</>
               ) : (
-                <><Sparkles size={16} />Enviar para análise e publicação</>
+                <><Sparkles size={16} />{t("newOpportunity.submitButton")}</>
               )}
             </Button>
 
             {isLoading && (
               <div className="text-center">
                 <p className="text-amber-400/60 text-xs animate-pulse">
-                  Nossa IA está analisando sua oportunidade para garantir a segurança da rede...
+                  {t("newOpportunity.submittingNote")}
                 </p>
               </div>
             )}
@@ -443,16 +450,16 @@ export default function NewOpportunity() {
               <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
                 <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <Sparkles size={12} className="text-amber-400" />
-                  Como funciona a análise automática
+                  {t("newOpportunity.howItWorksTitle")}
                 </h3>
                 <div className="space-y-3 text-xs text-white/50 leading-relaxed">
-                  <p>A IA analisa em <strong className="text-white/70">tempo real</strong> enquanto você preenche o formulário:</p>
+                  <p>{t("newOpportunity.howItWorksIntroPrefix")} <strong className="text-white/70">{t("newOpportunity.howItWorksIntroBold")}</strong> {t("newOpportunity.howItWorksIntroSuffix")}</p>
                   <div className="space-y-2">
                     {[
-                      { step: "1", text: "Identifica riscos preliminares", color: "#f97316" },
-                      { step: "2", text: "Sugere documentos específicos para o nicho", color: "#eab308" },
-                      { step: "3", text: "Faz pergunta dinâmica de comprovação", color: "#22c55e" },
-                      { step: "4", text: "Calcula sua nota de confiança, de 0 a 100", color: "#3b82f6" },
+                      { step: "1", text: t("newOpportunity.step1Text"), color: "#f97316" },
+                      { step: "2", text: t("newOpportunity.step2Text"), color: "#eab308" },
+                      { step: "3", text: t("newOpportunity.step3Text"), color: "#22c55e" },
+                      { step: "4", text: t("newOpportunity.step4Text"), color: "#3b82f6" },
                     ].map((item) => (
                       <div key={item.step} className="flex items-start gap-2">
                         <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5"
@@ -470,13 +477,13 @@ export default function NewOpportunity() {
             {/* Escala de confiabilidade */}
             {!aiResult && (
               <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-                <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">Escala de Confiabilidade</h3>
+                <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">{t("newOpportunity.reliabilityScaleTitle")}</h3>
                 <div className="space-y-2">
                   {[
-                    { color: "#22c55e", label: "🟢 Verde", desc: "Acima de 80%: alta confiabilidade" },
-                    { color: "#eab308", label: "🟡 Amarelo", desc: "50–79%: boa documentação" },
-                    { color: "#f97316", label: "🟠 Laranja", desc: "20–49%: precisa de validação" },
-                    { color: "#ef4444", label: "🔴 Vermelho", desc: "Abaixo de 20%: baixa confiabilidade" },
+                    { color: "#22c55e", label: t("newOpportunity.scaleGreenLabel"), desc: t("newOpportunity.scaleGreenDesc") },
+                    { color: "#eab308", label: t("newOpportunity.scaleYellowLabel"), desc: t("newOpportunity.scaleYellowDesc") },
+                    { color: "#f97316", label: t("newOpportunity.scaleOrangeLabel"), desc: t("newOpportunity.scaleOrangeDesc") },
+                    { color: "#ef4444", label: t("newOpportunity.scaleRedLabel"), desc: t("newOpportunity.scaleRedDesc") },
                   ].map((item, i) => (
                     <div key={i} className="flex items-start gap-2 text-xs">
                       <span className="font-medium" style={{ color: item.color }}>{item.label}</span>
@@ -490,7 +497,7 @@ export default function NewOpportunity() {
             {/* Resultado final após publicação */}
             {aiResult && compliance && (
               <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-                <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-4">Resultado da análise</h3>
+                <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-4">{t("newOpportunity.resultTitle")}</h3>
                 <div className="flex flex-col items-center gap-3">
                   <FTSBadge score={aiResult.frauenTrustScore} level={aiResult.complianceLevel} size="lg" />
                   <div className={`w-full rounded-xl p-3 text-center ${compliance.bg} border ${compliance.border}`}>
@@ -504,7 +511,7 @@ export default function NewOpportunity() {
 
                 {aiResult.suggestedDocuments.length > 0 && (
                   <div className="mt-4">
-                    <p className="text-white/40 text-xs font-semibold mb-2">Documentos sugeridos:</p>
+                    <p className="text-white/40 text-xs font-semibold mb-2">{t("newOpportunity.suggestedDocsLabel")}</p>
                     <ul className="space-y-1">
                       {aiResult.suggestedDocuments.map((doc, i) => (
                         <li key={i} className="flex items-start gap-1.5 text-xs text-white/50">
@@ -520,7 +527,7 @@ export default function NewOpportunity() {
                   <div className="mt-4 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
                     <div className="flex items-center gap-1.5 text-green-400 text-xs">
                       <CheckCircle size={12} />
-                      <span>Recebemos sua oportunidade! Ela fica pública assim que a análise for concluída.</span>
+                      <span>{t("newOpportunity.receivedMessage")}</span>
                     </div>
                   </div>
                 )}
@@ -529,14 +536,14 @@ export default function NewOpportunity() {
 
             {/* Diretrizes */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-              <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">Diretrizes da plataforma</h3>
+              <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">{t("newOpportunity.guidelinesTitle")}</h3>
               <div className="space-y-2 text-xs text-white/40 leading-relaxed">
                 {[
-                  { icon: "✅", text: "Oportunidades legítimas e verificáveis" },
-                  { icon: "✅", text: "Informações completas e precisas" },
-                  { icon: "❌", text: "Promessas de retorno garantido" },
-                  { icon: "❌", text: "Esquemas de pirâmide ou MLM" },
-                  { icon: "❌", text: "Produtos ou serviços ilegais" },
+                  { icon: "✅", text: t("newOpportunity.guideline1") },
+                  { icon: "✅", text: t("newOpportunity.guideline2") },
+                  { icon: "❌", text: t("newOpportunity.guideline3") },
+                  { icon: "❌", text: t("newOpportunity.guideline4") },
+                  { icon: "❌", text: t("newOpportunity.guideline5") },
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <span>{item.icon}</span>
