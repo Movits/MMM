@@ -71,7 +71,8 @@ que dizia: título de commit não é evidência.
    PR que toque na sua área, abra o diff (`gh pr diff N`) e confirme que o código faz
    o que a mensagem diz e o que a tarefa pedia.
 3. Confira o quadro do Notion (concluído, removido, adicionado, notificações; "Feito
-   (a validar)" não é "Concluído") e as decisões no grupo de WhatsApp "Projetos IA",
+   (a validar)" é trabalho à espera de validação por OUTRA pessoa, não "Concluído";
+   validar item de colega faz parte do trabalho) e as decisões no grupo de WhatsApp "Projetos IA",
    canal principal do time. **Se o seu Claude não tem acesso a eles, diga isso e
    pergunte a quem tem; nunca declare que conferiu sem ter aberto.**
 4. Registre a conferência (é o que destrava commit e push):
@@ -94,7 +95,9 @@ que dizia: título de commit não é evidência.
   "Merge" do site passa ao largo, por isso merge só por `gh pr merge`.
 
 **Depois do merge**: espere o deploy do Render e rode `node scripts/checar-producao.mjs`.
-Só então marque a tarefa como concluída no Notion, com a comprovação.
+Só então mova a tarefa no Notion para "Feito (a validar)", com a comprovação (link da
+PR, saída do exame). Quem fez não conclui: outra pessoa do time valida no link de
+teste e só ela marca "Concluído".
 
 ## Testes
 
