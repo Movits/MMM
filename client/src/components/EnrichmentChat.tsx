@@ -187,7 +187,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
   );
 
   // Carregar mensagens da sessão existente
-  const { data: existingMessages } = trpc.enrichment.getMessages.useQuery(
+  const { data: existingMessages, isFetchedAfterMount: mensagensFrescas } = trpc.enrichment.getMessages.useQuery(
     // 50 é o teto do servidor: o cartão pendente viaja junto da mensagem dele, e
     // uma janela curta demais o deixaria fora da tela numa sessão longa.
     { sessionId: sessionId ?? "", limit: 50 },
@@ -203,12 +203,19 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
     }
   }, [activeSession, sessionId]);
 
+  // Hidrata a conversa só com dado buscado DEPOIS de montar. O React Query
+  // entrega primeiro o cache da abertura anterior (staleTime 0, gcTime 5 min):
+  // hidratar dele trazia de volta um cartão já decidido — que trancava a tela
+  // com "Erro ao salvar" — ou escondia o pendente até recarregar a página.
+  // Cada resposta nova do servidor substitui a conversa inteira: ele é a fonte.
+  const ultimaHidratada = useRef<MensagemDoServidor[] | null>(null);
   useEffect(() => {
-    if (existingMessages && existingMessages.length > 0 && messages.length === 0) {
-      setMessages(hidratarMensagens(existingMessages));
-      setAwaitingConfirmation(temCartaoPendente(existingMessages));
-    }
-  }, [existingMessages, messages.length]);
+    if (!existingMessages || !mensagensFrescas) return;
+    if (ultimaHidratada.current === existingMessages) return;
+    ultimaHidratada.current = existingMessages;
+    setMessages(hidratarMensagens(existingMessages));
+    setAwaitingConfirmation(temCartaoPendente(existingMessages));
+  }, [existingMessages, mensagensFrescas]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -267,6 +274,9 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
         setAwaitingConfirmation(false);
         void utils.enrichment.getActiveSession.invalidate({ contactId });
       }
+      // O cache do getMessages ficaria na versão anterior à resposta e
+      // reabrir o contato mostraria a conversa sem ela (e sem o cartão).
+      void utils.enrichment.getMessages.invalidate();
     },
     onError: (e) => {
       // O servidor recusou porque há cartão esperando decisão (esta tela ou
@@ -298,8 +308,16 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
           ? prev
           : [...prev, { id: data.nextMessageId, role: "assistant", content: data.nextQuestion }]);
       }
+      void utils.enrichment.getMessages.invalidate();
     },
     onError: (e, { suggestionId }) => {
+      // A sugestão já foi decidida (outra aba, ou tela desatualizada): não há
+      // o que insistir — a conversa do servidor é a que vale.
+      if (e.data?.code === "NOT_FOUND") {
+        toast.info("Essa sugestão já tinha sido decidida. Atualizei a conversa.");
+        void recarregarConversa();
+        return;
+      }
       // Falhou: o cartão continua na tela e a decisão continua pendente.
       handledSuggestionIds.current.delete(suggestionId);
       setAwaitingConfirmation(true);
@@ -323,8 +341,14 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
           ? prev
           : [...prev, { id: data.nextMessageId, role: "assistant", content: data.nextQuestion }]);
       }
+      void utils.enrichment.getMessages.invalidate();
     },
-    onError: (_e, { suggestionId }) => {
+    onError: (e, { suggestionId }) => {
+      if (e.data?.code === "NOT_FOUND") {
+        toast.info("Essa sugestão já tinha sido decidida. Atualizei a conversa.");
+        void recarregarConversa();
+        return;
+      }
       handledSuggestionIds.current.delete(suggestionId);
       setAwaitingConfirmation(true);
       toast.error("Erro ao ignorar informação.");

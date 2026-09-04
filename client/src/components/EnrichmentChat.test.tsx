@@ -65,9 +65,11 @@ const resposta = { id: "m2", role: "user", content: "11 99999-8888", suggestions
 const cartao = { id: "sug-1", fieldType: "phone", suggestedValue: "11 99999-8888", confidence: 0.9, status: "pending" as const };
 const pedidoDeConfirmacao = { id: "m3", role: "assistant", content: "Confirma: 11 99999-8888?", suggestions: [cartao] };
 
-function montar(mensagens: unknown[]) {
+// O dublê entrega as mensagens como um refetch já concluído (isFetchedAfterMount):
+// é o único dado do qual a tela hidrata — cache da abertura anterior não vale.
+function montar(mensagens: unknown[], frescas = true) {
   duble.getActiveSession.mockReturnValue({ data: { id: "sessao-1", status: "active" }, isLoading: false });
-  duble.getMessages.mockReturnValue({ data: mensagens });
+  duble.getMessages.mockReturnValue({ data: mensagens, isFetchedAfterMount: frescas });
   return render(<EnrichmentChat contactId={42} contactName="Ana" />);
 }
 
@@ -81,6 +83,9 @@ const proximaPergunta = { success: true, status: "applied", nextQuestion: "Em qu
 
 beforeEach(() => {
   for (const m of Object.values(duble.mutacoes)) m.mutate.mockReset();
+  duble.utils.enrichment.getMessages.fetch.mockReset();
+  duble.utils.enrichment.getMessages.invalidate.mockReset();
+  vi.mocked(toast.info).mockReset();
 });
 
 describe("EnrichmentChat — cartão pendente", () => {
@@ -190,5 +195,52 @@ describe("EnrichmentChat — cartão pendente", () => {
     expect(toast.info).toHaveBeenCalled();
     // Não é "não consegui processar": a resposta foi recusada de propósito.
     expect(screen.queryByText(/não consegui processar/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("EnrichmentChat — reabrir o contato não pode hidratar do cache velho", () => {
+  it("dado que ainda é o cache da abertura anterior (isFetchedAfterMount=false) não hidrata: espera o servidor", () => {
+    // Cache velho com um cartão que, no servidor, já foi decidido. Hidratar dele
+    // trancava a tela: cartão indecidível + "Erro ao salvar informação." em loop.
+    montar([pergunta, resposta, pedidoDeConfirmacao], false);
+
+    expect(botaoConfirmar()).not.toBeInTheDocument();
+    expect(aviso()).not.toBeInTheDocument();
+    expect(screen.getByText(/iniciando conversa/i)).toBeInTheDocument();
+  });
+
+  it("gravar resposta, confirmar ou ignorar invalida o getMessages, para o cache acompanhar o servidor", () => {
+    montar([pergunta, resposta, pedidoDeConfirmacao]);
+    const invalidar = duble.utils.enrichment.getMessages.invalidate;
+
+    act(() => duble.mutacoes.confirmSuggestion.opcoes.onSuccess?.(proximaPergunta, { suggestionId: "sug-1" }));
+    expect(invalidar).toHaveBeenCalledTimes(1);
+
+    act(() => duble.mutacoes.ignoreSuggestion.opcoes.onSuccess?.({ ...proximaPergunta, status: "ignored" }, { suggestionId: "sug-1" }));
+    expect(invalidar).toHaveBeenCalledTimes(2);
+
+    act(() => duble.mutacoes.sendMessage.opcoes.onSuccess?.(
+      { messageId: "m5", aiResponse: "Confirma: Acme?", suggestions: [], sessionComplete: false, awaitingConfirmation: true }, {},
+    ));
+    expect(invalidar).toHaveBeenCalledTimes(3);
+  });
+
+  it("cartão que o servidor diz já decidido (NOT_FOUND) não fica preso: a conversa é recarregada", async () => {
+    montar([pergunta, resposta, pedidoDeConfirmacao]);
+    const proxima = { id: "m4", role: "assistant", content: "Em qual empresa trabalha?", suggestions: [] };
+    duble.utils.enrichment.getMessages.fetch.mockResolvedValue([pergunta, resposta, { ...pedidoDeConfirmacao, suggestions: [] }, proxima]);
+
+    fireEvent.click(botaoConfirmar()!);
+    await act(async () => {
+      duble.mutacoes.confirmSuggestion.opcoes.onError?.({ message: "SUGGESTION_NOT_FOUND", data: { code: "NOT_FOUND" } }, { suggestionId: "sug-1" });
+    });
+
+    // Mutante "tratar NOT_FOUND como erro comum": o cartão ficaria e o toast seria de erro.
+    expect(duble.utils.enrichment.getMessages.fetch).toHaveBeenCalledWith({ sessionId: "sessao-1", limit: 50 });
+    expect(botaoConfirmar()).not.toBeInTheDocument();
+    expect(screen.getByText("Em qual empresa trabalha?")).toBeInTheDocument();
+    expect(campoDeResposta()).toBeInTheDocument();
+    expect(toast.info).toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalledWith("Erro ao salvar informação.");
   });
 });
