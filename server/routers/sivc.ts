@@ -7,6 +7,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { exigirDb } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { storagePut } from "../storage";
+import { decodeDocumentoBase64, MAX_DOCUMENTO_BASE64_CHARS, nomeSeguroParaChave } from "../documento-base64";
 import { TRPCError } from "@trpc/server";
 import { sql } from "drizzle-orm";
 import { getRequestIp } from "../password-reset-security";
@@ -371,11 +372,12 @@ export const sivcRouter = router({
   uploadDocument: protectedProcedure
     .input(z.object({
       verificationId: z.number(),
-      module: z.string(),
-      docType: z.string(),
-      fileBase64: z.string(),
-      mimeType: z.string(),
-      fileName: z.string(),
+      module: z.string().max(100),
+      docType: z.string().max(100),
+      // Cabo do schema; a mensagem amigável de 10 MB sai de decodeDocumentoBase64.
+      fileBase64: z.string().min(1).max(MAX_DOCUMENTO_BASE64_CHARS),
+      mimeType: z.string().max(100),
+      fileName: z.string().min(1).max(255),
       declaredData: z.record(z.string(), z.string()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -389,9 +391,11 @@ export const sivcRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Verificação não encontrada." });
       }
 
-      // Fazer upload do arquivo para S3
-      const fileBuffer = Buffer.from(input.fileBase64, "base64");
-      const fileKey = `sivc/${ctx.user.id}/${input.verificationId}/${Date.now()}-${input.fileName}`;
+      // 10 MB por documento, validado antes de tocar o storage
+      // (documento-base64.ts). O nome vira parte da chave: sem caminho nem
+      // espaço, senão "../x" ou "rg frente.png" viravam chave estranha no bucket.
+      const fileBuffer = decodeDocumentoBase64(input.fileBase64);
+      const fileKey = `sivc/${ctx.user.id}/${input.verificationId}/${Date.now()}-${nomeSeguroParaChave(input.fileName)}`;
       const { url } = await storagePut(fileKey, fileBuffer, input.mimeType);
 
       // Inserir documento com status "processing"

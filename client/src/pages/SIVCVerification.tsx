@@ -78,8 +78,9 @@ function DocumentUploadCard({
   const uploadMutation = trpc.sivc.uploadDocument.useMutation();
 
   const handleFile = async (file: File) => {
-    if (file.size > 16 * 1024 * 1024) {
-      toast.error("Arquivo muito grande. Limite: 16MB.");
+    // Mesmo teto do servidor (MAX_DOCUMENTO_BYTES, 10 MB).
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Arquivo muito grande. Limite: 10 MB.");
       return;
     }
     setUploading(true);

@@ -1123,7 +1123,7 @@
   "dealRoom": {
     "ndaSignedSuccess": "NDA पर सफलतापूर्वक हस्ताक्षर हो गए!",
     "documentUploadedSuccess": "दस्तावेज़ सफलतापूर्वक अपलोड हो गया!",
-    "fileTooLarge": "\"{{fileName}}\" बहुत बड़ी है। अधिकतम 16MB।",
+    "fileTooLarge": "\"{{fileName}}\" बहुत बड़ी है। अधिकतम 10MB।",
     "loadingRoom": "डील रूम लोड हो रहा है...",
     "roomNotFound": "यह डील रूम नहीं मिला। हो सकता है यह बंद हो गया हो, या आप इसका हिस्सा न हों।",
     "backToHome": "होम पेज पर वापस जाएं",

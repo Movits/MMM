@@ -180,6 +180,13 @@ async function startServer() {
   app.use("/api/trpc/network.uploadPhoto", express.json({ limit: "15mb" }));
   app.use("/api/trpc/network.uploadCard", express.json({ limit: "15mb" }));
 
+  // Mesmo caso para o documento confidencial da Deal Room e o documento de
+  // verificação do SIVC (até 10 MB em Base64 — MAX_DOCUMENTO_BYTES em
+  // documento-base64.ts): eram os dois últimos uploads presos no limite
+  // global de 5 MB (quadro Notion, prazo 08/09).
+  app.use("/api/trpc/dealRoom.uploadDocument", express.json({ limit: "15mb" }));
+  app.use("/api/trpc/sivc.uploadDocument", express.json({ limit: "15mb" }));
+
   // V-09: Limite reduzido para 5MB no restante da aplicação.
   app.use(express.json({ limit: "5mb" }));
   app.use(express.urlencoded({ limit: "5mb", extended: true }));

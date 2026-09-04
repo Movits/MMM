@@ -5,6 +5,7 @@ import { exigirDb } from "../db";
 import { exigirTextoSemContato } from "../bloqueio-de-contato";
 import { createNotification } from "../db";
 import { storagePut } from "../storage";
+import { decodeDocumentoBase64, MAX_DOCUMENTO_BASE64_CHARS } from "../documento-base64";
 
 import {
   dealRooms,
@@ -267,7 +268,8 @@ export const dealRoomRouter = router({
     .input(z.object({
       roomId: z.number().int(),
       name: z.string().max(300),
-      fileBase64: z.string(),
+      // Cabo do schema; a mensagem amigável de 10 MB sai de decodeDocumentoBase64.
+      fileBase64: z.string().min(1).max(MAX_DOCUMENTO_BASE64_CHARS),
       mimeType: z.string().max(100),
       sizeBytes: z.number().optional(),
     }))
@@ -286,7 +288,8 @@ export const dealRoomRouter = router({
       // varrido (fora do alcance); o nome, sim.
       await exigirTextoSemContato(ctx.user.id, "deal_room.uploadDocument", input.name, input.roomId);
 
-      const buffer = Buffer.from(input.fileBase64, "base64");
+      // 10 MB por documento, validado antes de tocar o storage (documento-base64.ts).
+      const buffer = decodeDocumentoBase64(input.fileBase64);
       const fileKey = `deal-rooms/${input.roomId}/${Date.now()}-${input.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { url } = await storagePut(fileKey, buffer, input.mimeType);
 

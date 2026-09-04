@@ -1123,7 +1123,7 @@
   "dealRoom": {
     "ndaSignedSuccess": "NDA签署成功！",
     "documentUploadedSuccess": "文件上传成功！",
-    "fileTooLarge": "“{{fileName}}”文件过大。最大为16MB。",
+    "fileTooLarge": "“{{fileName}}”文件过大。最大为10MB。",
     "loadingRoom": "正在加载洽谈室……",
     "roomNotFound": "未找到此洽谈室。可能已被关闭，或您并非其中的参与者。",
     "backToHome": "返回首页",

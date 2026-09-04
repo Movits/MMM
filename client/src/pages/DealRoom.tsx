@@ -75,7 +75,9 @@ export default function DealRoom() {
   const [isDragOver, setIsDragOver] = useState(false);
 
   const uploadFile = (file: File) => {
-    if (file.size > 16 * 1024 * 1024) {
+    // Mesmo teto do servidor (MAX_DOCUMENTO_BYTES, 10 MB): avisar 16 MB aqui e
+    // recusar em 10 no servidor era prometer o que não entregava.
+    if (file.size > 10 * 1024 * 1024) {
       toast.error(t("dealRoom.fileTooLarge", { fileName: file.name }));
       return;
     }
