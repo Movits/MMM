@@ -1123,7 +1123,7 @@
   "dealRoom": {
     "ndaSignedSuccess": "¡NDA firmado con éxito!",
     "documentUploadedSuccess": "¡Documento enviado con éxito!",
-    "fileTooLarge": "\"{{fileName}}\" es demasiado grande. Máximo 16 MB.",
+    "fileTooLarge": "\"{{fileName}}\" es demasiado grande. Máximo 10 MB.",
     "loadingRoom": "Cargando Deal Room...",
     "roomNotFound": "No encontramos esta sala de negociación. Puede haber sido cerrada, o quizás no formas parte de ella.",
     "backToHome": "Volver a la página de inicio",
