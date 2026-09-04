@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTranslation } from "react-i18next";
+import { opportunitySectorLabel } from "@/lib/opportunity-sectors";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -201,7 +202,7 @@ function OpportunityCard({ opp, isGold, isSaved = false, onToggleSave, onDelete 
           </Badge>
           {opp.sector && (
             <Badge variant="outline" className="text-xs border-white/15 text-white/50 bg-transparent px-2 py-0">
-              {opp.sector}
+              {opportunitySectorLabel(t, opp.sector)}
             </Badge>
           )}
           {opp.country && (

@@ -173,6 +173,13 @@ async function startServer() {
   // arquivo acima de ~3,7 MB — antes de o tRPC sequer validar.
   app.use("/api/trpc/contexts.uploadMedia", express.json({ limit: "15mb" }));
 
+  // Mesmo caso para foto e cartão de visita do contato (etapa 1, até 10 MB em
+  // Base64 — MAX_CONTACT_IMAGE_BYTES em contact-media.ts): sem este recorte,
+  // o limite global de 5 MB barrava qualquer arquivo acima de ~3,7 MB antes
+  // de o tRPC sequer validar (quadro Notion, prazo 05/09).
+  app.use("/api/trpc/network.uploadPhoto", express.json({ limit: "15mb" }));
+  app.use("/api/trpc/network.uploadCard", express.json({ limit: "15mb" }));
+
   // V-09: Limite reduzido para 5MB no restante da aplicação.
   app.use(express.json({ limit: "5mb" }));
   app.use(express.urlencoded({ limit: "5mb", extended: true }));

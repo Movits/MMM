@@ -7,7 +7,7 @@ import {
 import { recalculatePrivateMatches } from "../match-service";
 import { hasValidConsent } from "./consent";
 import { goldProcedure } from "./_procedures";
-import { storagePut } from "../storage";
+import { storagePut, storageDelete, chaveDoStorageDaDona } from "../storage";
 import {
   ALLOWED_CONTACT_IMAGE_TYPES, decodeContactImage, extensionForContactImage,
 } from "../contact-media";
@@ -16,6 +16,19 @@ import {
 // completa — por isso os dois campos abaixo usam `.max(512)` simples, não
 // `.url()`. Compartilhado entre create/update/upload para não desalinhar.
 const chaveDaImagem = z.string().max(512).optional().nullable();
+
+// Foto e cartão saem do bucket como melhor esforço — um storage fora do ar
+// não pode impedir a usuária de apagar ou trocar a imagem na tela.
+async function apagarImagemDoBucket(openId: string, storagePath: string | null | undefined) {
+  if (!storagePath) return;
+  const chave = chaveDoStorageDaDona("contacts", openId, storagePath);
+  if (!chave) return;
+  try {
+    await storageDelete(chave);
+  } catch (erro) {
+    console.warn("[Rede] objeto ficou no bucket:", erro instanceof Error ? erro.message : erro);
+  }
+}
 
 // ─── Minha Rede de Relacionamentos (Base Particular de Contatos) ──────────────
 export const networkRouter = router({
@@ -148,16 +161,34 @@ export const networkRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      // Buscado ANTES do update: é a única chance de saber qual era a imagem
+      // velha, para tirá-la do bucket se a troca for confirmada.
+      const antes = await getPrivateContactById(ctx.user.openId, id);
       const updated = await updatePrivateContact(ctx.user.openId, id, data);
       if (!updated) throw new Error("NOT_FOUND");
+      if (antes) {
+        if ("photoUrl" in data && data.photoUrl !== antes.photoUrl) {
+          await apagarImagemDoBucket(ctx.user.openId, antes.photoUrl);
+        }
+        if ("cardImageUrl" in data && data.cardImageUrl !== antes.cardImageUrl) {
+          await apagarImagemDoBucket(ctx.user.openId, antes.cardImageUrl);
+        }
+      }
       return { success: true };
     }),
 
   delete: protectedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
+      // Buscado ANTES do delete: apagarRastroDoContato/deletePrivateContact
+      // não devolvem a linha, e é dela que vêm photoUrl/cardImageUrl.
+      const alvo = await getPrivateContactById(ctx.user.openId, input.id);
       const deleted = await deletePrivateContact(ctx.user.openId, input.id);
       if (!deleted) throw new Error("NOT_FOUND");
+      if (alvo) {
+        await apagarImagemDoBucket(ctx.user.openId, alvo.photoUrl);
+        await apagarImagemDoBucket(ctx.user.openId, alvo.cardImageUrl);
+      }
       // O cruzamento roda sozinho também na saída de dados, não só na entrada:
       // apagar contato muda o mapa de possui/procura, e as sugestões precisam
       // refletir isso sem ninguém clicar em atualizar. Melhor esforço e sem

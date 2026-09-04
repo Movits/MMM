@@ -7,19 +7,11 @@ import {
   contextIsVisible, addContextMedia, getContextMediaById, deleteContextMedia,
   listContextMediaByContext,
 } from "../db";
-import { storagePut, storageDelete } from "../storage";
+import { storagePut, storageDelete, chaveDoStorageDaDona } from "../storage";
 import {
   ALLOWED_CONTEXT_MEDIA_TYPES, decodeContextMedia,
   extensionForContextMedia, sanitizeMediaFileName,
 } from "../context-media";
-
-// Defesa em profundidade na hora de apagar do bucket: só sai objeto que está
-// no espaço da própria dona. Um storagePath legado ou corrompido (a tabela veio
-// do backup do Manus) não pode virar a exclusão de uma chave arbitrária.
-function chaveDoStorageDaDona(openId: string, storagePath: string): string | null {
-  const chave = storagePath.replace(/^\/manus-storage\//, "");
-  return chave.startsWith(`contexts/${openId}/`) ? chave : null;
-}
 
 // ─── Extensão: Módulo de Contextos (Onde e Como Conheceu) ─────────────────────
 export const contextsRouter = router({
@@ -99,7 +91,7 @@ export const contextsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const anexos = await listContextMediaByContext(ctx.user.openId, input.id);
       for (const anexo of anexos) {
-        const chave = chaveDoStorageDaDona(ctx.user.openId, anexo.storagePath);
+        const chave = chaveDoStorageDaDona("contexts", ctx.user.openId, anexo.storagePath);
         if (!chave) continue;
         try {
           await storageDelete(chave);
@@ -194,7 +186,7 @@ export const contextsRouter = router({
       if (!midia) throw new Error("NOT_FOUND");
       // O registro sai sempre; o objeto no bucket sai como melhor esforço — um
       // storage fora do ar não pode impedir a usuária de tirar a foto da tela.
-      const chave = chaveDoStorageDaDona(ctx.user.openId, midia.storagePath);
+      const chave = chaveDoStorageDaDona("contexts", ctx.user.openId, midia.storagePath);
       if (chave) {
         try {
           await storageDelete(chave);

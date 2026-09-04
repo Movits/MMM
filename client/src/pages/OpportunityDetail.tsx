@@ -3,6 +3,7 @@ import { useParams, Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTranslation } from "react-i18next";
+import { opportunitySectorLabel } from "@/lib/opportunity-sectors";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -197,7 +198,7 @@ export default function OpportunityDetail() {
                 </Badge>
                 {opp.sector && (
                   <Badge variant="outline" className="border-white/15 text-white/50 bg-transparent text-xs">
-                    {opp.sector}
+                    {opportunitySectorLabel(t, opp.sector)}
                   </Badge>
                 )}
                 {opp.isConfidential && (
@@ -386,7 +387,7 @@ export default function OpportunityDetail() {
               <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider">{t("opportunityDetail.infoTitle")}</h3>
               {[
                 { label: t("opportunityDetail.labelType"), value: TYPE_LABELS[opp.type] ?? opp.type },
-                { label: t("opportunityDetail.labelSector"), value: opp.sector ?? "-" },
+                { label: t("opportunityDetail.labelSector"), value: opp.sector ? opportunitySectorLabel(t, opp.sector) : "-" },
                 { label: t("opportunityDetail.labelCountry"), value: opp.country ?? "-" },
                 { label: t("opportunityDetail.labelRegion"), value: opp.region ?? "-" },
                 { label: t("opportunityDetail.labelStatus"), value: opp.status === "active" ? t("opportunityDetail.statusActive") : opp.status === "pending" ? t("opportunityDetail.statusPending") : opp.status },

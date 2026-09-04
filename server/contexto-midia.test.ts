@@ -18,12 +18,16 @@ const storagePut = vi.fn(async (key: string) => ({
 }));
 const storageDelete = vi.fn(async () => {});
 
-vi.mock("./storage", () => ({
-  storagePut: (...args: unknown[]) => storagePut(...(args as [string])),
-  storageDelete: (...args: unknown[]) => storageDelete(...(args as [])),
-  storageGet: vi.fn(),
-  storageGetSignedUrl: vi.fn(),
-}));
+vi.mock("./storage", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./storage")>();
+  return {
+    ...real,
+    storagePut: (...args: unknown[]) => storagePut(...(args as [string])),
+    storageDelete: (...args: unknown[]) => storageDelete(...(args as [])),
+    storageGet: vi.fn(),
+    storageGetSignedUrl: vi.fn(),
+  };
+});
 
 const contextIsVisible = vi.fn(async () => true);
 const addContextMedia = vi.fn(async () => "midia-1");
