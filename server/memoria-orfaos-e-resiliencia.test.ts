@@ -160,6 +160,51 @@ describe("Memória — órfão não sobrevive à fonte", () => {
     expect(String(doc?.content)).toContain("Participantes: Carlos Andrade, Ministro da Saúde");
   });
 
+  it("o vínculo contato↔contexto entra nos DOIS documentos — 'quem conheço na Nigéria' acha a Ana", async () => {
+    // Auditoria de 04/09 (etapa 9): a Ana tinha país vazio, o contexto ficava
+    // na Nigéria e o vínculo dizia onde foi o encontro — nada disso chegava ao
+    // documento da Ana, e o documento do contexto não a nomeava.
+    tabelas.set(schema.privateContacts, [{ id: 1, fullName: "Ana Souza" }]);
+    tabelas.set(schema.contexts, [{ id: "ctx-1", name: "Missão Comercial Lagos", visibility: "private", city: "Lagos", country: "Nigéria" }]);
+    tabelas.set(schema.contactContexts, [{ contactId: 1, contextId: "ctx-1", city: "Lagos", country: "Nigéria", eventDate: "2026-08-20", notes: "conheci no jantar da embaixada", relationshipType: "profissional" }]);
+
+    await servico.indexOwnerMemory("dona");
+
+    const contato = escritas.inseridos.find(item => item.sourceType === "contact");
+    expect(String(contato?.content)).toContain("Onde conheci: Missão Comercial Lagos (Lagos · Nigéria) 2026-08-20 conheci no jantar da embaixada");
+    const contexto = escritas.inseridos.find(item => item.sourceType === "context");
+    expect(String(contexto?.content)).toContain("Contatos vinculados: Ana Souza, conheci no jantar da embaixada");
+  });
+
+  it("vínculo a contexto do CATÁLOGO (sem dona) também nomeia o contexto no documento do contato", async () => {
+    // Revisão da PR: privateContexts só tem os contextos da dona; o nome de um
+    // contexto de catálogo vinculado ficava de fora — "quem conheci na Web
+    // Summit?" não achava ninguém.
+    tabelas.set(schema.privateContacts, [{ id: 1, fullName: "Ana Souza" }]);
+    tabelas.set(schema.contexts, [{ id: "cat-1", ownerId: null, name: "Web Summit Lisboa", visibility: "public" }]);
+    tabelas.set(schema.contactContexts, [{ contactId: 1, contextId: "cat-1", city: "Lisboa", country: "Portugal" }]);
+
+    await servico.indexOwnerMemory("dona");
+
+    const contato = escritas.inseridos.find(item => item.sourceType === "contact");
+    expect(String(contato?.content)).toContain("Onde conheci: Web Summit Lisboa (Lisboa · Portugal)");
+  });
+
+  it("vínculo novo muda a assinatura: o contato é reindexado sem outra edição", async () => {
+    tabelas.set(schema.privateContacts, [{ id: 1, fullName: "Ana Souza", updatedAt: 10 }]);
+    tabelas.set(schema.contexts, [{ id: "ctx-1", name: "Missão Comercial Lagos", visibility: "private", updatedAt: 5 }]);
+    await servico.indexOwnerMemory("dona");
+    embedManyWithGemini.mockClear();
+    tabelas.set(schema.contactContexts, [{ contactId: 1, contextId: "ctx-1", country: "Nigéria", updatedAt: 20 }]);
+
+    const segunda = await servico.indexOwnerMemory("dona");
+
+    expect(segunda.indexed).toBeGreaterThanOrEqual(1);
+    expect(embedManyWithGemini).toHaveBeenCalled();
+    const contato = escritas.atualizados.concat(escritas.inseridos).find(item => String(item.content ?? "").includes("Onde conheci: Missão Comercial Lagos (Nigéria)"));
+    expect(contato).toBeDefined();
+  });
+
   it("a transcrição ganha o título da reunião — deixa de ser um texto anônimo", async () => {
     tabelas.set(schema.meetingTranscripts, [{ meetingId: "m-1", transcript: "Falamos de vinho e logística", language: "pt" }]);
     tabelas.set(schema.meetings, [{ id: "m-1", title: "Reunião com a vinícola" }]);

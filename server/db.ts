@@ -568,6 +568,19 @@ export async function listPrivateContacts(
     );
   }
   if (country) conditions.push(eq(privateContacts.country, country));
+  // A tag entra na CONSULTA, não num filtro em memória depois do LIMIT: a
+  // versão anterior lia a página de 20 mais recentes e só então filtrava, e o
+  // COUNT ignorava a tag — o chip "Diplomata" mostrava "Nenhum contato" ao
+  // lado de "25 contatos encontrados / Página 1 de 2" (auditoria de 04/09).
+  // JSON_CONTAINS + JSON_QUOTE casam o valor inteiro (MariaDB e MySQL 8);
+  // parâmetro pelo template `sql`, nunca sql.raw. O CONVERT é para o MariaDB
+  // (local e CI): lá a coluna "json" é texto no charset da tabela e o
+  // JSON_CONTAINS compara bytes contra o utf8mb4 do JSON_QUOTE — numa tabela
+  // latin1, "Saúde" nunca casaria. No MySQL 8 da produção é só uma conversão
+  // do JSON para texto, sem efeito.
+  if (tag) {
+    conditions.push(sql`JSON_CONTAINS(CONVERT(${privateContacts.profileTags} USING utf8mb4), JSON_QUOTE(${tag}))`);
+  }
 
   const rows = await db
     .select()
@@ -577,18 +590,13 @@ export async function listPrivateContacts(
     .limit(limit)
     .offset(offset);
 
-  // Filtro de tag em memória (JSON array)
-  const filtered = tag
-    ? rows.filter(r => Array.isArray(r.profileTags) && r.profileTags.includes(tag))
-    : rows;
-
-  // Count total (sem paginação)
+  // Count total com as MESMAS condições da página (inclusive a tag).
   const [countRow] = await db
     .select({ count: sql<number>`COUNT(*)` })
     .from(privateContacts)
     .where(and(...conditions));
 
-  return { data: filtered, total: Number(countRow?.count ?? 0) };
+  return { data: rows, total: Number(countRow?.count ?? 0) };
 }
 
 export async function getPrivateContactById(

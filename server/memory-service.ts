@@ -1,7 +1,8 @@
 import crypto from "crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import {
   contactAssets,
+  contactContexts,
   contactNeeds,
   contextParticipants,
   contexts,
@@ -75,7 +76,7 @@ async function embed(text: string, taskType: "RETRIEVAL_DOCUMENT" | "RETRIEVAL_Q
 
 async function collectOwnerSources(ownerId: string): Promise<MemorySource[]> {
   const db = await exigirDb();
-  const [contacts, privateContexts, transcripts, assets, needs, participantes, reunioes] = await Promise.all([
+  const [contacts, privateContexts, transcripts, assets, needs, participantes, reunioes, vinculos] = await Promise.all([
     db.select().from(privateContacts).where(eq(privateContacts.ownerId, ownerId)),
     db.select().from(contexts).where(and(eq(contexts.ownerId, ownerId), eq(contexts.visibility, "private"))),
     // Projeção explícita: `segments` (o JSON palavra-a-palavra) nunca entra no
@@ -87,6 +88,16 @@ async function collectOwnerSources(ownerId: string): Promise<MemorySource[]> {
     db.select({ contextId: contextParticipants.contextId, name: contextParticipants.name, company: contextParticipants.company, role: contextParticipants.role, notes: contextParticipants.notes })
       .from(contextParticipants).where(eq(contextParticipants.ownerId, ownerId)),
     db.select({ id: meetings.id, title: meetings.title }).from(meetings).where(eq(meetings.ownerId, ownerId)),
+    // O vínculo contato↔contexto (onde e como a pessoa foi conhecida, com
+    // cidade/país/notas do encontro) ficava fora dos documentos: "Quem conheço
+    // na Nigéria?" não achava a Ana vinculada à "Missão Comercial Lagos"
+    // (auditoria de 04/09, etapa 9).
+    db.select({
+      contactId: contactContexts.contactId, contextId: contactContexts.contextId,
+      city: contactContexts.city, country: contactContexts.country,
+      eventDate: contactContexts.eventDate, notes: contactContexts.notes,
+      relationshipType: contactContexts.relationshipType,
+    }).from(contactContexts).where(eq(contactContexts.ownerId, ownerId)),
   ]);
 
   // O que o contato possui/procura é O dado de negócio da base — "Quem exporta
@@ -104,6 +115,44 @@ async function collectOwnerSources(ownerId: string): Promise<MemorySource[]> {
   const possuiPorContato = porContato(assets);
   const procuraPorContato = porContato(needs);
 
+  // Vínculos nos dois sentidos: o documento do contato diz ONDE ele foi
+  // conhecido (com cidade/país/notas do encontro), e o do contexto diz QUEM
+  // foi vinculado a ele — hoje só nomeava os participantes avulsos.
+  // O nome do contexto vinculado vem de uma consulta pelos ids vinculados que a
+  // dona pode ver — dela OU do catálogo (ownerId NULL): "Web Summit Lisboa" é
+  // catálogo, não está em privateContexts, e sem isto o documento dizia
+  // "Onde conheci: (Lisboa · Portugal)" sem o nome. Contexto privado de OUTRA
+  // dona (vínculo legado) fica de fora, de propósito.
+  const idsDeContextoVinculado = Array.from(new Set(vinculos.map(vinculo => vinculo.contextId)));
+  const contextosVisiveis = idsDeContextoVinculado.length
+    ? await db.select({ id: contexts.id, name: contexts.name }).from(contexts)
+        .where(and(inArray(contexts.id, idsDeContextoVinculado), or(eq(contexts.ownerId, ownerId), isNull(contexts.ownerId))))
+    : [];
+  const nomeDoContexto = new Map(contextosVisiveis.map(context => [context.id, context.name]));
+  const nomeDoContato = new Map(contacts.map(contact => [contact.id, contact.fullName]));
+  const contextosPorContato = new Map<number, string[]>();
+  const contatosPorContexto = new Map<string, string[]>();
+  for (const vinculo of vinculos) {
+    const lugar = [vinculo.city, vinculo.country].filter(Boolean).join(" · ");
+    const descricao = [
+      nomeDoContexto.get(vinculo.contextId),
+      lugar && `(${lugar})`,
+      vinculo.eventDate,
+      vinculo.notes,
+    ].filter(Boolean).join(" ");
+    if (descricao) {
+      const lista = contextosPorContato.get(vinculo.contactId) ?? [];
+      lista.push(descricao);
+      contextosPorContato.set(vinculo.contactId, lista);
+    }
+    const nome = nomeDoContato.get(vinculo.contactId);
+    if (nome) {
+      const lista = contatosPorContexto.get(vinculo.contextId) ?? [];
+      lista.push([nome, vinculo.notes].filter(Boolean).join(", "));
+      contatosPorContexto.set(vinculo.contextId, lista);
+    }
+  }
+
   const contactSources: MemorySource[] = contacts.map(contact => ({
     sourceType: "contact",
     sourceId: String(contact.id),
@@ -116,6 +165,7 @@ async function collectOwnerSources(ownerId: string): Promise<MemorySource[]> {
       Array.isArray(contact.profileTags) && contact.profileTags.length ? `Tags: ${contact.profileTags.join(", ")}` : "",
       possuiPorContato.has(contact.id) ? `Possui / oferece: ${possuiPorContato.get(contact.id)!.join(", ")}` : "",
       procuraPorContato.has(contact.id) ? `Procura: ${procuraPorContato.get(contact.id)!.join(", ")}` : "",
+      contextosPorContato.has(contact.id) ? `Onde conheci: ${contextosPorContato.get(contact.id)!.join("; ")}` : "",
       contact.notes && `Notas: ${contact.notes}`,
     ].filter(Boolean).join("\n"),
     metadata: { href: "/network", contactId: contact.id, kind: "Contato" },
@@ -141,6 +191,7 @@ async function collectOwnerSources(ownerId: string): Promise<MemorySource[]> {
       context.eventDate && `Data: ${context.eventDate}`,
       [context.city, context.country].filter(Boolean).join(" · "),
       participantesPorContexto.has(context.id) ? `Participantes: ${participantesPorContexto.get(context.id)!.join("; ")}` : "",
+      contatosPorContexto.has(context.id) ? `Contatos vinculados: ${contatosPorContexto.get(context.id)!.join("; ")}` : "",
       context.notes && `Notas: ${context.notes}`,
     ].filter(Boolean).join("\n"),
     metadata: { href: "/contexts", contextId: context.id, kind: "Contexto" },
@@ -181,16 +232,18 @@ const assinaturaIndexada = new Map<string, { assinatura: string; truncated: numb
 
 async function assinaturaDaBase(db: Awaited<ReturnType<typeof exigirDb>>, ownerId: string) {
   const resumo = (tabela: typeof privateContacts | typeof contexts | typeof meetingTranscripts
-    | typeof contactAssets | typeof contactNeeds | typeof contextParticipants | typeof meetings) =>
+    | typeof contactAssets | typeof contactNeeds | typeof contextParticipants | typeof meetings
+    | typeof contactContexts) =>
     db.select({ n: sql<number>`count(*)`, m: sql<number>`coalesce(max(${tabela.updatedAt}), 0)` })
       .from(tabela).where(eq(tabela.ownerId, ownerId));
-  // As SETE tabelas que alimentam os documentos, não só as cinco principais:
-  // participante novo e reunião renomeada mudam o conteúdo e precisam mudar a
-  // assinatura, senão o índice congela até outra coisa qualquer ser editada.
+  // As OITO tabelas que alimentam os documentos, não só as cinco principais:
+  // participante novo, reunião renomeada e vínculo contato↔contexto editado
+  // mudam o conteúdo e precisam mudar a assinatura, senão o índice congela
+  // até outra coisa qualquer ser editada.
   const linhas = await Promise.all([
     resumo(privateContacts), resumo(contexts), resumo(meetingTranscripts),
     resumo(contactAssets), resumo(contactNeeds),
-    resumo(contextParticipants), resumo(meetings),
+    resumo(contextParticipants), resumo(meetings), resumo(contactContexts),
   ]);
   return linhas.map(([linha]) => (linha ? `${linha.n}:${linha.m}` : "0:0")).join("|");
 }
