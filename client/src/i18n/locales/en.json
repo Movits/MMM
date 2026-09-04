@@ -1365,6 +1365,10 @@
   "inactivityGuard": {
     "warningTitle_one": "⏰ Session expiring in {{count}} minute",
     "warningTitle_other": "⏰ Session expiring in {{count}} minutes",
+    "warningTitle_zero": "⏰ Session expiring in {{count}} minutes",
+    "warningTitle_two": "⏰ Session expiring in {{count}} minutes",
+    "warningTitle_few": "⏰ Session expiring in {{count}} minutes",
+    "warningTitle_many": "⏰ Session expiring in {{count}} minutes",
     "warningDescription": "Move the mouse or press a key to stay signed in.",
     "continueButton": "Stay signed in",
     "timeoutTitle": "🔒 Session ended due to inactivity",

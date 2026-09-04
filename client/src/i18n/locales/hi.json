@@ -1365,6 +1365,10 @@
   "inactivityGuard": {
     "warningTitle_one": "⏰ सत्र {{count}} मिनट में समाप्त हो रहा है",
     "warningTitle_other": "⏰ सत्र {{count}} मिनट में समाप्त हो रहा है",
+    "warningTitle_zero": "⏰ सत्र {{count}} मिनट में समाप्त हो रहा है",
+    "warningTitle_two": "⏰ सत्र {{count}} मिनट में समाप्त हो रहा है",
+    "warningTitle_few": "⏰ सत्र {{count}} मिनट में समाप्त हो रहा है",
+    "warningTitle_many": "⏰ सत्र {{count}} मिनट में समाप्त हो रहा है",
     "warningDescription": "जुड़े रहने के लिए माउस हिलाएं या कोई बटन दबाएं।",
     "continueButton": "जुड़े रहें",
     "timeoutTitle": "🔒 निष्क्रियता के कारण सत्र समाप्त",

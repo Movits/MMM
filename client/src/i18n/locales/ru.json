@@ -1365,6 +1365,10 @@
   "inactivityGuard": {
     "warningTitle_one": "⏰ Сессия истекает через {{count}} минуту",
     "warningTitle_other": "⏰ Сессия истекает через {{count}} минут",
+    "warningTitle_zero": "⏰ Сессия истекает через {{count}} минут",
+    "warningTitle_two": "⏰ Сессия истекает через {{count}} минуты",
+    "warningTitle_few": "⏰ Сессия истекает через {{count}} минуты",
+    "warningTitle_many": "⏰ Сессия истекает через {{count}} минут",
     "warningDescription": "Подвигайте мышью или нажмите клавишу, чтобы остаться в системе.",
     "continueButton": "Остаться в системе",
     "timeoutTitle": "🔒 Сессия завершена из-за бездействия",

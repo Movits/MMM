@@ -1365,6 +1365,10 @@
   "inactivityGuard": {
     "warningTitle_one": "⏰ 会话将在 {{count}} 分钟后过期",
     "warningTitle_other": "⏰ 会话将在 {{count}} 分钟后过期",
+    "warningTitle_zero": "⏰ 会话将在 {{count}} 分钟后过期",
+    "warningTitle_two": "⏰ 会话将在 {{count}} 分钟后过期",
+    "warningTitle_few": "⏰ 会话将在 {{count}} 分钟后过期",
+    "warningTitle_many": "⏰ 会话将在 {{count}} 分钟后过期",
     "warningDescription": "移动鼠标或按任意键以保持登录状态。",
     "continueButton": "继续保持登录",
     "timeoutTitle": "🔒 会话因无操作已结束",
