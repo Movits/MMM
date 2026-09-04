@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
@@ -18,14 +20,20 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
 
 const createPrivateContact = vi.fn(async () => 7);
 const updatePrivateContact = vi.fn(async () => true);
+const deletePrivateContact = vi.fn(async () => true);
+// Estado controlável por teste: o que getPrivateContactById devolve "antes"
+// de um update/delete — é dali que o router tira photoUrl/cardImageUrl para
+// decidir o que sai do bucket.
+let contatoExistente: Record<string, unknown> | null = null;
+const getPrivateContactById = vi.fn(async () => contatoExistente);
 vi.mock("./db", async () => ({
   getDb: async () => null,
   exigirDb: async () => { throw new (await import("./banco-indisponivel")).BancoIndisponivel(); },
   createPrivateContact: (...args: unknown[]) => createPrivateContact(...(args as [])),
   updatePrivateContact: (...args: unknown[]) => updatePrivateContact(...(args as [])),
-  deletePrivateContact: async () => true,
+  deletePrivateContact: (...args: unknown[]) => deletePrivateContact(...(args as [])),
   listPrivateContacts: async () => ({ data: [], total: 0 }),
-  getPrivateContactById: async () => null,
+  getPrivateContactById: (...args: unknown[]) => getPrivateContactById(...(args as [])),
   listVitrineColetiva: async () => [],
   getMatchesForUser: async () => [],
   dismissMatch: async () => {},
@@ -40,9 +48,15 @@ vi.mock("./match-service", () => ({
 }));
 
 const storagePut = vi.fn(async (chave: string) => ({ key: chave + "_ab12cd34", url: `/manus-storage/${chave}_ab12cd34` }));
-vi.mock("./storage", () => ({
-  storagePut: (...args: unknown[]) => storagePut(...(args as [string, Buffer, string])),
-}));
+const storageDelete = vi.fn(async () => {});
+vi.mock("./storage", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./storage")>();
+  return {
+    ...real,
+    storagePut: (...args: unknown[]) => storagePut(...(args as [string, Buffer, string])),
+    storageDelete: (...args: unknown[]) => storageDelete(...(args as [string])),
+  };
+});
 
 const { networkRouter } = await import("./routers/network");
 const { podeBaixarChave } = await import("./_core/storageProxy");
@@ -56,7 +70,11 @@ const ctx = {
 beforeEach(() => {
   createPrivateContact.mockClear();
   updatePrivateContact.mockClear();
+  deletePrivateContact.mockClear();
+  getPrivateContactById.mockClear();
   storagePut.mockClear();
+  storageDelete.mockClear();
+  contatoExistente = null;
 });
 
 describe("Etapa 1 — Foto e Cartão de Visita são campos distintos", () => {
@@ -129,6 +147,68 @@ describe("Etapa 1 — upload real (uploadPhoto / uploadCard)", () => {
       fileName: "grande.png", mimeType: "image/png", dataBase64: `data:image/png;base64,${onzeMB}`,
     })).rejects.toThrow(/10 ?MB/);
     expect(storagePut).not.toHaveBeenCalled();
+  });
+});
+
+describe("Etapa 1 — limite de corpo (quadro Notion, prazo 05/09)", () => {
+  // Espelha o teste de microphone-policy.test.ts para o mesmo tipo de linha:
+  // sem o recorte, o limite global de 5 MB barra o base64 de uma imagem
+  // acima de ~3,7 MB antes de o tRPC sequer validar.
+  const serverSource = fs.readFileSync(path.resolve(process.cwd(), "server/_core/index.ts"), "utf8");
+
+  it("uploadPhoto e uploadCard ganham o limite ampliado, como já vale para reuniões e contexto", () => {
+    expect(serverSource).toContain('app.use("/api/trpc/network.uploadPhoto", express.json({ limit: "15mb" }))');
+    expect(serverSource).toContain('app.use("/api/trpc/network.uploadCard", express.json({ limit: "15mb" }))');
+    expect(serverSource).toContain('app.use(express.json({ limit: "5mb" }))');
+  });
+});
+
+describe("Etapa 1 — foto e cartão saem do bucket ao trocar ou apagar (quadro Notion, prazo 08/09)", () => {
+  const rede = networkRouter.createCaller(ctx);
+
+  it("update com uma foto nova apaga a foto velha do bucket", async () => {
+    contatoExistente = { id: 7, ownerId: "dona-1", photoUrl: "/manus-storage/contacts/dona-1/foto_velha.jpg", cardImageUrl: null };
+    await rede.update({ id: 7, photoUrl: "/manus-storage/contacts/dona-1/foto_nova.jpg" });
+    expect(storageDelete).toHaveBeenCalledTimes(1);
+    expect(storageDelete).toHaveBeenCalledWith("contacts/dona-1/foto_velha.jpg");
+  });
+
+  it("update repetindo a MESMA foto não apaga nada", async () => {
+    contatoExistente = { id: 7, ownerId: "dona-1", photoUrl: "/manus-storage/contacts/dona-1/foto_x.jpg", cardImageUrl: null };
+    await rede.update({ id: 7, photoUrl: "/manus-storage/contacts/dona-1/foto_x.jpg" });
+    expect(storageDelete).not.toHaveBeenCalled();
+  });
+
+  it("update que não toca em photoUrl/cardImageUrl não apaga nada", async () => {
+    contatoExistente = { id: 7, ownerId: "dona-1", photoUrl: "/manus-storage/contacts/dona-1/foto_x.jpg", cardImageUrl: "/manus-storage/contacts/dona-1/cartao_y.jpg" };
+    await rede.update({ id: 7, fullName: "Ana Nova" });
+    expect(storageDelete).not.toHaveBeenCalled();
+  });
+
+  it("delete apaga foto E cartão do bucket", async () => {
+    contatoExistente = { id: 7, ownerId: "dona-1", photoUrl: "/manus-storage/contacts/dona-1/foto_x.jpg", cardImageUrl: "/manus-storage/contacts/dona-1/cartao_y.jpg" };
+    await rede.delete({ id: 7 });
+    expect(storageDelete).toHaveBeenCalledTimes(2);
+    expect(storageDelete).toHaveBeenCalledWith("contacts/dona-1/foto_x.jpg");
+    expect(storageDelete).toHaveBeenCalledWith("contacts/dona-1/cartao_y.jpg");
+  });
+
+  it("delete de contato sem imagem nenhuma não chama storageDelete", async () => {
+    contatoExistente = { id: 7, ownerId: "dona-1", photoUrl: null, cardImageUrl: null };
+    await rede.delete({ id: 7 });
+    expect(storageDelete).not.toHaveBeenCalled();
+  });
+
+  it("defesa em profundidade: um storagePath fora do prefixo da própria dona não é apagado", async () => {
+    contatoExistente = { id: 7, ownerId: "dona-1", photoUrl: "/manus-storage/contacts/outra-dona/foto.jpg", cardImageUrl: null };
+    await rede.delete({ id: 7 });
+    expect(storageDelete).not.toHaveBeenCalled();
+  });
+
+  it("storage fora do ar não impede a exclusão (melhor esforço, como em contexts.ts)", async () => {
+    contatoExistente = { id: 7, ownerId: "dona-1", photoUrl: "/manus-storage/contacts/dona-1/foto_x.jpg", cardImageUrl: null };
+    storageDelete.mockRejectedValueOnce(new Error("bucket fora do ar"));
+    await expect(rede.delete({ id: 7 })).resolves.toEqual({ success: true });
   });
 });
 

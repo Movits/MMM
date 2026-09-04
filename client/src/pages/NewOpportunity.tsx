@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { FTSBadge } from "./Opportunities";
-import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
+import { sortOptionsAlphabetically } from "@shared/option-sorting";
+import { OPPORTUNITY_SECTOR_KEYS, opportunitySectorLabel } from "@/lib/opportunity-sectors";
 import {
   ArrowLeft, Sparkles, ShieldCheck, AlertTriangle, AlertCircle,
   XCircle, Clock, CheckCircle, Lock, Globe, Tag, X, FileText,
@@ -20,20 +21,12 @@ import {
 export default function NewOpportunity() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
-  const SECTORS = [
-    t("newOpportunity.sectorTecnologia"), t("newOpportunity.sectorSaude"), t("newOpportunity.sectorEducacao"),
-    t("newOpportunity.sectorFinancas"), t("newOpportunity.sectorAgronegocio"),
-    t("newOpportunity.sectorEnergia"), t("newOpportunity.sectorVarejo"), t("newOpportunity.sectorImobiliario"),
-    t("newOpportunity.sectorIndustria"), t("newOpportunity.sectorServicos"),
-    t("newOpportunity.sectorModa"), t("newOpportunity.sectorAlimentacao"), t("newOpportunity.sectorTurismo"),
-    t("newOpportunity.sectorLogistica"), t("newOpportunity.sectorJuridico"),
-    t("newOpportunity.sectorCommodities"), t("newOpportunity.sectorExportacao"), t("newOpportunity.sectorImportacao"),
-    t("newOpportunity.sectorInfraestrutura"),
-    t("newOpportunity.sectorFarmaceutico"), t("newOpportunity.sectorConsultoria"), t("newOpportunity.sectorMarketing"),
-    t("newOpportunity.sectorBelezaCosmeticos"),
-  ];
+  // A chave é fixa (independe do idioma da tela); só o rótulo exibido muda —
+  // é o que faz o filtro por setor (server/db.ts) achar oportunidades criadas
+  // em qualquer idioma. Ver client/src/lib/opportunity-sectors.ts.
+  const SECTORS = OPPORTUNITY_SECTOR_KEYS.map(key => ({ key, label: opportunitySectorLabel(t, key) }));
 
   const COUNTRIES = [
     { code: "BR", name: t("newOpportunity.countryBrasil") }, { code: "PT", name: t("newOpportunity.countryPortugal") },
@@ -156,8 +149,11 @@ export default function NewOpportunity() {
     distribution: [t("newOpportunity.tagSuggestionLogistica"), t("newOpportunity.tagSuggestionRevenda"), t("newOpportunity.tagSuggestionAtacado"), t("newOpportunity.tagSuggestionVarejo")],
     other: [t("newOpportunity.tagSuggestionNetworking"), t("newOpportunity.tagSuggestionMentoria"), t("newOpportunity.tagSuggestionEvento"), t("newOpportunity.tagSuggestionProjetoSocial")],
   };
+  // Sugestão de tag a partir do setor usa o RÓTULO (palavra legível, como as
+  // outras tags), não a chave — só o campo `sector` em si precisa ser estável
+  // entre idiomas, a tag é texto livre.
   const suggestedForType = (SUGGESTED_TAGS[type] ?? [])
-    .concat(sector ? [sector.toLowerCase()] : [])
+    .concat(sector ? [opportunitySectorLabel(t, sector).toLowerCase()] : [])
     .filter(s => !tags.includes(s))
     .slice(0, 5);
 
@@ -341,8 +337,8 @@ export default function NewOpportunity() {
                     <SelectValue placeholder={t("newOpportunity.selectPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent className="bg-[#0d1628] border-white/10 max-h-60 text-white">
-                    {sortTextAlphabetically(SECTORS).map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    {sortOptionsAlphabetically(SECTORS, i18n.language).map((s) => (
+                      <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -354,7 +350,7 @@ export default function NewOpportunity() {
                     <SelectValue placeholder={t("newOpportunity.selectPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent className="bg-[#0d1628] border-white/10 max-h-60 text-white">
-                    {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: country.name }))).map((c) => (
+                    {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: country.name })), i18n.language).map((c) => (
                       <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>

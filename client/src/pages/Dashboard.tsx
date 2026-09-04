@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { opportunitySectorLabel } from "@/lib/opportunity-sectors";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -467,6 +468,7 @@ function LangSelectorMini() {
 
 // ─── Recommended Opportunities ──────────────────────────────────────────────
 function RecommendedOpportunities() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const recommendedQuery = trpc.matching.getRecommendedOpportunities.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -589,7 +591,7 @@ function RecommendedOpportunities() {
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         {opp.sector && (
                           <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-xs text-white/50">
-                            {opp.sector}
+                            {opportunitySectorLabel(t, opp.sector)}
                           </span>
                         )}
                         <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-xs text-white/50">

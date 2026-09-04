@@ -117,6 +117,19 @@ export async function storageDelete(relKey: string): Promise<void> {
 }
 
 /**
+ * Defesa em profundidade na hora de apagar do bucket: só sai objeto que está
+ * no espaço da própria dona, sob o prefixo esperado (ex.: "contacts",
+ * "contexts"). Um storagePath legado ou corrompido (a tabela veio do backup
+ * do Manus) não pode virar a exclusão de uma chave arbitrária. Compartilhada
+ * entre routers/contexts.ts e routers/network.ts — antes duplicada, uma
+ * cópia por arquivo.
+ */
+export function chaveDoStorageDaDona(prefixo: string, openId: string, storagePath: string): string | null {
+  const chave = normalizeKey(storagePath.replace(/^\/manus-storage\//, ""));
+  return chave.startsWith(`${prefixo}/${openId}/`) ? chave : null;
+}
+
+/**
  * URL assinada de leitura, válida por 5 minutos. Curta de propósito: a URL em
  * si dispensa autenticação, então quanto menos tempo viver, menor a janela para
  * um link colado num chat continuar funcionando.
