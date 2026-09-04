@@ -44,6 +44,8 @@ vi.mock("./db", async () => ({
   applyEnrichmentSuggestion: vi.fn(async () => true),
   ignoreEnrichmentSuggestion: vi.fn(async () => true),
   getEnrichmentHistory: vi.fn(async () => []),
+  // Sem cartão pendente: o roteiro segue; a pendência tem teste próprio (enriquecimento-pendencia.test.ts).
+  getPendingEnrichmentSuggestions: vi.fn(async () => []),
 }));
 
 const { enrichmentRouter } = await import("./routers/enrichment");

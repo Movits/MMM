@@ -11,7 +11,7 @@ type Suggestion = {
   fieldType: string;
   suggestedValue: string;
   confidence: number;
-  displayLabel: string;
+  displayLabel?: string;
   status: "pending" | "confirmed" | "edited" | "ignored" | "applied";
 };
 
@@ -32,16 +32,19 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 // ─── Card de sugestão ─────────────────────────────────────────────────────────
-function SuggestionCard({ suggestion, onConfirm, onIgnore }: {
+// O cartão NÃO se esconde sozinho ao clicar: fica na tela até o servidor
+// responder, e é o pai quem muda o status da sugestão (applied/ignored) no
+// sucesso. Antes ele sumia antes da resposta; se a confirmação falhava, a
+// conversa ficava sem cartão, sem campo de digitar e com o aviso "Confirme ou
+// ignore..." apontando para nada.
+function SuggestionCard({ suggestion, busy, onConfirm, onIgnore }: {
   suggestion: Suggestion;
+  busy: boolean;
   onConfirm: (id: string, editedValue?: string) => void;
   onIgnore: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(suggestion.suggestedValue);
-  const [actioned, setActioned] = useState(false);
-
-  if (actioned) return null;
 
   const label = FIELD_LABELS[suggestion.fieldType] ?? suggestion.fieldType;
   const pct = Math.round(suggestion.confidence * 100);
@@ -56,7 +59,7 @@ function SuggestionCard({ suggestion, onConfirm, onIgnore }: {
         <div className="space-y-2">
           <Input value={editValue} onChange={e => setEditValue(e.target.value)}
             className="bg-white/5 border-white/10 text-white text-sm h-8" />
-          <Button size="sm" onClick={() => { setActioned(true); onConfirm(suggestion.id, editValue); }}
+          <Button size="sm" disabled={busy} onClick={() => onConfirm(suggestion.id, editValue)}
             className="w-full bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold h-8 text-xs">
             Salvar edição
           </Button>
@@ -65,16 +68,16 @@ function SuggestionCard({ suggestion, onConfirm, onIgnore }: {
         <>
           <p className="text-white font-medium mb-2 truncate">{suggestion.suggestedValue}</p>
           <div className="flex gap-2">
-            <button onClick={() => { setActioned(true); onConfirm(suggestion.id); }}
-              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-medium hover:bg-green-500/25 transition-colors">
+            <button disabled={busy} onClick={() => onConfirm(suggestion.id)}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-medium hover:bg-green-500/25 transition-colors disabled:opacity-50">
               <Check size={12} /> Confirmar
             </button>
-            <button onClick={() => setEditing(true)}
-              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 text-xs font-medium hover:bg-blue-500/25 transition-colors">
+            <button disabled={busy} onClick={() => setEditing(true)}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 text-xs font-medium hover:bg-blue-500/25 transition-colors disabled:opacity-50">
               <Edit2 size={12} /> Editar
             </button>
-            <button onClick={() => { setActioned(true); onIgnore(suggestion.id); }}
-              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-white/5 border border-white/15 text-white/40 text-xs font-medium hover:bg-white/10 transition-colors">
+            <button disabled={busy} onClick={() => onIgnore(suggestion.id)}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-white/5 border border-white/15 text-white/40 text-xs font-medium hover:bg-white/10 transition-colors disabled:opacity-50">
               <X size={12} /> Ignorar
             </button>
           </div>
@@ -85,12 +88,15 @@ function SuggestionCard({ suggestion, onConfirm, onIgnore }: {
 }
 
 // ─── Bubble de mensagem ───────────────────────────────────────────────────────
-function MessageBubble({ msg, onConfirm, onIgnore }: {
+function MessageBubble({ msg, busy, onConfirm, onIgnore }: {
   msg: Message;
+  busy: boolean;
   onConfirm: (id: string, editedValue?: string) => void;
   onIgnore: (id: string) => void;
 }) {
   const isAI = msg.role === "assistant";
+  // Só o que ainda espera decisão vira cartão; o decidido some da tela.
+  const pendentes = msg.suggestions?.filter(s => s.status === "pending") ?? [];
   return (
     <div className={`flex ${isAI ? "justify-start" : "justify-end"} mb-3`}>
       <div className={`max-w-[80%] ${isAI ? "" : "items-end"}`}>
@@ -109,10 +115,10 @@ function MessageBubble({ msg, onConfirm, onIgnore }: {
         }`}>
           {msg.content}
         </div>
-        {isAI && msg.suggestions && msg.suggestions.length > 0 && (
+        {isAI && pendentes.length > 0 && (
           <div className="mt-1 space-y-1">
-            {msg.suggestions.map(s => (
-              <SuggestionCard key={s.id} suggestion={s} onConfirm={onConfirm} onIgnore={onIgnore} />
+            {pendentes.map(s => (
+              <SuggestionCard key={s.id} suggestion={s} busy={busy} onConfirm={onConfirm} onIgnore={onIgnore} />
             ))}
           </div>
         )}
@@ -143,6 +149,25 @@ function ThinkingIndicator() {
   );
 }
 
+// ─── Hidratação a partir do servidor ─────────────────────────────────────────
+// enrichment.getMessages devolve, em cada mensagem, os cartões que ainda
+// esperam decisão (status pending). Antes o map descartava isso e uma
+// confirmação pendente era irrecuperável ao reabrir o detalhe do contato.
+type MensagemDoServidor = { id: string; role: string; content: string; suggestions?: Suggestion[] };
+
+function hidratarMensagens(rows: MensagemDoServidor[]): Message[] {
+  return rows.map(m => ({
+    id: m.id,
+    role: m.role as "assistant" | "user",
+    content: m.content,
+    suggestions: m.suggestions?.filter(s => s.status === "pending"),
+  }));
+}
+
+function temCartaoPendente(rows: MensagemDoServidor[]) {
+  return rows.some(m => m.suggestions?.some(s => s.status === "pending"));
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export function EnrichmentChat({ contactId, contactName }: { contactId: number; contactName: string }) {
   const [expanded, setExpanded] = useState(true);
@@ -163,7 +188,9 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
 
   // Carregar mensagens da sessão existente
   const { data: existingMessages } = trpc.enrichment.getMessages.useQuery(
-    { sessionId: sessionId ?? "", limit: 30 },
+    // 50 é o teto do servidor: o cartão pendente viaja junto da mensagem dele, e
+    // uma janela curta demais o deixaria fora da tela numa sessão longa.
+    { sessionId: sessionId ?? "", limit: 50 },
     { enabled: !!sessionId, refetchOnWindowFocus: false }
   );
 
@@ -178,11 +205,8 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
 
   useEffect(() => {
     if (existingMessages && existingMessages.length > 0 && messages.length === 0) {
-      setMessages(existingMessages.map(m => ({
-        id: m.id,
-        role: m.role as "assistant" | "user",
-        content: m.content,
-      })));
+      setMessages(hidratarMensagens(existingMessages));
+      setAwaitingConfirmation(temCartaoPendente(existingMessages));
     }
   }, [existingMessages, messages.length]);
 
@@ -191,6 +215,25 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Reidrata a conversa a partir do servidor, cartões pendentes inclusos.
+  const recarregarConversa = async () => {
+    if (!sessionId) return;
+    try {
+      const rows = await utils.enrichment.getMessages.fetch({ sessionId, limit: 50 });
+      setMessages(hidratarMensagens(rows));
+      setAwaitingConfirmation(temCartaoPendente(rows));
+    } catch {
+      toast.error("Não consegui recarregar a conversa. Feche e abra o contato de novo.");
+    }
+  };
+
+  // Decisão registrada no servidor: o cartão sai da tela por aqui, nunca antes.
+  const marcarSugestao = (suggestionId: string, status: Suggestion["status"]) => {
+    setMessages(prev => prev.map(m => m.suggestions
+      ? { ...m, suggestions: m.suggestions.map(s => s.id === suggestionId ? { ...s, status } : s) }
+      : m));
+  };
 
   const startMut = trpc.enrichment.startSession.useMutation({
     onSuccess: (data) => {
@@ -225,7 +268,14 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
         void utils.enrichment.getActiveSession.invalidate({ contactId });
       }
     },
-    onError: () => {
+    onError: (e) => {
+      // O servidor recusou porque há cartão esperando decisão (esta tela ou
+      // outra aba perdeu o cartão): traz a conversa de volta com ele.
+      if (e.message === "SUGGESTION_PENDING") {
+        toast.info("Há uma sugestão esperando sua decisão. Confirme ou ignore para continuar.");
+        void recarregarConversa();
+        return;
+      }
       setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -235,7 +285,8 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
   });
 
   const confirmMut = trpc.enrichment.confirmSuggestion.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data, { suggestionId }) => {
+      marcarSugestao(suggestionId, "applied");
       toast.success("Informação salva no perfil!");
       setAwaitingConfirmation(false);
       if (data.sessionComplete) {
@@ -248,14 +299,17 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
           : [...prev, { id: data.nextMessageId, role: "assistant", content: data.nextQuestion }]);
       }
     },
-    onError: () => {
-      handledSuggestionIds.current.clear();
-      toast.error("Erro ao salvar informação.");
+    onError: (e, { suggestionId }) => {
+      // Falhou: o cartão continua na tela e a decisão continua pendente.
+      handledSuggestionIds.current.delete(suggestionId);
+      setAwaitingConfirmation(true);
+      toast.error(e.data?.code === "BAD_REQUEST" ? e.message : "Erro ao salvar informação.");
     },
   });
 
   const ignoreMut = trpc.enrichment.ignoreSuggestion.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data, { suggestionId }) => {
+      marcarSugestao(suggestionId, "ignored");
       setAwaitingConfirmation(false);
       if (data.sessionComplete) {
         setIsComplete(true);
@@ -267,8 +321,9 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
           : [...prev, { id: data.nextMessageId, role: "assistant", content: data.nextQuestion }]);
       }
     },
-    onError: () => {
-      handledSuggestionIds.current.clear();
+    onError: (_e, { suggestionId }) => {
+      handledSuggestionIds.current.delete(suggestionId);
+      setAwaitingConfirmation(true);
       toast.error("Erro ao ignorar informação.");
     },
   });
@@ -341,6 +396,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
             )}
             {messages.map(msg => (
               <MessageBubble key={msg.id} msg={msg}
+                busy={confirmMut.isPending || ignoreMut.isPending}
                 onConfirm={handleConfirm}
                 onIgnore={handleIgnore} />
             ))}
