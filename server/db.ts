@@ -1319,9 +1319,14 @@ export async function aplicarRespostaAoContato(
     if (!slug) return false;
     // Confirmar duas vezes a mesma resposta não pode duplicar o item — as
     // sugestões antigas têm repetição real ("fabrica" cinco vezes no mesmo
-    // contato) e o script de recuperação passa por aqui.
+    // contato) e o script de recuperação passa por aqui. Compara pelo slug OU
+    // pelo rótulo: linha gravada antes do conserto da escrita não latina tem
+    // tag_slug "" (e "Nº 5" tinha "n-5", hoje "no-5") — só o rótulo a reconhece.
     const [existente] = await db.select({ id: tabela.id }).from(tabela)
-      .where(and(eq(tabela.ownerId, ownerId), eq(tabela.contactId, contactId), eq(tabela.tagSlug, slug)))
+      .where(and(
+        eq(tabela.ownerId, ownerId), eq(tabela.contactId, contactId),
+        drizzleOr(eq(tabela.tagSlug, slug), eq(tabela.tagLabel, valor)),
+      ))
       .limit(1);
     if (existente) return false;
     await db.insert(tabela).values({

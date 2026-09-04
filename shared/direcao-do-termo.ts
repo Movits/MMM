@@ -162,8 +162,14 @@ function objetoDepoisDe(resto: string[]): string[] | null {
  * o que o NFKD traduz (º→o, ²→2, ™→tm). Tudo que já era [a-z0-9] depois de
  * tirar o acento dá EXATAMENTE o mesmo resultado de antes.
  */
+// O diacr\u00edtico s\u00f3 sai depois de LETRA LATINA: na NFD, \u0439 = \u0438 + U+0306 e \u0451 = \u0435 +
+// U+0308 \u2014 letras distintas do alfabeto cir\u00edlico, n\u00e3o acentos \u2014 e um strip
+// cego juntava "\u0432\u043e\u0439\u043d\u044b" (guerras) com "\u0432\u043e\u0438\u043d\u044b" (guerreiros). RegExp por string
+// pelo mesmo motivo da SEPARADOR_DE_PALAVRA (tsc em ES5 sem "target").
+const DIACRITICO_APOS_LATINA = new RegExp("(\\p{Script=Latin})[\\u0300-\\u036f]+", "gu");
+
 export function normalizar(texto: string) {
-  return texto.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").normalize("NFC").toLowerCase();
+  return texto.normalize("NFKD").replace(DIACRITICO_APOS_LATINA, "$1").normalize("NFC").toLowerCase();
 }
 
 /**

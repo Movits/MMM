@@ -55,6 +55,17 @@ describe("Slug — letra de qualquer escrita sobrevive", () => {
     expect(slugifyMatchTag("Холодильные склады")).toBe("холодильные-склады");
   });
 
+  it("cirílico: й e ё são letras, não acentos — o strip de diacrítico só age após letra latina", () => {
+    // Na NFD, й = и + U+0306 e ё = е + U+0308: um strip cego juntava "войны"
+    // (guerras) com "воины" (guerreiros) e gravava grafias inexistentes.
+    expect(slugifyMatchTag("Йогурт")).toBe("йогурт");
+    expect(slugifyMatchTag("Ёлка")).toBe("ёлка");
+    expect(slugifyMatchTag("чай")).not.toBe(slugifyMatchTag("чаи"));
+    expect(scoreMatch(item("войны"), item("воины")).score).toBe(0);
+    // e o latim continua perdendo o acento como sempre
+    expect(slugifyMatchTag("Exportação de açaí")).toBe("exportacao-de-acai");
+  });
+
   it("a matra do devanágari NÃO é acento: शराब fica inteira (mata o mutante que tira \\p{M})", () => {
     expect(slugifyMatchTag("शराब")).toBe("शराब");
     expect(slugifyMatchTag("शराब")).not.toBe("शरब");
@@ -73,9 +84,12 @@ describe("Slug — letra de qualquer escrita sobrevive", () => {
   });
 });
 
-describe("Regressão latina — o slug antigo não muda", () => {
+describe("Regressão latina — o que já era [a-z0-9] após tirar o acento dá o MESMO slug", () => {
   const casos: Array<[string, string]> = [
     ["Mineração de Terras Raras", "mineracao-de-terras-raras"],
+    // Exceção deliberada: "ª" é compatibilidade NFKD (→ "a"); o slug antigo
+    // descartava o caractere ("2-unidade"). Linha antiga mantém o slug velho no
+    // banco, e o dedupe do enriquecimento compara também pelo rótulo.
     ["Café & Cia. (Ltda) — 2ª unidade!", "cafe-cia-ltda-2a-unidade"],
     ["  Exportação para a China  ", "exportacao-para-a-china"],
     ["Armazenagem refrigerada", "armazenagem-refrigerada"],
