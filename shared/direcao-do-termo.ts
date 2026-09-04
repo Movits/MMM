@@ -146,12 +146,41 @@ function objetoDepoisDe(resto: string[]): string[] | null {
   return palavras;
 }
 
-function normalizar(texto: string) {
-  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+/**
+ * Escrita de qualquer idioma sobrevive à normalização (auditoria de 04/09):
+ * o cruzamento só enxergava [a-z0-9], e uma tag em chinês, japonês, árabe,
+ * russo ou hindi — os cinco idiomas abertos pela PR #55 — virava vazio. Nem
+ * tag idêntica casava, nem categoria idêntica.
+ *
+ *   - NFKD decompõe acento E compatibilidade (Ａ→A, ２→2, ﬁ→fi, ㎡→m2).
+ *   - Sai SÓ o bloco latino de diacríticos (U+0300–036F), como sempre saiu:
+ *     "ção" continua "cao". Marca de outra escrita não é acento — a matra do
+ *     devanágari (शराब), o harakat do árabe, a vogal do tailandês ficam.
+ *   - NFC recompõe o que sobrou (hangul volta a ser sílaba); minúsculas.
+ *
+ * Para o latim só muda o que antes era descartado sem motivo (ø, ß, æ, ł) e
+ * o que o NFKD traduz (º→o, ²→2, ™→tm). Tudo que já era [a-z0-9] depois de
+ * tirar o acento dá EXATAMENTE o mesmo resultado de antes.
+ */
+export function normalizar(texto: string) {
+  return texto.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").normalize("NFC").toLowerCase();
 }
 
+/**
+ * Letra, marca ou dígito de QUALQUER escrita é palavra; o resto separa. Em
+ * escrita sem espaço (zh/ja) a "palavra" é a tag inteira — tag idêntica casa
+ * por slug e por objeto; cabeça transparente e verbo simplesmente não se
+ * aplicam (as listas são latinas), e o termo vale por inteiro, que é o
+ * comportamento conservador de sempre.
+ *
+ * RegExp por string, não literal: o tsconfig não declara "target" e o tsc
+ * checa em ES5, onde a flag "u" num literal é o erro TS1501. Em execução
+ * (Node 20+ e todo navegador atual) é a mesma expressão.
+ */
+export const SEPARADOR_DE_PALAVRA = new RegExp("[^\\p{L}\\p{M}\\p{N}]+", "gu");
+
 function tokens(texto: string) {
-  return normalizar(texto).split(/[^a-z0-9]+/).filter(Boolean);
+  return normalizar(texto).split(SEPARADOR_DE_PALAVRA).filter(Boolean);
 }
 
 export type TermoAnalisado = {

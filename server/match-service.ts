@@ -5,7 +5,7 @@ import { cosineSimilarity, normalizeVector } from "./memory-service";
 import { exigirDb } from "./db";
 import { sendEmail } from "./_core/email";
 import { embedWithGemini } from "./gemini";
-import { analisarTermo, nucleoDoTermo, saoConcorrentes } from "@shared/direcao-do-termo";
+import { analisarTermo, normalizar, nucleoDoTermo, saoConcorrentes, SEPARADOR_DE_PALAVRA } from "@shared/direcao-do-termo";
 
 const SEMANTIC_THRESHOLD = 0.7;
 const SAVE_THRESHOLD = 50;
@@ -42,8 +42,13 @@ type Encontro = { deId: number; paraId: number; asset: MatchReason; need: MatchR
 type Par = { lowId: number; highId: number; encontros: Encontro[] };
 
 export function slugifyMatchTag(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
-    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 160);
+  // A MESMA normalização do analisador de termo: o slug é o objeto inteiro, e
+  // os dois precisam enxergar as mesmas letras (antes, [a-z0-9] aqui e lá
+  // apagava qualquer tag fora do alfabeto latino). O corte é por caractere,
+  // não por unidade UTF-16: tag_slug é varchar(160) em utf8mb4, e uma
+  // surrogate pair partida ao meio nem entra no banco.
+  const slug = normalizar(value).replace(SEPARADOR_DE_PALAVRA, "-").replace(/^-+|-+$/g, "");
+  return Array.from(slug).slice(0, 160).join("");
 }
 
 export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore = 0) {
@@ -163,8 +168,12 @@ export async function recalculatePrivateMatches(ownerId: string, ownerEmail?: st
   for (const asset of assets) {
     for (const need of needs) {
       if (asset.contactId === need.contactId) continue;
-      const baseAsset: MatchReason = { slug: asset.tagSlug, label: asset.tagLabel, category: asset.category };
-      const baseNeed: MatchReason = { slug: need.tagSlug, label: need.tagLabel, category: need.category };
+      // Linha gravada antes do conserto da escrita não latina tem tag_slug ""
+      // (o slug antigo apagava tudo fora de [a-z0-9]). O rótulo continua lá:
+      // recalcular o slug aqui evita migração de dados e impede que "unicos"
+      // — que dedupe por slug — junte todas essas razões numa só.
+      const baseAsset: MatchReason = { slug: asset.tagSlug || slugifyMatchTag(asset.tagLabel), label: asset.tagLabel, category: asset.category };
+      const baseNeed: MatchReason = { slug: need.tagSlug || slugifyMatchTag(need.tagLabel), label: need.tagLabel, category: need.category };
       let result = scoreMatch(baseAsset, baseNeed);
       // Só chama o provedor de embeddings se a resposta puder mudar alguma
       // coisa. Com o critério desligado não pode, e mandar o texto para fora
