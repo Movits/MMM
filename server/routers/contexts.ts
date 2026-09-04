@@ -5,7 +5,7 @@ import {
   updateContext, deleteContext, linkContactToContext, unlinkContactFromContext,
   addContextParticipant, listContextsByContact,
   contextIsVisible, addContextMedia, getContextMediaById, deleteContextMedia,
-  listContextMediaByContext,
+  listContextMediaByContext, getPrivateContactById,
 } from "../db";
 import { storagePut, storageDelete, chaveDoStorageDaDona } from "../storage";
 import {
@@ -110,12 +110,24 @@ export const contextsRouter = router({
       contextId:        z.string(),
       contactId:        z.number().int(),
       eventDate:        z.string().optional().nullable(),
-      city:             z.string().optional().nullable(),
-      country:          z.string().optional().nullable(),
+      // Mesmo teto de create/update: as colunas são varchar(100).
+      city:             z.string().max(100).optional().nullable(),
+      country:          z.string().max(100).optional().nullable(),
       notes:            z.string().max(1000).optional().nullable(),
       relationshipType: z.enum(["pessoal", "profissional", "ambos"]).default("profissional"),
     }))
     .mutation(async ({ ctx, input }) => {
+      // Posse ANTES de gravar, nos dois lados do vínculo — a mesma regra do
+      // uploadMedia. Sem isso, qualquer contextId (inclusive o de um contexto
+      // privado de outra dona) e qualquer contactId entravam em contact_contexts,
+      // e listByContact devolvia nome/tipo do contexto alheio pela linha
+      // gravada. NOT_FOUND nos dois casos: não se revela se o id existe.
+      if (!(await contextIsVisible(ctx.user.openId, input.contextId))) {
+        throw new Error("NOT_FOUND");
+      }
+      if (!(await getPrivateContactById(ctx.user.openId, input.contactId))) {
+        throw new Error("NOT_FOUND");
+      }
       const id = await linkContactToContext(ctx.user.openId, {
         contactId: input.contactId,
         contextId: input.contextId,
@@ -209,6 +221,11 @@ export const contextsRouter = router({
       notes:     z.string().max(500).optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // Participante avulso só entra em contexto que a dona pode ver (dela ou
+      // do catálogo) — mesma porta do uploadMedia e do linkContact.
+      if (!(await contextIsVisible(ctx.user.openId, input.contextId))) {
+        throw new Error("NOT_FOUND");
+      }
       const id = await addContextParticipant(ctx.user.openId, {
         contextId: input.contextId,
         name: input.name,
