@@ -1440,6 +1440,22 @@ export async function completeEnrichmentSession(sessionId: string, ownerId: stri
   return (r as any).affectedRows > 0;
 }
 
+/**
+ * Sugestões da sessão que ainda esperam a decisão da dona. É o que permite
+ * fechar e reabrir o detalhe do contato e encontrar o cartão onde estava:
+ * antes, o cartão só existia no estado da tela, e getEnrichmentHistory lista,
+ * de propósito, só o que já foi decidido (applied/ignored/undone).
+ */
+export async function getPendingEnrichmentSuggestions(sessionId: string, ownerId: string) {
+  const db = await exigirDb();
+  return db.select().from(enrichmentSuggestions)
+    .where(and(eq(enrichmentSuggestions.sessionId, sessionId), eq(enrichmentSuggestions.ownerId, ownerId), eq(enrichmentSuggestions.status, "pending")))
+    // Todas, da mais nova para a mais velha: o router decide, pela ETAPA da
+    // sessão, qual é a da vez (bloqueia e vira cartão) e quais são órfãs de
+    // etapa anterior (o defeito antigo deixou sessões com mais de uma).
+    .orderBy(desc(enrichmentSuggestions.createdAt));
+}
+
 export async function getEnrichmentHistory(ownerId: string, contactId: number, limit = 20, offset = 0) {
   const db = await exigirDb();
   const rows = await db.select().from(enrichmentSuggestions)
