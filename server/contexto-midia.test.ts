@@ -55,6 +55,7 @@ vi.mock("./db", async () => ({
   unlinkContactFromContext: vi.fn(),
   addContextParticipant: vi.fn(),
   listContextsByContact: vi.fn(async () => []),
+  getPrivateContactById: vi.fn(async () => null),
   contextIsVisible: (...args: unknown[]) => contextIsVisible(...(args as [])),
   addContextMedia: (...args: unknown[]) => addContextMedia(...(args as [])),
   getContextMediaById: (...args: unknown[]) => getContextMediaById(...(args as [])),

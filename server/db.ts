@@ -1062,7 +1062,15 @@ export async function listContextsByContact(ownerId: string, contactId: number) 
     .from(contactContexts)
     .innerJoin(contexts, eq(contactContexts.contextId, contexts.id))
     .leftJoin(contextTypes, eq(contexts.contextTypeId, contextTypes.id))
-    .where(and(eq(contactContexts.ownerId, ownerId), eq(contactContexts.contactId, contactId)))
+    // A regra de dona vale para o CONTEXTO também (dela, ou do catálogo), a
+    // mesma de getContextById/contextIsVisible: um vínculo apontando para
+    // contexto alheio — gravado antes da checagem do router, ou legado — não
+    // pode trazer o nome e o tipo do contexto de outra pessoa.
+    .where(and(
+      eq(contactContexts.ownerId, ownerId),
+      eq(contactContexts.contactId, contactId),
+      drizzleOr(eq(contexts.ownerId, ownerId), isNull(contexts.ownerId)),
+    ))
     .orderBy(desc(contactContexts.createdAt));
   return rows.map(r => ({
     linkId: r.link.id,

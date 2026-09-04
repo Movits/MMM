@@ -81,7 +81,15 @@ describe("Contextos — listagens dizem tudo o que a tela precisa", () => {
     });
     const busca = sqlDe("from `contact_contexts`");
     expect(busca).toBeDefined();
-    expect(busca!.params).toEqual(expect.arrayContaining(["dona-1", 42]));
+    // A cadeia inteira do WHERE, com `and` entre cada condição e a regra de
+    // dona também no CONTEXTO (dela, ou do catálogo): um `or` no lugar de
+    // qualquer `and` devolveria vínculos de outras donas, e `arrayContaining`
+    // nos params passava com a regra, sem ela e com o `and` trocado —
+    // mesmo padrão de smart-match-consent.test.ts.
+    expect(busca!.sql).toContain(
+      "`contact_contexts`.`owner_id` = ? and `contact_contexts`.`contact_id` = ? and (`contexts`.`owner_id` = ? or `contexts`.`owner_id` is null)",
+    );
+    expect(busca!.params).toEqual(["dona-1", 42, "dona-1"]);
   });
 
   it("getContextById traz o NOME de cada contato vinculado, não só o número", async () => {
