@@ -1450,11 +1450,10 @@ export async function getPendingEnrichmentSuggestions(sessionId: string, ownerId
   const db = await exigirDb();
   return db.select().from(enrichmentSuggestions)
     .where(and(eq(enrichmentSuggestions.sessionId, sessionId), eq(enrichmentSuggestions.ownerId, ownerId), eq(enrichmentSuggestions.status, "pending")))
-    .orderBy(desc(enrichmentSuggestions.createdAt))
-    // Uma decisão por vez: a mais recente. Sessões que ficaram com mais de uma
-    // pendente pelo defeito antigo mostrariam vários cartões de uma vez, e cada
-    // decisão avança o roteiro — a mais recente é a que a conversa está esperando.
-    .limit(1);
+    // Todas, da mais nova para a mais velha: o router decide, pela ETAPA da
+    // sessão, qual é a da vez (bloqueia e vira cartão) e quais são órfãs de
+    // etapa anterior (o defeito antigo deixou sessões com mais de uma).
+    .orderBy(desc(enrichmentSuggestions.createdAt));
 }
 
 export async function getEnrichmentHistory(ownerId: string, contactId: number, limit = 20, offset = 0) {

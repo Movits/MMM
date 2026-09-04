@@ -57,7 +57,7 @@ function SuggestionCard({ suggestion, busy, onConfirm, onIgnore }: {
       </div>
       {editing ? (
         <div className="space-y-2">
-          <Input value={editValue} onChange={e => setEditValue(e.target.value)}
+          <Input value={editValue} onChange={e => setEditValue(e.target.value)} maxLength={2000}
             className="bg-white/5 border-white/10 text-white text-sm h-8" />
           <Button size="sm" disabled={busy} onClick={() => onConfirm(suggestion.id, editValue)}
             className="w-full bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold h-8 text-xs">
@@ -303,7 +303,10 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
       // Falhou: o cartão continua na tela e a decisão continua pendente.
       handledSuggestionIds.current.delete(suggestionId);
       setAwaitingConfirmation(true);
-      toast.error(e.data?.code === "BAD_REQUEST" ? e.message : "Erro ao salvar informação.");
+      // A frase do servidor só serve se for uma frase: a validação do zod também
+      // é BAD_REQUEST, mas vem como JSON em inglês.
+      const explicacao = e.data?.code === "BAD_REQUEST" && !e.message.trim().startsWith("[") ? e.message : null;
+      toast.error(explicacao ?? "Erro ao salvar informação.");
     },
   });
 

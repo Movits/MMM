@@ -10,7 +10,7 @@ import {
   getEnrichmentHistory, getEnrichmentSessionById, advanceEnrichmentSession,
   getPendingEnrichmentSuggestions,
 } from "../db";
-import { ENRICHMENT_STEPS, getEnrichmentStep, isExpectedField, isSkipResponse, limiteDoValor } from "../enrichment-flow";
+import { ENRICHMENT_STEPS, getEnrichmentStep, isExpectedField, isSkipResponse, limiteDoValor, type EnrichmentField } from "../enrichment-flow";
 
 // O cartão como a tela o desenha. confidence é DECIMAL no banco (chega como
 // string); a tela multiplica por 100, então precisa ser número.
@@ -21,6 +21,25 @@ const paraCartao = (s: { id: string; fieldType: string; suggestedValue: string; 
   confidence: Number(s.confidence),
   status: "pending" as const,
 });
+
+// A pendência é POR ETAPA: só a sugestão da pergunta atual bloqueia e vira
+// cartão. As de etapa anterior são órfãs (o defeito antigo deixou sessões com
+// mais de uma pendente) — a lista chega da mais nova para a mais velha.
+type Pendente = { id: string; fieldType: string; messageId: string | null; suggestedValue: string; confidence: string | number };
+function separarPendentes<T extends Pendente>(pendentes: T[], fieldTypeDaEtapa: EnrichmentField) {
+  const daEtapaAtual = pendentes.filter(p => isExpectedField(p.fieldType, fieldTypeDaEtapa));
+  const orfas = pendentes.filter(p => !daEtapaAtual.includes(p));
+  return { daEtapaAtual, orfas };
+}
+
+// Confirmar/ignorar só avança o roteiro se a sugestão responde à pergunta
+// ATUAL da sessão; sessão encerrada ou sugestão de etapa anterior → não avança.
+async function sugestaoEhDaEtapaAtual(sessionId: string, ownerId: string, fieldType: string) {
+  const session = await getEnrichmentSessionById(sessionId, ownerId);
+  if (!session || session.status !== "active") return false;
+  const step = getEnrichmentStep(session.questionsAnswered ?? 0);
+  return Boolean(step && isExpectedField(fieldType, step.fieldType));
+}
 
 // ─── Módulo de Enriquecimento com IA (Etapa 4) ────────────────────────────────
 export const enrichmentRouter = router({
@@ -67,12 +86,17 @@ export const enrichmentRouter = router({
         return { messageId: null, aiResponse: null, suggestions: [], sessionComplete: true, completionSummary: "Cadastro enriquecido com sucesso!", awaitingConfirmation: false };
       }
 
-      // Uma decisão por vez. Enquanto há cartão esperando confirmação, uma nova
-      // resposta para a MESMA pergunta geraria outra sugestão (órfã: nunca
-      // decidida, nunca mostrada) — e "não sei" pularia a etapa por cima dela.
-      // A tela recebe o código e reidrata a conversa com o cartão pendente.
-      const pendentes = await getPendingEnrichmentSuggestions(input.sessionId, ctx.user.openId);
-      if (pendentes.length > 0) throw new TRPCError({ code: "CONFLICT", message: "SUGGESTION_PENDING" });
+      // Uma decisão por vez, POR ETAPA. Enquanto há cartão da pergunta atual
+      // esperando confirmação, uma nova resposta geraria outra sugestão (órfã:
+      // nunca decidida, nunca mostrada) — e "não sei" pularia a etapa por cima
+      // dela. A tela recebe o código e reidrata a conversa com o cartão.
+      // Pendente de etapa ANTERIOR é órfã do defeito antigo (ou de uma corrida
+      // entre abas): sai do caminho como "ignorada" sem avançar o roteiro —
+      // senão ressurgiria depois, bloquearia a conversa e avançaria a etapa
+      // errada ao ser decidida.
+      const { daEtapaAtual, orfas } = separarPendentes(await getPendingEnrichmentSuggestions(input.sessionId, ctx.user.openId), step.fieldType);
+      for (const orfa of orfas) await ignoreEnrichmentSuggestion(orfa.id, ctx.user.openId);
+      if (daEtapaAtual.length > 0) throw new TRPCError({ code: "CONFLICT", message: "SUGGESTION_PENDING" });
 
       // Salvar mensagem da usuária apenas uma vez para a pergunta atual.
       const userMsgId = await saveEnrichmentMessage({
@@ -254,6 +278,12 @@ FORMATO DE SAÍDA (JSON obrigatório):
         }
       }
 
+      // O roteiro só avança se a sugestão é da pergunta ATUAL. Uma órfã de
+      // etapa anterior decidida aqui gravaria o dado (feito acima) mas não pode
+      // contar como resposta da pergunta que ainda está na tela.
+      if (!(await sugestaoEhDaEtapaAtual(sug.sessionId, ctx.user.openId, sug.fieldType))) {
+        return { success: true, status: "applied", nextQuestion: null, sessionComplete: false };
+      }
       const advanced = await advanceEnrichmentSession(sug.sessionId, ctx.user.openId, false);
       const nextStep = getEnrichmentStep(advanced?.questionsAnswered ?? ENRICHMENT_STEPS.length);
       if (!nextStep) {
@@ -275,6 +305,10 @@ FORMATO DE SAÍDA (JSON obrigatório):
       if (!ok) throw new TRPCError({ code: "NOT_FOUND", message: "SUGGESTION_NOT_FOUND" });
       const sug = await getEnrichmentSuggestion(input.suggestionId, ctx.user.openId);
       if (!sug) return { success: true, status: "ignored", nextQuestion: null, sessionComplete: false };
+      // Órfã de etapa anterior: sai de cena sem pular a pergunta atual.
+      if (!(await sugestaoEhDaEtapaAtual(sug.sessionId, ctx.user.openId, sug.fieldType))) {
+        return { success: true, status: "ignored", nextQuestion: null, sessionComplete: false };
+      }
 
       const advanced = await advanceEnrichmentSession(sug.sessionId, ctx.user.openId, true);
       const nextStep = getEnrichmentStep(advanced?.questionsAnswered ?? ENRICHMENT_STEPS.length);
@@ -311,12 +345,17 @@ FORMATO DE SAÍDA (JSON obrigatório):
     .input(z.object({ sessionId: z.string(), limit: z.number().int().min(1).max(50).default(20) }))
     .query(async ({ ctx, input }) => {
       const msgs = await getEnrichmentMessages(input.sessionId, ctx.user.openId, input.limit);
-      // Cada mensagem leva os cartões que ainda esperam decisão: é o que faz a
-      // confirmação pendente sobreviver a fechar e reabrir o detalhe do contato.
-      const pendentes = await getPendingEnrichmentSuggestions(input.sessionId, ctx.user.openId);
+      // A mensagem da pergunta atual leva o cartão que ainda espera decisão: é o
+      // que faz a confirmação pendente sobreviver a fechar e reabrir o detalhe
+      // do contato. Só a pendente da ETAPA ATUAL (a mais recente dela) vira
+      // cartão — órfã de etapa anterior fica fora e é resolvida pelo sendMessage.
+      const session = await getEnrichmentSessionById(input.sessionId, ctx.user.openId);
+      const step = session?.status === "active" ? getEnrichmentStep(session.questionsAnswered ?? 0) : null;
+      const pendentes = step ? await getPendingEnrichmentSuggestions(input.sessionId, ctx.user.openId) : [];
+      const cartao = step ? separarPendentes(pendentes, step.fieldType).daEtapaAtual[0] : undefined;
       return [...msgs].reverse().map(m => ({ // cronológica
         ...m,
-        suggestions: pendentes.filter(s => s.messageId === m.id).map(paraCartao),
+        suggestions: cartao && cartao.messageId === m.id ? [paraCartao(cartao)] : [],
       }));
     }),
 });
