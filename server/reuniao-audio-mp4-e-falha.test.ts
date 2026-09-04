@@ -16,12 +16,31 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  */
 
 const atualizacoes: Array<Record<string, unknown>> = [];
+// As colunas do WHERE de cada UPDATE: o fake ignora o predicado, então o escopo
+// por dona só se prova olhando para ele (padrão de gravacao-playback-e-retencao).
+const escopos: string[][] = [];
+function colunasDe(condicao: unknown): string[] {
+  const achadas: string[] = [];
+  const visitados = new Set<unknown>();
+  const visitar = (no: unknown) => {
+    if (!no || typeof no !== "object" || visitados.has(no)) return;
+    visitados.add(no);
+    const alvo = no as Record<string, unknown>;
+    if (typeof alvo.name === "string" && alvo.table) { achadas.push(alvo.name); return; }
+    for (const valor of Object.values(alvo)) {
+      if (Array.isArray(valor)) valor.forEach(visitar);
+      else if (valor && typeof valor === "object") visitar(valor);
+    }
+  };
+  visitar(condicao);
+  return achadas;
+}
 const reuniao = { id: "reuniao-1", ownerId: "dona-1", consentGranted: true, status: "pending" };
 vi.mock("./db", () => ({
   getDb: async () => null,
   exigirDb: async () => ({
     select: () => ({ from: () => ({ where: () => ({ limit: async () => [reuniao] }) }) }),
-    update: () => ({ set: (valores: Record<string, unknown>) => ({ where: async () => { atualizacoes.push(valores); } }) }),
+    update: () => ({ set: (valores: Record<string, unknown>) => ({ where: async (condicao?: unknown) => { atualizacoes.push(valores); escopos.push(colunasDe(condicao)); } }) }),
     insert: () => ({ values: async () => {} }),
   }),
 }));
@@ -43,7 +62,7 @@ const { decodeMeetingAudio, processMeetingRecording } = await import("./meeting-
 
 const base64 = (texto: string) => Buffer.from(texto).toString("base64");
 
-beforeEach(() => { atualizacoes.length = 0; storagePut.mockClear(); });
+beforeEach(() => { atualizacoes.length = 0; escopos.length = 0; storagePut.mockClear(); });
 
 describe("decodeMeetingAudio — o cabeçalho vem do navegador, não da tela", () => {
   it("aceita .mp4 que o navegador tipa como video/mp4, com a tela mandando audio/mp4", () => {
@@ -72,6 +91,9 @@ describe("processMeetingRecording — áudio recusado vira reunião com falha, n
     expect(storagePut).not.toHaveBeenCalled();
     expect(atualizacoes).toHaveLength(1);
     expect(atualizacoes[0]).toMatchObject({ status: "failed", processingError: "Arquivo de áudio inválido." });
+    // A falha é gravada NA reunião DA dona — o mesmo escopo (id + owner_id) da
+    // busca da reunião; o fake ignora o predicado, então ele é conferido aqui.
+    expect(escopos[0]).toEqual(expect.arrayContaining(["id", "owner_id"]));
   });
 
   it("formato fora da lista também marca a falha", async () => {

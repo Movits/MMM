@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { SQL } from "drizzle-orm";
+import { MySqlDialect } from "drizzle-orm/mysql-core";
 
 process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
 
@@ -35,13 +37,20 @@ vi.mock("./_core/llm", () => ({
 const TABELA_FORA_DO_AR = Symbol("tabela fora do ar");
 const tabelas = new Map<unknown, unknown>();
 const escritas = { inseridos: [] as Record<string, unknown>[], atualizados: [] as Record<string, unknown>[], delecoes: 0 };
+// O WHERE de cada SELECT, renderizado pelo dialeto do MySQL (sem banco): o fake
+// não executa o predicado, então o escopo por dona — a consulta dos vínculos e
+// a dos contextos visíveis (dela OU catálogo) — só se prova olhando para ele.
+const dialeto = new MySqlDialect();
+const leituras: Array<{ tabela: unknown; sql: string; params: unknown[] }> = [];
 const fakeDb = {
   // A assinatura de mudança pede agregados {n, m} que o fake precisa CALCULAR:
   // devolver linhas cruas faria cada tabela virar "undefined:undefined" e o
   // teste da assinatura passaria com qualquer implementação.
   select: (projecao?: Record<string, unknown>) => ({
     from: (tabela: unknown) => ({
-      where: async () => {
+      where: async (condicao?: SQL) => {
+        const { sql, params } = condicao ? dialeto.sqlToQuery(condicao) : { sql: "", params: [] };
+        leituras.push({ tabela, sql, params });
         const linhas = tabelas.get(tabela) ?? [];
         if (linhas === TABELA_FORA_DO_AR) throw new Error("tabela fora do ar");
         const cru = linhas as Record<string, unknown>[];
@@ -81,6 +90,7 @@ beforeEach(() => {
   tabelas.set(schema.contextParticipants, []);
   tabelas.set(schema.meetings, []);
   escritas.inseridos = []; escritas.atualizados = []; escritas.delecoes = 0;
+  leituras.length = 0;
   embedWithGemini.mockReset(); embedManyWithGemini.mockReset(); invokeLLM.mockReset();
   embedManyWithGemini.mockImplementation(async (textos: string[]) => textos.map(() => vetor768()));
   // A assinatura de mudança é estado de módulo; sem limpar, um teste herdaria
@@ -188,6 +198,39 @@ describe("Memória — órfão não sobrevive à fonte", () => {
 
     const contato = escritas.inseridos.find(item => item.sourceType === "contact");
     expect(String(contato?.content)).toContain("Onde conheci: Web Summit Lisboa (Lisboa · Portugal)");
+  });
+
+  it("a consulta dos vínculos é DA DONA — WHERE owner_id = ? com a dona, na assinatura e na coleta", async () => {
+    // O fake ignora o predicado: sem olhar o WHERE, uma consulta sem a dona
+    // passaria, e os vínculos (e as notas do encontro) de OUTRA dona entrariam
+    // nos documentos desta. Mutante provado na revisão da PR.
+    tabelas.set(schema.privateContacts, [{ id: 1, fullName: "Ana Souza" }]);
+    tabelas.set(schema.contactContexts, [{ contactId: 1, contextId: "ctx-1", country: "Nigéria" }]);
+
+    await servico.indexOwnerMemory("dona");
+
+    const consultas = leituras.filter(leitura => leitura.tabela === schema.contactContexts);
+    // duas leituras: o count/max da assinatura e a coleta das fontes
+    expect(consultas).toHaveLength(2);
+    for (const consulta of consultas) {
+      expect(consulta.sql).toBe("`contact_contexts`.`owner_id` = ?");
+      expect(consulta.params).toEqual(["dona"]);
+    }
+  });
+
+  it("o nome do contexto vinculado vem só do que a dona pode ver: dela OU do catálogo (owner_id IS NULL)", async () => {
+    // Sem o `or(..., isNull)`, o contexto de catálogo some do documento ("Onde
+    // conheci: (Lisboa · Portugal)" sem nome); com um `in` sem a dona, o nome de
+    // um contexto privado de OUTRA dona (vínculo legado) vazaria para cá.
+    tabelas.set(schema.privateContacts, [{ id: 1, fullName: "Ana Souza" }]);
+    tabelas.set(schema.contexts, [{ id: "cat-1", ownerId: null, name: "Web Summit Lisboa", visibility: "public" }]);
+    tabelas.set(schema.contactContexts, [{ contactId: 1, contextId: "cat-1", city: "Lisboa", country: "Portugal" }]);
+
+    await servico.indexOwnerMemory("dona");
+
+    const porIds = leituras.find(leitura => leitura.tabela === schema.contexts && leitura.sql.includes(" in ("));
+    expect(porIds?.sql).toBe("(`contexts`.`id` in (?) and (`contexts`.`owner_id` = ? or `contexts`.`owner_id` is null))");
+    expect(porIds?.params).toEqual(["cat-1", "dona"]);
   });
 
   it("vínculo novo muda a assinatura: o contato é reindexado sem outra edição", async () => {

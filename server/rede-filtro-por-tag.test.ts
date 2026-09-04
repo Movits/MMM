@@ -75,6 +75,10 @@ describe("Rede — filtro por tag é da consulta, e o total respeita o filtro", 
     const pagina = consultaDaPagina();
     expect(pagina!.sql).toContain("JSON_CONTAINS(");
     expect(pagina!.params).toEqual(expect.arrayContaining(["Diplomata", 20, 20]));
+    // O OFFSET de verdade: `arrayContaining([20, 20])` passa com um único 20 (o
+    // LIMIT), então ele é conferido no fim do SQL e na posição dos parâmetros.
+    expect(pagina!.sql).toContain("limit ? offset ?");
+    expect(pagina!.params.slice(-2)).toEqual([20, 20]);
   });
 
   it("sem tag, nenhuma das duas consultas menciona JSON_CONTAINS", async () => {
