@@ -76,7 +76,13 @@ export function decodeMeetingAudio(base64: string, mimeType: string) {
   }
   // MediaRecorder pode gerar cabeçalhos como
   // data:audio/webm;codecs=opus;base64,... — o cabeçalho inclui parâmetros extras.
-  const normalized = base64.trim().replace(/^data:audio\/[^,]+;base64,/i, "").replace(/\s/g, "");
+  // E o FileReader usa o tipo que o NAVEGADOR dá ao arquivo, não o mimeType
+  // que a tela envia: um .mp4/.webm chega como data:video/mp4;base64,... e um
+  // arquivo sem tipo como data:application/octet-stream;base64,... — só
+  // aceitar "data:audio/" recusava esses como "áudio inválido" (auditoria 04/09).
+  // O corte é em ";base64," (não na primeira vírgula): o Chrome grava
+  // "video/webm;codecs=vp8,opus", com vírgula dentro do parâmetro.
+  const normalized = base64.trim().replace(/^data:.*?;base64,/i, "").replace(/\s/g, "");
   if (!/^[A-Za-z0-9+/=]+$/.test(normalized)) throw new Error("Arquivo de áudio inválido.");
   const audio = Buffer.from(normalized, "base64");
   if (!audio.length || audio.length > MAX_MEETING_AUDIO_BYTES) {
@@ -208,7 +214,24 @@ export async function processMeetingRecording(input: {
   if (!meeting) throw new Error("Reunião não encontrada.");
   if (!meeting.consentGranted) throw new Error("O consentimento para gravação é obrigatório.");
 
-  const audio = decodeMeetingAudio(input.audioBase64, input.mimeType);
+  const marcarFalha = async (error: unknown) => {
+    await db.update(meetings).set({
+      status: "failed",
+      processingError: error instanceof Error ? error.message.slice(0, 1000) : "Falha no processamento",
+      updatedAt: now(),
+    }).where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId)));
+  };
+
+  // A decodificação também marca a reunião como falha: fora do try, um áudio
+  // recusado deixava a reunião recém-criada em "Gravação pendente" para
+  // sempre, sem erro registrado e sem como a usuária tentar de novo.
+  let audio: Buffer;
+  try {
+    audio = decodeMeetingAudio(input.audioBase64, input.mimeType);
+  } catch (error) {
+    await marcarFalha(error);
+    throw error;
+  }
   const timestamp = now();
   await db.update(meetings).set({ status: "processing", processingError: null, updatedAt: timestamp }).where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId)));
 
@@ -271,11 +294,7 @@ export async function processMeetingRecording(input: {
     await db.update(meetings).set({ status: "ready", updatedAt: completedAt }).where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId)));
     return { transcript: transcription.text, extraction };
   } catch (error) {
-    await db.update(meetings).set({
-      status: "failed",
-      processingError: error instanceof Error ? error.message.slice(0, 1000) : "Falha no processamento",
-      updatedAt: now(),
-    }).where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId)));
+    await marcarFalha(error);
     throw error;
   }
 }
