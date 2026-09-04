@@ -1365,6 +1365,10 @@
   "inactivityGuard": {
     "warningTitle_one": "⏰ セッションは{{count}}分後に終了します",
     "warningTitle_other": "⏰ セッションは{{count}}分後に終了します",
+    "warningTitle_zero": "⏰ セッションは{{count}}分後に終了します",
+    "warningTitle_two": "⏰ セッションは{{count}}分後に終了します",
+    "warningTitle_few": "⏰ セッションは{{count}}分後に終了します",
+    "warningTitle_many": "⏰ セッションは{{count}}分後に終了します",
     "warningDescription": "接続を維持するには、マウスを動かすかキーを押してください。",
     "continueButton": "接続を続ける",
     "timeoutTitle": "🔒 非アクティブによりセッションが終了しました",

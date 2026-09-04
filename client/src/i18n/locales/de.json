@@ -1365,6 +1365,10 @@
   "inactivityGuard": {
     "warningTitle_one": "⏰ Sitzung läuft in {{count}} Minute ab",
     "warningTitle_other": "⏰ Sitzung läuft in {{count}} Minuten ab",
+    "warningTitle_zero": "⏰ Sitzung läuft in {{count}} Minuten ab",
+    "warningTitle_two": "⏰ Sitzung läuft in {{count}} Minuten ab",
+    "warningTitle_few": "⏰ Sitzung läuft in {{count}} Minuten ab",
+    "warningTitle_many": "⏰ Sitzung läuft in {{count}} Minuten ab",
     "warningDescription": "Bewegen Sie die Maus oder drücken Sie eine Taste, um verbunden zu bleiben.",
     "continueButton": "Verbunden bleiben",
     "timeoutTitle": "🔒 Sitzung wegen Inaktivität beendet",

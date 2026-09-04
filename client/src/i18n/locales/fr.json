@@ -1365,6 +1365,10 @@
   "inactivityGuard": {
     "warningTitle_one": "⏰ Session expirant dans {{count}} minute",
     "warningTitle_other": "⏰ Session expirant dans {{count}} minutes",
+    "warningTitle_zero": "⏰ Session expirant dans {{count}} minutes",
+    "warningTitle_two": "⏰ Session expirant dans {{count}} minutes",
+    "warningTitle_few": "⏰ Session expirant dans {{count}} minutes",
+    "warningTitle_many": "⏰ Session expirant dans {{count}} minutes",
     "warningDescription": "Bougez la souris ou appuyez sur une touche pour rester connectée.",
     "continueButton": "Rester connectée",
     "timeoutTitle": "🔒 Session terminée pour inactivité",

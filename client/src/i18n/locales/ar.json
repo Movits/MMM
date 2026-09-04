@@ -1365,6 +1365,10 @@
   "inactivityGuard": {
     "warningTitle_one": "⏰ ستنتهي الجلسة خلال {{count}} دقيقة",
     "warningTitle_other": "⏰ ستنتهي الجلسة خلال {{count}} دقائق",
+    "warningTitle_zero": "⏰ ستنتهي الجلسة خلال {{count}} دقيقة",
+    "warningTitle_two": "⏰ ستنتهي الجلسة خلال دقيقتين",
+    "warningTitle_few": "⏰ ستنتهي الجلسة خلال {{count}} دقائق",
+    "warningTitle_many": "⏰ ستنتهي الجلسة خلال {{count}} دقيقة",
     "warningDescription": "حرّكي الماوس أو اضغطي مفتاحًا للبقاء متصلة.",
     "continueButton": "البقاء متصلة",
     "timeoutTitle": "🔒 انتهت الجلسة بسبب عدم النشاط",
