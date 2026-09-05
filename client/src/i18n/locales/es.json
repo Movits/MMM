@@ -26,7 +26,7 @@
   },
   "steps": {
     "title": "Tu camino hacia el éxito",
-    "subtitle": "Descubre lo fácil que es conectar y crecer con MMM OS.",
+    "subtitle": "Descubre lo fácil que es conectar y crecer con MMM.",
     "step1": {
       "title": "Crea tu perfil empoderador",
       "desc": "Destaca tus habilidades, experiencias y aspiraciones para atraer las conexiones correctas."
@@ -42,7 +42,7 @@
   },
   "opportunities": {
     "title": "Un mundo de posibilidades para ti",
-    "subtitle": "Explora las diversas oportunidades que MMM OS ofrece para tu desarrollo.",
+    "subtitle": "Explora las diversas oportunidades que MMM ofrece para tu desarrollo.",
     "society": {
       "label": "Impacto social",
       "desc": "Conéctate para generar un impacto positivo en la sociedad."
@@ -108,12 +108,12 @@
   },
   "cta": {
     "title": "¿Lista para transformar tu futuro?",
-    "subtitle": "Únete a MMM OS y empieza a construir tu legado hoy.",
+    "subtitle": "Únete a MMM y empieza a construir tu legado hoy.",
     "button": "Crear cuenta"
   },
   "footer": {
     "tagline": "Conectando mujeres. Impulsando el éxito.",
-    "rights": "© 2026 MMM OS. Todos los derechos reservados.",
+    "rights": "© 2026 MMM. Todos los derechos reservados.",
     "privacy": "Privacidad",
     "terms": "Términos",
     "contact": "Contacto"
@@ -541,7 +541,7 @@
     "greetingTotal_two": "{{count}} oportunidades compatibles encontradas para ti",
     "greetingTotal_few": "{{count}} oportunidades compatibles encontradas para ti",
     "greetingTotal_many": "{{count}} oportunidades compatibles encontradas para ti",
-    "greetingWelcome": "¡Bienvenida a MMM OS! Genera tus primeros matches abajo"
+    "greetingWelcome": "¡Bienvenida a MMM! Genera tus primeros matches abajo"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -649,7 +649,7 @@
     "label": "Gobernanza",
     "title1": "Una plataforma con",
     "title2": "integridad institucional",
-    "subtitle": "El acceso en MMM OS no se compra. Se conquista.",
+    "subtitle": "El acceso en MMM no se compra. Se conquista.",
     "silver": {
       "title": "Miembro Plata",
       "desc": "Todas las mujeres que se registran en la plataforma entran como Miembros Plata. Acceso completo al sistema de matching, oportunidades públicas y conexiones con otras mujeres de la red.",

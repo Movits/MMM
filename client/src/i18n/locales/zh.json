@@ -108,18 +108,18 @@
   },
   "cta": {
     "title": "准备好提升您的职业生涯了吗？",
-    "subtitle": "加入 MMM OS，与志同道合的女性建立联系。",
+    "subtitle": "加入 MMM，与志同道合的女性建立联系。",
     "button": "创建账户"
   },
   "footer": {
     "tagline": "赋能女性，共创未来。",
-    "rights": "© 2026 MMM OS. 保留所有权利。",
+    "rights": "© 2026 MMM. 保留所有权利。",
     "privacy": "隐私政策",
     "terms": "条款",
     "contact": "联系我们"
   },
   "onboarding": {
-    "title": "欢迎来到 MMM OS",
+    "title": "欢迎来到 MMM",
     "subtitle": "连接非凡女性的人工智能",
     "step": "第 {{current}} 步，共 {{total}} 步",
     "next": "下一步",
@@ -541,7 +541,7 @@
     "greetingTotal_two": "为您找到 {{count}} 个匹配的机会",
     "greetingTotal_few": "为您找到 {{count}} 个匹配的机会",
     "greetingTotal_many": "为您找到 {{count}} 个匹配的机会",
-    "greetingWelcome": "欢迎使用 MMM OS！在下方生成您的第一批匹配"
+    "greetingWelcome": "欢迎使用 MMM！在下方生成您的第一批匹配"
   },
   "auth": {
     "login": "登录",
@@ -649,7 +649,7 @@
     "label": "治理",
     "title1": "一个具有",
     "title2": "机构诚信的平台",
-    "subtitle": "MMM OS的访问权限不可购买，需要赢得。",
+    "subtitle": "MMM的访问权限不可购买，需要赢得。",
     "silver": {
       "title": "银牌会员",
       "desc": "所有在平台注册的女性都以银牌会员身份加入。完全访问匹配系统、公开机会以及与网络中其他女性的连接。",

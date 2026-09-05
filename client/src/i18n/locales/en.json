@@ -541,7 +541,7 @@
     "greetingTotal_two": "{{count}} compatible opportunities found for you",
     "greetingTotal_few": "{{count}} compatible opportunities found for you",
     "greetingTotal_many": "{{count}} compatible opportunities found for you",
-    "greetingWelcome": "Welcome to MMM OS! Generate your first matches below"
+    "greetingWelcome": "Welcome to MMM! Generate your first matches below"
   },
   "auth": {
     "login": "Log in",
@@ -649,7 +649,7 @@
     "label": "Governance",
     "title1": "A platform with",
     "title2": "institutional integrity",
-    "subtitle": "Access to MMM OS is not bought. It is earned.",
+    "subtitle": "Access to MMM is not bought. It is earned.",
     "silver": {
       "title": "Silver Member",
       "desc": "All women who register on the platform join as Silver Members. Full access to the matching system, public opportunities and connections with other women in the network.",
