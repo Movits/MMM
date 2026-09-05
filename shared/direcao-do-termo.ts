@@ -17,10 +17,21 @@
  * letras o que pretende fazer. Foi essa contradição que fez o motor casar duas
  * exportadoras em 100 antes desta regra existir.
  *
- * DISCIPLINA DA LISTA — só entram VERBOS de direção, e só quando o verbo é
- * inequívoco:
+ * DISCIPLINA DA LISTA — só entram palavras de direção inequívoca, e em duas
+ * listas separadas, porque verbo e substantivo de ação não dizem a mesma coisa:
  *
- *   - Verbo, não substantivo. "Compradores no exterior" nomeia uma coisa que
+ *   - VERBO flexionado ("Exportar vinho") declara a ação de quem escreveu.
+ *   - SUBSTANTIVO de ação ("Exportação de vinho", "Captação de recursos") nomeia
+ *     a ação — e, no campo de procura, nomeia o SERVIÇO de que a pessoa precisa.
+ *     Escrito igual dos dois lados, é o serviço que uma presta e a outra quer:
+ *     casa, não concorre. (Reverificação de 04/09: "Captação de recursos" ×
+ *     idem saía 0 como "concorrentes" — e "Supply chain management" também,
+ *     porque em inglês a mesma palavra é verbo e substantivo.)
+ *   - Substantivo seguido de palavra justaposta ("Compras públicas", "Venda
+ *     direta") é um composto que nomeia uma coisa, não a ação de quem escreveu:
+ *     neutro. Em inglês o mesmo vale para o verbo seguido de complemento nominal
+ *     ("Import license", "Sell-side advisory").
+ *   - Ator não é direção. "Compradores no exterior" nomeia uma coisa que
  *     alguém pode ter para oferecer; não diz que quem escreveu vai comprar.
  *     Classificar atores por direção quebraria matches legítimos que já
  *     funcionam hoje.
@@ -37,33 +48,104 @@
 
 export type Direcao = "oferta" | "demanda" | "neutro";
 
-/** Quem escreve isto na cabeça do termo está dando/saindo com alguma coisa. */
+/** VERBO na cabeça: quem escreve isto está dando/saindo com alguma coisa. */
 const VERBOS_DE_OFERTA = [
   // pt
-  "exportar", "exportacao", "exportacoes", "vender", "venda", "vendas",
-  "fornecer", "fornecimento", "distribuir", "distribuicao", "escoar",
-  "escoamento", "prestar", "investir",
-  // en
-  "export", "exporting", "exports", "sell", "selling", "supply", "supplying",
+  "exportar", "vender", "fornecer", "distribuir", "escoar", "prestar", "investir",
+  // en — "export" e "supply" são verbo E substantivo; a leitura de verbo
+  // continua, e o composto nominal ("Export manager") e a forma com "of"
+  // ("Supply of rare earths") são tratados em `analisar` (CABECAS_NOMINAIS_EN).
+  "export", "exporting", "sell", "selling", "supply", "supplying",
   "distribute", "distributing",
   // es
-  "exportar", "exportacion", "exportaciones", "vender", "venta", "ventas",
-  "suministrar", "suministro", "distribuir",
+  "exportar", "vender", "suministrar", "distribuir",
 ];
 
-/** Quem escreve isto na cabeça do termo está pedindo/entrando com alguma coisa. */
+/** VERBO na cabeça: quem escreve isto está pedindo/entrando com alguma coisa. */
 const VERBOS_DE_DEMANDA = [
   // pt
-  "importar", "importacao", "importacoes", "comprar", "compra", "compras",
-  "adquirir", "aquisicao", "contratar", "contratacao", "terceirizar",
-  "captar", "captacao",
+  "importar", "comprar", "adquirir", "contratar", "terceirizar", "captar",
   // en
-  "import", "importing", "imports", "buy", "buying", "purchase", "purchasing",
-  "acquire", "hire", "hiring", "outsource", "outsourcing",
+  "import", "importing", "buy", "buying", "purchase", "purchasing", "acquire",
+  "hire", "hiring", "outsource", "outsourcing",
   // es
-  "importar", "importacion", "importaciones", "comprar", "compra", "compras",
-  "adquirir", "adquisicion", "contratar", "subcontratar",
+  "importar", "comprar", "adquirir", "contratar", "subcontratar",
 ];
+
+/** SUBSTANTIVO de ação na cabeça, do lado de quem dá/sai. */
+const SUBSTANTIVOS_DE_OFERTA = [
+  // pt
+  "exportacao", "exportacoes", "venda", "vendas", "fornecimento",
+  "distribuicao", "escoamento",
+  // en — "exports" na cabeça de uma tag é o plural ("Exports of coffee"), como
+  // "exportações"; a 3ª pessoa do verbo não se escreve em tag.
+  "exports",
+  // es
+  "exportacion", "exportaciones", "venta", "ventas", "suministro",
+];
+
+/** SUBSTANTIVO de ação na cabeça, do lado de quem pede/entra. */
+const SUBSTANTIVOS_DE_DEMANDA = [
+  // pt
+  "importacao", "importacoes", "compra", "compras", "aquisicao",
+  "contratacao", "captacao",
+  // en
+  "imports",
+  // es
+  "importacion", "importaciones", "compra", "compras", "adquisicion",
+];
+
+const VERBOS_FLEXIONADOS = new Set([...VERBOS_DE_OFERTA, ...VERBOS_DE_DEMANDA]);
+const SUBSTANTIVOS_DE_ACAO = new Set([...SUBSTANTIVOS_DE_OFERTA, ...SUBSTANTIVOS_DE_DEMANDA]);
+
+/**
+ * Cabeças inglesas que são verbo E substantivo com a mesma grafia ("import",
+ * "export", "supply", "purchase"), ou gerúndio que se usa como adjetivo
+ * ("purchasing manager", "exporting company", "hiring manager"). Seguidas de
+ * um COMPLEMENTO NOMINAL abrem um composto que nomeia uma coisa — "import
+ * license", "supply chain management", "export manager" — e não a ação de
+ * quem escreveu. O termo fica neutro e vale por inteiro.
+ *
+ * Verbo PURO fica de fora de propósito: "sell", "buy", "hire", "acquire",
+ * "distribute", "outsource" não são substantivo, e o que vem depois deles é o
+ * objeto. "Sell insurance" × "Buy insurance" é o negócio (revisão adversarial
+ * de 05/09: a lista aplicada a todo verbo derrubou esse par de 100 para 60).
+ * "Exports"/"imports" não estão aqui porque são substantivo de ação, e o
+ * composto deles ("Exports department") já cai na regra do justaposto.
+ */
+const CABECAS_NOMINAIS_EN = new Set([
+  "export", "exporting", "import", "importing", "supply", "supplying",
+  "purchase", "purchasing", "selling", "buying", "hiring", "outsourcing",
+  "distributing",
+]);
+
+/**
+ * "Sell-side" e "buy-side" são compostos fixos do mercado financeiro: a única
+ * vez em que verbo puro abre composto, e "side" nunca é o que se vende.
+ */
+const COMPOSTOS_FIXOS = new Set(["sell side", "buy side"]);
+
+const COMPLEMENTOS_NOMINAIS = new Set([
+  "license", "licence", "permit", "duty", "tariff", "quota", "chain", "order",
+  "credit", "insurance", "finance", "financing", "agreement", "contract",
+  "management", "side", "compliance", "logistics", "control", "regulation",
+  "regulations", "documentation", "consulting", "advisory", "services",
+  "department", "agent", "agents", "broker", "brokers", "market", "markets",
+  "data", "strategy", "process", "procedure", "planning",
+  // papéis e organizações — "Export manager" × "Import manager" saía em 100
+  // com objeto "manager" dos dois lados (revisão adversarial de 05/09)
+  "manager", "managers", "director", "directors", "team", "teams", "company",
+  "companies", "specialist", "specialists", "officer", "officers",
+  "coordinator", "coordinators", "office", "unit", "units", "operations",
+  "declaration", "declarations", "clearance", "document", "documents",
+]);
+
+/** Cabeça + palavra seguinte formam composto nominal (neutro)? */
+function ehCompostoNominal(cabeca: string, seguinte: string | undefined): boolean {
+  if (!seguinte) return false;
+  if (COMPOSTOS_FIXOS.has(`${cabeca} ${seguinte}`)) return true;
+  return CABECAS_NOMINAIS_EN.has(cabeca) && COMPLEMENTOS_NOMINAIS.has(seguinte);
+}
 
 /**
  * Marcadores fracos: anunciam que ali vem o que a pessoa tem ou quer, mas não
@@ -98,9 +180,11 @@ const MARCADORES_FRACOS = new Set([
   "necesita", "necesito", "quiere", "quiero", "tiene", "tengo", "ofrece", "ofrezco",
 ]);
 
-const DIRECAO_POR_VERBO = new Map<string, Direcao>([
+const DIRECAO_POR_CABECA = new Map<string, Direcao>([
   ...VERBOS_DE_OFERTA.map(v => [v, "oferta" as Direcao] as const),
+  ...SUBSTANTIVOS_DE_OFERTA.map(v => [v, "oferta" as Direcao] as const),
   ...VERBOS_DE_DEMANDA.map(v => [v, "demanda" as Direcao] as const),
+  ...SUBSTANTIVOS_DE_DEMANDA.map(v => [v, "demanda" as Direcao] as const),
 ]);
 
 /**
@@ -127,22 +211,61 @@ const ARTIGOS = new Set(["a", "o", "as", "os", "um", "uma", "the", "el", "la", "
  * "Importação da China" continua rendendo objeto "china", porque o genitivo é
  * genuinamente ambíguo em português. O que se evita é o par entre um genitivo e
  * um locativo, que era de onde vinham os casos medidos.
+ *
+ * As contrações do espanhol "al" (a + el) e "del" (de + el) e a origem "from"/
+ * "desde" são locativos também: "Exportar al Brasil" × "Importar al Brasil" e
+ * "Export from Brazil" × "Import from Brazil" reduziam os dois lados ao país e
+ * saíam em 100 (revisão adversarial de 05/09). "Del" não vai para GENITIVOS
+ * porque em tag ele apresenta origem ("Importar del Brasil"), não a coisa.
  */
 const LOCATIVOS = new Set([
   "para", "em", "no", "na", "nos", "nas", "com", "por", "ao", "aos", "entre",
-  "sobre", "for", "to", "in", "on", "at", "with", "en", "hacia", "con",
+  "sobre", "for", "to", "in", "on", "at", "with", "from", "en", "hacia", "con",
+  "al", "del", "desde",
+]);
+
+/**
+ * Expressões de modo e condição em pt/es/en: "a granel", "a prazo", "à vista",
+ * "a varejo", "retail", "wholesale". Depois delas não vem mercadoria, e sim
+ * COMO se negocia — o mesmo papel dos LOCATIVOS. Sem esta lista, "Exportação
+ * a granel" × "Importação a granel" reduzia os dois lados a "granel" e saía em
+ * 100 (reverificação de 04/09). Em inglês a expressão vem SEM preposição
+ * ("Sell retail"), por isso a guarda também vale quando nada foi descascado.
+ * "Al contado" e "al por mayor" já param no "al" dos LOCATIVOS; "contado" e
+ * "mayoreo" ficam aqui para a forma sem contração.
+ */
+const MODOS_E_CONDICOES = new Set([
+  "granel", "prazo", "vista", "varejo", "atacado", "domicilio", "consignacao",
+  "credito", "bulk", "retail", "wholesale", "plazo", "contado", "mayoreo",
 ]);
 
 /**
  * O objeto que vem depois de uma cabeça, ou `null` quando não há objeto
  * extraível — caso em que o termo vale por inteiro e não empresta o
  * complemento a ninguém.
+ *
+ * `complementoDeDirecao` diz que a cabeça é palavra de direção (verbo ou
+ * substantivo de ação), e aí lugar e modo nunca são a mercadoria: "Exportar
+ * China", "Sell retail" valem por inteiro. Depois de um MARCADOR fraco a
+ * guarda não se aplica: "Procura China" e "China" são a mesma coisa dita de
+ * dois jeitos, como "Procura terras raras" e "Terras raras".
  */
-function objetoDepoisDe(resto: string[]): string[] | null {
+function objetoDepoisDe(resto: string[], complementoDeDirecao = false): string[] | null {
   if (!resto.length || LOCATIVOS.has(resto[0])) return null;
   const palavras = [...resto];
-  while (palavras.length && (GENITIVOS.has(palavras[0]) || ARTIGOS.has(palavras[0]))) palavras.shift();
+  let descascada: string | undefined;
+  while (palavras.length && (GENITIVOS.has(palavras[0]) || ARTIGOS.has(palavras[0]))) descascada = palavras.shift();
   if (!palavras.length || LOCATIVOS.has(palavras[0])) return null;
+  // "a"/"as" estão em ARTIGOS, mas em pt/es são também preposição: de destino
+  // ("exportar a China", "exportação à China", "exportar às Filipinas" — o
+  // acento some na normalização) e de modo ("a granel", "a prazo"). Diante de
+  // lugar ou de expressão de modo, o que sobra não é a mercadoria: o termo
+  // vale por inteiro, como diante de "para". "Vender a soja" continua rendendo
+  // "soja" — ali o "a" é artigo mesmo. Depois de genitivo ("Importação da
+  // China") o lugar segue como objeto: é o motor de match que o descarta.
+  const preposicaoAmbigua = descascada === "a" || descascada === "as";
+  const nadaDescascado = descascada === undefined && complementoDeDirecao;
+  if ((preposicaoAmbigua || nadaDescascado) && (ehLugar(palavras) || MODOS_E_CONDICOES.has(palavras[0]))) return null;
   return palavras;
 }
 
@@ -199,10 +322,20 @@ export type TermoAnalisado = {
 };
 
 /**
- * Lê a cabeça do termo. Se ela for um verbo de direção, separa o verbo do
- * objeto; se não, o termo inteiro é o objeto e a direção fica com o campo.
+ * A FORMA em que a direção foi escrita, que `saoConcorrentes` precisa e
+ * `analisarTermo` não expõe (o contrato dele é {direcao, objeto, verbo}):
+ *
+ *   - "verbo": "Exportar vinho", "Export wine" — ação declarada.
+ *   - "substantivo-com-objeto": "Exportação de vinho", "Captação de recursos" —
+ *     a ação nomeada com a coisa no genitivo. Igual dos dois lados, é serviço.
+ *   - "substantivo-sem-objeto": "Exportação", "Exportação para a China",
+ *     "Venda a prazo" — a ação nomeada, sem mercadoria extraível.
+ *   - null: termo neutro.
  */
-export function analisarTermo(rotulo: string): TermoAnalisado {
+type Forma = "verbo" | "substantivo-com-objeto" | "substantivo-sem-objeto";
+type Analise = TermoAnalisado & { forma: Forma | null };
+
+function analisar(rotulo: string): Analise {
   const palavras = tokens(rotulo);
 
   // Descasca os marcadores fracos da frente. Quando o que vem depois não é
@@ -216,17 +349,69 @@ export function analisarTermo(rotulo: string): TermoAnalisado {
   }
 
   const cabeca = resto[0];
-  const direcao = cabeca ? DIRECAO_POR_VERBO.get(cabeca) : undefined;
+  const direcao = cabeca ? DIRECAO_POR_CABECA.get(cabeca) : undefined;
+  const neutro: Analise = { direcao: "neutro", objeto: resto.join("-"), verbo: null, forma: null };
+  if (!direcao) return neutro;
 
-  if (!direcao) return { direcao: "neutro", objeto: resto.join("-"), verbo: null };
+  const depois = resto.slice(1);
+  const inteiro = (forma: Forma): Analise => ({ direcao, objeto: resto.join("-"), verbo: cabeca, forma });
 
-  // Sem objeto extraível — "Exportação" sozinho, ou "Exportação para a China" —
-  // o termo vale por inteiro. É o que impede o complemento de lugar de virar a
-  // coisa que as duas pontas supostamente têm em comum.
-  const objeto = objetoDepoisDe(resto.slice(1));
-  if (!objeto) return { direcao, objeto: resto.join("-"), verbo: cabeca };
+  // "Import/export", "Importar e exportar", "Comprar e vender imóveis": os dois
+  // sentidos no mesmo termo nomeiam o fluxo inteiro (a atividade, o serviço),
+  // não a ação de quem escreveu. Lido pela primeira palavra, "Import/export"
+  // × idem saía 0 como "concorrentes" (revisão adversarial de 05/09). Neutro,
+  // e o termo vale por inteiro.
+  if (depois.some(palavra => { const outra = DIRECAO_POR_CABECA.get(palavra); return !!outra && outra !== direcao; })) return neutro;
 
-  return { direcao, objeto: objeto.join("-"), verbo: cabeca };
+  // Substantivo de ação com a coisa no genitivo: a forma que, igual dos dois
+  // lados, é serviço prestado × serviço procurado (ver saoConcorrentes).
+  const nominalComObjeto = (): Analise => {
+    const objeto = objetoDepoisDe(depois, true);
+    return objeto
+      ? { direcao, objeto: objeto.join("-"), verbo: cabeca, forma: "substantivo-com-objeto" }
+      : inteiro("substantivo-sem-objeto");
+  };
+
+  if (VERBOS_FLEXIONADOS.has(cabeca)) {
+    // "Import license", "Supply chain management", "Export manager": cabeça
+    // ambígua + complemento nominal é composto que nomeia uma coisa, não a
+    // ação de quem escreveu.
+    if (ehCompostoNominal(cabeca, depois[0])) return neutro;
+    // "Supply of rare earths", "Export of wine", "Hiring of staff": o "of"
+    // denuncia a forma NOMINAL da mesma grafia — é "fornecimento de terras
+    // raras", não "fornecer". Só "of": em pt/es o "de" depois de verbo é
+    // origem ("Exportar do Brasil"), e a leitura de verbo permanece.
+    if (depois[0] === "of") return nominalComObjeto();
+    // Sem objeto extraível — "Exportar" sozinho, ou "Exportar para a China" —
+    // o termo vale por inteiro. É o que impede o complemento de lugar de virar
+    // a coisa que as duas pontas supostamente têm em comum.
+    const objeto = objetoDepoisDe(depois, true);
+    return objeto ? { direcao, objeto: objeto.join("-"), verbo: cabeca, forma: "verbo" } : inteiro("verbo");
+  }
+
+  // Daqui para baixo a cabeça é SUBSTANTIVO de ação (toda cabeça com direção
+  // está numa das duas listas; a guarda deixa isso explícito).
+  if (!SUBSTANTIVOS_DE_ACAO.has(cabeca)) return neutro;
+  if (!depois.length) return inteiro("substantivo-sem-objeto");
+  if (GENITIVOS.has(depois[0])) return nominalComObjeto();
+  // "Exportação para a China", "Venda a prazo", "Exportação às Filipinas": a
+  // ação continua declarada, o complemento é lugar ou modo — sem objeto, o
+  // termo vale por inteiro.
+  if (LOCATIVOS.has(depois[0]) || (ARTIGOS.has(depois[0]) && !objetoDepoisDe(depois, true))) {
+    return inteiro("substantivo-sem-objeto");
+  }
+  // "Compras públicas", "Venda direta", "Vendas online": substantivo seguido de
+  // palavra justaposta é um composto nominal, que nomeia uma coisa. Neutro.
+  return neutro;
+}
+
+/**
+ * Lê a cabeça do termo. Se ela for palavra de direção, separa a direção do
+ * objeto; se não, o termo inteiro é o objeto e a direção fica com o campo.
+ */
+export function analisarTermo(rotulo: string): TermoAnalisado {
+  const { direcao, objeto, verbo } = analisar(rotulo);
+  return { direcao, objeto, verbo };
 }
 
 /**
@@ -365,8 +550,12 @@ const LUGARES_COMPOSTOS = new Set([
  * mesmo termo; o que se perde é o 100 por núcleo. É o lado conservador de
  * propósito: o erro oposto (100 para quem só divide geografia) chega a e-mail
  * de oportunidade e foi o que motivou o cartão.
+ *
+ * Exportada porque o motor de match aplica a mesma guarda ao objeto e ao
+ * núcleo: "China" × "Procura China" reduzia os dois lados a "china" e saía em
+ * 100 (reverificação de 04/09).
  */
-function ehLugar(palavras: string[]): boolean {
+export function ehLugar(palavras: string[]): boolean {
   if (!palavras.length) return false;
   const frase = palavras.join(" ");
   if (LUGARES_COMPOSTOS.has(frase) || LUGARES_COMPOSTOS.has(semPluralFinal(frase))) return true;
@@ -406,14 +595,25 @@ export function nucleoDoTermo(rotulo: string): string {
 }
 
 /**
- * São concorrentes? Só respondemos que sim quando AS DUAS pontas trazem verbo
- * explícito e os dois verbos apontam para o mesmo lado. Com uma ponta neutra
+ * São concorrentes? Só respondemos que sim quando AS DUAS pontas trazem
+ * direção explícita e as duas apontam para o mesmo lado. Com uma ponta neutra
  * não há evidência de conflito nas palavras — e o campo já separou uma da
  * outra, que é o comportamento de sempre.
+ *
+ * E o SERVIÇO escrito igual dos dois lados não é concorrência (decisão do
+ * Nicolas, 04/09): "Captação de recursos" possuído diante de "Captação de
+ * recursos" procurado é quem presta o serviço diante de quem precisa dele.
+ * Só a forma substantivo + objeto ("Exportação de vinho") ganha essa leitura,
+ * só quando é a forma dos DOIS lados, e só com o MESMO objeto (revisão
+ * adversarial de 05/09): "Exportação de vinho" × "Exportação de uva" são
+ * duas exportadoras, como na regra original. "Exportar vinho" × "Exportar
+ * vinho" continua sendo concorrência, e "Exportação" × "Exportação" também.
  */
 export function saoConcorrentes(rotuloOferta: string, rotuloDemanda: string) {
-  const a = analisarTermo(rotuloOferta);
-  const b = analisarTermo(rotuloDemanda);
+  const a = analisar(rotuloOferta);
+  const b = analisar(rotuloDemanda);
   if (a.direcao === "neutro" || b.direcao === "neutro") return false;
-  return a.direcao === b.direcao;
+  if (a.direcao !== b.direcao) return false;
+  const mesmoServico = a.forma === "substantivo-com-objeto" && b.forma === "substantivo-com-objeto" && a.objeto === b.objeto;
+  return !mesmoServico;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analisarTermo, direcaoEfetiva, saoConcorrentes } from "@shared/direcao-do-termo";
+import { analisarTermo, direcaoEfetiva, ehLugar, saoConcorrentes } from "@shared/direcao-do-termo";
 import { scoreMatch } from "./match-service";
 
 const possui = (label: string, category = "Comércio exterior") =>
@@ -114,6 +114,278 @@ describe("Etapa 11 — lugar não é produto", () => {
   it("o par que a regra existe para achar continua em 100", () => {
     expect(scoreMatch(possui("Exportar vinho"), possui("Importar vinho")).score).toBe(100);
     expect(scoreMatch(possui("Exportação de vinho"), possui("Vinho")).score).toBe(100);
+  });
+});
+
+describe("Reverificação de 04/09 — 'a' também é preposição, e lugar nunca é objeto", () => {
+  // "a" estava só em ARTIGOS e era descascado antes da guarda dos LOCATIVOS:
+  // "Exportar a China" virava objeto "china", e o par com "Importar de China"
+  // (rotas opostas, nada em comum) saía em 100 e por e-mail. O mesmo pela
+  // porta do modo ("a granel", "a prazo", "a varejo"). E a guarda de lugar só
+  // existia no núcleo: "Importação da China" × "Exportação da China" dava 100
+  // pelo objeto. (A revisão de 05/09 restringiu a guarda a quem declarou
+  // direção: "China" × "Procura China" volta a 100, ver abaixo.)
+  const semCategoria = (label: string) => possui(label, "");
+  const pares: [string, string][] = [
+    ["Exportar a China", "Importar de China"],
+    ["Exportação à China", "Importação da China"],
+    ["Exportação a granel", "Importação a granel"],
+    ["Vender a prazo", "Comprar a prazo"],
+    ["Venda a varejo", "Compra a varejo"],
+    ["Vender à vista", "Comprar à vista"],
+  ];
+
+  it.each(pares)("%s x %s não vira 100: não têm mercadoria em comum", (ativo, necessidade) => {
+    expect(scoreMatch(possui(ativo), possui(necessidade)).score).toBeLessThan(100);
+  });
+
+  it("'a' diante de lugar ou de modo trava a extração: o termo vale por inteiro, como diante de 'para'", () => {
+    expect(analisarTermo("Exportar a China").objeto).toBe("exportar-a-china");
+    expect(analisarTermo("Exportação à China").objeto).toBe("exportacao-a-china");
+    expect(analisarTermo("Exportação a granel").objeto).toBe("exportacao-a-granel");
+    expect(analisarTermo("Vender a prazo")).toEqual({ direcao: "oferta", objeto: "vender-a-prazo", verbo: "vender" });
+  });
+
+  it("'a' artigo continua artigo: 'Vender a soja' rende 'soja' e casa com quem compra soja", () => {
+    expect(analisarTermo("Vender a soja")).toEqual({ direcao: "oferta", objeto: "soja", verbo: "vender" });
+    expect(scoreMatch(possui("Vender a soja"), possui("Comprar soja")).score).toBe(100);
+  });
+
+  it("com direção declarada, lugar não é substância nem pelo objeto nem pelo núcleo", () => {
+    // "Importação da China" e "Exportação da China" reduzem os dois lados a
+    // "china". Mata o mutante que guarda só o objeto: pelo núcleo os dois
+    // ainda seriam "china". E mata o que guarda só o núcleo, pelo mesmo motivo
+    // ao contrário.
+    expect(scoreMatch(possui("Importação da China"), possui("Exportação da China")).score).toBeLessThan(100);
+    // Basta UMA ponta ter declarado direção: mata o mutante que exige as duas.
+    expect(scoreMatch(semCategoria("Importação da China"), semCategoria("China")).score).toBe(0);
+  });
+
+  it("sem direção nas palavras, 'China' × 'Procura China' é a mesma coisa dita de dois jeitos: 100", () => {
+    // Revisão adversarial de 05/09: a guarda de lugar valia para todo par e
+    // zerava este, que é o mesmo caso de "Terras raras" × "Procura terras
+    // raras". Só quem DECLAROU direção não tem o lugar como mercadoria.
+    expect(scoreMatch(semCategoria("China"), semCategoria("Procura China")).score).toBe(100);
+    expect(scoreMatch(semCategoria("Coreia do Sul"), semCategoria("Procura Coreia do Sul")).score).toBe(100);
+  });
+
+  it("tag idêntica de lugar continua casando pelo slug: 'China' × 'China' é 100", () => {
+    expect(scoreMatch(semCategoria("China"), semCategoria("China"))).toEqual({ score: 100, type: "exact" });
+  });
+
+  it("ehLugar é exportada e reconhece palavra e composto", () => {
+    expect(ehLugar(["china"])).toBe(true);
+    expect(ehLugar(["coreia", "do", "sul"])).toBe(true);
+    expect(ehLugar(["soja"])).toBe(false);
+    expect(ehLugar([])).toBe(false);
+  });
+});
+
+describe("Reverificação de 04/09 — substantivo de ação não é verbo", () => {
+  // A cabeça "supply", "import", "compras", "captação" era lida como verbo de
+  // direção, e a tag IDÊNTICA dos dois lados saía 0 como "concorrentes". A
+  // decisão do Nicolas (04/09): serviço escrito igual dos dois lados como
+  // substantivo casa; "Exportar vinho" × idem continua concorrente.
+  const exact = { score: 100, type: "exact" };
+
+  it.each([
+    "Captação de recursos", "Fornecimento de terras raras", "Contratação de pessoal",
+    "Fornecimento de energia", "Supply chain management", "Import license",
+    "Export credit insurance", "Purchase order financing", "Vendas online",
+    "Compras públicas", "Venda direta",
+  ])("'%s' × idem casa em 100: é o serviço que uma presta e a outra procura", termo => {
+    expect(scoreMatch(possui(termo), possui(termo))).toEqual(exact);
+  });
+
+  it("verbo flexionado dos dois lados continua concorrência", () => {
+    expect(scoreMatch(possui("Exportar vinho"), possui("Exportar vinho"))).toHaveProperty("bloqueio", "concorrentes");
+    expect(scoreMatch(possui("Export wine"), possui("Export wine"))).toHaveProperty("bloqueio", "concorrentes");
+    expect(scoreMatch(possui("Export wine"), possui("Import wine")).score).toBe(100);
+    // verbo de um lado e substantivo do outro, mesma direção: sem a forma de
+    // serviço dos DOIS lados, a leitura conservadora permanece
+    expect(saoConcorrentes("Exportar vinho", "Exportação de vinho")).toBe(true);
+    expect(scoreMatch(possui("Importar vinho"), possui("Importação de uva")).score).toBe(0);
+  });
+
+  it("a forma das duas pontas decide: substantivo com objeto não concorre, substantivo sozinho concorre", () => {
+    expect(saoConcorrentes("Captação de recursos", "Captação de recursos")).toBe(false);
+    expect(saoConcorrentes("Exportação de vinho", "Exportação de vinho")).toBe(false);
+    expect(saoConcorrentes("Exportação", "Exportação")).toBe(true);
+    expect(saoConcorrentes("Exportação para a China", "Exportação para a China")).toBe(true);
+  });
+
+  it("substantivo de ação com genitivo segue dando direção e objeto", () => {
+    expect(analisarTermo("Exportação de vinho")).toEqual({ direcao: "oferta", objeto: "vinho", verbo: "exportacao" });
+    expect(analisarTermo("Captação de recursos")).toEqual({ direcao: "demanda", objeto: "recursos", verbo: "captacao" });
+    expect(analisarTermo("Exports of coffee")).toEqual({ direcao: "oferta", objeto: "coffee", verbo: "exports" });
+  });
+
+  it("substantivo seguido de palavra justaposta é composto nominal: neutro", () => {
+    for (const termo of ["Compras públicas", "Venda direta", "Vendas online", "Ventas minoristas"]) {
+      expect(analisarTermo(termo).direcao, termo).toBe("neutro");
+    }
+    // já com locativo ou modo depois, a ação continua declarada e o termo vale
+    // por inteiro — é o pino de "Exportação para a China"
+    expect(analisarTermo("Ventas por mayor")).toEqual({ direcao: "oferta", objeto: "ventas-por-mayor", verbo: "ventas" });
+    expect(analisarTermo("Venda a prazo")).toEqual({ direcao: "oferta", objeto: "venda-a-prazo", verbo: "venda" });
+  });
+
+  it("em inglês, verbo + complemento nominal é composto: neutro", () => {
+    for (const termo of ["Supply chain management", "Import license", "Export credit insurance", "Sell-side advisory", "Purchasing department"]) {
+      expect(analisarTermo(termo).direcao, termo).toBe("neutro");
+    }
+    // sem complemento nominal, o verbo inglês continua verbo
+    expect(analisarTermo("Export wine")).toEqual({ direcao: "oferta", objeto: "wine", verbo: "export" });
+    expect(analisarTermo("Supply of rare earths")).toEqual({ direcao: "oferta", objeto: "rare-earths", verbo: "supply" });
+  });
+
+  it("compostos de direções 'opostas' não são o mesmo objeto: ficam abaixo de 100", () => {
+    // Antes "Sell-side advisory" × "Buy-side advisory" dava 100 (objeto
+    // "side-advisory" dos dois lados) — é o falso positivo do mesmo defeito.
+    expect(scoreMatch(possui("Compras públicas"), possui("Vendas públicas")).score).toBeLessThan(100);
+    expect(scoreMatch(possui("Venda direta"), possui("Compra direta")).score).toBeLessThan(100);
+    expect(scoreMatch(possui("Sell-side advisory"), possui("Buy-side advisory")).score).toBeLessThan(100);
+  });
+
+  it("os pinos da etapa 7 seguem de pé: neutro × substantivo de ação casa pelo objeto", () => {
+    expect(scoreMatch(possui("Terras raras"), possui("Fornecimento de terras raras")).score).toBe(100);
+    expect(scoreMatch(possui("Café"), possui("Exportar café")).score).toBe(100);
+  });
+});
+
+describe("Revisão adversarial da PR-F (05/09) — o que a primeira rodada deixou passar", () => {
+  const exact = { score: 100, type: "exact" };
+
+  describe("'al', 'del', 'from' e 'desde' são locativos: o que vem depois não é mercadoria", () => {
+    // "Vender al contado" × "Comprar al contado" reduzia os dois lados a
+    // "al-contado" e saía em 100 — o mesmo para a rota ("Exportar al Brasil",
+    // "Export from Brazil"). Cada par abaixo pina uma palavra da lista.
+    const pares: [string, string][] = [
+      ["Vender al contado", "Comprar al contado"],
+      ["Vender al por mayor", "Comprar al por mayor"],
+      ["Exportar al Brasil", "Importar al Brasil"],
+      ["Exportar del Brasil", "Importar del Brasil"],
+      ["Export from Brazil", "Import from Brazil"],
+      ["Exportar desde Brasil", "Importar desde Brasil"],
+    ];
+
+    it.each(pares)("%s x %s não vira 100: não têm mercadoria em comum", (ativo, necessidade) => {
+      expect(scoreMatch(possui(ativo), possui(necessidade)).score).toBeLessThan(100);
+    });
+
+    it("o termo vale por inteiro, e substantivo + 'al' mantém a direção como 'Ventas por mayor'", () => {
+      expect(analisarTermo("Vender al contado")).toEqual({ direcao: "oferta", objeto: "vender-al-contado", verbo: "vender" });
+      expect(analisarTermo("Export from Brazil").objeto).toBe("export-from-brazil");
+      expect(analisarTermo("Ventas al por mayor")).toEqual({ direcao: "oferta", objeto: "ventas-al-por-mayor", verbo: "ventas" });
+    });
+  });
+
+  describe("modo sem preposição (inglês) e 'as' + lugar", () => {
+    it("'Sell retail' × 'Buy retail' não vira 100: retail é COMO se vende, não o quê", () => {
+      // A guarda só olhava a palavra descascada "a"; em inglês o modo vem sem
+      // preposição, e "bulk", "retail", "wholesale" eram inalcançáveis.
+      expect(scoreMatch(possui("Sell retail"), possui("Buy retail")).score).toBeLessThan(100);
+      expect(scoreMatch(possui("Sell wholesale"), possui("Buy wholesale")).score).toBeLessThan(100);
+      expect(analisarTermo("Sell retail")).toEqual({ direcao: "oferta", objeto: "sell-retail", verbo: "sell" });
+    });
+
+    it("'Exportar às Filipinas' vale por inteiro: 'as' também é preposição", () => {
+      expect(analisarTermo("Exportar às Filipinas").objeto).toBe("exportar-as-filipinas");
+      expect(analisarTermo("Exportação às Filipinas").objeto).toBe("exportacao-as-filipinas");
+      expect(scoreMatch(possui("Exportar às Filipinas"), possui("Importar das Filipinas")).score).toBeLessThan(100);
+    });
+
+    it("lugar sem preposição depois de palavra de direção vale por inteiro; depois de marcador fraco, é a coisa", () => {
+      expect(analisarTermo("Exportar China").objeto).toBe("exportar-china");
+      expect(analisarTermo("Procura China").objeto).toBe("china");
+    });
+  });
+
+  describe("verbo inglês + 'of' é a forma nominal", () => {
+    // "Supply of rare earths" é "fornecimento de terras raras": escrito igual
+    // dos dois lados, é o serviço — saía 0 como "concorrentes" porque a mesma
+    // grafia era lida como verbo.
+    it.each(["Supply of rare earths", "Export of wine", "Purchase of equipment", "Hiring of staff"])(
+      "'%s' × idem casa em 100", termo => {
+        expect(scoreMatch(possui(termo), possui(termo))).toEqual(exact);
+      });
+
+    it("a direção e o objeto continuam: 'Export of wine' × 'Import of wine' é 100", () => {
+      expect(analisarTermo("Supply of rare earths")).toEqual({ direcao: "oferta", objeto: "rare-earths", verbo: "supply" });
+      expect(scoreMatch(possui("Export of wine"), possui("Import of wine"))).toEqual(exact);
+    });
+
+    it("só 'of': em pt/es o 'de' depois de verbo é origem, e a leitura de verbo permanece", () => {
+      expect(scoreMatch(possui("Exportar do Brasil"), possui("Exportar do Brasil"))).toHaveProperty("bloqueio", "concorrentes");
+      expect(scoreMatch(possui("Exportar do Brasil"), possui("Importar do Brasil")).score).toBeLessThan(100);
+    });
+  });
+
+  describe("os dois sentidos no mesmo termo nomeiam o fluxo inteiro", () => {
+    it.each(["Import/export", "Import export", "Import and export", "Importar e exportar", "Comprar e vender imóveis", "Importação e exportação"])(
+      "'%s' × idem casa em 100 (saía 0 como 'concorrentes', lido pela primeira palavra)", termo => {
+        expect(scoreMatch(possui(termo), possui(termo))).toEqual(exact);
+      });
+
+    it("o termo é neutro e vale por inteiro; mesma direção repetida não é coordenação de opostos", () => {
+      expect(analisarTermo("Import/export")).toEqual({ direcao: "neutro", objeto: "import-export", verbo: null });
+      expect(analisarTermo("Comprar e vender imóveis")).toEqual({ direcao: "neutro", objeto: "comprar-e-vender-imoveis", verbo: null });
+      expect(analisarTermo("Comprar e adquirir imóveis").direcao).toBe("demanda");
+    });
+  });
+
+  describe("composto nominal só com cabeça ambígua; papéis e organizações; gerúndio", () => {
+    it("verbo puro + objeto comum é o negócio: 'Sell insurance' × 'Buy insurance' volta a 100", () => {
+      // A lista de complementos aplicada a todo verbo inglês derrubou este par
+      // de 100 para 60: "sell" não é substantivo, e "insurance" é o objeto.
+      expect(scoreMatch(possui("Sell insurance"), possui("Buy insurance"))).toEqual(exact);
+      expect(scoreMatch(possui("Buy data"), possui("Sell data"))).toEqual(exact);
+      expect(analisarTermo("Sell insurance")).toEqual({ direcao: "oferta", objeto: "insurance", verbo: "sell" });
+    });
+
+    it("'sell-side' e 'buy-side' continuam compostos fixos", () => {
+      expect(analisarTermo("Sell-side advisory").direcao).toBe("neutro");
+      expect(scoreMatch(possui("Sell-side advisory"), possui("Buy-side advisory")).score).toBeLessThan(100);
+    });
+
+    it("papel ou organização depois de cabeça ambígua é composto: 'Export manager' × idem 100, × 'Import manager' < 100", () => {
+      expect(scoreMatch(possui("Export manager"), possui("Export manager"))).toEqual(exact);
+      expect(scoreMatch(possui("Export manager"), possui("Import manager")).score).toBeLessThan(100);
+      for (const termo of [
+        "Import director", "Export team", "Supply specialist", "Purchase officer", "Export office",
+        "Import declaration", "Export documents", "Import clearance", "Export operations", "Supply unit",
+        "Export coordinator", "Import company",
+        // e os plurais, cada um pinado de propósito: palavra da lista sem pino some sem ninguém notar
+        "Export managers", "Import directors", "Supply teams", "Export companies", "Import specialists",
+        "Export officers", "Supply coordinators", "Import units", "Export declarations", "Import document",
+      ]) {
+        expect(analisarTermo(termo).direcao, termo).toBe("neutro");
+      }
+    });
+
+    it("gerúndio + substantivo é composto neutro: 'Hiring manager' × idem 100", () => {
+      for (const termo of [
+        "Hiring manager", "Exporting company", "Purchasing manager", "Importing company", "Supplying team",
+        "Selling agents", "Buying office", "Outsourcing company", "Distributing company",
+      ]) {
+        expect(scoreMatch(possui(termo), possui(termo)), termo).toEqual(exact);
+        expect(analisarTermo(termo).direcao, termo).toBe("neutro");
+      }
+      // gerúndio + objeto comum continua verbo
+      expect(analisarTermo("Hiring engineers")).toEqual({ direcao: "demanda", objeto: "engineers", verbo: "hiring" });
+    });
+  });
+
+  describe("a isenção entre dois substantivos de ação exige o MESMO objeto", () => {
+    it("'Captação de recursos' × idem e 'Exportação de vinho' × idem seguem em 100", () => {
+      expect(scoreMatch(possui("Captação de recursos"), possui("Captação de recursos"))).toEqual(exact);
+      expect(scoreMatch(possui("Exportação de vinho"), possui("Exportação de vinho"))).toEqual(exact);
+    });
+
+    it("'Exportação de vinho' × 'Exportação de uva' volta a ser concorrência, como na main", () => {
+      expect(saoConcorrentes("Exportação de vinho", "Exportação de uva")).toBe(true);
+      expect(scoreMatch(possui("Exportação de vinho"), possui("Exportação de uva"))).toEqual({ score: 0, type: "semantic", bloqueio: "concorrentes" });
+    });
   });
 });
 
