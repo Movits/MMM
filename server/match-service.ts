@@ -1,11 +1,11 @@
 import crypto from "node:crypto";
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq, gte, inArray } from "drizzle-orm";
 import { aiMatchSuggestions, contactAssets, contactNeeds, privateContacts } from "../drizzle/schema";
 import { cosineSimilarity, normalizeVector } from "./memory-service";
 import { exigirDb } from "./db";
 import { sendEmail } from "./_core/email";
 import { embedWithGemini } from "./gemini";
-import { analisarTermo, normalizar, nucleoDoTermo, saoConcorrentes, SEPARADOR_DE_PALAVRA } from "@shared/direcao-do-termo";
+import { analisarTermo, ehLugar, normalizar, nucleoDoTermo, saoConcorrentes, SEPARADOR_DE_PALAVRA } from "@shared/direcao-do-termo";
 
 const SEMANTIC_THRESHOLD = 0.7;
 const SAVE_THRESHOLD = 50;
@@ -75,16 +75,29 @@ export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore 
   // as duas "vinho": mesmo objeto, direções opostas, negócio. Sem isto a regra
   // só saberia barrar, e o par que ela existe para encontrar continuaria valendo
   // os 60 da categoria.
-  const objetoAsset = analisarTermo(asset.label).objeto;
-  const objetoNeed = analisarTermo(need.label).objeto;
-  if (objetoAsset && objetoAsset === objetoNeed) return { score: 100, type: "exact" as const };
+  //
+  // Mas lugar não é mercadoria de quem DECLAROU direção: "Importação da China"
+  // × "Exportação da China" reduziam os dois lados a "china", e 100 é a nota
+  // de quem tem a MESMA coisa, acima do corte de e-mail. A guarda vale para o
+  // objeto E para o núcleo — só num deles, o outro ainda dava 100 — e só
+  // quando ao menos uma ponta trouxe verbo ou substantivo de ação: sem
+  // direção nas palavras, "China" × "Procura China" é a mesma coisa dita de
+  // dois jeitos, como "Terras raras" × "Procura terras raras" (revisão
+  // adversarial de 05/09). Tag idêntica ("China" × "China") casa pelo slug.
+  const termoAsset = analisarTermo(asset.label);
+  const termoNeed = analisarTermo(need.label);
+  const direcaoDeclarada = termoAsset.verbo !== null || termoNeed.verbo !== null;
+  const ehSubstancia = (x: string) => !!x && !(direcaoDeclarada && ehLugar(x.split("-")));
+  const objetoAsset = termoAsset.objeto;
+  const objetoNeed = termoNeed.objeto;
+  if (ehSubstancia(objetoAsset) && objetoAsset === objetoNeed) return { score: 100, type: "exact" as const };
 
   // E o núcleo atravessa a cabeça transparente: "mina DE terras raras" e
   // "fornecedor DE terras raras" falam ambos de terras raras — o exemplo de
   // aceite da etapa 7, que sem isto pontuava 0 e não virava sugestão.
   const nucleoAsset = nucleoDoTermo(asset.label);
   const nucleoNeed = nucleoDoTermo(need.label);
-  if (nucleoAsset && nucleoAsset === nucleoNeed) return { score: 100, type: "exact" as const };
+  if (ehSubstancia(nucleoAsset) && nucleoAsset === nucleoNeed) return { score: 100, type: "exact" as const };
 
   const categoriaAsset = slugifyMatchTag(asset.category ?? "");
   const categoriaNeed = slugifyMatchTag(need.category ?? "");
@@ -244,9 +257,33 @@ export async function recalculatePrivateMatches(ownerId: string, ownerEmail?: st
     const chave = `${par.lowId}:${par.highId}`;
     const previous = existingByPair.get(chave);
     if (previous) {
-      await db.update(aiMatchSuggestions).set(values).where(and(eq(aiMatchSuggestions.id, previous.id), eq(aiMatchSuggestions.ownerId, ownerId)));
+      // A linha é do PAR (índice único por dona e par), e a decisão da usuária
+      // — aceita ou dispensada — foi tomada sobre a razão que ela viu. Quando
+      // essa razão some e nasce outra sem NADA em comum com a antiga, é outra
+      // oportunidade: o par volta a pendente para ela decidir de novo (decisão
+      // do Nicolas, 04/09). Com qualquer razão em comum, a decisão permanece.
+      // O par só VISTO segue a mesma regra: o que ela viu foi a razão antiga,
+      // e a nova ainda não foi vista nem anunciada (revisão adversarial de
+      // 05/09). dismissedAt/acceptedAt ficam como histórico da decisão
+      // anterior. O slug antigo pode estar vazio (linha anterior ao conserto
+      // da escrita não latina): recalcula-se do rótulo, como no laço lá em cima.
+      const slugsAntigos = new Set([...(previous.matchedAssets ?? []), ...(previous.matchedNeeds ?? [])]
+        .map(razao => razao.slug || slugifyMatchTag(razao.label)));
+      const razaoTotalmenteNova = ![...values.matchedAssets, ...values.matchedNeeds].some(razao => slugsAntigos.has(razao.slug));
+      const reabrir = razaoTotalmenteNova && (previous.status === "dismissed" || previous.status === "accepted" || previous.status === "viewed");
+      const patch = reabrir ? { ...values, status: "pending" as const, viewedAt: null, notifiedAt: null } : values;
+      await db.update(aiMatchSuggestions).set(patch).where(and(eq(aiMatchSuggestions.id, previous.id), eq(aiMatchSuggestions.ownerId, ownerId)));
+      if (reabrir) {
+        const decisao = previous.status === "accepted" ? "aceitado" : previous.status === "dismissed" ? "dispensado" : "visto";
+        console.info(`[Match] Par ${chave} reaberto: a razão que a usuária tinha ${decisao} sumiu e nasceu outra.`);
+      }
       updated += 1;
-      if (values.matchScore >= EMAIL_THRESHOLD && previous.matchScore < EMAIL_THRESHOLD) newHighScore += 1;
+      // Só conta para o e-mail o que a usuária ainda vai ver. Par aceito ou
+      // dispensado que sobe de nota pela mesma razão não é oportunidade nova
+      // para ela — antes o e-mail saía e na tela não havia nada novo.
+      const statusFinal = reabrir ? "pending" : previous.status;
+      const aindaPorDecidir = statusFinal === "pending" || statusFinal === "viewed";
+      if (aindaPorDecidir && values.matchScore >= EMAIL_THRESHOLD && (previous.matchScore < EMAIL_THRESHOLD || reabrir)) newHighScore += 1;
     } else {
       await db.insert(aiMatchSuggestions).values({ id: crypto.randomUUID(), ownerId, pairLowContactId: par.lowId, pairHighContactId: par.highId, status: "pending", notifiedAt: null, viewedAt: null, acceptedAt: null, dismissedAt: null, createdAt: timestamp, ...values });
       created += 1;
@@ -267,7 +304,10 @@ export async function recalculatePrivateMatches(ownerId: string, ownerEmail?: st
 
   if (newHighScore && ownerEmail) {
     const sent = await sendEmail({ to: ownerEmail, subject: `${newHighScore} nova(s) oportunidade(s) de conexão no MMM`, text: `Encontramos ${newHighScore} oportunidade(s) de conexão privada(s) com score de 70 ou mais na sua rede. Abra o painel de Matches Inteligentes para revisar.`, html: `<p>Encontramos <strong>${newHighScore}</strong> oportunidade(s) de conexão privada(s) com score de 70 ou mais na sua rede MMM.</p><p>Abra o painel de Matches Inteligentes para revisar.</p>` });
-    if (sent) await db.update(aiMatchSuggestions).set({ notifiedAt: timestamp }).where(and(eq(aiMatchSuggestions.ownerId, ownerId), gte(aiMatchSuggestions.matchScore, EMAIL_THRESHOLD)));
+    // O carimbo só alcança o que a usuária ainda vai decidir: linha aceita ou
+    // dispensada não foi anunciada neste e-mail, e carimbá-la apagaria o rastro
+    // de quando (e se) ela foi notificada de verdade.
+    if (sent) await db.update(aiMatchSuggestions).set({ notifiedAt: timestamp }).where(and(eq(aiMatchSuggestions.ownerId, ownerId), gte(aiMatchSuggestions.matchScore, EMAIL_THRESHOLD), inArray(aiMatchSuggestions.status, ["pending", "viewed"])));
   }
   return { created, updated, removed, total: pares.size };
 }
