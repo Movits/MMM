@@ -764,6 +764,9 @@ export default function Dashboard() {
   // propósito — sem isto o Dashboard esvaziaria em silêncio no dia da
   // publicação, sem nada convidando a autorizar.
   const consentQuery = trpc.consent.status.useQuery({ type: "termo_smart_match" }, { enabled: isAuthenticated });
+  // Etapa 13 (prontidão): separa "nenhum perfil compatível" de "a rede ainda
+  // está autorizando o termo" — a primeira aceitante via o vazio errado.
+  const redeQuery = trpc.matches.redeAguardando.useQuery(undefined, { enabled: isAuthenticated });
   const statsQuery = trpc.matches.list.useQuery({ limit: 50 }, { enabled: isAuthenticated, select: (data) => ({
     total: data.length,
     unseen: data.filter(m => !m.userSeen).length,
@@ -960,6 +963,15 @@ export default function Dashboard() {
                 // silêncio no servidor. O convite de autorização mora aqui,
                 // no caminho principal, não só em /intelligent-matches.
                 <SmartMatchConsent onAccepted={() => { consentQuery.refetch(); matchesQuery.refetch(); statsQuery.refetch(); }} />
+              ) : matches.length === 0 && (redeQuery.data?.ocultas ?? 0) > 0 ? (
+                // Há matches, mas o outro lado ainda não autorizou o termo: a
+                // causa é a rede, não o perfil dela — dizer o contrário fazia a
+                // primeira aceitante achar que não tinha ninguém compatível.
+                <div className="text-center py-20 animate-fade-in-up">
+                  <div className="text-6xl mb-5">🕐</div>
+                  <h3 className="text-2xl font-black mb-2">{t("dashboard.redeAutorizandoTitulo")}</h3>
+                  <p className="text-white/40 mb-8 max-w-sm mx-auto">{t("dashboard.redeAutorizandoDesc")}</p>
+                </div>
               ) : matches.length === 0 ? (
                 <div className="text-center py-20 animate-fade-in-up">
                   <div className="text-6xl mb-5">🔍</div>

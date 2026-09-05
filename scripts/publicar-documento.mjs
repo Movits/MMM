@@ -15,8 +15,13 @@
 //   node scripts/publicar-documento.mjs <tipo> <arquivo.md>              publica o arquivo
 //   node scripts/publicar-documento.mjs <tipo> <arquivo.md> --simular    só mostra o que faria
 //   node scripts/publicar-documento.mjs <tipo> --texto-provisorio        publica o rascunho embutido
+//   ... --sem-aviso                                                      não notifica as membras
 //
 // Contra banco que não seja local, exige também --confirmo-producao.
+//
+// Ao publicar, cada membra recebe uma notificação no sino avisando que há um
+// texto para autorizar — sem isso, ninguém ficava sabendo e cada uma descobria
+// só ao abrir a aba de matches. --sem-aviso desliga (ex.: ensaio em base local).
 
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -79,6 +84,7 @@ const [tipo, caminho] = argumentos.filter(a => !a.startsWith("--"));
 const simular = opcoes.includes("--simular");
 const usarProvisorio = opcoes.includes("--texto-provisorio");
 const confirmouProducao = opcoes.includes("--confirmo-producao");
+const semAviso = opcoes.includes("--sem-aviso");
 
 const morrer = mensagem => { console.error(mensagem); process.exit(1); };
 
@@ -133,13 +139,23 @@ try {
       )
     : [[{ n: 0 }]];
 
+  // Na PRIMEIRA publicação o número acima é zero — não há versão anterior para
+  // ter aceites — e "impacto: 0" lia-se como "sem efeito". O efeito real é o
+  // oposto: a base INTEIRA passa a precisar aceitar antes de usar o recurso.
+  const [[base]] = await conexao.query("SELECT COUNT(*) AS n FROM users");
+
   console.log(`banco:    ${url.hostname}${ehLocal ? " (local)" : "  <- NÃO É LOCAL"}`);
   console.log(`tipo:     ${tipo}`);
   console.log(`origem:   ${caminho ?? "texto provisório embutido"}`);
   console.log(`tamanho:  ${texto.length} caracteres`);
   console.log(`vigente:  ${vigente ? `versão ${vigente.version}` : "nenhuma"}`);
   console.log(`nova:     versão ${versao}`);
-  console.log(`impacto:  ${afetadas.n} pessoa(s) com autorização ativa vão precisar aceitar de novo`);
+  if (vigente) {
+    console.log(`impacto:  ${afetadas.n} pessoa(s) com autorização ativa vão precisar aceitar de novo`);
+  } else {
+    console.log(`impacto:  primeira publicação — a base inteira (${base.n} usuária(s)) passa a precisar aceitar antes de usar o recurso`);
+  }
+  console.log(`aviso:    ${semAviso ? "DESLIGADO (--sem-aviso)" : `notificação no sino para ${base.n} usuária(s)`}`);
 
   if (simular) {
     console.log("\n--simular: nada foi gravado.");
@@ -154,9 +170,37 @@ try {
     "INSERT INTO document_versions (id, type, version, text, isCurrent) VALUES (?, ?, ?, ?, TRUE)",
     [randomUUID(), tipo, versao, texto],
   );
+
+  // Aviso no sino, na MESMA transação: ou a publicação sai com o aviso, ou não
+  // sai. Texto pronto em português, como todas as notificações da plataforma.
+  if (!semAviso) {
+    const ROTULOS = {
+      termo_smart_match: "A autorização do Cruzamento Inteligente (Smart Match)",
+      acordo_intermediacao: "O Acordo de Intermediação",
+      contrato_comissao: "O Contrato de Comissão",
+      termo_gravacao: "O Termo de Gravação de Reuniões",
+      termo_acesso_ouro: "O Termo de Acesso Ouro",
+    };
+    await conexao.query(
+      "INSERT INTO platform_notifications (userId, type, title, body, actionUrl, isRead) " +
+      "SELECT id, 'system', ?, ?, ?, FALSE FROM users",
+      [
+        "📄 Novo texto para autorizar",
+        `${ROTULOS[tipo]} está na versão ${versao}. ` +
+        (vigente
+          ? "O texto mudou, então a autorização anterior deixou de valer — leia e autorize de novo para continuar usando o recurso."
+          : "Leia e autorize na próxima visita para usar o recurso."),
+        "/dashboard",
+      ],
+    );
+  }
+
   await conexao.commit();
 
   console.log(`\nPublicada a versão ${versao} de ${tipo}, agora vigente.`);
+  if (!semAviso) {
+    console.log(`Notificação enviada ao sino de ${base.n} usuária(s).`);
+  }
   if (Number(afetadas.n) > 0) {
     console.log(`${afetadas.n} pessoa(s) verão a tela de autorização na próxima visita, com aviso de que o texto mudou.`);
   }

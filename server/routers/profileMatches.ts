@@ -22,6 +22,23 @@ export const profileMatchesRouter = router({
       return lista.filter(m => m.matchedUserId !== null && comTermo.has(m.matchedUserId));
     }),
 
+  // Etapa 13 (prontidão): quantos matches EXISTEM mas estão ocultos porque o
+  // outro lado ainda não aceitou o termo vigente. É o que separa "nenhum perfil
+  // compatível" de "a rede ainda está autorizando" — sem isto, a primeira
+  // usuária a aceitar vê o mesmo vazio de quem não tem match nenhum, e a tela
+  // atribui a causa errada. Procedure separada de propósito: o formato de
+  // `list` é fixado pelo exame de produção e pelos testes do Dashboard.
+  redeAguardando: protectedProcedure
+    .query(async ({ ctx }) => {
+      if (!(await hasValidConsent(ctx.user.id, "termo_smart_match"))) return { ocultas: 0 };
+      const { getMatchesForUser } = await import("../db");
+      const lista = await getMatchesForUser(ctx.user.id, 50);
+      const ids = lista.map(m => m.matchedUserId).filter((id): id is number => id !== null);
+      if (ids.length === 0) return { ocultas: 0 };
+      const comTermo = await usersComConsentimento(ids, "termo_smart_match");
+      return { ocultas: ids.filter(id => !comTermo.has(id)).length };
+    }),
+
   dismiss: protectedProcedure
     .input(z.object({ matchId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {

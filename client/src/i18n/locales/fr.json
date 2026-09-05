@@ -437,6 +437,8 @@
     "profile": "Mon Profil",
     "noMatches": "Prête pour votre prochaine grande connexion?",
     "noMatchesDesc": "Notre IA analysera votre profil en 6 dimensions et trouvera les femmes avec la plus grande compatibilité réelle avec vous.",
+    "redeAutorizandoTitulo": "Vos connexions arrivent",
+    "redeAutorizandoDesc": "Des profils compatibles avec le vôtre existent, mais un match n'apparaît que lorsque les deux parties autorisent le croisement — et ces membres ne l'ont pas encore fait. Ce n'est pas un manque de compatibilité : il suffit d'attendre.",
     "compatibility": "Score Moyen",
     "connect": "Exprimer l'Intérêt",
     "dismiss": "Match masqué. Générez de nouveaux matches à tout moment.",

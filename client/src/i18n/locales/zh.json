@@ -437,6 +437,8 @@
     "profile": "我的资料",
     "noMatches": "准备好迎接下一个重要联系了吗？",
     "noMatchesDesc": "我们的AI将从6个维度分析您的资料，找到与您真正最兼容的女性。",
+    "redeAutorizandoTitulo": "您的人脉正在路上",
+    "redeAutorizandoDesc": "已有与您匹配的档案，但只有双方都授权智能匹配后，匹配才会显示 — 这些会员尚未授权。这并非缺乏匹配度：只需稍作等待。",
     "compatibility": "平均分数",
     "connect": "表达兴趣",
     "dismiss": "匹配已隐藏。随时生成新匹配。",

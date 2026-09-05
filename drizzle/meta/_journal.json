@@ -50,6 +50,13 @@
       "when": 1788584386455,
       "tag": "0006_desfazer-enriquecimento",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1788633095890,
+      "tag": "0007_trilha-de-aceite",
+      "breakpoints": true
     }
   ]
 }

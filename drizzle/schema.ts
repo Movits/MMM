@@ -505,6 +505,27 @@ export const dealRooms = mysqlTable("deal_rooms", {
   interestedIdx: index("dr_interested_idx").on(table.interestedId),
 }));
 
+// Trilha de auditoria do aceite do NDA (etapa 13). Os booleanos em deal_rooms
+// continuam mandando no fluxo; esta tabela é prova, não estado: quem aceitou,
+// de onde, e o texto que estava na tela. O texto do NDA vem do i18n do cliente
+// e varia por idioma — por isso a linha guarda idioma e texto exibidos, com o
+// hash SHA-256 calculado no servidor. Aceites antigos não têm linha aqui.
+export const ndaAcceptances = mysqlTable("nda_acceptances", {
+  id: int("id").autoincrement().primaryKey(),
+  dealRoomId: int("dealRoomId").notNull(),
+  userId: int("userId").notNull(),
+  papel: mysqlEnum("papel", ["owner", "interested"]).notNull(),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: text("userAgent"),
+  locale: varchar("locale", { length: 10 }),
+  textoExibido: text("textoExibido"),
+  textoHash: varchar("textoHash", { length: 64 }),
+  acceptedAt: timestamp("acceptedAt").defaultNow().notNull(),
+}, (table) => ({
+  roomIdx: index("nda_acc_room_idx").on(table.dealRoomId),
+  userIdx: index("nda_acc_user_idx").on(table.userId),
+}));
+
 // Mensagens do chat privado dentro do Deal Room
 export const dealRoomMessages = mysqlTable("deal_room_messages", {
   id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
@@ -1126,6 +1147,10 @@ export const consents = mysqlTable("consents", {
   revokedAt:         timestamp("revokedAt"),
   ipAddress:         varchar("ipAddress", { length: 45 }),
   userAgent:         text("userAgent"),
+  // SHA-256 do texto vigente no instante do aceite. O documentVersionId já
+  // aponta o texto, mas o hash prova que o texto da versão não mudou por baixo
+  // do aceite — sem depender da imutabilidade de document_versions.
+  textHash:          varchar("textHash", { length: 64 }),
   // No máximo UM consentimento ativo por par (usuária, versão). Mesmo truque da
   // coluna gerada usado acima: vale a chave enquanto não revogado e vira NULL
   // depois, e NULLs não colidem em índice único.

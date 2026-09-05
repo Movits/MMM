@@ -565,12 +565,21 @@ async function blocoOportunidades() {
   // Espelha matching.ts: até 200 perfis (sem ordem) de quem não é a publicadora,
   // depois só gold/president/admin. É estimativa, porque o servidor corta em 200
   // antes de filtrar o papel.
+  // O servidor só alerta quem, além do papel elevado, ACEITOU o termo vigente
+  // do Smart Match (matching.ts filtra por consentimento). Sem o mesmo filtro
+  // aqui, a estimativa dava > 0 com zero aceites reais e o exame esperava os
+  // 120 s inteiros à toa em toda execução pós-publicação do termo.
+  const [[termoVigente]] = await conn.query(
+    "SELECT `id` FROM `document_versions` WHERE `type` = 'termo_smart_match' AND `isCurrent` = TRUE",
+  );
   const [perfis] = await conn.query(
-    "SELECT u.`role`, u.`openId` FROM `user_profiles` up INNER JOIN `users` u ON u.`id` = up.`userId` WHERE up.`userId` <> ? LIMIT 200",
-    [QA.P.id],
+    termoVigente
+      ? "SELECT u.`role`, u.`openId` FROM `user_profiles` up INNER JOIN `users` u ON u.`id` = up.`userId` INNER JOIN `consents` c ON c.`userId` = u.`id` AND c.`documentVersionId` = ? AND c.`revokedAt` IS NULL WHERE up.`userId` <> ? LIMIT 200"
+      : "SELECT u.`role`, u.`openId` FROM `user_profiles` up INNER JOIN `users` u ON u.`id` = up.`userId` WHERE up.`userId` <> ? LIMIT 200",
+    termoVigente ? [termoVigente.id, QA.P.id] : [QA.P.id],
   );
   estado.elegiveisAoAlerta = perfis.filter(p => ["gold", "president", "admin"].includes(p.role) && !String(p.openId).startsWith(PREFIXO_QA)).length;
-  rel.info(`perfis reais elegíveis ao alerta de compatibilidade da aprovação (estimativa): ${estado.elegiveisAoAlerta}`);
+  rel.info(`perfis reais elegíveis ao alerta de compatibilidade da aprovação (estimativa${termoVigente ? ", já filtrada pelo aceite do termo vigente" : ""}): ${estado.elegiveisAoAlerta}`);
   const opp = await P.post("opportunities.create", { title: EXAME_TITULO_OPP, description: EXAME_DESCRICAO_OPP, type: "partnership", sector: "Alimentos e bebidas", country: "BR", isConfidential: true, tags: ["exame", "vinho"] });
   const oppId = opp.dado?.id;
   if (oppId) estado.oppIds.push(oppId);

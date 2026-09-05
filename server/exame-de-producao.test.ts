@@ -566,9 +566,11 @@ describe("limpeza, direção B: tabela nova com coluna de usuária (owner_id, us
   it("o schema tem pares de usuária a conferir", () => {
     // Igualdade de propósito: subir é normal ao criar tabela; baixar exige explicar
     // qual coluna de usuária sumiu do parse.
-    expect(paresDeUsuariaNoSchema).toHaveLength(56);
+    // 57: a etapa 13 somou nda_acceptances.userId (trilha de aceite do NDA).
+    expect(paresDeUsuariaNoSchema).toHaveLength(57);
     expect(paresDeUsuariaNoSchema).toContainEqual({ tabela: "private_contacts", coluna: "ownerId" });
     expect(paresDeUsuariaNoSchema).toContainEqual({ tabela: "gold_access_grants", coluna: "revokedBy" });
+    expect(paresDeUsuariaNoSchema).toContainEqual({ tabela: "nda_acceptances", coluna: "userId" });
   });
 
   it.each(paresDeUsuariaNoSchema)(

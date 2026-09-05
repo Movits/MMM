@@ -14,7 +14,7 @@ export default function DealRoom() {
   const { id } = useParams<{ id: string }>();
   const roomId = Number(id);
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<"nda" | "chat" | "docs">("nda");
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -274,7 +274,20 @@ export default function DealRoom() {
                   )}
                   <Button
                     className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold"
-                    onClick={() => acceptNDA.mutate({ roomId })}
+                    // Etapa 13: junto do aceite vai o texto que estava na tela
+                    // (varia por idioma) — o servidor guarda idioma, texto e
+                    // hash como prova do que foi aceito.
+                    onClick={() => acceptNDA.mutate({
+                      roomId,
+                      locale: i18n.resolvedLanguage ?? i18n.language,
+                      textoExibido: [
+                        t("dealRoom.ndaHeading"), t("dealRoom.ndaIntro"),
+                        t("dealRoom.ndaClause1Title"), t("dealRoom.ndaClause1Text"),
+                        t("dealRoom.ndaClause2Title"), t("dealRoom.ndaClause2Text"), t("dealRoom.ndaClause2Fee"), t("dealRoom.ndaClause2TextEnd"),
+                        t("dealRoom.ndaClause3Title"), t("dealRoom.ndaClause3Text"),
+                        t("dealRoom.ndaClause4Title"), t("dealRoom.ndaClause4Text"),
+                      ].join("\n"),
+                    })}
                     disabled={acceptNDA.isPending}
                   >
                     {acceptNDA.isPending ? t("dealRoom.signingNda") : t("dealRoom.signNdaButton")}
