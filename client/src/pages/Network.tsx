@@ -503,6 +503,29 @@ function ContactDetail({ contact, onEdit, onClose }: {
   });
   const ignoreMut = trpc.enrichment.ignoreSuggestion.useMutation();
 
+  // Possui / procura é dado da AGENDA: o chat grava sem termo de cruzamento e
+  // a vitrine já o expõe, então ver e remover precisa morar aqui, e não só na
+  // tela de Conexões Inteligentes (que fica inteira atrás do termo).
+  const utils = trpc.useUtils();
+  const {
+    data: possuiProcura,
+    isError: erroPossuiProcura,
+    refetch: recarregarPossuiProcura,
+  } = trpc.network.assetsNeeds.useQuery(
+    { contactId: contact.id },
+    { refetchOnWindowFocus: false }
+  );
+  const aoRemoverItem = {
+    onSuccess: () => {
+      toast.success(t("network.toastItemRemovido"));
+      utils.network.assetsNeeds.invalidate({ contactId: contact.id });
+    },
+    onError: () => toast.error(t("network.erroRemoverItem")),
+  };
+  const removeAssetMut = trpc.network.removeAsset.useMutation(aoRemoverItem);
+  const removeNeedMut = trpc.network.removeNeed.useMutation(aoRemoverItem);
+  const removendoItem = removeAssetMut.isPending || removeNeedMut.isPending;
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -647,6 +670,60 @@ function ContactDetail({ contact, onEdit, onClose }: {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Possui / Procura — o que o chat de enriquecimento registrou; a dona
+            remove aqui sem depender do termo do Smart Match. A consulta que
+            FALHA (banco fora, sessão caída) diz isso e oferece tentar de novo:
+            antes a seção sumia em silêncio, e "nada registrado" ou seção
+            nenhuma é o que a dona leria antes de refazer de cabeça um dado
+            que ainda existe. Mesmas chaves do ErrorBoundary. */}
+        {(possuiProcura || erroPossuiProcura) && (
+          <div className="px-6 py-4 border-t border-white/8">
+            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Tag size={11} /> {t("network.tituloPossuiProcura")}</p>
+            {erroPossuiProcura || !possuiProcura ? (
+              <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-400/25 bg-red-500/8 px-3 py-2">
+                <p className="text-xs text-red-200/80">{t("errorBoundary.title")}</p>
+                <button
+                  type="button"
+                  onClick={() => recarregarPossuiProcura()}
+                  className="text-xs font-medium text-amber-300 hover:text-amber-200 transition-colors"
+                >
+                  {t("errorBoundary.retryButton")}
+                </button>
+              </div>
+            ) : possuiProcura.possui.length === 0 && possuiProcura.procura.length === 0 ? (
+              <p className="text-xs text-white/35">{t("network.semPossuiProcura")}</p>
+            ) : (
+              <div className="space-y-3">
+                {([
+                  { rotulo: t("network.rotuloPossui"), itens: possuiProcura.possui, cor: "border-emerald-400/30 text-emerald-200/80", remover: (id: number) => removeAssetMut.mutate({ id }) },
+                  { rotulo: t("network.rotuloProcura"), itens: possuiProcura.procura, cor: "border-sky-300/30 text-sky-200/80", remover: (id: number) => removeNeedMut.mutate({ id }) },
+                ] as const).filter(grupo => grupo.itens.length > 0).map(grupo => (
+                  <div key={grupo.rotulo}>
+                    <p className="text-xs text-white/50 mb-1.5">{grupo.rotulo}</p>
+                    <ul className="flex flex-wrap gap-2">
+                      {grupo.itens.map(item => (
+                        <li key={item.id} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${grupo.cor}`}>
+                          {item.label}{item.category ? <span className="text-white/35"> · {item.category}</span> : null}
+                          <button
+                            type="button"
+                            aria-label={t("intelligentMatches.removerAriaLabel", { label: item.label })}
+                            title={t("intelligentMatches.removerTooltip")}
+                            disabled={removendoItem}
+                            onClick={() => grupo.remover(item.id)}
+                            className="rounded-full p-0.5 text-white/40 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+                          >
+                            <X size={12} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -9,11 +9,12 @@ import {
   listOpportunities, getOpportunityById, createOpportunity,
   getDocumentsByOpportunity,
   expressInterest, getInterestsByOpportunity,
-  toggleSaveOpportunity, getSavedOpportunities,
+  desfazerOportunidadeSalva, salvarOportunidade, getSavedOpportunities,
   createNotification,
 } from "../db";
 import { createAuditLog } from "../security";
 import { exigirTextoSemContato } from "../bloqueio-de-contato";
+import { exigirLeituraDaOportunidade, exigirSalvarOportunidade, podeVerConfidencial } from "../oportunidade-acesso";
 import { opportunityMatches, opportunities as opportunitiesTable, users } from "../../drizzle/schema";
 
 // ============================================================
@@ -49,24 +50,10 @@ export const opportunitiesRouter = router({
       const opp = await getOpportunityById(input.id);
       if (!opp) throw new TRPCError({ code: "NOT_FOUND" });
 
-      const isGold = ctx.user.role === "gold" || ctx.user.role === "admin" || ctx.user.role === "president";
-      const isOwner = opp.publishedBy === ctx.user.id;
-      const isStaff = ctx.user.role === "admin" || ctx.user.role === "president";
-
-      // Oportunidades rejeitadas: só a criadora e staff podem ver
-      if (opp.status === "rejected" && !isOwner && !isStaff) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
-      // Oportunidades pendentes: só a criadora e staff podem ver
-      if (opp.status === "pending" && !isOwner && !isStaff) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Esta oportunidade ainda está aguardando validação pelas Presidentes." });
-      }
-
-      // Oportunidades confidenciais: só Ouro, admin, president ou a criadora
-      if (opp.isConfidential && !isGold && !isOwner) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Esta oportunidade é de acesso restrito. Requer Status Ouro — reconhecimento institucional concedido pelas Presidentes." });
-      }
+      // A régua (rejeitada, pendente, confidencial) mora em
+      // server/oportunidade-acesso.ts, compartilhada com toggleSave — era só
+      // daqui, e o favorito virou porta lateral para a confidencial.
+      const { isGold, isOwner } = exigirLeituraDaOportunidade(opp, ctx.user);
 
       // Incrementar view count apenas para oportunidades ativas e quando não é a própria criadora
       if (opp.status === "active" && !isOwner) {
@@ -240,16 +227,32 @@ Retorne um JSON estruturado com os campos: complianceLevel, explanation, riskAna
       return getInterestsByOpportunity(input.opportunityId);
     }),
 
-  // Salvar/remover oportunidade dos favoritos
+  // Salvar/remover oportunidade dos favoritos. Só se pode favoritar o que se
+  // pode ler E o que a aba "Salvas" vai mostrar: a oportunidade é buscada e
+  // passa pela régua de gravação (a de `get` mais o predicado de status das
+  // listas). Antes a gravação ia direto para saved_opportunities (tabela sem
+  // FK), e uma Prata enumerando ids salvava a confidencial sem nunca tê-la
+  // visto. Desfazer vem ANTES e sem régua: a linha que já existe sai sempre,
+  // senão um favorito antigo (ou de uma Ouro rebaixada) ficava órfão.
   toggleSave: protectedProcedure
     .input(z.object({ opportunityId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      return toggleSaveOpportunity(ctx.user.id, input.opportunityId);
+      if (await desfazerOportunidadeSalva(ctx.user.id, input.opportunityId)) {
+        return { saved: false };
+      }
+      const opp = await getOpportunityById(input.opportunityId);
+      if (!opp) throw new TRPCError({ code: "NOT_FOUND" });
+      exigirSalvarOportunidade(opp, ctx.user);
+      await salvarOportunidade(ctx.user.id, input.opportunityId);
+      return { saved: true };
     }),
 
-  // Listar oportunidades salvas
+  // Listar oportunidades salvas — o filtro de confidencialidade e de status
+  // roda NO BANCO (privacidade é regra de consulta): um favorito gravado antes
+  // da guarda, ou uma oportunidade que virou confidencial depois, não volta
+  // para quem não é Ouro nem dona.
   saved: protectedProcedure.query(async ({ ctx }) => {
-    return getSavedOpportunities(ctx.user.id);
+    return getSavedOpportunities(ctx.user.id, { podeVerConfidencial: podeVerConfidencial(ctx.user.role) });
   }),
 
   // IA 4.1 — Análise dinâmica no cadastro: pergunta + sugestão de documentos por nicho

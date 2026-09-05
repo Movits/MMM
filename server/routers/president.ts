@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { router } from "../_core/trpc";
 import { presidentProcedure } from "./_procedures";
-import { exigirDb, grantGoldAccess, revokeGoldAccess, createNotification, listUsers } from "../db";
+import { exigirDb, grantGoldAccess, revokeGoldAccess, createNotification, listUsers, contarUsuarias } from "../db";
 import { createAuditLog } from "../security";
 import { users, goldAccessGrants, opportunities } from "../../drizzle/schema";
 import { notifyHighCompatibilityForOpportunity } from "./matching";
@@ -86,7 +86,11 @@ export const presidentRouter = router({
     return listUsers({ role: "silver", limit: 100 });
   }),
 
-  // Listar todos os usuários (prata + ouro) para gestão
+  // Listar usuárias para gestão (conceder Ouro, nomear líder). A busca roda
+  // NO BANCO e `total` é o COUNT com as mesmas condições: a versão anterior
+  // aceitava `search` e o ignorava, devolvendo as 100 mais recentes com
+  // total = tamanho da página; o painel filtrava em memória e a membra mais
+  // antiga que a 100ª "não existia" para a presidente.
   listAllUsers: presidentProcedure
     .input(z.object({
       role: z.enum(["bronze", "silver", "gold", "president", "admin"]).optional(),
@@ -94,20 +98,9 @@ export const presidentRouter = router({
       limit: z.number().int().min(1).max(200).default(100),
       offset: z.number().int().min(0).default(0),
     }))
-    .query(async ({ ctx, input }) => {
-      const db = await exigirDb();
-      const conditions = [];
-      if (input.role) conditions.push(eq(users.role, input.role));
-      const query = db.select({
-        id: users.id, name: users.name, email: users.email,
-        role: users.role, country: users.country, company: users.company,
-        isActive: users.isActive, isVerified: users.isVerified,
-        onboardingCompleted: users.onboardingCompleted,
-        createdAt: users.createdAt, lastSignedIn: users.lastSignedIn,
-      }).from(users);
-      if (conditions.length > 0) query.where(and(...conditions));
-      const result = await query.orderBy(desc(users.createdAt)).limit(input.limit).offset(input.offset);
-      return { users: result, total: result.length };
+    .query(async ({ input }) => {
+      const [usuarias, total] = await Promise.all([listUsers(input), contarUsuarias(input)]);
+      return { users: usuarias, total };
     }),
 
   // Validar oportunidade estratégica (aprovar/rejeitar antes de publicar)

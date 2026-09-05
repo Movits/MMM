@@ -1,6 +1,9 @@
+import { TRPCError } from "@trpc/server";
+import { and, eq, or } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import {
+  exigirDb,
   createPrivateContact, listPrivateContacts, getPrivateContactById,
   updatePrivateContact, deletePrivateContact,
 } from "../db";
@@ -11,6 +14,7 @@ import { storagePut, storageDelete, chaveDoStorageDaDona } from "../storage";
 import {
   ALLOWED_CONTACT_IMAGE_TYPES, decodeContactImage, extensionForContactImage,
 } from "../contact-media";
+import { aiMatchSuggestions, contactAssets, contactNeeds } from "../../drizzle/schema";
 
 // Caminho do proxy (/manus-storage/contacts/{openId}/...), não uma URL http
 // completa — por isso os dois campos abaixo usam `.max(512)` simples, não
@@ -28,6 +32,65 @@ async function apagarImagemDoBucket(openId: string, storagePath: string | null |
   } catch (erro) {
     console.warn("[Rede] objeto ficou no bucket:", erro instanceof Error ? erro.message : erro);
   }
+}
+
+// O cruzamento roda sozinho também quando um dado sai (padrão de `delete`):
+// remover um "possui" muda o mapa, e as sugestões precisam refletir isso.
+// Melhor esforço, e SEM e-mail — remoção não é notícia de oportunidade nova.
+//
+// Com o termo da etapa 11 vigente, o recálculo refaz o mapa inteiro. SEM o
+// termo o recálculo não roda, e a sugestão cuja razão acabou de sair ficaria
+// viva em ai_match_suggestions até o próximo — um fantasma que a usuária não
+// vê nem consegue apagar. Molde de apagarRastroDoContato (db.ts): toda
+// sugestão da dona cujo par inclua este contato sai; quando ela aceitar o
+// termo, o recálculo recria o que ainda valer.
+async function recalcularAposRemocao(
+  db: Awaited<ReturnType<typeof exigirDb>>,
+  user: { id: number; openId: string },
+  contactId: number,
+) {
+  try {
+    if (await hasValidConsent(user.id, "termo_smart_match")) {
+      await recalculatePrivateMatches(user.openId);
+      return;
+    }
+    await db.delete(aiMatchSuggestions).where(and(
+      eq(aiMatchSuggestions.ownerId, user.openId),
+      or(
+        eq(aiMatchSuggestions.pairLowContactId, contactId),
+        eq(aiMatchSuggestions.pairHighContactId, contactId),
+      ),
+    ));
+  } catch (erro) {
+    console.warn("[Rede] recálculo adiado após remoção:", erro instanceof Error ? erro.message : erro);
+  }
+}
+
+// Apaga um item de possui/procura da agenda da dona. O owner_id vai no WHERE
+// (privacidade é regra de consulta): id de outra dona apaga zero linhas e sai
+// como NOT_FOUND, sem revelar se existe. O contato do item é lido ANTES do
+// DELETE (também com o owner_id): depois de apagado não há mais como saber a
+// quais sugestões de match a razão pertencia.
+async function removerItemDaAgenda(
+  tabela: typeof contactAssets | typeof contactNeeds,
+  user: { id: number; openId: string },
+  id: number,
+) {
+  const db = await exigirDb();
+  const [item] = await db
+    .select({ contactId: tabela.contactId })
+    .from(tabela)
+    .where(and(eq(tabela.id, id), eq(tabela.ownerId, user.openId)))
+    .limit(1);
+  if (!item) throw new TRPCError({ code: "NOT_FOUND" });
+  const [resultado] = await db
+    .delete(tabela)
+    .where(and(eq(tabela.id, id), eq(tabela.ownerId, user.openId)));
+  if (!((resultado as { affectedRows?: number }).affectedRows! > 0)) {
+    throw new TRPCError({ code: "NOT_FOUND" });
+  }
+  await recalcularAposRemocao(db, user, item.contactId);
+  return { success: true };
 }
 
 // ─── Minha Rede de Relacionamentos (Base Particular de Contatos) ──────────────
@@ -202,4 +265,39 @@ export const networkRouter = router({
       }
       return { success: true };
     }),
+
+  // ─── Possui / procura: dado da AGENDA, não do cruzamento ───────────────────
+  // O chat de enriquecimento grava contact_assets/contact_needs sem exigir o
+  // termo do Smart Match (é dado do contato), e a vitrine e o acervo Ouro já
+  // expõem esses itens. Mas o único lugar que os listava e removia era o
+  // router intelligentMatches, inteiro atrás da trava do termo: quem nunca
+  // aceitou (ou revogou) não conseguia ver nem apagar um "possui" errado que
+  // ela mesma confirmou. Ver e remover o próprio dado fica aqui, sem termo;
+  // o cruzamento continua atrás da trava em matches.ts.
+  assetsNeeds: protectedProcedure
+    .input(z.object({ contactId: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      // Posse conferida ANTES de ler as tabelas: contato de outra dona (ou
+      // inexistente) sai como NOT_FOUND sem nenhuma consulta a mais.
+      const contato = await getPrivateContactById(ctx.user.openId, input.contactId);
+      if (!contato) throw new TRPCError({ code: "NOT_FOUND" });
+      const db = await exigirDb();
+      const [possui, procura] = await Promise.all([
+        db.select({ id: contactAssets.id, label: contactAssets.tagLabel, category: contactAssets.category })
+          .from(contactAssets)
+          .where(and(eq(contactAssets.ownerId, ctx.user.openId), eq(contactAssets.contactId, input.contactId))),
+        db.select({ id: contactNeeds.id, label: contactNeeds.tagLabel, category: contactNeeds.category })
+          .from(contactNeeds)
+          .where(and(eq(contactNeeds.ownerId, ctx.user.openId), eq(contactNeeds.contactId, input.contactId))),
+      ]);
+      return { possui, procura };
+    }),
+
+  removeAsset: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => removerItemDaAgenda(contactAssets, ctx.user, input.id)),
+
+  removeNeed: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => removerItemDaAgenda(contactNeeds, ctx.user, input.id)),
 });

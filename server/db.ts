@@ -23,6 +23,7 @@ import nodeCrypto from "node:crypto";
 import { slugifyMatchTag } from "./match-service";
 import { mascararContatosEmTexto } from "@shared/contato-em-texto";
 import { BancoIndisponivel } from "./banco-indisponivel";
+import { condicaoDeStatusNasListas } from "./oportunidade-acesso";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -173,12 +174,9 @@ export async function listOpportunities(filters: {
   const db = await exigirDb();
   const conditions: any[] = [];
   if (filters.status === undefined && filters.viewerUserId !== undefined) {
-    conditions.push(
-      or(
-        eq(opportunities.status, "active"),
-        and(eq(opportunities.status, "pending"), eq(opportunities.publishedBy, filters.viewerUserId)),
-      ),
-    );
+    // O mesmo predicado da aba "Salvas" (server/oportunidade-acesso.ts): as
+    // duas listas precisam concordar sobre o que uma usuária enxerga.
+    conditions.push(condicaoDeStatusNasListas(filters.viewerUserId));
   } else {
     conditions.push(eq(opportunities.status, (filters.status ?? "active") as any));
   }
@@ -253,26 +251,47 @@ export async function getInterestsByOpportunity(opportunityId: number) {
 }
 
 // ─── Saved ────────────────────────────────────────────────────
-export async function toggleSaveOpportunity(userId: number, opportunityId: number) {
+/**
+ * Desfaz o favorito, se existir. Sem régua nenhuma, de propósito: a régua
+ * (`exigirSalvarOportunidade`) vale para GRAVAR. Uma linha antiga — gravada
+ * antes da guarda, ou de uma Ouro rebaixada a Prata — precisa poder sair;
+ * antes, o desfazer passava pela régua de leitura, levava FORBIDDEN e a linha
+ * ficava órfã. Devolve se havia algo para apagar.
+ */
+export async function desfazerOportunidadeSalva(userId: number, opportunityId: number) {
   const db = await exigirDb();
-  const existing = await db.select({ id: savedOpportunities.id })
-    .from(savedOpportunities)
-    .where(and(eq(savedOpportunities.userId, userId), eq(savedOpportunities.opportunityId, opportunityId)))
-    .limit(1);
-  if (existing.length > 0) {
-    await db.delete(savedOpportunities).where(and(eq(savedOpportunities.userId, userId), eq(savedOpportunities.opportunityId, opportunityId)));
-    return { saved: false };
-  }
-  await db.insert(savedOpportunities).values({ userId, opportunityId });
-  return { saved: true };
+  const [resultado] = await db.delete(savedOpportunities)
+    .where(and(eq(savedOpportunities.userId, userId), eq(savedOpportunities.opportunityId, opportunityId)));
+  return (resultado as { affectedRows?: number }).affectedRows! > 0;
 }
 
-export async function getSavedOpportunities(userId: number) {
+/** Grava o favorito. Quem chama já passou a oportunidade pela régua de gravação. */
+export async function salvarOportunidade(userId: number, opportunityId: number) {
   const db = await exigirDb();
+  await db.insert(savedOpportunities).values({ userId, opportunityId });
+}
+
+/**
+ * As salvas de uma usuária, já filtradas pela régua de leitura NO BANCO.
+ * O mesmo predicado de status da lista geral (ativas, ou pendentes da própria
+ * dona); e, para quem não pode ver confidencial, só as públicas ou as que ela
+ * mesma publicou. A versão anterior devolvia a linha inteira do JOIN sem olhar
+ * status nem isConfidential — o favorito era o terceiro caminho de consulta a
+ * ignorar a régua de list/get.
+ */
+export async function getSavedOpportunities(userId: number, opts: { podeVerConfidencial: boolean }) {
+  const db = await exigirDb();
+  const condicoes = [
+    eq(savedOpportunities.userId, userId),
+    condicaoDeStatusNasListas(userId),
+  ];
+  if (!opts.podeVerConfidencial) {
+    condicoes.push(or(eq(opportunities.isConfidential, false), eq(opportunities.publishedBy, userId))!);
+  }
   return db.select({ opportunity: opportunities })
     .from(savedOpportunities)
     .innerJoin(opportunities, eq(opportunities.id, savedOpportunities.opportunityId))
-    .where(eq(savedOpportunities.userId, userId))
+    .where(and(...condicoes))
     .orderBy(desc(savedOpportunities.createdAt));
 }
 
@@ -393,20 +412,46 @@ export async function markNotificationsRead(userId: number) {
 }
 
 // ─── Admin ────────────────────────────────────────────────────
-export async function listUsers(filters: { role?: string; search?: string; limit?: number; offset?: number }) {
-  const db = await exigirDb();
+/**
+ * O WHERE da listagem de usuárias, compartilhado entre a página e a contagem:
+ * as duas precisam das MESMAS condições, senão "Mostrando 100 de N" mente
+ * (molde de listPrivateContacts, que já conta com a tag da página).
+ */
+function condicoesDeUsuarias(filters: { role?: string; search?: string }) {
   const conditions: any[] = [];
   if (filters.role) conditions.push(eq(users.role, filters.role as any));
-  if (filters.search) conditions.push(or(like(users.name, `%${filters.search}%`), like(users.email, `%${filters.search}%`)));
+  if (filters.search) {
+    // `%` e `_` são curingas do LIKE: sem escapar, "a_L" casava "abL" e "%"
+    // casava todo mundo. O escape é `\` (o padrão do MySQL), e a barra em si
+    // também é escapada para o termo "\" não engolir o curinga seguinte.
+    const termo = `%${filters.search.replace(/[\\%_]/g, "\\$&")}%`;
+    conditions.push(or(like(users.name, termo), like(users.email, termo)));
+  }
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+export async function listUsers(filters: { role?: string; search?: string; limit?: number; offset?: number }) {
+  const db = await exigirDb();
   return db.select({
     id: users.id, name: users.name, email: users.email, role: users.role,
     country: users.country, company: users.company, isActive: users.isActive,
+    isVerified: users.isVerified, onboardingCompleted: users.onboardingCompleted,
     createdAt: users.createdAt, lastSignedIn: users.lastSignedIn,
   }).from(users)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(condicoesDeUsuarias(filters))
     .orderBy(desc(users.createdAt))
     .limit(filters.limit ?? 50)
     .offset(filters.offset ?? 0);
+}
+
+/** Quantas usuárias casam com os filtros — o total real, não o tamanho da página. */
+export async function contarUsuarias(filters: { role?: string; search?: string }) {
+  const db = await exigirDb();
+  const [row] = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(users)
+    .where(condicoesDeUsuarias(filters));
+  return Number(row?.count ?? 0);
 }
 
 export async function getAuditLogs(filters: { userId?: number; action?: string; limit?: number; offset?: number }) {

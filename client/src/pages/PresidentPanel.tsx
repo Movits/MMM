@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -19,6 +20,30 @@ import {
 type Tab = "overview" | "gold" | "leaders" | "opportunities" | "compliance";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+// A busca vai ao SERVIDOR (LIKE em nome e e-mail), com 300 ms de espera para
+// não disparar uma consulta por tecla. Antes as duas abas filtravam em memória
+// as 100 usuárias mais recentes: a membra mais antiga que a 100ª "não existia"
+// para a presidente — nem para conceder Ouro, nem para nomear líder.
+function useBuscaComAtraso(valor: string, atrasoMs = 300) {
+  const [comAtraso, setComAtraso] = useState(valor);
+  useEffect(() => {
+    const timer = setTimeout(() => setComAtraso(valor.trim()), atrasoMs);
+    return () => clearTimeout(timer);
+  }, [valor, atrasoMs]);
+  return comAtraso;
+}
+
+// O servidor devolve no máximo `limit` linhas e o total real; quando o total
+// passa da página, a tela diz isso em vez de fingir que a lista está completa.
+function AvisoListaCortada({ mostrando, total }: { mostrando: number; total: number }) {
+  if (total <= mostrando) return null;
+  return (
+    <p className="text-xs text-amber-300/80 mb-2">
+      Mostrando {mostrando} de {total} — refine a busca para encontrar quem não aparece.
+    </p>
+  );
+}
+
 function StatCard({ icon: Icon, label, value, color = "amber" }: {
   icon: React.ElementType; label: string; value: number | string; color?: string;
 }) {
@@ -113,8 +138,15 @@ function GoldTab() {
   const [grantDialog, setGrantDialog] = useState<{ userId: number; name: string } | null>(null);
   const [revokeDialog, setRevokeDialog] = useState<{ userId: number; name: string } | null>(null);
   const [reason, setReason] = useState("");
+  const buscaSilver = useBuscaComAtraso(search);
 
-  const { data: silverUsers, refetch: refetchSilver } = trpc.president.listAllUsers.useQuery({ role: "silver" });
+  // keepPreviousData: enquanto a consulta do termo novo viaja, a lista do
+  // termo anterior fica na tela — sem isso ela piscava "Nenhuma membra
+  // encontrada." a cada busca.
+  const { data: silverUsers, refetch: refetchSilver } = trpc.president.listAllUsers.useQuery(
+    { role: "silver", search: buscaSilver || undefined },
+    { placeholderData: keepPreviousData },
+  );
   const { data: goldGrants, refetch: refetchGrants } = trpc.president.getGoldGrants.useQuery();
 
   const grantMutation = trpc.president.grantGold.useMutation({
@@ -139,9 +171,8 @@ function GoldTab() {
     onError: (e) => toast.error(e.message),
   });
 
-  const filteredSilver = (silverUsers?.users || []).filter(u =>
-    !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Sem filtro em memória: a lista é exatamente o que o servidor encontrou.
+  const filteredSilver = silverUsers?.users ?? [];
 
   return (
     <div className="space-y-8">
@@ -197,6 +228,7 @@ function GoldTab() {
             className="pl-9 bg-white/5 border-white/15 text-white placeholder-white/25 text-sm"
           />
         </div>
+        <AvisoListaCortada mostrando={filteredSilver.length} total={silverUsers?.total ?? 0} />
         <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
           {filteredSilver.length === 0 ? (
             <p className="text-center text-white/30 text-sm py-6">Nenhuma membra encontrada.</p>
@@ -302,8 +334,14 @@ function LeadersTab() {
   const [specialty, setSpecialty] = useState("");
   const [revokeReason, setRevokeReason] = useState("");
   const [search, setSearch] = useState("");
+  const buscaMembras = useBuscaComAtraso(search);
 
-  const { data: allUsers } = trpc.president.listAllUsers.useQuery({});
+  // keepPreviousData pelo mesmo motivo da aba Ouro: a lista não pisca vazia
+  // enquanto a busca nova viaja.
+  const { data: allUsers } = trpc.president.listAllUsers.useQuery(
+    { search: buscaMembras || undefined },
+    { placeholderData: keepPreviousData },
+  );
   const { data: leaders, refetch } = trpc.president.listLeaders.useQuery();
   const { data: leaderOpps } = trpc.president.getLeaderOpportunities.useQuery(
     { userId: oppDialog?.userId ?? 0 },
@@ -331,9 +369,8 @@ function LeadersTab() {
     onError: (e) => toast.error(e.message),
   });
 
-  const filteredUsers = (allUsers?.users || []).filter(u =>
-    !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Sem filtro em memória: a lista é exatamente o que o servidor encontrou.
+  const filteredUsers = allUsers?.users ?? [];
 
   const leaderList = (leaders as Array<{ id: number; userId: number; name: string; email: string; region: string; specialty: string; country: string }> | undefined) ?? [];
 
@@ -402,6 +439,7 @@ function LeadersTab() {
             className="pl-9 bg-white/5 border-white/15 text-white placeholder-white/25 text-sm"
           />
         </div>
+        <AvisoListaCortada mostrando={filteredUsers.length} total={allUsers?.total ?? 0} />
         <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
           {filteredUsers.map(u => (
             <div key={u.id} className="flex items-center justify-between p-3.5 rounded-xl bg-white/3 border border-white/8 hover:border-white/15 transition-colors">
