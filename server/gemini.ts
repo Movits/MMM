@@ -48,6 +48,17 @@ export class GeminiCotaEsgotadaError extends GeminiIndisponivelError {
   }
 }
 
+// Recusa que não é sobrecarga (400 payload errado, 401/403 chave inválida,
+// 404 modelo inexistente): não melhora repetindo nem trocando de modelo. A
+// mensagem é para a dona da reunião — ela vai parar em `processing_error` e
+// na caixa vermelha da tela; o JSON do Google (que cita "API key", o nome do
+// modelo, o endpoint) fica só no log, para quem for diagnosticar.
+export class GeminiRecusouChamadaError extends GeminiIndisponivelError {
+  constructor(status: number) {
+    super(status, `O serviço de IA recusou a chamada (HTTP ${status}). Avise o suporte.`);
+  }
+}
+
 const pareceCotaEsgotada = (detalhe: string) =>
   /exceeded your current quota|free_tier_requests|RESOURCE_EXHAUSTED/i.test(detalhe);
 
@@ -89,9 +100,11 @@ async function geminiPost<T>(path: string, body: unknown, tentativas = ESPERAS_M
     if (response.ok) return response.json() as Promise<T>;
     const details = await response.text();
     // Erro que não é de sobrecarga (chave inválida, payload errado...) não
-    // melhora repetindo: sai na hora, com o detalhe para diagnóstico.
+    // melhora repetindo: sai na hora. O detalhe vai ao LOG, não à mensagem —
+    // ela acaba gravada em processing_error e mostrada na tela da dona.
     if (!STATUS_PASSAGEIROS.has(response.status)) {
-      throw new Error(`Gemini indisponível (${response.status}): ${details.slice(0, 400)}`);
+      console.error(`[Gemini] ${response.status} em ${path} (não passageiro): ${details.slice(0, 400)}`);
+      throw new GeminiRecusouChamadaError(response.status);
     }
     // Cota esgotada não é pico: repetir no mesmo modelo só queima tempo. Sai
     // já — na transcrição, é o que aciona o modelo reserva de imediato.
@@ -158,7 +171,9 @@ export async function transcribeWithGemini(input: { audio: Buffer; mimeType: str
   } catch (erro) {
     // O modelo de áudio seguiu lotado depois das retentativas: uma última
     // cartada no modelo reserva antes de devolver o erro para a usuária.
-    if (!(erro instanceof GeminiIndisponivelError)) throw erro;
+    // Recusa (4xx) não é lotação: a reserva receberia a mesma chave inválida
+    // ou o mesmo payload recusado — sai na hora, sem o upload inútil.
+    if (!(erro instanceof GeminiIndisponivelError) || erro instanceof GeminiRecusouChamadaError) throw erro;
     const reserva = AUDIO_MODEL_RESERVA();
     // Reserva igual ao principal seria um 4º upload idêntico no mesmo modelo
     // lotado — sem valor nenhum.

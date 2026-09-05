@@ -12,7 +12,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { montarDiretivasCsp } from "./csp";
-import { sdk } from "./sdk";
+import { autenticarCron } from "./cron";
 import { cleanupExpiredSessions, createAuditLog } from "../security";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -123,6 +123,35 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
+  // Reuniões presas em "processing". Nenhuma requisição do processo anterior
+  // sobreviveu ao restart (todo merge na main é deploy), então o que ficou
+  // "Processando" por mais de 15 min não vai terminar nunca: vira 'failed'
+  // com o código ERRO_INTERROMPIDO, que a tela traduz. Fica depois de
+  // `const app = express()` e das migrações de propósito: o boot em produção
+  // só pode tocar o banco com o schema já nivelado. Sem DATABASE_URL (dev sem
+  // banco) pula; qualquer erro aqui é log, não aborta a subida — servidor de
+  // pé com uma reunião presa é melhor do que servidor fora.
+  //
+  // Uma passada no boot e outra a cada 5 min: o endpoint de cron
+  // (/api/scheduled/mark-interrupted-meetings, abaixo) não tem chamador desde
+  // a saída do Manus, e uma reunião derrubada ENTRE deploys (proxy do Render
+  // encerrando a requisição, exceção fora do try) ficaria presa até o
+  // próximo restart — e a tela deixa excluir, mas a dona não deveria precisar.
+  // `unref()`: o timer não segura o processo vivo num shutdown.
+  if (process.env.DATABASE_URL) {
+    const { marcarReunioesInterrompidas } = await import("../meeting-service");
+    const varrerReunioesPresas = async (origem: string) => {
+      try {
+        const presas = await marcarReunioesInterrompidas();
+        if (presas.encontradas) console.warn(`[${origem}] Reuniões interrompidas marcadas como falha: ${presas.marcadas} de ${presas.encontradas}.`);
+      } catch (erro) {
+        console.error(`[${origem}] Não foi possível varrer as reuniões presas em processamento:`, erro instanceof Error ? erro.message : erro);
+      }
+    };
+    await varrerReunioesPresas("Boot");
+    setInterval(() => { void varrerReunioesPresas("Varredura"); }, 5 * 60_000).unref();
+  }
+
   // Confiar no proxy reverso (necessário para rate limiting por IP real)
   app.set("trust proxy", 1);
 
@@ -197,16 +226,14 @@ async function startServer() {
   // JOB PERIÓDICO: Limpeza de sessões expiradas
   // Endpoint: POST /api/scheduled/cleanup-sessions
   // Exige sessão de cron: JWT assinado com o JWT_SECRET, openId "cron_..."
-  // e claim taskUid (ver sdk.authenticateRequest). Nenhum agendador externo
-  // está configurado hoje; o endpoint fica pronto para quando houver.
+  // e claim taskUid (ver autenticarCron e sdk.authenticateRequest). Nenhum
+  // agendador externo está configurado hoje; o endpoint fica pronto para
+  // quando houver.
   // ============================================================
   app.post("/api/scheduled/cleanup-sessions", async (req: Request, res: Response) => {
+    const user = await autenticarCron(req, res);
+    if (!user) return;
     try {
-      const user = await sdk.authenticateRequest(req);
-      if (!user.isCron) {
-        return res.status(403).json({ error: "cron-only endpoint" });
-      }
-
       const cleaned = await cleanupExpiredSessions();
 
       await createAuditLog({
@@ -245,12 +272,9 @@ async function startServer() {
   // voltar lá) deixaria o áudio no bucket para sempre.
   // ============================================================
   app.post("/api/scheduled/cleanup-recordings", async (req: Request, res: Response) => {
+    const user = await autenticarCron(req, res);
+    if (!user) return;
     try {
-      const user = await sdk.authenticateRequest(req);
-      if (!user.isCron) {
-        return res.status(403).json({ error: "cron-only endpoint" });
-      }
-
       const { limparGravacoesVencidas } = await import("../meeting-service");
       const resultado = await limparGravacoesVencidas();
 
@@ -258,6 +282,42 @@ async function startServer() {
         userId: null,
         action: "CRON_CLEANUP_RECORDINGS",
         resource: "meeting_recordings",
+        status: "success",
+        riskLevel: "low",
+        details: { ...resultado, taskUid: user.taskUid, triggeredAt: new Date().toISOString() },
+      }).catch(() => {});
+
+      return res.json({ ok: true, ...resultado, timestamp: new Date().toISOString() });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      return res.status(500).json({
+        error,
+        context: { url: req.url },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // ============================================================
+  // JOB PERIÓDICO: reuniões presas em "processing"
+  // Endpoint: POST /api/scheduled/mark-interrupted-meetings
+  // Mesma sessão de cron das limpezas acima.
+  //
+  // O boot e o setInterval lá em cima já fazem esta varredura; o endpoint
+  // fica ao lado das outras duas rotas de cron para o dia em que houver um
+  // agendador externo (hoje nenhuma delas tem chamador).
+  // ============================================================
+  app.post("/api/scheduled/mark-interrupted-meetings", async (req: Request, res: Response) => {
+    const user = await autenticarCron(req, res);
+    if (!user) return;
+    try {
+      const { marcarReunioesInterrompidas } = await import("../meeting-service");
+      const resultado = await marcarReunioesInterrompidas();
+
+      await createAuditLog({
+        userId: null,
+        action: "CRON_MARK_INTERRUPTED_MEETINGS",
+        resource: "meetings",
         status: "success",
         riskLevel: "low",
         details: { ...resultado, taskUid: user.taskUid, triggeredAt: new Date().toISOString() },

@@ -244,11 +244,15 @@ describe("Memória — órfão não sobrevive à fonte", () => {
   });
 
   it("órfão de reunião também sai: a chave usa meetingId, não o id da linha", async () => {
+    // A reunião precisa existir (viva): transcrição sem reunião não vira
+    // documento — e o conteúdo indexado leva o título dela.
+    semear(schema.meetings, [{ id: "reuniao-1", title: "Com a vinícola", status: "ready" }]);
     semear(schema.meetingTranscripts, [{ id: "linha-1", meetingId: "reuniao-1", ownerId: "dona", transcript: "Reunião sobre vinho", language: "pt" }]);
+    const conteudo = "Reunião: Com a vinícola\nReunião sobre vinho";
     const docReuniao = {
       id: "doc-r1", ownerId: "dona", sourceType: "meeting", sourceId: "reuniao-1",
-      title: "Transcrição de reunião", content: "Reunião sobre vinho", metadata: {},
-      embedding: vetor768(), contentHash: servico.buildMemoryHash("Reunião sobre vinho"),
+      title: "Com a vinícola", content: conteudo, metadata: {},
+      embedding: vetor768(), contentHash: servico.buildMemoryHash(conteudo),
       indexedAt: 1, createdAt: 1, updatedAt: 1,
     };
     const docOrfao = { ...docReuniao, id: "doc-r99", sourceId: "reuniao-apagada" };
@@ -375,6 +379,37 @@ describe("Memória — órfão não sobrevive à fonte", () => {
     const doc = escritas.inseridos.find(item => item.sourceType === "meeting");
     expect(doc?.title).toBe("Reunião com a vinícola");
     expect(String(doc?.content)).toContain("Reunião: Reunião com a vinícola");
+  });
+
+  it("transcrição sem reunião VIVA não vira documento: nem a de reunião sumida, nem a de reunião 'deleted'", async () => {
+    // Reverificação de 04/09 (etapa 3): a exclusão durante o processamento
+    // deixava a transcrição órfã, e a memória a indexava com o título de
+    // reserva — a fala de uma reunião que a dona mandou apagar respondia a
+    // buscas. O documento antigo da reunião excluída vira órfão e sai.
+    semear(schema.meetingTranscripts, [
+      { meetingId: "sumida", transcript: "Falamos de vinho com a Ana", language: "pt" },
+      { meetingId: "marcada", transcript: "Falamos de logística com o Carlos", language: "pt" },
+      { meetingId: "viva", transcript: "Falamos de exportação", language: "pt" },
+    ]);
+    semear(schema.meetings, [
+      { id: "marcada", title: "Excluída no meio", status: "deleted" },
+      { id: "viva", title: "Reunião viva", status: "ready" },
+    ]);
+    const docDaMarcada = {
+      id: "doc-marcada", ownerId: "dona", sourceType: "meeting", sourceId: "marcada",
+      title: "Excluída no meio", content: "Reunião: Excluída no meio\nFalamos de logística com o Carlos", metadata: {},
+      embedding: vetor768(), contentHash: servico.buildMemoryHash("Reunião: Excluída no meio\nFalamos de logística com o Carlos"),
+      indexedAt: 1, createdAt: 1, updatedAt: 1,
+    };
+    semear(schema.memoryDocuments, [docDaMarcada]);
+
+    const resultado = await servico.indexOwnerMemory("dona");
+
+    const documentos = escritas.inseridos.filter(item => item.sourceType === "meeting");
+    expect(documentos.map(item => item.sourceId)).toEqual(["viva"]);
+    expect(JSON.stringify(escritas.inseridos)).not.toContain("Ana");
+    expect(JSON.stringify(escritas.inseridos)).not.toContain("Carlos");
+    expect(resultado.removed).toBe(1);
   });
 
   it("nada mudou desde a última rodada: a seguinte nem carrega as fontes (assinatura)", async () => {

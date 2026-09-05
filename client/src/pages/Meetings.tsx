@@ -8,6 +8,7 @@ import { LANGUAGES } from "@/i18n";
 import { AppHeader } from "@/components/AppHeader";
 import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 import { segmentarTranscricao, TIPOS_DE_ENTIDADE, type TipoEntidade } from "@/lib/transcricao-destacada";
+import { CODIGO_ERRO_INTERROMPIDO } from "@shared/const";
 
 const MAX_DURATION = 10 * 60;
 
@@ -279,6 +280,10 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
   const initialLanguage = LANGUAGES.some(language => language.code === idiomaAtual) ? idiomaAtual : "pt-BR";
   const [translationLanguage, setTranslationLanguage] = useState(initialLanguage);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
+  // Excluir apaga áudio, transcrição, traduções e sugestões de uma vez, sem
+  // volta — e o botão fica ao lado do selo de status, onde um clique por
+  // engano é fácil. O mutate só sai do botão do modal.
+  const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const decideEntity = trpc.meetings.decideEntity.useMutation({ onSuccess: () => utils.meetings.get.invalidate({ meetingId }) });
   const decideContact = trpc.meetings.decideContactSuggestion.useMutation({ onSuccess: () => utils.meetings.get.invalidate({ meetingId }) });
   const translateTranscript = trpc.meetings.translateTranscript.useMutation({
@@ -287,7 +292,7 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
   });
   const deleteMeeting = trpc.meetings.delete.useMutation({
     onSuccess: async () => { await utils.meetings.list.invalidate(); toast.success(t("meetings.deleteSuccess")); onBack(); },
-    onError: error => toast.error(error.message || t("meetings.deleteError")),
+    onError: error => { setConfirmarExclusao(false); toast.error(error.message || t("meetings.deleteError")); },
   });
 
   useEffect(() => {
@@ -313,10 +318,22 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
   const tiposPresentes = segmentos
     ? Array.from(new Set(segmentos.flatMap(s => (s.tipo ? [s.tipo] : []))))
     : [];
+  // Excluir continua possível em processamento: o servidor relê o status
+  // antes de gravar e compensa o que já gravou, então nada fica órfão — e
+  // desabilitar o botão deixava uma reunião morta pelo deploy presa E
+  // inexcluível até a varredura passar. O modal só avisa que o trabalho em
+  // curso será descartado.
+  const emProcessamento = meeting.status === "processing";
+  // ERRO_INTERROMPIDO é um CÓDIGO gravado pela varredura de reuniões presas,
+  // não uma frase: o servidor não sabe o idioma da dona, então a tradução é
+  // aqui. As demais mensagens já vêm em português, pensadas para a tela.
+  const motivoDaFalha = meeting.processingError === CODIGO_ERRO_INTERROMPIDO
+    ? t("meetings.processingInterrupted")
+    : (meeting.processingError || t("meetings.processingFailedFallback"));
   return <main className="min-h-screen p-4 md:p-8 text-white bg-transparent"><div className="max-w-5xl mx-auto">
     <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-white/55 hover:text-white mb-6"><ArrowLeft size={16}/> {t("meetings.allMeetings")}</button>
-    <div className="flex flex-col md:flex-row justify-between gap-4 mb-6"><div><p className="text-amber-300 text-xs font-semibold">{t("meetings.privateMeetingEyebrow")}</p><h1 className="text-3xl font-bold mt-1">{meeting.title}</h1><p className="text-sm text-white/45 mt-2">{new Date(meeting.createdAt).toLocaleString(i18n.language)}</p></div><div className="flex items-start gap-2"><span className={`h-fit border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(t, meeting.status)}</span><button onClick={() => deleteMeeting.mutate({ meetingId })} disabled={deleteMeeting.isPending} className="rounded-full border border-red-400/25 px-3 py-1 text-xs text-red-200 hover:bg-red-400/10 disabled:opacity-50">{t("meetings.deleteButton")}</button></div></div>
-    {meeting.status === "failed" && <div className="rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-red-200">{meeting.processingError || t("meetings.processingFailedFallback")}</div>}
+    <div className="flex flex-col md:flex-row justify-between gap-4 mb-6"><div><p className="text-amber-300 text-xs font-semibold">{t("meetings.privateMeetingEyebrow")}</p><h1 className="text-3xl font-bold mt-1">{meeting.title}</h1><p className="text-sm text-white/45 mt-2">{new Date(meeting.createdAt).toLocaleString(i18n.language)}</p></div><div className="flex items-start gap-2"><span className={`h-fit border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(t, meeting.status)}</span><button onClick={() => setConfirmarExclusao(true)} disabled={deleteMeeting.isPending} className="rounded-full border border-red-400/25 px-3 py-1 text-xs text-red-200 hover:bg-red-400/10 disabled:opacity-50">{t("meetings.deleteButton")}</button></div></div>
+    {meeting.status === "failed" && <div className="rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-red-200">{motivoDaFalha}</div>}
     <div className="flex gap-2 border-b border-white/10 mb-6">{([ ["summary", t("meetings.summaryTab"), FileText], ["transcript", t("meetings.transcriptTab"), Clock3], ["contacts", t("meetings.contactsTab", { count: suggestions.length }), Users] ] as const).map(([id,label,Icon]) => <button key={id} onClick={() => setTab(id)} className={`inline-flex items-center gap-2 px-4 py-3 text-sm border-b-2 ${tab === id ? "border-amber-300 text-amber-300" : "border-transparent text-white/50"}`}><Icon size={16}/>{label}</button>)}</div>
     {tab === "summary" && <div className="grid md:grid-cols-2 gap-4"><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">{t("meetings.entitiesHeading")}</h2><div className="flex flex-wrap gap-2 mt-4">{entities.length ? entities.map(entity => { const tipo = TIPOS_DE_ENTIDADE[entity.entityType as TipoEntidade]; return <span key={entity.id} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${tipo ? tipo.classes : "border border-white/10 bg-white/5 text-white/75"}`}>{tipo && <span className="text-[10px] font-semibold uppercase tracking-wider opacity-75">{tipo.rotulo}</span>}<span>{entity.value}</span></span>; }) : <p className="text-sm text-white/45">{t("meetings.noEntities")}</p>}</div></section><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">{t("meetings.recordingHeading")}</h2>
       {recording ? <>
@@ -363,5 +380,24 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
       </> : <p className="text-white/45">{t("meetings.transcriptUnavailable")}</p>}
     </section>}
     {tab === "contacts" && <div className="space-y-3">{suggestions.length ? suggestions.map(suggestion => <section key={suggestion.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="flex flex-col md:flex-row gap-4 justify-between"><div><h2 className="font-semibold">{suggestion.fullName}</h2><p className="text-sm text-white/55">{[suggestion.jobTitle, suggestion.company].filter(Boolean).join(" · ") || t("meetings.partialDataDetected")}</p>{suggestion.email && <p className="text-xs text-white/40 mt-1">{suggestion.email}</p>}</div>{suggestion.status === "pending" ? <div className="flex flex-wrap gap-2"><button onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "create" })} className="rounded-lg bg-amber-400 text-[#08121f] px-3 py-2 text-sm font-bold"><Check size={15} className="inline mr-1"/>{t("meetings.createContactButton")}</button><button onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "ignore" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65"><X size={15} className="inline mr-1"/>{t("meetings.ignoreButton")}</button></div> : <span className="text-sm text-white/45">{suggestion.status === "created" ? t("meetings.contactCreatedStatus") : t("meetings.ignoredStatus")}</span>}</div></section>) : <div className="rounded-2xl border border-dashed border-white/15 py-14 text-center text-white/45">{t("meetings.noContactSuggestions")}</div>}</div>}
+
+    {/* Confirmação de exclusão — molde de Network.tsx; o texto nomeia tudo que some. */}
+    {confirmarExclusao && (
+      <div role="dialog" aria-modal="true" aria-labelledby="confirmar-exclusao-reuniao" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="bg-[#0a1628] border border-white/15 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+          <h3 id="confirmar-exclusao-reuniao" className="font-bold text-white mb-2">{t("meetings.deleteConfirmTitle")}</h3>
+          <p className={`text-sm text-white/50 ${emProcessamento ? "mb-3" : "mb-6"}`}>{t("meetings.deleteConfirmText")}</p>
+          {emProcessamento && <p className="text-sm text-amber-200/80 mb-6">{t("meetings.deleteConfirmProcessing")}</p>}
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setConfirmarExclusao(false)} disabled={deleteMeeting.isPending} className="flex-1 rounded-xl border border-white/15 py-2.5 text-sm text-white/60 hover:bg-white/8 disabled:opacity-50">
+              {t("meetings.deleteConfirmCancel")}
+            </button>
+            <button type="button" onClick={() => deleteMeeting.mutate({ meetingId })} disabled={deleteMeeting.isPending} className="flex-1 rounded-xl bg-red-500 hover:bg-red-400 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+              {t("meetings.deleteConfirmButton")}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </div></main>;
 }

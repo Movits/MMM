@@ -87,7 +87,7 @@ async function collectOwnerSources(ownerId: string): Promise<MemorySource[]> {
     db.select().from(contactNeeds).where(eq(contactNeeds.ownerId, ownerId)),
     db.select({ contextId: contextParticipants.contextId, name: contextParticipants.name, company: contextParticipants.company, role: contextParticipants.role, notes: contextParticipants.notes })
       .from(contextParticipants).where(eq(contextParticipants.ownerId, ownerId)),
-    db.select({ id: meetings.id, title: meetings.title }).from(meetings).where(eq(meetings.ownerId, ownerId)),
+    db.select({ id: meetings.id, title: meetings.title, status: meetings.status }).from(meetings).where(eq(meetings.ownerId, ownerId)),
     // O vínculo contato↔contexto (onde e como a pessoa foi conhecida, com
     // cidade/país/notas do encontro) ficava fora dos documentos: "Quem conheço
     // na Nigéria?" não achava a Ana vinculada à "Missão Comercial Lagos"
@@ -233,18 +233,29 @@ async function collectOwnerSources(ownerId: string): Promise<MemorySource[]> {
 
   // O título da reunião mora na tabela meetings; sem ele o documento era um
   // texto anônimo ("Transcrição de reunião") difícil de casar com a pergunta.
-  const tituloDaReuniao = new Map(reunioes.map(reuniao => [reuniao.id, reuniao.title]));
+  // Só reuniões VIVAS: uma transcrição cuja reunião sumiu (ou está 'deleted',
+  // a janela em que a exclusão ainda apaga o resto) é órfã de um
+  // processamento que terminou depois do Excluir — e virava documento da
+  // memória, respondendo a buscas pela fala de uma reunião que a dona mandou
+  // apagar. O filtro é em memória, de propósito: a lista de reuniões da dona
+  // já está carregada (para os títulos), então não custa nada — e um JOIN na
+  // consulta das transcrições exigiria dos testes da memória um fake de banco
+  // que hoje simula só SELECT simples por tabela.
+  const reunioesVivas = reunioes.filter(reuniao => reuniao.status !== "deleted");
+  const tituloDaReuniao = new Map(reunioesVivas.map(reuniao => [reuniao.id, reuniao.title]));
 
-  const transcriptSources: MemorySource[] = transcripts.map(transcript => ({
-    sourceType: "meeting",
-    sourceId: transcript.meetingId,
-    title: tituloDaReuniao.get(transcript.meetingId) ?? "Transcrição de reunião",
-    content: [
-      tituloDaReuniao.has(transcript.meetingId) ? `Reunião: ${tituloDaReuniao.get(transcript.meetingId)}` : "",
-      transcript.transcript,
-    ].filter(Boolean).join("\n"),
-    metadata: { href: "/meetings", meetingId: transcript.meetingId, kind: "Reunião", language: transcript.language },
-  }));
+  const transcriptSources: MemorySource[] = transcripts
+    .filter(transcript => tituloDaReuniao.has(transcript.meetingId))
+    .map(transcript => ({
+      sourceType: "meeting",
+      sourceId: transcript.meetingId,
+      title: tituloDaReuniao.get(transcript.meetingId) ?? "Transcrição de reunião",
+      content: [
+        `Reunião: ${tituloDaReuniao.get(transcript.meetingId)}`,
+        transcript.transcript,
+      ].filter(Boolean).join("\n"),
+      metadata: { href: "/meetings", meetingId: transcript.meetingId, kind: "Reunião", language: transcript.language },
+    }));
 
   return [...contactSources, ...contextSources, ...catalogSources, ...transcriptSources].filter(source => source.content.trim().length > 2);
 }

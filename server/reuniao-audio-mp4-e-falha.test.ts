@@ -1,9 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DrizzleQueryError, type SQL } from "drizzle-orm";
+import { MySqlDialect } from "drizzle-orm/mysql-core";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
 
 /**
- * Assistente de Reuniões (etapa 3) — dois contratos da auditoria de 04/09:
+ * Assistente de Reuniões (etapa 3) — contratos da auditoria de 04/09 e da
+ * reverificação do mesmo dia:
  *
  * 1. O cabeçalho do FileReader usa o tipo que o NAVEGADOR dá ao arquivo:
  *    um .mp4 chega como "data:video/mp4;base64,..." mesmo com a tela mandando
@@ -13,56 +16,125 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  * 2. Áudio recusado marca a reunião como FALHA (com o motivo): antes, a
  *    decodificação ficava fora do try e a reunião recém-criada ficava em
  *    "Gravação pendente" para sempre, sem erro e sem como tentar de novo.
+ * 3. `processing_error` nunca guarda a mensagem do driver: ela é o INSERT
+ *    inteiro com nome, telefone e e-mail das pessoas da reunião, e a tela a
+ *    renderizava numa caixa vermelha.
+ * 4. O que a IA devolve é cortado no tamanho das colunas antes do insert; em
+ *    modo estrito, um telefone de 74 caracteres derrubava a reunião inteira
+ *    depois de transcrição e extração já pagas.
+ * 5. Excluída no meio do processamento, a reunião não ganha transcrição nem
+ *    sugestões órfãs: o status é relido antes das escritas, e o UPDATE final
+ *    para 'ready' só vale se a linha ainda estiver viva — senão o que foi
+ *    gravado sai (compensação).
  */
 
 const atualizacoes: Array<Record<string, unknown>> = [];
-// As colunas do WHERE de cada UPDATE: o fake ignora o predicado, então o escopo
-// por dona só se prova olhando para ele (padrão de gravacao-playback-e-retencao).
-const escopos: string[][] = [];
-function colunasDe(condicao: unknown): string[] {
-  const achadas: string[] = [];
-  const visitados = new Set<unknown>();
-  const visitar = (no: unknown) => {
-    if (!no || typeof no !== "object" || visitados.has(no)) return;
-    visitados.add(no);
-    const alvo = no as Record<string, unknown>;
-    if (typeof alvo.name === "string" && alvo.table) { achadas.push(alvo.name); return; }
-    for (const valor of Object.values(alvo)) {
-      if (Array.isArray(valor)) valor.forEach(visitar);
-      else if (valor && typeof valor === "object") visitar(valor);
-    }
-  };
-  visitar(condicao);
-  return achadas;
-}
+// O WHERE de cada SELECT, UPDATE e DELETE, renderizado pelo dialeto do MySQL
+// (sem banco): o fake não executa o predicado, então o escopo por dona e o
+// `status <> 'deleted'` só se provam olhando para o SQL E os parâmetros. Uma
+// lista de colunas não bastava — `and`→`or` e `<>`→`=` citam as mesmas
+// colunas (padrão de memoria-orfaos-e-resiliencia).
+type Predicado = { sql: string; params: unknown[] };
+const dialeto = new MySqlDialect();
+const renderizar = (condicao?: SQL): Predicado => {
+  const { sql, params } = condicao ? dialeto.sqlToQuery(condicao) : { sql: "", params: [] };
+  return { sql, params };
+};
+const escopos: Predicado[] = [];
+const leituras: Array<{ tabela: unknown } & Predicado> = [];
+const insercoes: Array<{ tabela: unknown; valores: Record<string, unknown>[] }> = [];
+const delecoes: Array<{ tabela: unknown } & Predicado> = [];
+const REUNIAO_DA_DONA = { sql: "(`meetings`.`id` = ? and `meetings`.`owner_id` = ?)", params: ["reuniao-1", "dona-1"] };
+const REUNIAO_DA_DONA_VIVA = { sql: "(`meetings`.`id` = ? and `meetings`.`owner_id` = ? and `meetings`.`status` <> ?)", params: ["reuniao-1", "dona-1", "deleted"] };
+const derivadaDaReuniaoDaDona = (tabela: string) => ({ sql: `(\`${tabela}\`.\`meeting_id\` = ? and \`${tabela}\`.\`owner_id\` = ?)`, params: ["reuniao-1", "dona-1"] });
 const reuniao = { id: "reuniao-1", ownerId: "dona-1", consentGranted: true, status: "pending" };
+// O que cada SELECT em `meetings` devolve, em ordem (a primeira leitura é a da
+// entrada; a segunda, a releitura antes das escritas). Vazio: a reunião viva.
+const reunioesPorLeitura: Array<Record<string, unknown>[]> = [];
+// Linhas afetadas que o fake responde a todo UPDATE (o mysql2 devolve
+// [ResultSetHeader, campos]).
+let linhasAfetadasNoUpdate = 1;
+// Tabela cujo INSERT o banco recusa, e com qual erro.
+let recusarInsert: ((tabela: unknown) => Error | null) | null = null;
+let respostaDaIA: { entities: unknown[]; contacts: unknown[] } = { entities: [], contacts: [] };
+let falhaDaIA: Error | null = null;
+
+const schema = await import("../drizzle/schema");
+
 vi.mock("./db", () => ({
   getDb: async () => null,
   exigirDb: async () => ({
-    select: () => ({ from: () => ({ where: () => ({ limit: async () => [reuniao] }) }) }),
-    update: () => ({ set: (valores: Record<string, unknown>) => ({ where: async (condicao?: unknown) => { atualizacoes.push(valores); escopos.push(colunasDe(condicao)); } }) }),
-    insert: () => ({ values: async () => {} }),
+    select: () => ({ from: (tabela: unknown) => ({ where: (condicao?: SQL) => {
+      leituras.push({ tabela, ...renderizar(condicao) });
+      const linhas = tabela === schema.meetings ? (reunioesPorLeitura.shift() ?? [reuniao]) : [];
+      return { limit: async () => linhas, then: (resolver: (valor: unknown) => unknown) => resolver(linhas) };
+    } }) }),
+    update: () => ({ set: (valores: Record<string, unknown>) => ({ where: async (condicao?: SQL) => {
+      atualizacoes.push(valores); escopos.push(renderizar(condicao));
+      return [{ affectedRows: linhasAfetadasNoUpdate }];
+    } }) }),
+    insert: (tabela: unknown) => ({ values: async (valores: Record<string, unknown> | Record<string, unknown>[]) => {
+      const erro = recusarInsert?.(tabela);
+      if (erro) throw erro;
+      insercoes.push({ tabela, valores: Array.isArray(valores) ? valores : [valores] });
+    } }),
+    delete: (tabela: unknown) => ({ where: async (condicao?: SQL) => { delecoes.push({ tabela, ...renderizar(condicao) }); } }),
   }),
 }));
 const storagePut = vi.fn(async () => ({ key: "k", url: "/manus-storage/k" }));
+const storageDelete = vi.fn(async () => {});
 vi.mock("./storage", () => ({
   storagePut: (...args: unknown[]) => storagePut(...(args as [])),
-  storageDelete: async () => {},
+  storageDelete: (...args: unknown[]) => storageDelete(...(args as [])),
   storageGetSignedUrl: async () => "https://assinada",
 }));
-vi.mock("./gemini", () => ({
-  transcribeWithGemini: async () => ({ text: "transcrição", segments: [], language: "pt" }),
+let falhaDoGemini: Error | null = null;
+// As CLASSES de erro vêm do módulo real: meeting-service faz `instanceof
+// GeminiIndisponivelError` para decidir o que passa inteiro para a tela, e um
+// dublê com classes próprias provaria o instanceof contra a classe errada.
+vi.mock("./gemini", async importOriginal => ({
+  ...await importOriginal<typeof import("./gemini")>(),
+  transcribeWithGemini: async () => {
+    if (falhaDoGemini) throw falhaDoGemini;
+    return { text: "transcrição", segments: [], language: "pt" };
+  },
   embedWithGemini: async () => [], embedManyWithGemini: async () => [],
 }));
 vi.mock("./_core/llm", () => ({
-  invokeLLM: async () => ({ choices: [{ message: { content: JSON.stringify({ entities: [], contacts: [], summary: "" }) } }] }),
+  invokeLLM: async () => {
+    if (falhaDaIA) throw falhaDaIA;
+    return { choices: [{ message: { content: JSON.stringify(respostaDaIA) } }] };
+  },
 }));
 
-const { decodeMeetingAudio, processMeetingRecording } = await import("./meeting-service");
+const { decodeMeetingAudio, processMeetingRecording, LIMITE_SUGESTAO, LIMITE_VALOR_NORMALIZADO } = await import("./meeting-service");
+const { MENSAGEM_ERRO_DE_CONSULTA } = await import("./banco-indisponivel");
+const { GeminiCotaEsgotadaError, GeminiRecusouChamadaError } = await import("./gemini");
 
 const base64 = (texto: string) => Buffer.from(texto).toString("base64");
+const entradaValida = {
+  meetingId: "reuniao-1", ownerId: "dona-1", mimeType: "audio/mp4",
+  audioBase64: `data:video/mp4;base64,${base64("reuniao em mp4")}`, durationSeconds: 30, language: "pt",
+} as const;
+const ana = { fullName: "Ana Souza", jobTitle: "Diretora", company: "Vinhos do Sul", phone: "+55 11 99999-9999", email: "ana@vinhosdosul.com", confidence: 0.9 };
+const tabelasInseridas = () => insercoes.map(operacao => operacao.tabela);
+const tabelasApagadas = () => delecoes.map(operacao => operacao.tabela);
+const leiturasDe = (tabela: unknown) => leituras.filter(operacao => operacao.tabela === tabela).map(({ sql, params }) => ({ sql, params }));
 
-beforeEach(() => { atualizacoes.length = 0; escopos.length = 0; storagePut.mockClear(); });
+beforeEach(() => {
+  atualizacoes.length = 0; escopos.length = 0; leituras.length = 0; insercoes.length = 0; delecoes.length = 0;
+  reunioesPorLeitura.length = 0;
+  linhasAfetadasNoUpdate = 1;
+  recusarInsert = null;
+  respostaDaIA = { entities: [], contacts: [] };
+  falhaDaIA = null;
+  falhaDoGemini = null;
+  storagePut.mockReset();
+  storagePut.mockImplementation(async () => ({ key: "k", url: "/manus-storage/k" }));
+  storageDelete.mockClear();
+  vi.spyOn(console, "error").mockImplementation(() => {});
+});
+afterEach(() => { vi.restoreAllMocks(); });
 
 describe("decodeMeetingAudio — o cabeçalho vem do navegador, não da tela", () => {
   it("aceita .mp4 que o navegador tipa como video/mp4, com a tela mandando audio/mp4", () => {
@@ -91,9 +163,12 @@ describe("processMeetingRecording — áudio recusado vira reunião com falha, n
     expect(storagePut).not.toHaveBeenCalled();
     expect(atualizacoes).toHaveLength(1);
     expect(atualizacoes[0]).toMatchObject({ status: "failed", processingError: "Arquivo de áudio inválido." });
-    // A falha é gravada NA reunião DA dona — o mesmo escopo (id + owner_id) da
-    // busca da reunião; o fake ignora o predicado, então ele é conferido aqui.
-    expect(escopos[0]).toEqual(expect.arrayContaining(["id", "owner_id"]));
+    // A falha é gravada NA reunião DA dona, e só se ela ainda estiver viva:
+    // id + owner_id + status <> 'deleted', todos em AND. O fake ignora o
+    // predicado, então ele é conferido renderizado.
+    expect(escopos[0]).toEqual(REUNIAO_DA_DONA_VIVA);
+    // e a leitura de entrada já era da reunião DA dona
+    expect(leiturasDe(schema.meetings)).toEqual([REUNIAO_DA_DONA]);
   });
 
   it("formato fora da lista também marca a falha", async () => {
@@ -106,11 +181,235 @@ describe("processMeetingRecording — áudio recusado vira reunião com falha, n
   });
 
   it("áudio válido segue o caminho normal: processing → ready", async () => {
-    await expect(processMeetingRecording({
-      meetingId: "reuniao-1", ownerId: "dona-1", mimeType: "audio/mp4",
-      audioBase64: `data:video/mp4;base64,${base64("reuniao em mp4")}`, durationSeconds: 30, language: "pt",
-    })).resolves.toMatchObject({ transcript: "transcrição" });
+    await expect(processMeetingRecording(entradaValida)).resolves.toMatchObject({ transcript: "transcrição" });
     expect(storagePut).toHaveBeenCalledTimes(1);
     expect(atualizacoes.map(a => a.status)).toEqual(["processing", "ready"]);
+    // 'processing' vai para a reunião da dona; 'ready' só para a linha VIVA
+    // (id + owner_id + status <> 'deleted', em AND).
+    expect(escopos).toEqual([REUNIAO_DA_DONA, REUNIAO_DA_DONA_VIVA]);
+    // As duas leituras de meetings (entrada e releitura antes das escritas)
+    // são da reunião DA dona.
+    expect(leiturasDe(schema.meetings)).toEqual([REUNIAO_DA_DONA, REUNIAO_DA_DONA]);
+  });
+
+  it("o 'ready' LIMPA processing_error: reunião marcada pela varredura de interrompidas e concluída depois não fica pronta com ERRO_INTERROMPIDO", async () => {
+    await processMeetingRecording(entradaValida);
+    const pronta = atualizacoes.find(a => a.status === "ready")!;
+    expect(pronta).toHaveProperty("processingError", null);
+  });
+});
+
+describe("processMeetingRecording — processing_error é texto para a dona, nunca o SQL do driver", () => {
+  it("erro do driver no insert das sugestões: a tela recebe a frase neutra, sem 'Failed query' nem o e-mail de ninguém", async () => {
+    respostaDaIA = { entities: [], contacts: [ana] };
+    // O mesmo erro que o drizzle-orm 0.44 embrulha: a mensagem carrega o SQL e
+    // os parâmetros — os dados pessoais extraídos da reunião.
+    recusarInsert = tabela => tabela === schema.meetingContactSuggestions
+      ? new DrizzleQueryError(
+          "insert into `meeting_contact_suggestions` (`id`, `full_name`, `phone`, `email`) values (?, ?, ?, ?)",
+          ["uuid", ana.fullName, ana.phone, ana.email],
+          Object.assign(new Error("Data too long for column 'phone' at row 1"), { code: "ER_DATA_TOO_LONG", errno: 1406 }),
+        )
+      : null;
+
+    await expect(processMeetingRecording(entradaValida)).rejects.toBeInstanceOf(DrizzleQueryError);
+
+    const falha = atualizacoes.find(a => a.status === "failed");
+    expect(falha?.processingError).toBe(MENSAGEM_ERRO_DE_CONSULTA);
+    expect(String(falha?.processingError)).not.toContain("Failed query");
+    expect(String(falha?.processingError)).not.toContain(ana.email);
+    expect(String(falha?.processingError)).not.toContain(ana.phone);
+    // O detalhe vai ao log do servidor — com o SQL, sem os parâmetros.
+    const registros = JSON.stringify(vi.mocked(console.error).mock.calls);
+    expect(registros).toContain("Failed query");
+    expect(registros).not.toContain(ana.email);
+  });
+
+  it("GeminiIndisponivelError (cota esgotada, chamada recusada) continua inteiro: a frase já é para a dona", async () => {
+    falhaDoGemini = new GeminiCotaEsgotadaError();
+    await expect(processMeetingRecording(entradaValida)).rejects.toBe(falhaDoGemini);
+    expect(atualizacoes.find(a => a.status === "failed")?.processingError).toMatch(/^O limite de uso gratuito do serviço de IA foi atingido/);
+
+    atualizacoes.length = 0;
+    falhaDoGemini = new GeminiRecusouChamadaError(401);
+    await expect(processMeetingRecording(entradaValida)).rejects.toBe(falhaDoGemini);
+    expect(atualizacoes.find(a => a.status === "failed")?.processingError).toBe("O serviço de IA recusou a chamada (HTTP 401). Avise o suporte.");
+  });
+
+  it("qualquer OUTRO erro da transcrição vira 'Não foi possível transcrever o áudio.': a chave ausente cita LLM_API_KEY, e isso é do log", async () => {
+    falhaDoGemini = new Error("Chave do LLM não configurada. Defina LLM_API_KEY (ou GOOGLE_API_KEY) no ambiente.");
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow("Não foi possível transcrever o áudio.");
+    const falha = atualizacoes.find(a => a.status === "failed");
+    expect(falha?.processingError).toBe("Não foi possível transcrever o áudio.");
+    expect(String(falha?.processingError)).not.toContain("LLM_API_KEY");
+    // o original fica no log do servidor
+    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).toContain("LLM_API_KEY");
+  });
+
+  it("o bucket recusando o áudio vira 'Não foi possível guardar o áudio.', sem endpoint nem bucket na tela", async () => {
+    storagePut.mockRejectedValueOnce(new Error("AccessDenied: bucket mmm-prod em s3.us-west-004.backblazeb2.com"));
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow("Não foi possível guardar o áudio.");
+    const falha = atualizacoes.find(a => a.status === "failed");
+    expect(falha?.processingError).toBe("Não foi possível guardar o áudio.");
+    expect(String(falha?.processingError)).not.toContain("backblaze");
+  });
+
+  it("a IA fora do ar vira 'O serviço de IA não conseguiu extrair os dados da transcrição.', sem o JSON do provedor", async () => {
+    falhaDaIA = new Error('LLM invoke failed: 503 {"error":{"message":"The model is overloaded"}}');
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow("O serviço de IA não conseguiu extrair os dados da transcrição.");
+    const falha = atualizacoes.find(a => a.status === "failed");
+    expect(falha?.processingError).toBe("O serviço de IA não conseguiu extrair os dados da transcrição.");
+    expect(String(falha?.processingError)).not.toContain("overloaded");
+  });
+
+  it("marcarFalha não ressuscita reunião excluída: o WHERE exige a linha viva, da dona, tudo em AND", async () => {
+    falhaDaIA = new Error("qualquer");
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow();
+    const posicaoDaFalha = atualizacoes.findIndex(a => a.status === "failed");
+    expect(escopos[posicaoDaFalha]).toEqual(REUNIAO_DA_DONA_VIVA);
+  });
+});
+
+describe("processMeetingRecording — o que a IA devolve cabe nas colunas", () => {
+  it("telefone de 74 caracteres vira null, cargo/empresa são cortados em 200 e normalizedValue em 500", async () => {
+    respostaDaIA = {
+      entities: [{ type: "company", value: "Vinhos do Sul", normalizedValue: "n".repeat(600), confidence: 0.8 }],
+      contacts: [{
+        ...ana,
+        jobTitle: "j".repeat(269),
+        company: "c".repeat(250),
+        phone: "+55 (11) 99999-9999 (celular) e +55 (11) 3333-3333 (escritório), WhatsApp",
+        email: `${"a".repeat(330)}@vinhosdosul.com`,
+      }],
+    };
+
+    await expect(processMeetingRecording(entradaValida)).resolves.toBeTruthy();
+
+    const [sugestao] = insercoes.find(operacao => operacao.tabela === schema.meetingContactSuggestions)!.valores;
+    expect(sugestao.phone).toBeNull();
+    expect(sugestao.email).toBeNull();
+    expect(String(sugestao.jobTitle)).toHaveLength(LIMITE_SUGESTAO.jobTitle);
+    expect(String(sugestao.company)).toHaveLength(LIMITE_SUGESTAO.company);
+    expect(sugestao.fullName).toBe("Ana Souza");
+    // dado extraído por IA nasce pendente
+    expect(sugestao.status).toBe("pending");
+    const [entidade] = insercoes.find(operacao => operacao.tabela === schema.meetingEntities)!.valores;
+    expect(String(entidade.normalizedValue)).toHaveLength(LIMITE_VALOR_NORMALIZADO);
+    expect(entidade.status).toBe("pending");
+  });
+
+  it("nome de 250 caracteres é cortado em 200 (full_name é varchar(200), e em modo estrito estourar é erro)", async () => {
+    respostaDaIA = { entities: [], contacts: [{ ...ana, fullName: "A".repeat(250) }] };
+    await expect(processMeetingRecording(entradaValida)).resolves.toBeTruthy();
+    const [sugestao] = insercoes.find(operacao => operacao.tabela === schema.meetingContactSuggestions)!.valores;
+    expect(String(sugestao.fullName)).toHaveLength(LIMITE_SUGESTAO.fullName);
+    expect(sugestao.fullName).toBe("A".repeat(200));
+  });
+
+  it("telefone e e-mail dentro do teto passam inteiros — o corte não é 'sempre null'", async () => {
+    respostaDaIA = { entities: [], contacts: [ana] };
+    await processMeetingRecording(entradaValida);
+    const [sugestao] = insercoes.find(operacao => operacao.tabela === schema.meetingContactSuggestions)!.valores;
+    expect(sugestao).toMatchObject({ phone: ana.phone, email: ana.email, jobTitle: "Diretora", company: "Vinhos do Sul" });
+  });
+
+  it("na fronteira: empresa de exatamente 200 e e-mail de exatamente 320 passam inteiros; 201 e 321 não", async () => {
+    const empresaNoTeto = "e".repeat(LIMITE_SUGESTAO.company);
+    const emailNoTeto = `${"a".repeat(LIMITE_SUGESTAO.email - "@x.co".length)}@x.co`;
+    expect(emailNoTeto).toHaveLength(LIMITE_SUGESTAO.email);
+    respostaDaIA = { entities: [], contacts: [
+      { ...ana, company: empresaNoTeto, email: emailNoTeto },
+      { ...ana, fullName: "Bia", company: `${empresaNoTeto}X`, email: `a${emailNoTeto}` },
+    ] };
+
+    await processMeetingRecording(entradaValida);
+
+    const [noTeto, acima] = insercoes.find(operacao => operacao.tabela === schema.meetingContactSuggestions)!.valores;
+    expect(noTeto.company).toBe(empresaNoTeto);
+    expect(noTeto.email).toBe(emailNoTeto);
+    // empresa é cortada (texto vale pela metade); e-mail acima do teto vira null
+    expect(acima.company).toBe(empresaNoTeto);
+    expect(acima.email).toBeNull();
+  });
+
+  it("sugestão sem nome (vazio ou só espaços) não entra: viraria 'Criar contato' sem ninguém para criar", async () => {
+    respostaDaIA = { entities: [], contacts: [{ ...ana, fullName: "   " }, { ...ana, fullName: "" }, ana] };
+    await processMeetingRecording(entradaValida);
+    const inseridas = insercoes.find(operacao => operacao.tabela === schema.meetingContactSuggestions)!.valores;
+    expect(inseridas.map(sugestao => sugestao.fullName)).toEqual(["Ana Souza"]);
+  });
+
+  it("só sugestões sem nome: nenhum INSERT em meeting_contact_suggestions", async () => {
+    respostaDaIA = { entities: [], contacts: [{ ...ana, fullName: " " }] };
+    await expect(processMeetingRecording(entradaValida)).resolves.toBeTruthy();
+    expect(tabelasInseridas()).not.toContain(schema.meetingContactSuggestions);
+  });
+});
+
+describe("processMeetingRecording — excluída no meio, a reunião não deixa órfãos", () => {
+  it("status 'deleted' na releitura: nenhuma transcrição, entidade ou sugestão é gravada, e a gravação órfã sai", async () => {
+    respostaDaIA = { entities: [], contacts: [ana] };
+    reunioesPorLeitura.push([reuniao], [{ ...reuniao, status: "deleted" }]);
+
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow("Reunião excluída durante o processamento.");
+
+    // Só a gravação (inserida antes da transcrição) chegou ao banco…
+    expect(tabelasInseridas()).toEqual([schema.meetingRecordings]);
+    // …e a compensação a leva junto com as outras tabelas derivadas.
+    expect(tabelasApagadas()).toEqual(expect.arrayContaining([schema.meetingRecordings, schema.meetingTranscripts, schema.meetingContactSuggestions]));
+    // Sem 'failed' (não há linha viva para marcar) e sem 'ready'.
+    expect(atualizacoes.map(a => a.status)).toEqual(["processing"]);
+  });
+
+  it("toda leitura é da reunião DA dona: a de entrada, a releitura antes das escritas e a das gravações na compensação", async () => {
+    reunioesPorLeitura.push([reuniao], [{ ...reuniao, status: "deleted" }]);
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow("Reunião excluída durante o processamento.");
+
+    expect(leiturasDe(schema.meetings)).toEqual([REUNIAO_DA_DONA, REUNIAO_DA_DONA]);
+    // A compensação lê as gravações para achar o arquivo no bucket: sem o
+    // owner_id, apagaria (ou listaria) o áudio de uma reunião com o mesmo id
+    // de outra dona.
+    expect(leiturasDe(schema.meetingRecordings)).toEqual([derivadaDaReuniaoDaDona("meeting_recordings")]);
+  });
+
+  it("linha ausente na releitura (exclusão já concluída) aborta do mesmo jeito", async () => {
+    respostaDaIA = { entities: [], contacts: [ana] };
+    reunioesPorLeitura.push([reuniao], []);
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow("Reunião excluída durante o processamento.");
+    expect(tabelasInseridas()).not.toContain(schema.meetingTranscripts);
+    expect(tabelasInseridas()).not.toContain(schema.meetingContactSuggestions);
+  });
+
+  it("'failed' na releitura NÃO aborta: só a exclusão descarta o trabalho", async () => {
+    reunioesPorLeitura.push([reuniao], [{ ...reuniao, status: "failed" }]);
+    await expect(processMeetingRecording(entradaValida)).resolves.toBeTruthy();
+    expect(tabelasInseridas()).toContain(schema.meetingTranscripts);
+  });
+
+  it("UPDATE final para 'ready' sem linha afetada: a exclusão venceu entre a releitura e o fim — o que foi gravado sai, com meeting_id + owner_id", async () => {
+    respostaDaIA = { entities: [{ type: "person", value: "Ana", normalizedValue: null, confidence: 0.9 }], contacts: [ana] };
+    linhasAfetadasNoUpdate = 0;
+
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow("Reunião excluída durante o processamento.");
+
+    expect(tabelasInseridas()).toEqual(expect.arrayContaining([schema.meetingTranscripts, schema.meetingEntities, schema.meetingContactSuggestions]));
+    const derivadas = {
+      meeting_contact_suggestions: schema.meetingContactSuggestions, meeting_entities: schema.meetingEntities,
+      meeting_transcripts: schema.meetingTranscripts, meeting_transcript_translations: schema.meetingTranscriptTranslations,
+      meeting_recordings: schema.meetingRecordings,
+    };
+    for (const [nome, tabela] of Object.entries(derivadas)) {
+      const delecao = delecoes.find(operacao => operacao.tabela === tabela);
+      expect(delecao, `compensação não apagou ${nome}`).toBeDefined();
+      // meeting_id E owner_id, em AND — `or` apagaria os derivados de todas as reuniões da dona
+      expect({ sql: delecao!.sql, params: delecao!.params }).toEqual(derivadaDaReuniaoDaDona(nome));
+    }
+    expect(delecoes).toHaveLength(Object.keys(derivadas).length);
+    // …e a gravação que a compensação lê para apagar o arquivo é a da dona.
+    expect(leiturasDe(schema.meetingRecordings)).toEqual([derivadaDaReuniaoDaDona("meeting_recordings")]);
+    // O 'ready' só pode valer para linha viva: id + owner_id + status <> 'deleted'.
+    const posicaoDoReady = atualizacoes.findIndex(a => a.status === "ready");
+    expect(escopos[posicaoDoReady]).toEqual(REUNIAO_DA_DONA_VIVA);
+    expect(atualizacoes.map(a => a.status)).not.toContain("failed");
   });
 });
