@@ -89,7 +89,13 @@ export const contextsRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Só LEITURA antes de saber se o contexto é dela: a lista de anexos vem
+      // primeiro porque o deleteContext apaga as linhas de context_media, e o
+      // bucket só é tocado DEPOIS do banco confirmar a posse. Antes, um id do
+      // catálogo esvaziava o bucket da dona e depois respondia NOT_FOUND.
       const anexos = await listContextMediaByContext(ctx.user.openId, input.id);
+      const ok = await deleteContext(ctx.user.openId, input.id);
+      if (!ok) throw new Error("NOT_FOUND");
       for (const anexo of anexos) {
         const chave = chaveDoStorageDaDona("contexts", ctx.user.openId, anexo.storagePath);
         if (!chave) continue;
@@ -99,8 +105,6 @@ export const contextsRouter = router({
           console.warn("[Contextos] objeto ficou no bucket:", erro instanceof Error ? erro.message : erro);
         }
       }
-      const ok = await deleteContext(ctx.user.openId, input.id);
-      if (!ok) throw new Error("NOT_FOUND");
       return { success: true };
     }),
 

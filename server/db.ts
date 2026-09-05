@@ -988,13 +988,30 @@ export async function updateContext(ownerId: string, contextId: string, data: Pa
 
 export async function deleteContext(ownerId: string, contextId: string): Promise<boolean> {
   const db = await exigirDb();
+  // A posse decide ANTES de qualquer outra escrita: o próprio DELETE em
+  // contexts (dela E personalizado, a mesma régua do updateContext) é a
+  // checagem. Na ordem inversa, um id do catálogo (owner_id NULL, que
+  // contextIsVisible e uploadMedia aceitam de propósito) apagava os anexos da
+  // dona em context_media, e só depois o DELETE em contexts afetava 0 linhas —
+  // a resposta dizia NOT_FOUND com as linhas já perdidas (reverificação de
+  // 04/09, etapa 5).
+  const [r] = await db.delete(contexts)
+    .where(and(eq(contexts.id, contextId), eq(contexts.ownerId, ownerId), eq(contexts.isCustom, true)));
+  if (!((r as any).affectedRows > 0)) return false;
   // Os registros de anexos saem junto: não há FK/cascade no schema herdado, e
   // linha de mídia órfã esconderia arquivo que continua existindo no bucket.
   await db.delete(contextMedia)
     .where(and(eq(contextMedia.contextId, contextId), eq(contextMedia.ownerId, ownerId)));
-  const [r] = await db.delete(contexts)
-    .where(and(eq(contexts.id, contextId), eq(contexts.ownerId, ownerId)));
-  return (r as any).affectedRows > 0;
+  // Fora de escopo (pendências registradas): (1) os vínculos em
+  // contact_contexts e os participantes em context_participants do contexto
+  // apagado continuam na base — listContextsByContact os esconde pelo
+  // innerJoin em contexts, mas as linhas não são limpas aqui; (2) os dois
+  // DELETEs não estão numa transação: se o de context_media falhar depois do
+  // de contexts, sobra registro de mídia sem contexto (e o arquivo no bucket,
+  // que o router só apaga depois). Transação seria padrão novo no repositório
+  // (nenhum helper usa db.transaction), por isso fica registrado em vez de
+  // introduzido aqui.
+  return true;
 }
 
 export async function listContextMediaByContext(ownerId: string, contextId: string) {

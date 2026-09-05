@@ -38,7 +38,7 @@ vi.mock("drizzle-orm/mysql2", async (importOriginal) => {
   };
 });
 
-const { listContexts, listContextsByContact, linkContactToContext, getContextById } = await import("./db");
+const { listContexts, listContextsByContact, linkContactToContext, getContextById, deleteContext } = await import("./db");
 
 const sqlDe = (trecho: string) => estado.consultas.find(c => c.sql.includes(trecho));
 
@@ -136,5 +136,39 @@ describe("Contextos — listagens dizem tudo o que a tela precisa", () => {
     const insert = sqlDe("insert into `contact_contexts`");
     expect(insert).toBeDefined();
     expect(insert!.params).toEqual(expect.arrayContaining(["dona-1", 42, "ctx-1"]));
+  });
+});
+
+describe("deleteContext — a posse decide antes de qualquer outra escrita (reverificação de 04/09, etapa 5)", () => {
+  // Antes, o DELETE em context_media vinha primeiro: num contexto do catálogo
+  // (owner_id NULL, que contextIsVisible e uploadMedia aceitam) as linhas de
+  // anexo da dona sumiam e só depois o DELETE em contexts afetava 0 linhas —
+  // NOT_FOUND com os anexos já perdidos.
+  beforeEach(() => { estado.consultas = []; estado.respostas = []; });
+
+  it("contexto que não é dela (catálogo): o PRIMEIRO SQL é o delete em contexts com id, dona e is_custom; 0 linhas → false e context_media intocada", async () => {
+    estado.respostas = [{ affectedRows: 0 }];
+    const ok = await deleteContext("dona-1", "ctx-catalogo");
+
+    expect(ok).toBe(false);
+    expect(estado.consultas).toHaveLength(1);
+    expect(estado.consultas[0].sql).toBe(
+      "delete from `contexts` where (`contexts`.`id` = ? and `contexts`.`owner_id` = ? and `contexts`.`is_custom` = ?)",
+    );
+    expect(estado.consultas[0].params).toEqual(["ctx-catalogo", "dona-1", true]);
+    expect(estado.consultas.some(c => c.sql.startsWith("delete from `context_media`"))).toBe(false);
+  });
+
+  it("contexto dela: apaga o contexto e SÓ ENTÃO os registros de anexo, ambos com a dona no WHERE", async () => {
+    estado.respostas = [{ affectedRows: 1 }, { affectedRows: 2 }];
+    const ok = await deleteContext("dona-1", "ctx-1");
+
+    expect(ok).toBe(true);
+    expect(estado.consultas).toHaveLength(2);
+    expect(estado.consultas[0].sql).toMatch(/^delete from `contexts` /);
+    expect(estado.consultas[1].sql).toBe(
+      "delete from `context_media` where (`context_media`.`context_id` = ? and `context_media`.`owner_id` = ?)",
+    );
+    expect(estado.consultas[1].params).toEqual(["ctx-1", "dona-1"]);
   });
 });
