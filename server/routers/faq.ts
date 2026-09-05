@@ -31,7 +31,7 @@ export const faqRouter = router({
     .input(z.object({ question: z.string().min(1).max(500) }))
     .mutation(async ({ ctx, input }) => {
       assertFaqRate(getRequestIp(ctx.req.headers["x-forwarded-for"], ctx.req.socket?.remoteAddress));
-      const systemPrompt = `Você é a assistente virtual da plataforma MMM OS — uma rede exclusiva para mulheres empreendedoras e líderes de negócios. Responda perguntas sobre a plataforma de forma clara, amigável e concisa (máximo 3 parágrafos curtos).
+      const systemPrompt = `Você é a assistente virtual da plataforma MMM — uma rede exclusiva para mulheres empreendedoras e líderes de negócios. Responda perguntas sobre a plataforma de forma clara, amigável e concisa (máximo 3 parágrafos curtos).
 
 Informações sobre a plataforma:
 - Níveis de membro: Bronze (acesso a oportunidades), Prata (acesso a oportunidades, mais validado), Ouro (acesso total — oportunidades, conexões estratégicas, Deal Rooms, painel de governança)
