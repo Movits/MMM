@@ -3,12 +3,14 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { opportunitySectorLabel } from "@/lib/opportunity-sectors";
+import { rotuloDeInteresse } from "@/lib/interesses";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { LANGUAGES } from "@/i18n";
+import { CODIGOS, LANGUAGES } from "@/i18n";
+import type { i18n as I18n } from "i18next";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SmartMatchConsent } from "@/components/SmartMatchConsent";
 import { GlobalMenu } from "@/components/AppHeader";
@@ -147,35 +149,11 @@ function DistributionChart({ data }: { data: number[] }) {
 }
 
 // ─── Match Card ───────────────────────────────────────────────────────────────
-// Mapeador de sinônimos de interesse: normaliza termos informais para rótulos amigáveis
-const INTEREST_SYNONYMS: Record<string, string> = {
-  // Moda / Vestuário
-  roupas: "Moda", vestuario: "Moda", vestuário: "Moda", fashion: "Moda",
-  clothing: "Moda", textil: "Moda", têxtil: "Moda", textile: "Moda",
-  confeccao: "Moda", confecção: "Moda", apparel: "Moda",
-  // Tecnologia
-  tech: "Tecnologia", ti: "Tecnologia", software: "Tecnologia", startup: "Tecnologia",
-  // Alimentação
-  alimentos: "Alimentos & Bebidas", comida: "Alimentos & Bebidas", food: "Alimentos & Bebidas",
-  bebidas: "Alimentos & Bebidas", agro: "Agronegócio", agronegocio: "Agronegócio",
-  // Beleza
-  beleza: "Beleza & Cosméticos", cosmeticos: "Beleza & Cosméticos", cosméticos: "Beleza & Cosméticos",
-  beauty: "Beleza & Cosméticos",
-  // Saúde
-  saude: "Saúde", saúde: "Saúde", health: "Saúde", medico: "Saúde", médico: "Saúde",
-  // Educação
-  educacao: "Educação", educação: "Educação", education: "Educação",
-  // Financeiro
-  financeiro: "Finanças", financas: "Finanças", finanças: "Finanças", finance: "Finanças",
-  investimento: "Investimento", investment: "Investimento",
-  // Imobiliário
-  imoveis: "Imobiliário", imóveis: "Imobiliário", imobiliario: "Imobiliário", real_estate: "Imobiliário",
-};
-
 // Perfis criados a partir de 31/08 guardam a CHAVE da opção ("engineering") em
 // vez do rótulo traduzido, para o match funcionar entre idiomas. A exibição
-// traduz de volta; texto livre e dados antigos passam intactos.
-const OPTION_NAMESPACES = ["specialties", "sectors", "seeking", "values", "languages"];
+// traduz de volta; texto livre e dados antigos passam intactos. O estilo de
+// trabalho sempre foi gravado pela chave ("remote").
+const OPTION_NAMESPACES = ["specialties", "sectors", "seeking", "values", "languages", "workStyle"];
 function optionLabel(t: (k: string, o?: Record<string, unknown>) => string, valor?: string | null): string {
   if (!valor) return "";
   for (const ns of OPTION_NAMESPACES) {
@@ -185,13 +163,25 @@ function optionLabel(t: (k: string, o?: Record<string, unknown>) => string, valo
   return valor;
 }
 
-function normalizeInterest(raw: string): string {
-  const key = raw.toLowerCase().trim().replace(/\s+/g, "_");
-  return INTEREST_SYNONYMS[key] || INTEREST_SYNONYMS[raw.toLowerCase().trim()] || raw;
+// O onboarding grava o setor pelo RÓTULO do idioma em que foi preenchido
+// ("Tecnologia & Software", "Technology & Software"), não pela chave, e a
+// tela mostrava esse texto cru fosse qual fosse o idioma escolhido depois.
+// Procura o rótulo nos setores dos 10 idiomas, acha a chave ("technology") e
+// traduz de volta; setor personalizado (texto livre) não bate com nenhum e
+// passa intacto. A raiz (gravar a chave no Onboarding) fica para outra PR.
+function sectorLabel(t: (k: string, o?: Record<string, unknown>) => string, i18n: I18n, valor?: string | null): string {
+  if (!valor) return "";
+  for (const codigo of CODIGOS) {
+    const setores: Record<string, string> | undefined = i18n.getResourceBundle(codigo, "translation")?.onboarding?.sectors;
+    const chave = setores && Object.keys(setores).find(k => setores[k] === valor);
+    if (chave) return optionLabel(t, chave);
+  }
+  return optionLabel(t, valor);
 }
 
 // ─── Banner de Promoção Ouro ───
 function GoldPromotionBanner({ userId }: { userId?: number }) {
+  const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
   const [shown, setShown] = useState(false);
   const notificationsQuery = trpc.notifications.list.useQuery(undefined, {
@@ -230,12 +220,12 @@ function GoldPromotionBanner({ userId }: { userId?: number }) {
       <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4 relative">
         <div className="text-3xl animate-bounce">⭐</div>
         <div className="flex-1">
-          <div className="font-black text-amber-300 text-lg">Parabéns! Você recebeu o Selo Ouro!</div>
-          <div className="text-amber-200/80 text-sm mt-0.5">{goldNotif.body || "Uma membra Ouro do MMM concedeu a você o Selo de Exclusividade Institucional Ouro."}</div>
+          <div className="font-black text-amber-300 text-lg">{t("dashboard.goldBannerTitle")}</div>
+          <div className="text-amber-200/80 text-sm mt-0.5">{goldNotif.body || t("dashboard.goldBannerBody")}</div>
         </div>
         <button onClick={handleDismiss}
           className="text-amber-300/60 hover:text-amber-300 transition-colors text-xl font-bold px-2 py-1 rounded"
-          title="Fechar">
+          title={t("dashboard.close")}>
           ×
         </button>
       </div>
@@ -258,7 +248,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
   match: MatchData; onInterest: (uid: number) => void;
   onDismiss: (mid: number) => void; index: number;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [entered, setEntered] = useState(false);
@@ -266,12 +256,12 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
   const businessInterests = Array.isArray(match.businessInterests) ? match.businessInterests as string[] : [];
   const values = Array.isArray(match.values) ? match.values as string[] : [];
 
-  // Combina seekingTypes + businessInterests, normaliza sinônimos, remove duplicatas
-  // Perfis novos guardam CHAVES (ex. "investor"); perfis antigos, o texto
-  // traduzido. Traduz a chave quando houver tradução e cai no valor cru.
-  const keyToLabel = (k: string) => optionLabel(t, k);
+  // Combina seekingTypes + businessInterests, resolve sinônimos e remove
+  // duplicatas. O sinônimo é procurado no termo CRU, antes de traduzir
+  // (lib/interesses.ts); sem sinônimo, a chave de opção do onboarding
+  // ("investor") vira o rótulo do idioma da tela e texto livre passa intacto.
   const allInterests = Array.from(new Set(
-    [...seekingTypes, ...businessInterests].map(k => normalizeInterest(keyToLabel(k)))
+    [...seekingTypes, ...businessInterests].map(k => rotuloDeInteresse(t, k, termo => optionLabel(t, termo)))
   )).slice(0, 5);
 
   useEffect(() => {
@@ -313,14 +303,14 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-0.5">
-              <h3 className="font-bold text-lg leading-tight">{match.displayName || "Usuário"}</h3>
+              <h3 className="font-bold text-lg leading-tight">{match.displayName || t("dashboard.userFallback")}</h3>
               {isTopMatch && (
                 <Badge className="bg-emerald-400/15 text-emerald-400 border-emerald-400/25 text-xs px-2 py-0.5">{t("dashboard.topMatch")}</Badge>
               )}
             </div>
             <div className="text-xs text-white/40 mt-0.5 flex items-center gap-1">
               <span className="text-[10px]">📍</span>
-              {match.sector || optionLabel(t, match.primarySpecialty)}
+              {sectorLabel(t, i18n, match.sector) || optionLabel(t, match.primarySpecialty)}
               {(match.sector || match.primarySpecialty) && (match.city) && " · "}
               {match.city}{match.country && `, ${match.country}`}
             </div>
@@ -332,7 +322,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
         {/* AI Insight */}
         {match.aiInsight && (
           <div className={`bg-[#f5a623]/8 border border-[#f5a623]/20 rounded-xl p-3 mb-4 text-sm text-white/65 leading-relaxed transition-all duration-300 ${hovered ? "border-[#f5a623]/35 bg-[#f5a623]/12" : ""}`}>
-            <span className="text-[#f5a623] font-semibold">✦ IA: </span>{match.aiInsight}
+            <span className="text-[#f5a623] font-semibold">✦ {t("dashboard.aiPrefix")} </span>{match.aiInsight}
           </div>
         )}
 
@@ -350,11 +340,11 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
         {/* Expanded scores */}
         {expanded && (
           <div className="space-y-2.5 mb-4 pt-4 border-t border-white/5">
-            <ScoreBar label="Objetivos" value={match.objectivesScore ?? 0} color="#f59e0b" delay={0} />
-            <ScoreBar label="Especialidade" value={match.specialtyScore ?? 0} color="#3b82f6" delay={80} />
-            <ScoreBar label="Valores" value={match.valuesScore ?? 0} color="#10b981" delay={160} />
-            <ScoreBar label="Localização" value={match.locationScore ?? 0} color="#8b5cf6" delay={240} />
-            <ScoreBar label="Renda" value={match.incomeScore ?? 0} color="#f97316" delay={320} />
+            <ScoreBar label={t("dashboard.scoreObjectives")} value={match.objectivesScore ?? 0} color="#f59e0b" delay={0} />
+            <ScoreBar label={t("dashboard.scoreSpecialty")} value={match.specialtyScore ?? 0} color="#3b82f6" delay={80} />
+            <ScoreBar label={t("dashboard.scoreValues")} value={match.valuesScore ?? 0} color="#10b981" delay={160} />
+            <ScoreBar label={t("dashboard.scoreLocation")} value={match.locationScore ?? 0} color="#8b5cf6" delay={240} />
+            <ScoreBar label={t("dashboard.scoreIncome")} value={match.incomeScore ?? 0} color="#f97316" delay={320} />
             {values.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-2">
                 {values.map((v: string) => (
@@ -374,7 +364,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
           </button>
           <button onClick={() => setExpanded(e => !e)}
             className="px-3 py-2.5 rounded-xl text-xs font-medium border border-white/15 text-white/50 hover:border-white/30 hover:text-white transition-all duration-200">
-            {expanded ? "▲" : "Ver detalhes"}
+            {expanded ? "▲" : t("opportunitiesPage.viewDetails")}
           </button>
           <button onClick={() => onDismiss(match.matchId)}
             className="px-3 py-2.5 rounded-xl text-white/25 hover:text-white/60 hover:bg-white/5 transition-all duration-200 text-sm">✕</button>
@@ -487,17 +477,20 @@ function RecommendedOpportunities() {
     }
   }, [recommendedQuery.isLoading]);
 
+  // Rótulos de confiabilidade e de tipo são os mesmos das telas de
+  // oportunidade (newOpportunity.compliance*Label, opportunitiesPage.type*).
   const COMPLIANCE_COLORS: Record<string, { border: string; badge: string; label: string }> = {
-    green:   { border: "rgba(34,197,94,0.35)",  badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",  label: "Alta Confiabilidade" },
-    yellow:  { border: "rgba(234,179,8,0.35)",  badge: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25",    label: "Confiabilidade Média" },
-    orange:  { border: "rgba(249,115,22,0.35)", badge: "bg-orange-500/15 text-orange-400 border-orange-500/25",    label: "Necessita Validação" },
-    red:     { border: "rgba(239,68,68,0.35)",  badge: "bg-red-500/15 text-red-400 border-red-500/25",             label: "Baixa Confiabilidade" },
-    pending: { border: "rgba(107,114,128,0.3)", badge: "bg-gray-500/15 text-gray-400 border-gray-500/25",          label: "Analisando" },
+    green:   { border: "rgba(34,197,94,0.35)",  badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",  label: t("newOpportunity.complianceGreenLabel") },
+    yellow:  { border: "rgba(234,179,8,0.35)",  badge: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25",    label: t("newOpportunity.complianceYellowLabel") },
+    orange:  { border: "rgba(249,115,22,0.35)", badge: "bg-orange-500/15 text-orange-400 border-orange-500/25",    label: t("newOpportunity.complianceOrangeLabel") },
+    red:     { border: "rgba(239,68,68,0.35)",  badge: "bg-red-500/15 text-red-400 border-red-500/25",             label: t("newOpportunity.complianceRedLabel") },
+    pending: { border: "rgba(107,114,128,0.3)", badge: "bg-gray-500/15 text-gray-400 border-gray-500/25",          label: t("newOpportunity.compliancePendingLabel") },
   };
 
   const TYPE_LABELS: Record<string, string> = {
-    offer: "Oferta", demand: "Demanda", investment: "Investimento",
-    partnership: "Parceria", distribution: "Distribuição", other: "Outro",
+    offer: t("opportunitiesPage.typeOffer"), demand: t("opportunitiesPage.typeDemand"),
+    investment: t("opportunitiesPage.typeInvestment"), partnership: t("opportunitiesPage.typePartnership"),
+    distribution: t("opportunitiesPage.typeDistribution"), other: t("opportunitiesPage.typeOther"),
   };
 
   const getScoreColor = (score: number) =>
@@ -516,8 +509,8 @@ function RecommendedOpportunities() {
           <span className="text-lg">✦</span>
         </div>
         <div>
-          <h2 className="font-black text-white text-lg leading-tight">Oportunidades Recomendadas para Você</h2>
-          <p className="text-xs text-white/35 mt-0.5">Selecionadas por IA com base no seu perfil e interesses</p>
+          <h2 className="font-black text-white text-lg leading-tight">{t("dashboard.recommendedTitle")}</h2>
+          <p className="text-xs text-white/35 mt-0.5">{t("dashboard.recommendedSubtitle")}</p>
         </div>
       </div>
 
@@ -550,10 +543,10 @@ function RecommendedOpportunities() {
       {!recommendedQuery.isLoading && !recommendedQuery.isError && (!recommendedQuery.data || recommendedQuery.data.length === 0) && (
         <div className="bg-[#0d1530] border border-white/8 rounded-2xl p-8 text-center">
           <div className="text-4xl mb-3">🔭</div>
-          <p className="text-white/40 text-sm">Nenhuma recomendação por enquanto. Novas oportunidades publicadas na rede aparecem aqui.</p>
+          <p className="text-white/40 text-sm">{t("dashboard.recommendedEmpty")}</p>
           <Link href="/opportunities">
             <button className="mt-4 px-5 py-2 rounded-xl text-xs font-semibold border border-[#f5a623]/30 text-[#f5a623] hover:bg-[#f5a623]/8 transition-colors">
-              Explorar oportunidades
+              {t("dashboard.exploreOpportunities")}
             </button>
           </Link>
         </div>
@@ -614,19 +607,19 @@ function RecommendedOpportunities() {
                           {opp.compatibilityScore}%
                         </text>
                       </svg>
-                      <span className="text-[9px] font-semibold" style={{ color: scoreColor }}>compatível</span>
+                      <span className="text-[9px] font-semibold" style={{ color: scoreColor }}>{t("dashboard.compatible")}</span>
                     </div>
                   </div>
 
                   {/* AI compatibility reason */}
                   <div className="bg-[#f5a623]/6 border border-[#f5a623]/18 rounded-xl p-3 mb-3 text-xs text-white/60 leading-relaxed group-hover:border-[#f5a623]/30 group-hover:bg-[#f5a623]/10 transition-all duration-300">
-                    <span className="text-[#f5a623] font-semibold">✦ IA: </span>{opp.compatibilityReason}
+                    <span className="text-[#f5a623] font-semibold">✦ {t("dashboard.aiPrefix")} </span>{opp.compatibilityReason}
                   </div>
 
                   {/* CTA */}
                   <Link href={`/opportunities/${opp.id}`}>
                     <button className="w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-[#f5a623]/90 to-[#ffd166]/90 hover:from-[#f5a623] hover:to-[#ffd166] text-[#060e1a] transition-all duration-200 active:scale-95 shadow-md shadow-[#f5a623]/15">
-                      Ver Oportunidade →
+                      {t("dashboard.viewOpportunity")}
                     </button>
                   </Link>
                 </div>
@@ -641,6 +634,7 @@ function RecommendedOpportunities() {
 
 // ─── Deal Rooms Tab ─────────────────────────────────────────────────────────
 function DealRoomsTab() {
+  const { t } = useTranslation();
   const { isAuthenticated, user } = useAuth();
   const isGold = user?.role === "gold" || user?.role === "president" || user?.role === "admin";
   const [viewAll, setViewAll] = useState(false);
@@ -685,7 +679,7 @@ function DealRoomsTab() {
               !viewAll ? "bg-amber-400/20 text-amber-300 border border-amber-400/30" : "text-white/40 hover:text-white/60"
             }`}
           >
-            Minhas Salas
+            {t("dashboard.myRooms")}
           </button>
           <button
             onClick={() => setViewAll(true)}
@@ -693,7 +687,7 @@ function DealRoomsTab() {
               viewAll ? "bg-amber-400/20 text-amber-300 border border-amber-400/30" : "text-white/40 hover:text-white/60"
             }`}
           >
-            ⭐ Todas as Salas (Ouro)
+            ⭐ {t("dashboard.allRoomsGold")}
           </button>
         </div>
       )}
@@ -703,14 +697,14 @@ function DealRoomsTab() {
       ) : displayRooms.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-5xl mb-4">🔐</div>
-          <h3 className="text-xl font-black mb-2">{viewAll ? "Nenhuma sala de negociação na plataforma" : "Nenhuma sala de negociação ainda"}</h3>
+          <h3 className="text-xl font-black mb-2">{viewAll ? t("dashboard.noRoomsPlatformTitle") : t("dashboard.noRoomsTitle")}</h3>
           <p className="text-white/40 text-sm max-w-sm mx-auto mb-6">
-            {viewAll ? "Ainda não há salas de negociação criadas na plataforma." : "Quando você demonstrar interesse em uma oportunidade, a sala de negociação privada aparecerá aqui."}
+            {viewAll ? t("dashboard.noRoomsPlatformDesc") : t("dashboard.noRoomsDesc")}
           </p>
           {!viewAll && (
             <Link href="/opportunities">
               <button className="px-6 py-2.5 rounded-xl text-sm font-bold bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] transition-all duration-200 active:scale-95">
-                Ver Oportunidades
+                {t("dashboard.viewOpportunities")}
               </button>
             </Link>
           )}
@@ -718,11 +712,12 @@ function DealRoomsTab() {
       ) : (
         <>
           <p className="text-white/40 text-xs mb-2">
-            {viewAll ? `${displayRooms.length} sala(s) na plataforma` : "Salas de conversa privadas. Tudo o que for dito nelas é protegido por um termo de sigilo assinado pelas duas partes."}
+            {viewAll ? t("dashboard.roomsOnPlatform", { count: displayRooms.length }) : t("dashboard.roomsPrivacyNotice")}
           </p>
           {displayRooms.map((room: any) => {
             const statusColor = room.status === "active" ? "#22c55e" : room.status === "awaiting_nda" ? "#eab308" : "#9ca3af";
-            const statusLabel = room.status === "active" ? "Ativa" : room.status === "awaiting_nda" ? "Aguardando termo de sigilo" : "Encerrada";
+            // Os mesmos rótulos de status da própria sala (DealRoom.tsx).
+            const statusLabel = room.status === "active" ? t("dealRoom.statusActive") : room.status === "awaiting_nda" ? t("dealRoom.statusAwaitingNda") : t("dealRoom.statusClosed");
             return (
               <Link key={room.id} href={`/deal-room/${room.id}`}>
                 <div className="bg-[#0d1530] border border-white/8 hover:border-amber-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-200 hover:bg-[#0d1530]/80">
@@ -733,7 +728,7 @@ function DealRoomsTab() {
                       </div>
                       <div>
                         <p className="text-white font-semibold text-sm">{room.opportunityTitle}</p>
-                        <p className="text-white/40 text-xs">com {room.otherPartyName}</p>
+                        <p className="text-white/40 text-xs">{t("dashboard.withParty", { name: room.otherPartyName })}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -742,7 +737,7 @@ function DealRoomsTab() {
                     </div>
                   </div>
                   {room.status === "awaiting_nda" && (
-                    <p className="text-amber-400/60 text-xs mt-2">⚠️ Falta assinar o termo de sigilo. Entre na sala para assinar e liberar a conversa.</p>
+                    <p className="text-amber-400/60 text-xs mt-2">⚠️ {t("dashboard.ndaPendingNotice")}</p>
                   )}
                 </div>
               </Link>
@@ -756,7 +751,7 @@ function DealRoomsTab() {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, isAuthenticated, loading, logout } = useAuth();
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<"matches" | "connections" | "dealrooms" | "profile">("matches");
@@ -851,7 +846,7 @@ export default function Dashboard() {
           {pendingConnections.length > 0 && (
             <button onClick={() => switchTab("connections")}
               className="text-xs text-[#f5a623] border border-[#f5a623]/30 px-3 py-1.5 rounded-full bg-[#f5a623]/5 hover:bg-[#f5a623]/10 transition-colors animate-pulse">
-              {pendingConnections.length} convite{pendingConnections.length > 1 ? "s" : ""} para responder
+              {t("dashboard.pendingInvites", { count: pendingConnections.length })}
             </button>
           )}
 
@@ -878,13 +873,16 @@ export default function Dashboard() {
           <h1 className="text-3xl font-black mb-1">
             {t("dashboard.title")}, {profile?.displayName || user?.name || ""} 👋
           </h1>
+          {/* Plural por chave (_one/_other e as formas do russo e do árabe),
+              nunca por sufixo concatenado: "novo{s} match{es}" só existe em
+              português. A parte destacada e o complemento são duas chaves. */}
           <p className="text-white/40">
             {stats?.unseen
-              ? <><span className="text-[#f5a623] font-semibold">{stats.unseen} novo{stats.unseen > 1 ? 's' : ''} match{stats.unseen > 1 ? 'es' : ''}</span> esperando pela sua atenção</>
+              ? <><span className="text-[#f5a623] font-semibold">{t("dashboard.greetingUnseen", { count: stats.unseen })}</span> {t("dashboard.greetingUnseenSuffix")}</>
               : stats?.total && stats.total > 0
-                ? `${stats.total} oportunidade${stats.total > 1 ? 's' : ''} compatível${stats.total > 1 ? 'is' : ''} encontrada${stats.total > 1 ? 's' : ''} para você`
+                ? t("dashboard.greetingTotal", { count: stats.total })
                 // Em erro, nada de convite a "gerar os primeiros matches": eles podem existir.
-                : statsQuery.isError ? "" : 'Bem-vinda ao MMM OS! Gere seus primeiros matches abaixo'}
+                : statsQuery.isError ? "" : t("dashboard.greetingWelcome")}
           </p>
         </div>
 
@@ -916,7 +914,7 @@ export default function Dashboard() {
                 : tab === "connections"
                   ? `${t("dashboard.connections")}${connections.length > 0 ? ` (${connections.length})` : ""}`
                   : tab === "dealrooms"
-                  ? "🔐 Salas de Negociação"
+                  ? `🔐 ${t("dashboard.dealRooms")}`
                   : t("dashboard.profile")}
             </button>
           ))}
@@ -1094,9 +1092,14 @@ export default function Dashboard() {
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       {[
                         { label: t("onboarding.specialty"), value: optionLabel(t, profile.primarySpecialty), icon: "⚡" },
-                        { label: t("onboarding.sector"), value: profile.sector, icon: "🌐" },
-                        { label: t("onboarding.experience"), value: profile.experienceYears ? `${profile.experienceYears} ${t("dashboard.years")}` : null, icon: "📅" },
-                        { label: t("onboarding.workStyle"), value: profile.workStyle, icon: "💼" },
+                        { label: t("onboarding.sector"), value: sectorLabel(t, i18n, profile.sector), icon: "🌐" },
+                        // Plural por chave ("1 ano", "2 anos"; "1 год", "2 года", "5 лет"), não número + "anos".
+                        { label: t("onboarding.experience"), value: profile.experienceYears ? t("dashboard.years", { count: profile.experienceYears }) : null, icon: "📅" },
+                        // "onboarding.workStyle" é o NÓ das opções (remote/hybrid/…), não um texto: como
+                        // rótulo, o i18next devolvia "returned an object instead of string" e o valor saía
+                        // cru ("remote"). O rótulo é a folha dashboard.workStyle (a de onboarding.fields
+                        // carrega o " *" de obrigatório) e o valor gravado vira "100% Remoto" pelas opções.
+                        { label: t("dashboard.workStyle"), value: optionLabel(t, profile.workStyle), icon: "💼" },
                       ].filter(f => f.value).map((field, i) => (
                         <div key={field.label}
                           style={{ animation: `fadeInScale 0.3s cubic-bezier(0.23,1,0.32,1) ${i * 0.07}s both` }}
