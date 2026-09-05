@@ -68,6 +68,10 @@ export const PLANO_DE_LIMPEZA = [
   { tabela: "president_validations", coluna: "validatedBy", chave: "id", acao: "alertar", excetoSe: { coluna: "opportunityId", chave: "opp" } },
   { tabela: "deal_room_documents", coluna: "uploadedBy", chave: "id", acao: "apagar" },
   { tabela: "deal_room_messages", coluna: "senderId", chave: "id", acao: "apagar" },
+  // Trilha de auditoria do NDA (etapa 13): hoje o exame não aceita NDA com as
+  // contas QA, então o DELETE não encontra nada — mas se um dia aceitar, a
+  // prova sintética sai junto com o resto.
+  { tabela: "nda_acceptances", coluna: "userId", chave: "id", acao: "apagar" },
   // Sala de negociação: só sai quando as DUAS pontas são QA. A sala que uma membra
   // REAL abre na oportunidade do exame tem ownerId = QA presidente (dealRoom.ts grava
   // ownerId = opp.publishedBy) e não pode cair no DELETE: ela é alertada pelo par
