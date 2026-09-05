@@ -92,10 +92,17 @@ const consultaSa = { data: undefined, isLoading: false, isError: false, error: n
 
 type Resposta = { data?: { data: ReturnType<typeof contato>[]; total: number }; isLoading?: boolean; isError?: boolean; error?: { message: string; data?: { code: string } } | null };
 function servidorResponde(porPagina: (page: number) => Resposta) {
-  duble.list.mockImplementation((input: { page: number }) => ({
-    ...consultaSa, refetch: duble.refetch,
-    ...porPagina(input.page),
-  }));
+  duble.list.mockImplementation((input: { page: number }) => {
+    const resposta = { ...consultaSa, refetch: duble.refetch, ...porPagina(input.page) };
+    // Este dublê é SÍNCRONO: `data` é função pura de `page`, então a resposta
+    // é sempre a que o servidor acabou de dar — nunca há pedido em voo, sobra
+    // do cache nem busca suspensa por falta de rede. É o que
+    // `isSuccess`/`fetchStatus` precisam dizer para a tela; sem eles o dublê
+    // afirmaria, calado, que a consulta nunca assentou. Cache, resposta velha
+    // e modo offline ficam em Network.paginacao-cache.test.tsx, com o React
+    // Query de verdade — esta suíte é cega para eles de propósito.
+    return { ...resposta, fetchStatus: resposta.isLoading ? "fetching" : "idle", isSuccess: !resposta.isLoading && !resposta.isError };
+  });
 }
 
 beforeEach(() => {

@@ -599,19 +599,29 @@ export default function Contexts() {
   };
 
   const { data: types } = trpc.contexts.listTypes.useQuery(undefined, { enabled: isAuthenticated });
-  const { data, isLoading, isError, error, refetch } = trpc.contexts.list.useQuery(
+  const { data, isLoading, isError, error, refetch, fetchStatus, isSuccess } = trpc.contexts.list.useQuery(
     { q: debouncedSearch || undefined, typeSlug: filterType || undefined, page, limit: 20 },
     { enabled: isAuthenticated }
   );
+
+  // Mesma guarda da Rede (Network.tsx): `data` pode ser a resposta VELHA que o
+  // React Query guardou para esta página (a entrada da página 2 sobrevive no
+  // cache com {data: [], total: 20} por até 5 minutos). Sem distinguir uma
+  // coisa da outra, o primeiro "Próxima →" depois de a lista voltar a crescer
+  // lia o total velho, o clamp disparava e a tela ficava em "Página 1 de 2"
+  // enquanto o servidor já tinha respondido a 2. `fetchStatus === "idle"` (e
+  // não `!isFetching`) porque sem rede o React Query nem tenta buscar e marca
+  // "paused": ali `isFetching` é false e o dado velho continua no cache.
+  const respostaFrescaDaPagina = isSuccess && fetchStatus === "idle";
 
   // Mesmo defeito da Rede: apagar o único contexto da última página deixava
   // a consulta presa numa página que não existe mais, sem paginação para
   // voltar. Quando o total cai abaixo da página atual, volta para a última.
   useEffect(() => {
-    if (data && page > 1 && page > Math.max(1, Math.ceil(data.total / 20))) {
+    if (data && respostaFrescaDaPagina && page > 1 && page > Math.max(1, Math.ceil(data.total / 20))) {
       setPage(Math.max(1, Math.ceil(data.total / 20)));
     }
-  }, [data, page]);
+  }, [data, respostaFrescaDaPagina, page]);
 
   const createMut = trpc.contexts.create.useMutation({
     onSuccess: () => { toast.success(t("contexts.toastContextoCriado")); setShowForm(false); refetch(); },
@@ -655,6 +665,9 @@ export default function Contexts() {
 
   const ctxList: Ctx[] = data?.data ?? [];
   const total = data?.total ?? 0;
+  // Nunca menor que a página aberta (mesma razão da Rede): com o clamp parado,
+  // `total` pode ser o de antes e o denominador ficaria atrás do numerador.
+  const totalDePaginas = Math.max(page, Math.ceil(total / 20));
   const typeList: CtxType[] = types ?? [];
 
   return (
@@ -745,13 +758,17 @@ export default function Contexts() {
           </div>
         )}
 
-        {/* Paginação */}
-        {total > 20 && (
+        {/* Paginação — igual à Rede: aparece também com `page > 1`, e não só
+            com `total > 20`. Fora da página 1 a saída não pode depender do
+            clamp, que só age sobre resposta fresca; sem isso, sem rede ou com
+            a consulta em erro a tela ficaria numa página vazia sem
+            "← Anterior". Na página 1 vazia continua não havendo paginação. */}
+        {(total > 20 || page > 1) && (
           <div className="flex items-center justify-center gap-3 pt-4">
             <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}
               className="border-white/15 text-white/60 bg-transparent hover:bg-white/8">{t("contexts.botaoAnterior")}</Button>
-            <span className="text-xs text-white/40">{t("contexts.paginacaoInfo", { page, total: Math.ceil(total / 20) })}</span>
-            <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / 20)} onClick={() => setPage(p => p + 1)}
+            <span className="text-xs text-white/40">{t("contexts.paginacaoInfo", { page, total: totalDePaginas })}</span>
+            <Button variant="outline" size="sm" disabled={page >= totalDePaginas} onClick={() => setPage(p => p + 1)}
               className="border-white/15 text-white/60 bg-transparent hover:bg-white/8">{t("contexts.botaoProxima")}</Button>
           </div>
         )}
