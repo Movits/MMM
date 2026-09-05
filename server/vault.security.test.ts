@@ -117,8 +117,12 @@ describe("Cofre Digital - Proteção contra Adulteração (V-08)", () => {
     const parts = encrypted.split(":");
     expect(parts).toHaveLength(3);
 
-    // Modificar o último byte do dado criptografado
-    const tamperedData = parts[2].slice(0, -2) + "ff";
+    // Inverter o último byte do dado criptografado (XOR 0xff). Trocar por "ff"
+    // fixo era intermitente: quando o byte já era ff (1 em 256), o "adulterado"
+    // saía igual ao original e o teste falhava sem adulteração nenhuma.
+    const ultimoByte = parts[2].slice(-2);
+    const invertido = (parseInt(ultimoByte, 16) ^ 0xff).toString(16).padStart(2, "0");
+    const tamperedData = parts[2].slice(0, -2) + invertido;
     const tampered = `${parts[0]}:${parts[1]}:${tamperedData}`;
 
     // Deve lançar erro ao detectar adulteração (GCM authTag falha)
