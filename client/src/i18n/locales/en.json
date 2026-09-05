@@ -16,7 +16,11 @@
     "headline4": "for you",
     "subtitle": "Tell us who you are, what you seek and what you have to offer. Our artificial intelligence deeply analyzes your profile to connect you with leaders and opportunities of high real compatibility: going far beyond simple keywords.",
     "cta": "Create my profile →",
-    "ctaSecondary": "See how it works"
+    "ctaSecondary": "See how it works",
+    "motionOn": "Motion on",
+    "motionOff": "Motion off",
+    "motionTurnOn": "Turn on background motion",
+    "motionTurnOff": "Turn off background motion"
   },
   "stats": {
     "users": "Women registered",

@@ -16,7 +16,11 @@
     "headline4": "profesional",
     "subtitle": "Díganos quién es usted, qué busca y qué tiene para ofrecer. Nuestra inteligencia artificial analiza su perfil en profundidad para conectarla con líderes y oportunidades de alta compatibilidad real: yendo mucho más allá de simples palabras clave.",
     "cta": "Crear mi perfil →",
-    "ctaSecondary": "Ver cómo funciona"
+    "ctaSecondary": "Ver cómo funciona",
+    "motionOn": "Movimiento activado",
+    "motionOff": "Movimiento desactivado",
+    "motionTurnOn": "Activar el movimiento de fondo",
+    "motionTurnOff": "Desactivar el movimiento de fondo"
   },
   "stats": {
     "users": "Mujeres activas",

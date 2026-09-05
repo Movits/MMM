@@ -16,7 +16,11 @@
     "headline4": "您的未来从这里开始。",
     "subtitle": "告诉我们您是谁、您在寻找什么以及您能提供什么。我们的人工智能深度分析您的档案，将您与高度真实兼容性的领导者和机遇相连接::远远超越简单的关键词匹配。",
     "cta": "创建我的档案 →",
-    "ctaSecondary": "了解更多"
+    "ctaSecondary": "了解更多",
+    "motionOn": "动效已开启",
+    "motionOff": "动效已关闭",
+    "motionTurnOn": "开启背景动效",
+    "motionTurnOff": "关闭背景动效"
   },
   "stats": {
     "users": "已连接女性",

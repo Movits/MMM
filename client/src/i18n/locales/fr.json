@@ -16,7 +16,11 @@
     "headline4": "Le pouvoir des femmes, ensemble.",
     "subtitle": "Dites-nous qui vous êtes, ce que vous recherchez et ce que vous avez à offrir. Notre intelligence artificielle analyse votre profil en profondeur pour vous connecter avec des leaders et des opportunités à haute compatibilité réelle: bien au-delà des simples mots-clés.",
     "cta": "Créer mon profil →",
-    "ctaSecondary": "Découvrez nos histoires de succès"
+    "ctaSecondary": "Découvrez nos histoires de succès",
+    "motionOn": "Mouvement activé",
+    "motionOff": "Mouvement désactivé",
+    "motionTurnOn": "Activer le mouvement de fond",
+    "motionTurnOff": "Désactiver le mouvement de fond"
   },
   "stats": {
     "users": "Utilisatrices actives",

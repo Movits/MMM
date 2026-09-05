@@ -16,7 +16,11 @@
     "headline4": "para você",
     "subtitle": "Diga quem você é, o que busca e o que tem a oferecer. A nossa inteligência artificial analisa o seu perfil a fundo e conecta você a líderes e oportunidades com compatibilidade de verdade, muito além de palavras-chave.",
     "cta": "Criar meu perfil →",
-    "ctaSecondary": "Ver como funciona"
+    "ctaSecondary": "Ver como funciona",
+    "motionOn": "Movimento ligado",
+    "motionOff": "Movimento desligado",
+    "motionTurnOn": "Ligar o movimento do fundo",
+    "motionTurnOff": "Desligar o movimento do fundo"
   },
   "stats": {
     "users": "Mulheres cadastradas",
