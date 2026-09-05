@@ -1,16 +1,19 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { createHash } from "node:crypto";
 import { protectedProcedure, router } from "../_core/trpc";
 import { exigirDb } from "../db";
 import { exigirTextoSemContato } from "../bloqueio-de-contato";
 import { createNotification } from "../db";
 import { storagePut } from "../storage";
 import { decodeDocumentoBase64, MAX_DOCUMENTO_BASE64_CHARS } from "../documento-base64";
+import { getRequestIp } from "../password-reset-security";
 
 import {
   dealRooms,
   dealRoomMessages,
   dealRoomDocuments,
+  ndaAcceptances,
   opportunities,
   users,
 } from "../../drizzle/schema";
@@ -72,7 +75,14 @@ export const dealRoomRouter = router({
 
   // Aceitar o NDA digitalmente
   acceptNDA: protectedProcedure
-    .input(z.object({ roomId: z.number().int() }))
+    .input(z.object({
+      roomId: z.number().int(),
+      // Trilha de auditoria (etapa 13): o texto do NDA vem do i18n do cliente
+      // e varia por idioma, então o cliente manda o que exibiu. Opcionais para
+      // não quebrar chamadas antigas; IP e user-agent saem sempre do servidor.
+      locale: z.string().max(10).optional(),
+      textoExibido: z.string().max(20_000).optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       const db = await exigirDb();
 
@@ -83,6 +93,23 @@ export const dealRoomRouter = router({
 
       const isOwner = room.ownerId === ctx.user.id;
       const now = new Date();
+
+      // A prova antes do estado: se o INSERT falhar, o aceite não acontece —
+      // um aceite sem trilha é exatamente o que a etapa 13 quer eliminar.
+      await db.insert(ndaAcceptances).values({
+        dealRoomId: input.roomId,
+        userId: ctx.user.id,
+        papel: isOwner ? "owner" : "interested",
+        // getRequestIp corta em 64, mas a coluna é varchar(45) (o máximo de um
+        // IPv6) — o corte extra evita erro de inserção em modo estrito.
+        ipAddress: getRequestIp(ctx.req.headers["x-forwarded-for"], ctx.req.socket?.remoteAddress).slice(0, 45),
+        userAgent: ctx.req.headers["user-agent"] ?? null,
+        locale: input.locale ?? null,
+        textoExibido: input.textoExibido ?? null,
+        textoHash: input.textoExibido
+          ? createHash("sha256").update(input.textoExibido).digest("hex")
+          : null,
+      });
 
       if (isOwner) {
         await db.update(dealRooms)

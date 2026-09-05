@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { createHash } from "node:crypto";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { exigirDb } from "../db";
@@ -181,6 +182,9 @@ export const consentRouter = router({
           documentVersionId: document.id,
           ipAddress: getRequestIp(ctx.req.headers["x-forwarded-for"], ctx.req.socket?.remoteAddress),
           userAgent: ctx.req.headers["user-agent"] ?? null,
+          // Prova de qual texto valia no instante do aceite, independente da
+          // imutabilidade de document_versions.
+          textHash: createHash("sha256").update(document.text).digest("hex"),
         });
       } catch (erro) {
         // A corrida perdida cai aqui: a outra requisição já gravou este mesmo
