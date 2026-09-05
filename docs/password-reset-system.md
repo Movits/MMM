@@ -1,4 +1,4 @@
-# Sistema de Recuperação de Senha por E-mail — MMM OS
+# Sistema de Recuperação de Senha por E-mail — MMM
 
 **Stack:** Node.js · tRPC 11 · Drizzle ORM · MySQL (TiDB) · Resend API · bcrypt
 
@@ -74,7 +74,7 @@ forgotPassword: publicProcedure
     const { html, text } = buildPasswordResetEmail(user.name || "Membra", resetUrl);
     await sendEmail({
       to: user.email!,
-      subject: "Redefina sua senha — MMM OS",
+      subject: "Redefina sua senha — MMM",
       html,
       text,
     });
@@ -145,7 +145,7 @@ export function buildPasswordResetEmail(name: string, resetUrl: string) {
     <head><meta charset="UTF-8" /></head>
     <body style="background:#0a0f1a;color:#e5e5e5;font-family:sans-serif;padding:40px 20px;">
       <div style="max-width:520px;margin:0 auto;">
-        <h1 style="color:#f59e0b;">MMM OS</h1>
+        <h1 style="color:#f59e0b;">MMM</h1>
         <h2>Redefinição de senha</h2>
         <p>Olá, <strong>${name}</strong>.</p>
         <p>Recebemos uma solicitação para redefinir a senha da sua conta.</p>
@@ -167,7 +167,7 @@ export function buildPasswordResetEmail(name: string, resetUrl: string) {
   const text = `
 Olá, ${name}.
 
-Recebemos uma solicitação para redefinir a senha da sua conta no MMM OS.
+Recebemos uma solicitação para redefinir a senha da sua conta no MMM.
 
 Acesse o link abaixo para criar uma nova senha (válido por 1 hora):
 ${resetUrl}
@@ -311,6 +311,6 @@ const resetMutation = trpc.auth.resetPassword.useMutation({
 | Variável | Descrição | Exemplo |
 |---|---|---|
 | `RESEND_API_KEY` | Chave de API do Resend | `re_xxxxxxxxxxxx` |
-| `EMAIL_FROM` | Remetente do e-mail | `MMM OS <noreply@seudominio.com>` |
+| `EMAIL_FROM` | Remetente do e-mail | `MMM <noreply@seudominio.com>` |
 
 Obtenha a chave em [resend.com/api-keys](https://resend.com/api-keys). Para usar um domínio personalizado, verifique-o em **Resend → Domains** antes de configurar `EMAIL_FROM`.
