@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { hasValidConsent } from "./consent";
-import { recalculatePrivateMatches } from "../match-service";
+import { recalculatePrivateMatches, slugifyMatchTag } from "../match-service";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import {
@@ -8,9 +8,38 @@ import {
   saveEnrichmentMessage, saveEnrichmentSuggestions, getEnrichmentSuggestion,
   applyEnrichmentSuggestion, ignoreEnrichmentSuggestion, completeEnrichmentSession,
   getEnrichmentHistory, getEnrichmentSessionById, advanceEnrichmentSession,
-  getPendingEnrichmentSuggestions,
+  getPendingEnrichmentSuggestions, undoEnrichmentSuggestion,
 } from "../db";
 import { ENRICHMENT_STEPS, getEnrichmentStep, isExpectedField, isSkipResponse, limiteDoValor, type EnrichmentField } from "../enrichment-flow";
+
+// A IA tem um teto por chamada e um orçamento total (com as retentativas):
+// a tela fica em "pensando" com o campo travado enquanto o servidor espera, e
+// a spec da etapa 4 pede resposta ou erro claro em segundos, não em minutos.
+const TIMEOUT_DA_IA_MS = 15_000;
+const ORCAMENTO_DA_IA_MS = 35_000;
+
+// Etapas que pedem uma LISTA ("o que oferece", "o que procura"): cada item
+// vira um cartão. As demais têm um valor só (um telefone, uma empresa).
+const ETAPAS_DE_LISTA: ReadonlySet<EnrichmentField> = new Set<EnrichmentField>(["assets", "needs"]);
+const TETO_DE_CARTOES_POR_ETAPA = 10;
+
+type Extraida = { field_type: string; value: string; confidence: number; display_label?: string; is_complete?: boolean };
+
+// "Mina de lítio" e "mina de litio" são o mesmo item: a chave é o slug da tag
+// (o mesmo que contact_assets usa) e, sem slug (escrita sem letras latinas
+// que o slugify não cobre), o rótulo normalizado.
+function semRepetidas(entidades: Extraida[]) {
+  const vistas = new Set<string>();
+  const unicas: Extraida[] = [];
+  for (const e of entidades) {
+    const chave = slugifyMatchTag(e.value) || e.value.trim().toLowerCase();
+    if (vistas.has(chave)) continue;
+    vistas.add(chave);
+    unicas.push(e);
+    if (unicas.length >= TETO_DE_CARTOES_POR_ETAPA) break;
+  }
+  return unicas;
+}
 
 // O cartão como a tela o desenha. confidence é DECIMAL no banco (chega como
 // string); a tela multiplica por 100, então precisa ser número.
@@ -33,12 +62,47 @@ function separarPendentes<T extends Pendente>(pendentes: T[], fieldTypeDaEtapa: 
 }
 
 // Confirmar/ignorar só avança o roteiro se a sugestão responde à pergunta
-// ATUAL da sessão; sessão encerrada ou sugestão de etapa anterior → não avança.
-async function sugestaoEhDaEtapaAtual(sessionId: string, ownerId: string, fieldType: string) {
+// ATUAL da sessão; sessão encerrada ou sugestão de etapa anterior → null.
+// Devolve também a etapa lida (questionsAnswered): é ela que o avanço exige
+// no WHERE, para duas abas não avançarem a mesma etapa duas vezes.
+async function etapaAtualDaSugestao(sessionId: string, ownerId: string, fieldType: string) {
   const session = await getEnrichmentSessionById(sessionId, ownerId);
-  if (!session || session.status !== "active") return false;
-  const step = getEnrichmentStep(session.questionsAnswered ?? 0);
-  return Boolean(step && isExpectedField(fieldType, step.fieldType));
+  if (!session || session.status !== "active") return null;
+  const etapa = session.questionsAnswered ?? 0;
+  const step = getEnrichmentStep(etapa);
+  return step && isExpectedField(fieldType, step.fieldType) ? { step, etapa } : null;
+}
+
+// Depois de decidir um cartão: o roteiro só anda quando não sobra NENHUM
+// cartão da pergunta atual (as etapas de lista podem ter vários). Sobrando,
+// a tela recebe quantos faltam e continua travada neles.
+async function avancarOuEsperarOsOutros(sessionId: string, ownerId: string, fieldType: string, status: "applied" | "ignored", skipped: boolean) {
+  const atual = await etapaAtualDaSugestao(sessionId, ownerId, fieldType);
+  if (!atual) return { success: true, status, nextQuestion: null, sessionComplete: false, pendentesRestantes: 0 };
+  const { step, etapa } = atual;
+
+  const restantes = separarPendentes(await getPendingEnrichmentSuggestions(sessionId, ownerId), step.fieldType).daEtapaAtual;
+  if (restantes.length > 0) {
+    return { success: true, status, nextQuestion: null, sessionComplete: false, pendentesRestantes: restantes.length };
+  }
+
+  // Avança a etapa LIDA acima, sem reler: entre a checagem de pendentes e o
+  // UPDATE, outra aba pode ter confirmado o outro último cartão e avançado —
+  // relendo, as duas avançariam (2 → 4, pulando uma pergunta).
+  const advanced = await advanceEnrichmentSession(sessionId, ownerId, etapa, skipped);
+  // Outra aba avançou primeiro: a pergunta seguinte já está gravada por ela;
+  // esta tela a recebe ao reidratar (getMessages), sem duplicar nem concluir.
+  if (!advanced) return { success: true, status, nextQuestion: null, sessionComplete: false, pendentesRestantes: 0 };
+  const nextStep = getEnrichmentStep(advanced.questionsAnswered);
+  if (!nextStep) {
+    await completeEnrichmentSession(sessionId, ownerId, "Cadastro enriquecido com sucesso!");
+    return { success: true, status, nextQuestion: null, sessionComplete: true, pendentesRestantes: 0 };
+  }
+  const nextMsgId = await saveEnrichmentMessage({
+    sessionId, ownerId, role: "assistant", content: nextStep.question,
+    metadata: { questionIndex: advanced.questionsAnswered, fieldType: nextStep.fieldType },
+  });
+  return { success: true, status, nextQuestion: nextStep.question, nextMessageId: nextMsgId, sessionComplete: false, pendentesRestantes: 0 };
 }
 
 // ─── Módulo de Enriquecimento com IA (Etapa 4) ────────────────────────────────
@@ -98,27 +162,35 @@ export const enrichmentRouter = router({
       for (const orfa of orfas) await ignoreEnrichmentSuggestion(orfa.id, ctx.user.openId);
       if (daEtapaAtual.length > 0) throw new TRPCError({ code: "CONFLICT", message: "SUGGESTION_PENDING" });
 
-      // Salvar mensagem da usuária apenas uma vez para a pergunta atual.
-      const userMsgId = await saveEnrichmentMessage({
-        sessionId: input.sessionId, ownerId: ctx.user.openId, role: "user", content: input.content,
-      });
+      // O instante da resposta é AGORA, mesmo que ela só vá para o banco depois
+      // de a IA responder: gravada com o relógio de depois, empatava (ou
+      // passava) a resposta da IA em created_at e a conversa reabria trocada.
+      const mensagemDaUsuaria = { sessionId: input.sessionId, ownerId: ctx.user.openId, role: "user", content: input.content, createdAt: Date.now() };
 
       // "Não sei" avança diretamente sem abrir confirmação nem repetir a pergunta anterior.
       if (isSkipResponse(input.content)) {
-        const advanced = await advanceEnrichmentSession(input.sessionId, ctx.user.openId, true);
-        const nextStep = getEnrichmentStep(advanced?.questionsAnswered ?? ENRICHMENT_STEPS.length);
+        await saveEnrichmentMessage(mensagemDaUsuaria);
+        const advanced = await advanceEnrichmentSession(input.sessionId, ctx.user.openId, session.questionsAnswered ?? 0, true);
+        // Outra aba avançou primeiro: nada a gravar; a tela reidrata pelo getMessages.
+        if (!advanced) {
+          return { messageId: null, aiResponse: null, suggestions: [], sessionComplete: false, completionSummary: null, awaitingConfirmation: false };
+        }
+        const nextStep = getEnrichmentStep(advanced.questionsAnswered);
         if (!nextStep) {
           await completeEnrichmentSession(input.sessionId, ctx.user.openId, "Cadastro enriquecido com sucesso!");
           return { messageId: null, aiResponse: null, suggestions: [], sessionComplete: true, completionSummary: "Cadastro enriquecido com sucesso!", awaitingConfirmation: false };
         }
         const messageId = await saveEnrichmentMessage({
           sessionId: input.sessionId, ownerId: ctx.user.openId, role: "assistant", content: nextStep.question,
-          metadata: { questionIndex: advanced?.questionsAnswered, fieldType: nextStep.fieldType, skippedPrevious: true },
+          metadata: { questionIndex: advanced.questionsAnswered, fieldType: nextStep.fieldType, skippedPrevious: true },
         });
         return { messageId, aiResponse: nextStep.question, suggestions: [], sessionComplete: false, completionSummary: null, awaitingConfirmation: false };
       }
 
-      // Buscar histórico das últimas 10 mensagens (em ordem cronológica)
+      // Buscar histórico das últimas 10 mensagens (em ordem cronológica). A
+      // resposta de agora ainda NÃO está gravada: entra no prompt em memória e
+      // só vai para o banco depois de a IA responder — se a IA estourar o
+      // tempo, a usuária reenvia sem a mensagem aparecer duas vezes.
       const history = await getEnrichmentMessages(input.sessionId, ctx.user.openId, 10);
       const historyAsc = [...history].reverse();
 
@@ -147,10 +219,11 @@ FORMATO DE SAÍDA (JSON obrigatório):
       const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
         { role: "system", content: systemPrompt },
         ...historyAsc.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
+        { role: "user", content: input.content },
       ];
 
       let falhaDaIA: string | null = null;
-      const aiResp = await invokeLLM({ messages }).catch((erro: unknown) => {
+      const aiResp = await invokeLLM({ messages, timeoutMs: TIMEOUT_DA_IA_MS, orcamentoMs: ORCAMENTO_DA_IA_MS }).catch((erro: unknown) => {
         falhaDaIA = erro instanceof Error ? erro.message : String(erro);
         return null;
       });
@@ -167,11 +240,17 @@ FORMATO DE SAÍDA (JSON obrigatório):
           sessionId: input.sessionId, ownerId: ctx.user.openId, role: "assistant", content: aviso,
           metadata: { questionIndex: session.questionsAnswered, fieldType: step.fieldType, aiUnavailable: true },
         });
-        return { messageId, aiResponse: aviso, suggestions: [], sessionComplete: false, completionSummary: null, awaitingConfirmation: false };
+        // `aiUnavailable` avisa a tela de que a resposta da usuária NÃO foi
+        // gravada: ela devolve o texto ao campo para reenviar, em vez de
+        // reidratar a conversa sem ele.
+        return { messageId, aiResponse: aviso, suggestions: [], sessionComplete: false, completionSummary: null, awaitingConfirmation: false, aiUnavailable: true as const };
       }
 
+      // A IA respondeu: agora a resposta da usuária é parte da conversa.
+      await saveEnrichmentMessage(mensagemDaUsuaria);
+
       let aiText = `Confirme esta informação para continuar.`;
-      let extracted: Array<{ field_type: string; value: string; confidence: number; display_label?: string; is_complete?: boolean }> = [];
+      let extracted: Extraida[] = [];
       if (aiResp?.choices?.[0]?.message?.content) {
         try {
           const rawContent = aiResp.choices[0].message.content as string;
@@ -182,9 +261,12 @@ FORMATO DE SAÍDA (JSON obrigatório):
         } catch { /* usa defaults */ }
       }
 
-      // Não aceitar sugestões de pergunta anterior/seguinte: uma confirmação por etapa.
+      // Não aceitar sugestões de pergunta anterior/seguinte. Na etapa de
+      // lista, cada item da resposta ("uma mina, uma fábrica e a patente")
+      // vira um cartão — antes só o 1º sobrevivia e os outros sumiam sem
+      // aviso; nas demais etapas, um valor só.
       extracted = extracted.filter(entity => isExpectedField(entity.field_type, step.fieldType) && entity.value?.trim());
-      if (extracted.length > 1) extracted = [extracted[0]];
+      extracted = ETAPAS_DE_LISTA.has(step.fieldType) ? semRepetidas(extracted) : extracted.slice(0, 1);
       if (extracted.length === 0) {
         const repeatQuestion = step.fieldType === "company"
           ? "Qual é o nome da empresa em que trabalha?"
@@ -278,23 +360,10 @@ FORMATO DE SAÍDA (JSON obrigatório):
         }
       }
 
-      // O roteiro só avança se a sugestão é da pergunta ATUAL. Uma órfã de
-      // etapa anterior decidida aqui gravaria o dado (feito acima) mas não pode
-      // contar como resposta da pergunta que ainda está na tela.
-      if (!(await sugestaoEhDaEtapaAtual(sug.sessionId, ctx.user.openId, sug.fieldType))) {
-        return { success: true, status: "applied", nextQuestion: null, sessionComplete: false };
-      }
-      const advanced = await advanceEnrichmentSession(sug.sessionId, ctx.user.openId, false);
-      const nextStep = getEnrichmentStep(advanced?.questionsAnswered ?? ENRICHMENT_STEPS.length);
-      if (!nextStep) {
-        await completeEnrichmentSession(sug.sessionId, ctx.user.openId, "Cadastro enriquecido com sucesso!");
-        return { success: true, status: "applied", nextQuestion: null, sessionComplete: true };
-      }
-      const nextMsgId = await saveEnrichmentMessage({
-        sessionId: sug.sessionId, ownerId: ctx.user.openId, role: "assistant", content: nextStep.question,
-        metadata: { questionIndex: advanced?.questionsAnswered, fieldType: nextStep.fieldType },
-      });
-      return { success: true, status: "applied", nextQuestion: nextStep.question, nextMessageId: nextMsgId, sessionComplete: false };
+      // O roteiro só avança se a sugestão é da pergunta ATUAL (uma órfã de
+      // etapa anterior decidida aqui gravou o dado, mas não conta como
+      // resposta da pergunta na tela) e se não sobrou outro cartão dela.
+      return avancarOuEsperarOsOutros(sug.sessionId, ctx.user.openId, sug.fieldType, "applied", false);
     }),
 
   // Ignorar sugestão
@@ -304,23 +373,38 @@ FORMATO DE SAÍDA (JSON obrigatório):
       const ok = await ignoreEnrichmentSuggestion(input.suggestionId, ctx.user.openId);
       if (!ok) throw new TRPCError({ code: "NOT_FOUND", message: "SUGGESTION_NOT_FOUND" });
       const sug = await getEnrichmentSuggestion(input.suggestionId, ctx.user.openId);
-      if (!sug) return { success: true, status: "ignored", nextQuestion: null, sessionComplete: false };
-      // Órfã de etapa anterior: sai de cena sem pular a pergunta atual.
-      if (!(await sugestaoEhDaEtapaAtual(sug.sessionId, ctx.user.openId, sug.fieldType))) {
-        return { success: true, status: "ignored", nextQuestion: null, sessionComplete: false };
-      }
+      if (!sug) return { success: true, status: "ignored", nextQuestion: null, sessionComplete: false, pendentesRestantes: 0 };
+      // Órfã de etapa anterior sai de cena sem pular a pergunta atual; com
+      // outro cartão da mesma pergunta ainda pendente, a etapa espera por ele.
+      return avancarOuEsperarOsOutros(sug.sessionId, ctx.user.openId, sug.fieldType, "ignored", true);
+    }),
 
-      const advanced = await advanceEnrichmentSession(sug.sessionId, ctx.user.openId, true);
-      const nextStep = getEnrichmentStep(advanced?.questionsAnswered ?? ENRICHMENT_STEPS.length);
-      if (!nextStep) {
-        await completeEnrichmentSession(sug.sessionId, ctx.user.openId, "Cadastro enriquecido com sucesso!");
-        return { success: true, status: "ignored", nextQuestion: null, sessionComplete: true };
+  // Desfazer uma sugestão aplicada: reverte o que ela gravou no contato
+  undoSuggestion: protectedProcedure
+    .input(z.object({ suggestionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const r = await undoEnrichmentSuggestion(input.suggestionId, ctx.user.openId);
+      if (r.resultado === "nao_encontrada") throw new TRPCError({ code: "NOT_FOUND", message: "SUGGESTION_NOT_FOUND" });
+      // Já desfeita (antes, ou por outra aba agora): a tela que ainda mostra o
+      // botão está desatualizada — recarrega o histórico e diz o porquê.
+      if (r.resultado === "ja_desfeita") throw new TRPCError({ code: "NOT_FOUND", message: "SUGGESTION_ALREADY_UNDONE" });
+      // Ignorada, ou aplicada antes de o recurso existir (sem retrato do valor
+      // anterior): não há o que reverter.
+      if (r.resultado === "indisponivel") throw new TRPCError({ code: "BAD_REQUEST", message: "UNDO_UNAVAILABLE" });
+
+      // Uma tag saiu de possui/procura: os matches que nasceram dela precisam
+      // morrer junto. Mesma trava do confirmar (cruzamento exige o termo),
+      // sem e-mail — remover não é uma oportunidade nova.
+      if (r.kind === "tag") {
+        try {
+          if (await hasValidConsent(ctx.user.id, "termo_smart_match")) {
+            await recalculatePrivateMatches(ctx.user.openId);
+          }
+        } catch (erro) {
+          console.warn("[Enriquecimento] Recálculo adiado após desfazer:", erro instanceof Error ? erro.message : erro);
+        }
       }
-      const nextMsgId = await saveEnrichmentMessage({
-        sessionId: sug.sessionId, ownerId: ctx.user.openId, role: "assistant", content: nextStep.question,
-        metadata: { questionIndex: advanced?.questionsAnswered, fieldType: nextStep.fieldType },
-      });
-      return { success: true, status: "ignored", nextQuestion: nextStep.question, nextMessageId: nextMsgId, sessionComplete: false };
+      return { success: true, status: "undone", reverted: r.reverted, motivo: r.motivo };
     }),
 
   // Concluir sessão manualmente
@@ -345,17 +429,19 @@ FORMATO DE SAÍDA (JSON obrigatório):
     .input(z.object({ sessionId: z.string(), limit: z.number().int().min(1).max(50).default(20) }))
     .query(async ({ ctx, input }) => {
       const msgs = await getEnrichmentMessages(input.sessionId, ctx.user.openId, input.limit);
-      // A mensagem da pergunta atual leva o cartão que ainda espera decisão: é o
-      // que faz a confirmação pendente sobreviver a fechar e reabrir o detalhe
-      // do contato. Só a pendente da ETAPA ATUAL (a mais recente dela) vira
-      // cartão — órfã de etapa anterior fica fora e é resolvida pelo sendMessage.
+      // A mensagem da pergunta atual leva os cartões que ainda esperam decisão:
+      // é o que faz a confirmação pendente sobreviver a fechar e reabrir o
+      // detalhe do contato. Só as pendentes da ETAPA ATUAL viram cartão (todas
+      // elas: a etapa de lista pode ter vários) — órfã de etapa anterior fica
+      // fora e é resolvida pelo sendMessage.
       const session = await getEnrichmentSessionById(input.sessionId, ctx.user.openId);
       const step = session?.status === "active" ? getEnrichmentStep(session.questionsAnswered ?? 0) : null;
       const pendentes = step ? await getPendingEnrichmentSuggestions(input.sessionId, ctx.user.openId) : [];
-      const cartao = step ? separarPendentes(pendentes, step.fieldType).daEtapaAtual[0] : undefined;
+      // Da mais velha para a mais nova: a ordem em que a IA as listou.
+      const cartoes = step ? [...separarPendentes(pendentes, step.fieldType).daEtapaAtual].reverse() : [];
       return [...msgs].reverse().map(m => ({ // cronológica
         ...m,
-        suggestions: cartao && cartao.messageId === m.id ? [paraCartao(cartao)] : [],
+        suggestions: cartoes.filter(c => c.messageId === m.id).map(paraCartao),
       }));
     }),
 });

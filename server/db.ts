@@ -1262,20 +1262,36 @@ export async function getEnrichmentSessionById(sessionId: string, ownerId: strin
   return row ?? null;
 }
 
-/** Avança exatamente uma etapa do roteiro. Retorna null quando a sessão não estiver ativa. */
-export async function advanceEnrichmentSession(sessionId: string, ownerId: string, skipped = false) {
+/**
+ * Avança exatamente uma etapa do roteiro: a que o chamador LEU
+ * (`etapaEsperada`, o questionsAnswered da sessão no momento em que ele
+ * decidiu que não sobrava cartão). Retorna null quando a sessão não está
+ * ativa — ou quando OUTRA aba já avançou esta mesma etapa.
+ *
+ * Não relê a sessão de propósito: a versão que relia aqui dentro fazia duas
+ * abas confirmando os dois últimos cartões da etapa avançarem o roteiro DUAS
+ * vezes (cada uma relia o valor já avançado pela outra e passava no WHERE),
+ * pulando a pergunta seguinte — reproduzido com banco real em 04/09. O WHERE
+ * exige o valor que o chamador leu; quem chega depois não pega linha e recebe
+ * null. O contador de puladas anda no próprio UPDATE, sem leitura antes.
+ */
+export async function advanceEnrichmentSession(sessionId: string, ownerId: string, etapaEsperada: number, skipped = false) {
   const db = await exigirDb();
-  const session = await getEnrichmentSessionById(sessionId, ownerId);
-  if (!session || session.status !== "active") return null;
-
   const now = Date.now();
-  const questionsAnswered = (session.questionsAnswered ?? 0) + 1;
-  const questionsSkipped = (session.questionsSkipped ?? 0) + (skipped ? 1 : 0);
-  await db.update(enrichmentSessions)
-    .set({ questionsAnswered, questionsSkipped, lastActivityAt: now, updatedAt: now })
-    .where(and(eq(enrichmentSessions.id, sessionId), eq(enrichmentSessions.ownerId, ownerId), eq(enrichmentSessions.status, "active")));
+  const questionsAnswered = etapaEsperada + 1;
+  const [r] = await db.update(enrichmentSessions)
+    .set({
+      questionsAnswered,
+      ...(skipped ? { questionsSkipped: sql`${enrichmentSessions.questionsSkipped} + 1` } : {}),
+      lastActivityAt: now, updatedAt: now,
+    })
+    .where(and(
+      eq(enrichmentSessions.id, sessionId), eq(enrichmentSessions.ownerId, ownerId),
+      eq(enrichmentSessions.status, "active"), eq(enrichmentSessions.questionsAnswered, etapaEsperada),
+    ));
+  if (((r as any)?.affectedRows ?? 0) === 0) return null;
 
-  return { ...session, questionsAnswered, questionsSkipped };
+  return { questionsAnswered };
 }
 
 export async function createEnrichmentSession(ownerId: string, contactId: number): Promise<string> {
@@ -1292,17 +1308,24 @@ export async function getEnrichmentMessages(sessionId: string, ownerId: string, 
   const db = await exigirDb();
   return db.select().from(enrichmentMessages)
     .where(and(eq(enrichmentMessages.sessionId, sessionId), eq(enrichmentMessages.ownerId, ownerId)))
-    .orderBy(desc(enrichmentMessages.createdAt))
+    // Da mais nova para a mais velha. No MESMO instante (a resposta de "não
+    // sei" e a pergunta seguinte são gravadas em sequência e podem empatar em
+    // created_at), a da usuária vem antes da resposta da IA na conversa —
+    // aqui, em ordem decrescente, a da IA primeiro. Sem o desempate a ordem
+    // dependia do plano do banco e a conversa podia reabrir trocada.
+    .orderBy(desc(enrichmentMessages.createdAt), desc(sql`CASE WHEN ${enrichmentMessages.role} = 'user' THEN 0 ELSE 1 END`))
     .limit(limit);
 }
 
 export async function saveEnrichmentMessage(data: {
   sessionId: string; ownerId: string; role: string; content: string; metadata?: unknown; tokenCount?: number;
+  /** Quando a mensagem aconteceu, se não for agora (a resposta da usuária é gravada depois de a IA responder, mas veio antes). */
+  createdAt?: number;
 }): Promise<string> {
   const db = await exigirDb();
   const id = crypto.randomUUID();
   const now = Date.now();
-  await db.insert(enrichmentMessages).values({ id, sessionId: data.sessionId, ownerId: data.ownerId, role: data.role, content: data.content, metadata: data.metadata ?? null, tokenCount: data.tokenCount ?? null, createdAt: now, updatedAt: now });
+  await db.insert(enrichmentMessages).values({ id, sessionId: data.sessionId, ownerId: data.ownerId, role: data.role, content: data.content, metadata: data.metadata ?? null, tokenCount: data.tokenCount ?? null, createdAt: data.createdAt ?? now, updatedAt: now });
   // Atualizar last_activity_at da sessão
   await db.update(enrichmentSessions).set({ lastActivityAt: now, updatedAt: now }).where(eq(enrichmentSessions.id, data.sessionId));
   return id;
@@ -1315,9 +1338,13 @@ export async function saveEnrichmentSuggestions(suggestions: Array<{
   const db = await exigirDb();
   const ids: string[] = [];
   const now = Date.now();
-  for (const s of suggestions) {
+  // Os N cartões de uma etapa de lista nascem na ordem em que a IA os listou;
+  // com o mesmo created_at, reabrir o contato os devolvia em ordem qualquer.
+  // Um milissegundo por posição preserva a ordem sem mais uma coluna.
+  for (let i = 0; i < suggestions.length; i++) {
+    const s = suggestions[i];
     const id = crypto.randomUUID();
-    await db.insert(enrichmentSuggestions).values({ id, sessionId: s.sessionId, messageId: s.messageId, ownerId: s.ownerId, contactId: s.contactId, fieldType: s.fieldType, suggestedValue: s.suggestedValue, confidence: String(s.confidence), status: "pending", tagIsNew: s.tagIsNew ?? false, tagId: s.tagId ?? null, createdAt: now, updatedAt: now });
+    await db.insert(enrichmentSuggestions).values({ id, sessionId: s.sessionId, messageId: s.messageId, ownerId: s.ownerId, contactId: s.contactId, fieldType: s.fieldType, suggestedValue: s.suggestedValue, confidence: String(s.confidence), status: "pending", tagIsNew: s.tagIsNew ?? false, tagId: s.tagId ?? null, createdAt: now + i, updatedAt: now + i });
     ids.push(id);
   }
   return ids;
@@ -1354,11 +1381,43 @@ export async function applyEnrichmentSuggestion(id: string, ownerId: string, edi
   const finalValue = (editedValue ?? sug.suggestedValue).trim();
   const now = Date.now();
 
-  await aplicarRespostaAoContato(db, ownerId, sug.contactId, sug.fieldType, finalValue, now);
+  // O snapshot nasce ANTES da escrita (é o valor que a escrita vai cobrir) e
+  // vai para o banco no MESMO UPDATE que marca "applied": sugestão aplicada
+  // sem snapshot é, por definição, uma que não dá para desfazer.
+  let undoSnapshot: UndoSnapshot | null = null;
+  await aplicarRespostaAoContato(db, ownerId, sug.contactId, sug.fieldType, finalValue, now, s => { undoSnapshot = s; });
 
-  await db.update(enrichmentSuggestions).set({ status: "applied", appliedValue: finalValue, actionedAt: now, actionedBy: "user", updatedAt: now }).where(eq(enrichmentSuggestions.id, id));
-  return true;
+  // Só marca o que AINDA está pendente: duas confirmações concorrentes do
+  // mesmo cartão passam as duas pela leitura acima, e a segunda regravaria o
+  // retrato com "anterior = o valor já aplicado" (ou inseriu:false) por cima
+  // do bom — e desfazer não voltaria a nada. A segunda não pega linha e o
+  // router responde NOT_FOUND, que a tela já trata recarregando a conversa.
+  const [r] = await db.update(enrichmentSuggestions)
+    .set({ status: "applied", appliedValue: finalValue, undoSnapshot, actionedAt: now, actionedBy: "user", updatedAt: now })
+    .where(and(eq(enrichmentSuggestions.id, id), eq(enrichmentSuggestions.ownerId, ownerId), eq(enrichmentSuggestions.status, "pending")));
+  return ((r as any)?.affectedRows ?? 0) > 0;
 }
+
+/**
+ * O que "Desfazer" precisa saber para reverter uma resposta aplicada, por tipo
+ * de destino. É gravado em enrichment_suggestions.undo_snapshot na confirmação.
+ */
+export type UndoSnapshot =
+  | { kind: "campo"; coluna: string; anterior: string | null; aplicado: string }
+  | { kind: "tag"; tabela: "contact_assets" | "contact_needs"; inseriu: boolean; linhaId: number | null; slug: string; rotulo: string }
+  | { kind: "how_met"; linhaDeNota: string | null; contextoId: string; contextoCriado: boolean; vinculoId: string | null }
+  | { kind: "nota"; linhaDeNota: string | null };
+
+// Colunas simples do perfil que o chat preenche. A chave é o field_type da
+// sugestão; o valor é a coluna do drizzle (para ler o valor anterior) e o nome
+// da propriedade (para o UPDATE).
+const COLUNAS_SIMPLES = {
+  phone: privateContacts.phone, whatsapp: privateContacts.whatsapp, email: privateContacts.email,
+  company: privateContacts.company, jobTitle: privateContacts.jobTitle, city: privateContacts.city,
+  country: privateContacts.country, linkedinUrl: privateContacts.linkedinUrl,
+  instagram: privateContacts.instagram,
+} as const;
+type ColunaSimples = keyof typeof COLUNAS_SIMPLES;
 
 /**
  * O destino de cada resposta. Devolve true quando gravou e false quando não
@@ -1366,6 +1425,12 @@ export async function applyEnrichmentSuggestion(id: string, ownerId: string, edi
  * que deixa o script de recuperação relatar a verdade em vez de contar de novo
  * o que já estava lá. Exportada porque o script replays as respostas antigas
  * por aqui — mesmo caminho, mesma de-duplicação.
+ *
+ * `registrarSnapshot`, quando dado, recebe o retrato do que a escrita vai
+ * cobrir (valor anterior do campo, id da tag inserida, linha de nota...), ANTES
+ * de gravar — é o que undoEnrichmentSuggestion usa para reverter. Parâmetro
+ * opcional e final de propósito: o script de recuperação e os chamadores
+ * antigos continuam com a mesma assinatura e o mesmo boolean.
  */
 export async function aplicarRespostaAoContato(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
@@ -1374,6 +1439,7 @@ export async function aplicarRespostaAoContato(
   fieldType: string,
   valor: string,
   now: number,
+  registrarSnapshot?: (s: UndoSnapshot) => void,
 ): Promise<boolean> {
   if (!valor || !valor.trim()) return false;
 
@@ -1386,7 +1452,7 @@ export async function aplicarRespostaAoContato(
   if (!contatoVivo) return false;
 
   // ── campos simples do perfil do contato ────────────────────────────────────
-  const fieldMap: Record<string, string> = {
+  const fieldMap: Record<string, ColunaSimples> = {
     phone: "phone", whatsapp: "whatsapp", email: "email",
     company: "company", job_title: "jobTitle", city: "city",
     country: "country", linkedin_url: "linkedinUrl",
@@ -1396,6 +1462,14 @@ export async function aplicarRespostaAoContato(
   };
   const dbField = fieldMap[fieldType];
   if (dbField) {
+    if (registrarSnapshot) {
+      // O valor que vai ser coberto: sem ele, "desfazer" não teria para onde voltar.
+      const [linha] = await db.select({ atual: COLUNAS_SIMPLES[dbField] }).from(privateContacts)
+        .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)))
+        .limit(1);
+      const anterior = linha?.atual;
+      registrarSnapshot({ kind: "campo", coluna: dbField, anterior: anterior == null ? null : String(anterior), aplicado: valor });
+    }
     await db.update(privateContacts).set({ [dbField]: valor, updatedAt: now } as any)
       .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)));
     return true;
@@ -1404,6 +1478,7 @@ export async function aplicarRespostaAoContato(
   // ── o que o contato possui / procura: o combustível do cruzamento ──────────
   if (fieldType === "assets" || fieldType === "needs") {
     const tabela = fieldType === "assets" ? contactAssets : contactNeeds;
+    const nomeDaTabela = fieldType === "assets" ? "contact_assets" : "contact_needs";
     const slug = slugifyMatchTag(valor);
     if (!slug) return false;
     // Confirmar duas vezes a mesma resposta não pode duplicar o item — as
@@ -1417,10 +1492,17 @@ export async function aplicarRespostaAoContato(
         drizzleOr(eq(tabela.tagSlug, slug), eq(tabela.tagLabel, valor)),
       ))
       .limit(1);
-    if (existente) return false;
-    await db.insert(tabela).values({
+    if (existente) {
+      // Já estava lá antes da confirmação: desfazer não pode apagar o que a
+      // dona (ou outra resposta) já tinha registrado.
+      registrarSnapshot?.({ kind: "tag", tabela: nomeDaTabela, inseriu: false, linhaId: existente.id, slug, rotulo: valor });
+      return false;
+    }
+    const [inserido] = await db.insert(tabela).values({
       ownerId, contactId, tagSlug: slug, tagLabel: valor, createdAt: now, updatedAt: now,
     });
+    const linhaId = Number((inserido as any)?.insertId);
+    registrarSnapshot?.({ kind: "tag", tabela: nomeDaTabela, inseriu: true, linhaId: Number.isFinite(linhaId) && linhaId > 0 ? linhaId : null, slug, rotulo: valor });
     return true;
   }
 
@@ -1459,12 +1541,14 @@ ${linha}` : linha;
       .orderBy(desc(contexts.ownerId))
       .limit(1);
     let idContexto = ctxExistente?.id;
+    let contextoCriado = false;
     if (!idContexto) {
       idContexto = crypto.randomUUID();
       await db.insert(contexts).values({
         id: idContexto, ownerId, contextTypeId: null, name: nomeContexto,
         isCustom: true, visibility: "private", createdAt: now, updatedAt: now,
       });
+      contextoCriado = true;
     }
     const [vinculoExistente] = await db.select({ id: contactContexts.id }).from(contactContexts)
       .where(and(
@@ -1473,15 +1557,18 @@ ${linha}` : linha;
         eq(contactContexts.contextId, idContexto),
       ))
       .limit(1);
-    let gravouVinculo = false;
+    let vinculoId: string | null = null;
     if (!vinculoExistente) {
+      vinculoId = crypto.randomUUID();
       await db.insert(contactContexts).values({
-        id: crypto.randomUUID(), ownerId, contactId, contextId: idContexto,
+        id: vinculoId, ownerId, contactId, contextId: idContexto,
         relationshipType: "profissional", visibility: "private", createdAt: now, updatedAt: now,
       });
-      gravouVinculo = true;
     }
-    return gravouNota || gravouVinculo;
+    // O contexto em si fica mesmo ao desfazer (pode ter ganhado outros
+    // contatos e anexos); o snapshot só registra que ele nasceu aqui.
+    registrarSnapshot?.({ kind: "how_met", linhaDeNota: gravouNota ? linha : null, contextoId: idContexto, contextoCriado, vinculoId });
+    return gravouNota || vinculoId !== null;
   }
 
   // ── tipo de relacionamento: vai para as anotações do contato ───────────────
@@ -1490,9 +1577,14 @@ ${linha}` : linha;
     const [contato] = await db.select({ notes: privateContacts.notes }).from(privateContacts)
       .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)))
       .limit(1);
-    if (!contato || contato.notes?.includes(linha)) return false;
+    if (!contato) return false;
+    if (contato.notes?.includes(linha)) {
+      registrarSnapshot?.({ kind: "nota", linhaDeNota: null });
+      return false;
+    }
     const notas = contato.notes ? `${contato.notes}
 ${linha}` : linha;
+    registrarSnapshot?.({ kind: "nota", linhaDeNota: linha });
     await db.update(privateContacts).set({ notes: notas, updatedAt: now })
       .where(and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId)));
     return true;
@@ -1501,6 +1593,96 @@ ${linha}` : linha;
   // Tipo desconhecido: não há onde gravar, e fingir que gravou é o defeito que
   // este código existe para não repetir.
   throw new Error(`Tipo de resposta sem destino: ${fieldType}`);
+}
+
+// Tira a linha exata que o chat acrescentou às anotações (e só ela). Devolve
+// undefined quando a linha não está mais lá — a dona já a apagou à mão.
+function semALinhaDeNota(notes: string | null, linha: string): string | null | undefined {
+  const partes = (notes ?? "").split("\n");
+  const indice = partes.indexOf(linha);
+  if (indice === -1) return undefined;
+  partes.splice(indice, 1);
+  return partes.length ? partes.join("\n") : null;
+}
+
+export type ResultadoDoDesfazer =
+  | { resultado: "nao_encontrada" }
+  /** Já estava desfeita (pela dona, antes; ou por outra aba, agora). */
+  | { resultado: "ja_desfeita" }
+  /** Ignorada, ou aplicada antes de existir o retrato: não há o que reverter. */
+  | { resultado: "indisponivel" }
+  | { resultado: "desfeita"; kind: UndoSnapshot["kind"]; fieldType: string; reverted: boolean; motivo: "valor_alterado_depois" | null };
+
+/**
+ * Reverte o que uma sugestão aplicada gravou no contato, usando o snapshot da
+ * confirmação, e marca a sugestão como "undone".
+ *
+ * Reverter é voltar ao retrato de antes, nunca apagar o que a dona fez depois:
+ * um campo só volta ao valor anterior se ainda tem o valor que a IA aplicou
+ * (se a dona o editou depois, fica como está e a sugestão só muda de status);
+ * uma tag só sai se foi ESTA confirmação que a inseriu; uma nota perde só a
+ * linha exata acrescentada; o vínculo com o contexto some, o contexto fica.
+ * A escrita vem antes da marcação (como no aplicar): o status nunca diz
+ * "desfeito" sobre um dado que continua aplicado.
+ */
+export async function undoEnrichmentSuggestion(id: string, ownerId: string): Promise<ResultadoDoDesfazer> {
+  const db = await exigirDb();
+  const sug = await getEnrichmentSuggestion(id, ownerId);
+  if (!sug) return { resultado: "nao_encontrada" };
+  // Já desfeita tem resposta própria: a tela mostra o botão de uma lista
+  // desatualizada e precisa ouvir "já tinha sido desfeita" (e recarregar o
+  // histórico), não um erro genérico com o botão ainda ligado.
+  if (sug.status === "undone") return { resultado: "ja_desfeita" };
+  const snapshot = sug.undoSnapshot as UndoSnapshot | null;
+  if (sug.status !== "applied" || !snapshot || typeof snapshot !== "object" || !("kind" in snapshot)) {
+    return { resultado: "indisponivel" };
+  }
+  const now = Date.now();
+  const contactId = sug.contactId;
+  const doContato = and(eq(privateContacts.id, contactId), eq(privateContacts.ownerId, ownerId));
+  let reverted = true;
+  let motivo: "valor_alterado_depois" | null = null;
+
+  if (snapshot.kind === "campo") {
+    const coluna = COLUNAS_SIMPLES[snapshot.coluna as ColunaSimples];
+    if (!coluna) return { resultado: "indisponivel" };
+    const [linha] = await db.select({ atual: coluna }).from(privateContacts).where(doContato).limit(1);
+    const atual = linha?.atual == null ? null : String(linha.atual);
+    if (atual === snapshot.aplicado) {
+      await db.update(privateContacts).set({ [snapshot.coluna]: snapshot.anterior, updatedAt: now } as any).where(doContato);
+    } else {
+      reverted = false;
+      motivo = "valor_alterado_depois";
+    }
+  } else if (snapshot.kind === "tag") {
+    if (snapshot.inseriu && snapshot.linhaId != null) {
+      const tabela = snapshot.tabela === "contact_assets" ? contactAssets : contactNeeds;
+      await db.delete(tabela).where(and(
+        eq(tabela.id, snapshot.linhaId), eq(tabela.ownerId, ownerId), eq(tabela.contactId, contactId),
+      ));
+    }
+  } else if (snapshot.kind === "how_met" || snapshot.kind === "nota") {
+    if (snapshot.linhaDeNota) {
+      const [contato] = await db.select({ notes: privateContacts.notes }).from(privateContacts).where(doContato).limit(1);
+      const notas = contato ? semALinhaDeNota(contato.notes, snapshot.linhaDeNota) : undefined;
+      if (notas !== undefined) {
+        await db.update(privateContacts).set({ notes: notas, updatedAt: now }).where(doContato);
+      }
+    }
+    if (snapshot.kind === "how_met" && snapshot.vinculoId) {
+      await db.delete(contactContexts).where(and(
+        eq(contactContexts.id, snapshot.vinculoId), eq(contactContexts.ownerId, ownerId), eq(contactContexts.contactId, contactId),
+      ));
+    }
+  }
+
+  const [r] = await db.update(enrichmentSuggestions)
+    .set({ status: "undone", actionedAt: now, actionedBy: "user", updatedAt: now })
+    .where(and(eq(enrichmentSuggestions.id, id), eq(enrichmentSuggestions.ownerId, ownerId), eq(enrichmentSuggestions.status, "applied")));
+  // Outra aba desfez no meio do caminho: as reversões acima são idempotentes
+  // (mesmo retrato), e quem chegou depois ouve "já tinha sido desfeita".
+  if (((r as any)?.affectedRows ?? 0) === 0) return { resultado: "ja_desfeita" };
+  return { resultado: "desfeita", kind: snapshot.kind, fieldType: sug.fieldType, reverted, motivo };
 }
 
 export async function ignoreEnrichmentSuggestion(id: string, ownerId: string): Promise<boolean> {
@@ -1558,5 +1740,11 @@ export async function getEnrichmentHistory(ownerId: string, contactId: number, l
     .limit(limit).offset(offset);
   const [c] = await db.select({ count: sql<number>`COUNT(*)` }).from(enrichmentSuggestions)
     .where(and(eq(enrichmentSuggestions.ownerId, ownerId), eq(enrichmentSuggestions.contactId, contactId), sql`${enrichmentSuggestions.status} IN ('applied', 'ignored', 'undone')`));
-  return { data: rows, total: Number(c?.count ?? 0) };
+  // A tela só precisa saber SE dá para desfazer; o retrato em si (valor
+  // anterior de telefone, e-mail...) é dado do contato e fica no servidor.
+  const data = rows.map(({ undoSnapshot, ...resto }) => ({
+    ...resto,
+    podeDesfazer: resto.status === "applied" && undoSnapshot != null,
+  }));
+  return { data, total: Number(c?.count ?? 0) };
 }

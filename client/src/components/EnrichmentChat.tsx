@@ -242,6 +242,19 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
       : m));
   };
 
+  // O que o servidor gravou fora desta conversa precisa aparecer fora dela: o
+  // perfil aberto (network.get), a lista (network.list), possui/procura e o
+  // Histórico IA leem do cache do React Query, que só é refeito ao focar a
+  // janela — sem isto, a usuária confirmava o telefone, não o via no perfil e
+  // digitava de novo. getMessages entra junto: reabrir o contato hidrata dele.
+  const sincronizarDepoisDoServidor = () => {
+    void utils.enrichment.getMessages.invalidate();
+    void utils.enrichment.getHistory.invalidate({ contactId });
+    void utils.network.get.invalidate({ id: contactId });
+    void utils.network.list.invalidate();
+    void utils.network.assetsNeeds.invalidate({ contactId });
+  };
+
   const startMut = trpc.enrichment.startSession.useMutation({
     onSuccess: (data) => {
       setSessionId(data.sessionId);
@@ -257,7 +270,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
   });
 
   const sendMut = trpc.enrichment.sendMessage.useMutation({
-    onSuccess: (data) => {
+    onSuccess: (data, enviado) => {
       if (data.messageId && data.aiResponse) {
         const aiMsg: Message = {
           id: data.messageId,
@@ -274,9 +287,16 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
         setAwaitingConfirmation(false);
         void utils.enrichment.getActiveSession.invalidate({ contactId });
       }
-      // O cache do getMessages ficaria na versão anterior à resposta e
-      // reabrir o contato mostraria a conversa sem ela (e sem o cartão).
-      void utils.enrichment.getMessages.invalidate();
+      // A IA não respondeu: o servidor gravou só o aviso, NÃO a resposta da
+      // usuária (é o que evita a duplicata ao reenviar). Reidratar agora
+      // apagaria o balão dela, e o campo já foi esvaziado ao enviar: o texto
+      // volta ao campo para ela tentar de novo, e a conversa local fica como
+      // está — nada foi gravado no contato, não há o que refazer.
+      if ("aiUnavailable" in data && data.aiUnavailable) {
+        setInput(enviado.content);
+        return;
+      }
+      sincronizarDepoisDoServidor();
     },
     onError: (e) => {
       // O servidor recusou porque há cartão esperando decisão (esta tela ou
@@ -298,7 +318,9 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
     onSuccess: (data, { suggestionId }) => {
       marcarSugestao(suggestionId, "applied");
       toast.success("Informação salva no perfil!");
-      setAwaitingConfirmation(false);
+      // A etapa de lista pode ter vários cartões: a digitação só volta quando
+      // o servidor diz que não sobrou nenhum — é ele quem conta.
+      setAwaitingConfirmation(data.pendentesRestantes > 0);
       if (data.sessionComplete) {
         setIsComplete(true);
         setCompletionSummary("Cadastro enriquecido com sucesso!");
@@ -308,7 +330,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
           ? prev
           : [...prev, { id: data.nextMessageId, role: "assistant", content: data.nextQuestion }]);
       }
-      void utils.enrichment.getMessages.invalidate();
+      sincronizarDepoisDoServidor();
     },
     onError: (e, { suggestionId }) => {
       // A sugestão já foi decidida (outra aba, ou tela desatualizada): não há
@@ -331,7 +353,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
   const ignoreMut = trpc.enrichment.ignoreSuggestion.useMutation({
     onSuccess: (data, { suggestionId }) => {
       marcarSugestao(suggestionId, "ignored");
-      setAwaitingConfirmation(false);
+      setAwaitingConfirmation(data.pendentesRestantes > 0);
       if (data.sessionComplete) {
         setIsComplete(true);
         setCompletionSummary("Cadastro enriquecido com sucesso!");
@@ -341,7 +363,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
           ? prev
           : [...prev, { id: data.nextMessageId, role: "assistant", content: data.nextQuestion }]);
       }
-      void utils.enrichment.getMessages.invalidate();
+      sincronizarDepoisDoServidor();
     },
     onError: (e, { suggestionId }) => {
       if (e.data?.code === "NOT_FOUND") {
@@ -423,6 +445,8 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
             )}
             {messages.map(msg => (
               <MessageBubble key={msg.id} msg={msg}
+                // Só enquanto UMA decisão viaja: com vários cartões, os outros
+                // continuam clicáveis assim que o servidor responde.
                 busy={confirmMut.isPending || ignoreMut.isPending}
                 onConfirm={handleConfirm}
                 onIgnore={handleIgnore} />

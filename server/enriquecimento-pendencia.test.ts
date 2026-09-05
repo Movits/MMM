@@ -22,6 +22,17 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
 const invokeLLM = vi.fn();
 vi.mock("./_core/llm", () => ({ invokeLLM: (...args: unknown[]) => invokeLLM(...args) }));
 
+const hasValidConsent = vi.fn(async () => false);
+vi.mock("./routers/consent", () => ({
+  hasValidConsent: (...args: unknown[]) => hasValidConsent(...(args as [])),
+  usersComConsentimento: async (ids: number[]) => new Set(ids),
+}));
+const recalculatePrivateMatches = vi.fn(async () => ({ created: 0 }));
+vi.mock("./match-service", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./match-service")>()),
+  recalculatePrivateMatches: (...args: unknown[]) => recalculatePrivateMatches(...(args as [])),
+}));
+
 const db = {
   getEnrichmentSessionById: vi.fn(),
   getEnrichmentMessages: vi.fn(),
@@ -36,6 +47,7 @@ const db = {
   ignoreEnrichmentSuggestion: vi.fn(),
   getEnrichmentHistory: vi.fn(),
   getPendingEnrichmentSuggestions: vi.fn(),
+  undoEnrichmentSuggestion: vi.fn(),
 };
 
 vi.mock("./db", async () => ({
@@ -278,5 +290,143 @@ describe("confirmSuggestion — o valor editado respeita a coluna de destino", (
 
     expect(db.getEnrichmentSuggestion).toHaveBeenCalledWith("sug-alheia", DONA);
     expect(db.applyEnrichmentSuggestion).not.toHaveBeenCalled();
+  });
+});
+
+describe("etapa de lista — vários cartões da mesma pergunta; o roteiro só anda quando o último é decidido", () => {
+  // questionsAnswered: 2 → a pergunta da vez é a de "o que oferece" (lista).
+  const sessaoNosAtivos = { ...sessao, questionsAnswered: 2 };
+  const mina = { ...cartaoPendente, id: "sug-mina", fieldType: "assets", suggestedValue: "mina de lítio", messageId: "msg-ia" };
+  const fabrica = { ...cartaoPendente, id: "sug-fabrica", fieldType: "assets", suggestedValue: "fábrica de baterias", messageId: "msg-ia" };
+
+  beforeEach(() => {
+    db.getEnrichmentSessionById.mockResolvedValue(sessaoNosAtivos);
+    db.advanceEnrichmentSession.mockResolvedValue({ ...sessaoNosAtivos, questionsAnswered: 3 });
+  });
+
+  it("getMessages anexa TODAS as pendentes da etapa à mensagem delas, da mais velha para a mais nova", async () => {
+    const base = { sessionId: "sessao-1", ownerId: DONA, metadata: null, tokenCount: null, updatedAt: 0 };
+    db.getEnrichmentMessages.mockResolvedValue([
+      { ...base, id: "msg-ia", role: "assistant", content: "Confirma os dois?", createdAt: 3 },
+      { ...base, id: "msg-usuaria", role: "user", content: "mina e fábrica", createdAt: 2 },
+    ]);
+    // O banco devolve da mais nova para a mais velha.
+    db.getPendingEnrichmentSuggestions.mockResolvedValue([{ ...fabrica, createdAt: 2 }, { ...mina, createdAt: 1 }]);
+    const caller = enrichmentRouter.createCaller(ctx);
+
+    const r = await caller.getMessages({ sessionId: "sessao-1", limit: 30 });
+
+    // Mutante "daEtapaAtual[0]": só um cartão voltaria ao reabrir o contato.
+    expect(r.find(m => m.id === "msg-ia")?.suggestions.map(s => s.id)).toEqual(["sug-mina", "sug-fabrica"]);
+    expect(r.find(m => m.id === "msg-usuaria")?.suggestions).toEqual([]);
+  });
+
+  it("confirmar um cartão com outro ainda pendente: grava, NÃO avança e diz quantos faltam", async () => {
+    db.getEnrichmentSuggestion.mockResolvedValue(mina);
+    db.getPendingEnrichmentSuggestions.mockResolvedValue([fabrica]); // depois de aplicar a mina
+    const caller = enrichmentRouter.createCaller(ctx);
+
+    const r = await caller.confirmSuggestion({ suggestionId: "sug-mina" });
+
+    expect(db.applyEnrichmentSuggestion).toHaveBeenCalledWith("sug-mina", DONA, undefined);
+    expect(r).toMatchObject({ status: "applied", nextQuestion: null, sessionComplete: false, pendentesRestantes: 1 });
+    // Mutante "avança a cada confirmação": a pergunta de "procura" chegaria com a fábrica ainda pendente.
+    expect(db.advanceEnrichmentSession).not.toHaveBeenCalled();
+    expect(db.saveEnrichmentMessage).not.toHaveBeenCalled();
+  });
+
+  it("decidir o último cartão (ignorar): aí sim avança e manda a próxima pergunta", async () => {
+    db.getEnrichmentSuggestion.mockResolvedValue(fabrica);
+    db.getPendingEnrichmentSuggestions.mockResolvedValue([]);
+    const caller = enrichmentRouter.createCaller(ctx);
+
+    const r = await caller.ignoreSuggestion({ suggestionId: "sug-fabrica" });
+
+    // A etapa LIDA (2) vai junto: é o que o UPDATE condicional exige no WHERE.
+    expect(db.advanceEnrichmentSession).toHaveBeenCalledWith("sessao-1", DONA, 2, true);
+    expect(r).toMatchObject({ status: "ignored", nextQuestion: expect.stringMatching(/procurando/), nextMessageId: "msg-2", pendentesRestantes: 0 });
+  });
+
+  it("sendMessage continua recusando enquanto QUALQUER cartão da etapa estiver pendente", async () => {
+    db.getPendingEnrichmentSuggestions.mockResolvedValue([fabrica]);
+    const caller = enrichmentRouter.createCaller(ctx);
+
+    await expect(caller.sendMessage({ sessionId: "sessao-1", contactId: 42, content: "e uma patente" })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
+  it("outra aba avançou primeiro (o avanço condicional devolve null): não conclui nem grava pergunta em dobro", async () => {
+    db.getEnrichmentSuggestion.mockResolvedValue(fabrica);
+    db.getPendingEnrichmentSuggestions.mockResolvedValue([]);
+    db.advanceEnrichmentSession.mockResolvedValue(null);
+    const caller = enrichmentRouter.createCaller(ctx);
+
+    const r = await caller.confirmSuggestion({ suggestionId: "sug-fabrica" });
+
+    // Mutante "null → fim do roteiro": a sessão seria concluída no meio.
+    expect(r).toMatchObject({ status: "applied", nextQuestion: null, sessionComplete: false });
+    expect(db.completeEnrichmentSession).not.toHaveBeenCalled();
+    expect(db.saveEnrichmentMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe("undoSuggestion — o Histórico IA desfaz de verdade", () => {
+  it("'indisponivel' (ignorada, já desfeita ou sem retrato) → BAD_REQUEST UNDO_UNAVAILABLE", async () => {
+    db.undoEnrichmentSuggestion.mockResolvedValue({ resultado: "indisponivel" });
+    const caller = enrichmentRouter.createCaller(ctx);
+
+    await expect(caller.undoSuggestion({ suggestionId: "sug-1" })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "UNDO_UNAVAILABLE" });
+    expect(db.undoEnrichmentSuggestion).toHaveBeenCalledWith("sug-1", DONA);
+    expect(recalculatePrivateMatches).not.toHaveBeenCalled();
+  });
+
+  it("'nao_encontrada' (outra dona) → NOT_FOUND SUGGESTION_NOT_FOUND", async () => {
+    db.undoEnrichmentSuggestion.mockResolvedValue({ resultado: "nao_encontrada" });
+    const caller = enrichmentRouter.createCaller(ctx);
+
+    await expect(caller.undoSuggestion({ suggestionId: "sug-alheia" })).rejects.toMatchObject({ code: "NOT_FOUND", message: "SUGGESTION_NOT_FOUND" });
+  });
+
+  it("'ja_desfeita' (antes, ou por outra aba agora) → NOT_FOUND SUGGESTION_ALREADY_UNDONE, que a tela distingue do erro comum", async () => {
+    db.undoEnrichmentSuggestion.mockResolvedValue({ resultado: "ja_desfeita" });
+    const caller = enrichmentRouter.createCaller(ctx);
+
+    // Mutante "ja_desfeita cai no BAD_REQUEST genérico": a tela mostraria
+    // "Erro ao desfazer." com o botão ainda ligado.
+    await expect(caller.undoSuggestion({ suggestionId: "sug-1" })).rejects.toMatchObject({ code: "NOT_FOUND", message: "SUGGESTION_ALREADY_UNDONE" });
+    expect(recalculatePrivateMatches).not.toHaveBeenCalled();
+  });
+
+  it("tag desfeita com o termo vigente: recalcula os matches SEM e-mail; devolve reverted", async () => {
+    db.undoEnrichmentSuggestion.mockResolvedValue({ resultado: "desfeita", kind: "tag", fieldType: "assets", reverted: true, motivo: null });
+    hasValidConsent.mockResolvedValue(true);
+    const caller = enrichmentRouter.createCaller(ctx);
+
+    const r = await caller.undoSuggestion({ suggestionId: "sug-1" });
+
+    expect(r).toEqual({ success: true, status: "undone", reverted: true, motivo: null });
+    // Mutante "com e-mail": remover uma tag não é oportunidade nova para avisar.
+    expect(recalculatePrivateMatches).toHaveBeenCalledWith(DONA);
+  });
+
+  it("tag desfeita sem o termo: nada de recálculo (cruzamento exige o termo)", async () => {
+    db.undoEnrichmentSuggestion.mockResolvedValue({ resultado: "desfeita", kind: "tag", fieldType: "needs", reverted: true, motivo: null });
+    hasValidConsent.mockResolvedValue(false);
+    const caller = enrichmentRouter.createCaller(ctx);
+
+    await caller.undoSuggestion({ suggestionId: "sug-1" });
+
+    expect(recalculatePrivateMatches).not.toHaveBeenCalled();
+  });
+
+  it("campo desfeito: sem recálculo, e o motivo de não ter revertido chega à tela", async () => {
+    db.undoEnrichmentSuggestion.mockResolvedValue({ resultado: "desfeita", kind: "campo", fieldType: "phone", reverted: false, motivo: "valor_alterado_depois" });
+    hasValidConsent.mockResolvedValue(true);
+    const caller = enrichmentRouter.createCaller(ctx);
+
+    const r = await caller.undoSuggestion({ suggestionId: "sug-1" });
+
+    expect(r).toMatchObject({ status: "undone", reverted: false, motivo: "valor_alterado_depois" });
+    expect(recalculatePrivateMatches).not.toHaveBeenCalled();
   });
 });

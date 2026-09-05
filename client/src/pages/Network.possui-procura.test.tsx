@@ -65,9 +65,15 @@ vi.mock("@/lib/trpc", async () => {
   const React = await import("react");
   return {
     trpc: {
-      useUtils: () => ({ network: { assetsNeeds: { invalidate: duble.invalidate } } }),
+      useUtils: () => ({
+        network: { assetsNeeds: { invalidate: duble.invalidate }, get: { invalidate: vi.fn() }, list: { invalidate: vi.fn() } },
+        enrichment: { getHistory: { invalidate: vi.fn() } },
+      }),
       network: {
         list: { useQuery: () => ({ data: { data: duble.contatos, total: duble.contatos.length }, isLoading: false, refetch: vi.fn() }) },
+        // O detalhe relê o contato pelo servidor (network.get); sem resposta,
+        // vale o contato da lista — é o caso deste teste.
+        get: duble.consulta(),
         create: duble.registrar("create"),
         update: duble.registrar("update"),
         delete: duble.registrar("delete"),
@@ -85,8 +91,7 @@ vi.mock("@/lib/trpc", async () => {
       enrichment: {
         startSession: duble.registrar("startSession"),
         getHistory: duble.consulta(),
-        confirmSuggestion: duble.registrar("confirmSuggestion"),
-        ignoreSuggestion: duble.registrar("ignoreSuggestion"),
+        undoSuggestion: duble.registrar("undoSuggestion"),
       },
       contexts: { listByContact: duble.consulta() },
     },

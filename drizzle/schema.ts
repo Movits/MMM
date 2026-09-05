@@ -862,6 +862,11 @@ export const enrichmentSuggestions = mysqlTable("enrichment_suggestions", {
   status:         varchar("status", { length: 20 }).default("pending").notNull(),
   actionedAt:     bigint("actioned_at", { mode: "number" }),
   actionedBy:     varchar("actioned_by", { length: 20 }),
+  // O que "Desfazer" precisa para reverter o que a confirmação gravou: o valor
+  // anterior do campo, o id da tag inserida, a linha de nota acrescentada...
+  // Gravado no mesmo UPDATE que marca `applied`; nulo nas sugestões aplicadas
+  // antes do recurso existir (essas não têm como ser revertidas).
+  undoSnapshot:   jsonCompat("undo_snapshot"),
   createdAt:      bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:      bigint("updated_at", { mode: "number" }).notNull(),
 });
