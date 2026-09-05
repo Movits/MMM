@@ -437,6 +437,8 @@
     "profile": "Meu Perfil",
     "noMatches": "Pronta para sua próxima grande conexão?",
     "noMatchesDesc": "Nossa IA analisa seu perfil em seis critérios e encontra as mulheres com maior compatibilidade real com você.",
+    "redeAutorizandoTitulo": "Suas conexões estão a caminho",
+    "redeAutorizandoDesc": "Há perfis compatíveis com o seu, mas cada match só aparece quando os dois lados autorizam o cruzamento — e essas membras ainda não autorizaram. Não é falta de compatibilidade: é só aguardar.",
     "compatibility": "Compatibilidade Média",
     "topMatches": "Conexões Fortes (acima de 80%)",
     "connect": "Demonstrar Interesse",

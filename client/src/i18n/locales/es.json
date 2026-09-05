@@ -437,6 +437,8 @@
     "profile": "Mi Perfil",
     "noMatches": "¿Lista para tu próxima gran conexión?",
     "noMatchesDesc": "Nuestra IA analizará tu perfil en 6 dimensiones y encontrará las mujeres con mayor compatibilidad real contigo.",
+    "redeAutorizandoTitulo": "Tus conexiones están en camino",
+    "redeAutorizandoDesc": "Hay perfiles compatibles con el tuyo, pero un match solo aparece cuando ambas partes autorizan el cruce — y esas miembras aún no lo han hecho. No es falta de compatibilidad: solo hay que esperar.",
     "compatibility": "Puntuación Media",
     "connect": "Expresar Interés",
     "dismiss": "Match ocultado. Genera nuevos matches cuando quieras.",
