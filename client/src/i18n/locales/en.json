@@ -1386,6 +1386,30 @@
     "errorIdLabel": "Reference code:",
     "retryButton": "↻ Try again",
     "backHome": "← Back to home",
-    "tip": "If the problem persists, try clearing your browser cache (Ctrl+Shift+R)."
+    "tip": "If the problem persists, try clearing your browser cache (Ctrl+Shift+R).",
+    "serverUnavailable": "The server did not respond. Please try again in a moment."
+  },
+  "appHeader": {
+    "menuButton": "Menu",
+    "navigation": "Navigation",
+    "goldPanel": "Gold Panel",
+    "goldPanelDesc": "Governance and validations",
+    "myProfile": "My Profile",
+    "menu": {
+      "opportunities": "Opportunities",
+      "opportunitiesDesc": "Active proposals and deals",
+      "verification": "Verification",
+      "verificationDesc": "Identity and SIVC seal",
+      "network": "My Network",
+      "networkDesc": "Your private contact base",
+      "contexts": "Contexts",
+      "contextsDesc": "Where and how you met each person",
+      "meetings": "Meetings",
+      "meetingsDesc": "Recordings and transcripts",
+      "memory": "AI Memory",
+      "memoryDesc": "Ask your history",
+      "intelligentMatches": "Smart Connections",
+      "intelligentMatchesDesc": "Suggestions among your contacts"
+    }
   }
 }

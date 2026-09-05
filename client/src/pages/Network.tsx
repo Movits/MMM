@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EnrichmentChat } from "@/components/EnrichmentChat";
+import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -486,14 +487,16 @@ function ContactDetail({ contact, onEdit, onClose }: {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"info" | "history">("info");
 
-  // Histórico de enriquecimento
-  const { data: historyData } = trpc.enrichment.getHistory.useQuery(
+  // Histórico de enriquecimento. Em erro, a aba não pode dizer "nenhum
+  // enriquecimento ainda": o histórico existe, o servidor é que não respondeu.
+  const { data: historyData, isError: historicoFalhou, error: erroDoHistorico, refetch: recarregarHistorico } = trpc.enrichment.getHistory.useQuery(
     { contactId: contact.id, limit: 30 },
     { refetchOnWindowFocus: false }
   );
 
-  // Contextos em que este contato apareceu (onde e como se conheceram)
-  const { data: contextosDoContato } = trpc.contexts.listByContact.useQuery(
+  // Contextos em que este contato apareceu (onde e como se conheceram). Em
+  // erro, a seção não some em silêncio — mostra o erro no lugar dela.
+  const { data: contextosDoContato, isError: contextosFalharam, error: erroDosContextos, refetch: recarregarContextos } = trpc.contexts.listByContact.useQuery(
     { contactId: contact.id },
     { refetchOnWindowFocus: false }
   );
@@ -657,7 +660,12 @@ function ContactDetail({ contact, onEdit, onClose }: {
         )}
 
         {/* Contextos — onde e como se conheceram (etapa 5) */}
-        {contextosDoContato && contextosDoContato.length > 0 && (
+        {contextosFalharam ? (
+          <div className="px-6 py-4 border-t border-white/8">
+            <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Calendar size={11} /> {t("network.tituloContextos")}</p>
+            <ErroDeConsulta erro={erroDosContextos} aoTentarDeNovo={() => recarregarContextos()} />
+          </div>
+        ) : contextosDoContato && contextosDoContato.length > 0 && (
           <div className="px-6 py-4 border-t border-white/8">
             <p className="text-xs text-white/35 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Calendar size={11} /> {t("network.tituloContextos")}</p>
             <div className="space-y-2">
@@ -751,7 +759,9 @@ function ContactDetail({ contact, onEdit, onClose }: {
         {/* Aba Histórico IA */}
         {activeTab === "history" && (
           <div className="px-4 py-4">
-            {!historyData || historyData.data.length === 0 ? (
+            {historicoFalhou ? (
+              <ErroDeConsulta erro={erroDoHistorico} aoTentarDeNovo={() => recarregarHistorico()} />
+            ) : !historyData || historyData.data.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Sparkles size={36} className="text-white/15 mb-3" />
                 <p className="text-sm text-white/40">{t("network.semHistoricoIA")}</p>
@@ -833,10 +843,21 @@ export default function Network() {
     debounceRef.current = setTimeout(() => { setDebouncedSearch(v); setPage(1); }, 300) as ReturnType<typeof setTimeout>;
   };
 
-  const { data, isLoading, refetch } = trpc.network.list.useQuery(
+  const { data, isLoading, isError, error, refetch } = trpc.network.list.useQuery(
     { q: debouncedSearch || undefined, tag: filterTag || undefined, page, limit: 20 },
     { enabled: isAuthenticated }
   );
+
+  // Excluir o único contato da última página deixava a tela presa: a consulta
+  // continuava pedindo a página 2, o servidor devolvia lista vazia com
+  // total 20, e a paginação sumia (só aparece com total > 20) — "20 contato"
+  // sobre "Sua rede está vazia", sem caminho de volta além de recarregar.
+  // Quando o total cai abaixo da página atual, volta para a última que existe.
+  useEffect(() => {
+    if (data && page > 1 && page > Math.max(1, Math.ceil(data.total / 20))) {
+      setPage(Math.max(1, Math.ceil(data.total / 20)));
+    }
+  }, [data, page]);
 
   const createMut = trpc.network.create.useMutation({
     onSuccess: (data) => {
@@ -858,7 +879,12 @@ export default function Network() {
     onError: () => { /* silencioso — pode já existir sessão */ },
   });
   const updateMut = trpc.network.update.useMutation({
-    onSuccess: () => { toast.success(t("network.toastContatoAtualizado")); setEditContact(null); refetch(); },
+    // setShowForm(false) é obrigatório: os dois caminhos de edição ligam
+    // showForm, e o modal renderiza com (showForm || editContact). Só zerar
+    // editContact deixava o formulário aberto como "Novo Contato" com os
+    // dados recém-editados — e o 2º Salvar criava uma duplicata que
+    // compartilhava a foto no bucket.
+    onSuccess: () => { toast.success(t("network.toastContatoAtualizado")); setShowForm(false); setEditContact(null); refetch(); },
     onError: (e) => toast.error(t("network.toastErroAtualizar") + e.message),
   });
   const deleteMut = trpc.network.delete.useMutation({
@@ -970,8 +996,9 @@ export default function Network() {
           ))}
         </div>
 
-        {/* Contador */}
-        {!isLoading && (
+        {/* Contador — some em erro: "0 contatos" afirmaria um número que
+            ninguém consultou. */}
+        {!isLoading && !isError && (
           <p className="text-xs text-white/30">
             {total === 0
               ? t("network.contadorZero")
@@ -988,6 +1015,11 @@ export default function Network() {
               <div key={i} className="h-20 rounded-2xl bg-white/5 animate-pulse" />
             ))}
           </div>
+        ) : isError ? (
+          // Consulta falhou (banco fora do ar, 429, 500) não é rede vazia:
+          // o convite para "adicionar o primeiro contato" gerava duplicatas
+          // quando o banco voltava.
+          <ErroDeConsulta erro={error} aoTentarDeNovo={() => refetch()} />
         ) : contacts.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
@@ -1038,7 +1070,11 @@ export default function Network() {
 
       {/* Modais */}
       {(showForm || editContact) && (
+        // A key força instância nova ao trocar de contato (ou entre editar e
+        // novo): o formulário só lê `initial` na montagem, então a mesma
+        // instância reaproveitada carregava os campos de outro contato.
         <ContactForm
+          key={editContact?.id ?? "novo"}
           initial={editContact ?? undefined}
           onSave={handleSave}
           onClose={() => { setShowForm(false); setEditContact(null); }}

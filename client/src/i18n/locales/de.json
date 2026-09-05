@@ -1386,6 +1386,30 @@
     "errorIdLabel": "Referenzcode:",
     "retryButton": "↻ Erneut versuchen",
     "backHome": "← Zurück zum Start",
-    "tip": "Wenn das Problem weiterhin besteht, versuchen Sie, den Browser-Cache zu leeren (Strg+Umschalt+R)."
+    "tip": "Wenn das Problem weiterhin besteht, versuchen Sie, den Browser-Cache zu leeren (Strg+Umschalt+R).",
+    "serverUnavailable": "Der Server hat nicht geantwortet. Versuchen Sie es in Kürze erneut."
+  },
+  "appHeader": {
+    "menuButton": "Menü",
+    "navigation": "Navigation",
+    "goldPanel": "Gold-Panel",
+    "goldPanelDesc": "Governance und Prüfungen",
+    "myProfile": "Mein Profil",
+    "menu": {
+      "opportunities": "Möglichkeiten",
+      "opportunitiesDesc": "Aktive Angebote und Geschäfte",
+      "verification": "Verifizierung",
+      "verificationDesc": "Identität und SIVC-Siegel",
+      "network": "Mein Netzwerk",
+      "networkDesc": "Ihre private Kontaktbasis",
+      "contexts": "Kontexte",
+      "contextsDesc": "Wo und wie Sie jede Person kennengelernt haben",
+      "meetings": "Meetings",
+      "meetingsDesc": "Aufnahmen und Transkripte",
+      "memory": "KI-Gedächtnis",
+      "memoryDesc": "Fragen Sie Ihren Verlauf",
+      "intelligentMatches": "Intelligente Verbindungen",
+      "intelligentMatchesDesc": "Vorschläge zwischen Ihren Kontakten"
+    }
   }
 }

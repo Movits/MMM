@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, BrainCircuit, Database, ExternalLink, FileText, Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { AppHeader } from "@/components/AppHeader";
+import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 
 // As sugestões são as perguntas-exemplo do próprio requisito da etapa 9: é
 // exatamente o que a validação vai digitar, então a tela ensina pelo exemplo.
@@ -19,10 +21,14 @@ const SUGGESTIONS = [
 const typeLabel: Record<string, string> = { contact: "Contato", context: "Contexto", meeting: "Reunião" };
 
 export default function Memory() {
+  // Só o título do header passa por t() por enquanto: o resto da tela é
+  // pt-BR fixo (dívida registrada), mas o menu global é compartilhado e o
+  // título ao lado dele precisa acompanhar o idioma escolhido.
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const [query, setQuery] = useState("");
-  const { data: status, isLoading: loadingStatus } = trpc.memory.status.useQuery();
+  const { data: status, isLoading: loadingStatus, isError: statusFalhou, error: erroDoStatus, refetch: recarregarStatus } = trpc.memory.status.useQuery();
   const reindex = trpc.memory.reindex.useMutation({
     onSuccess: async (result) => {
       await utils.memory.status.invalidate();
@@ -45,7 +51,7 @@ export default function Memory() {
     search.mutate({ query: clean });
   }
 
-  return <><AppHeader title="Memória IA" backTo="/dashboard"/>
+  return <><AppHeader title={t("appHeader.menu.memory")} backTo="/dashboard"/>
   <main className="min-h-screen px-4 py-8 md:px-8 text-white bg-transparent">
     <div className="max-w-5xl mx-auto">
       <section className="rounded-3xl border border-amber-400/20 bg-[radial-gradient(circle_at_top_right,rgba(245,166,35,.15),transparent_38%),rgba(8,18,31,.82)] p-6 md:p-9 overflow-hidden relative">
@@ -56,7 +62,9 @@ export default function Memory() {
         </div>
       </section>
 
-      <section className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[.035] p-4"><div className="flex items-center gap-3"><div className="grid place-items-center h-10 w-10 rounded-xl bg-amber-400/10 text-amber-300"><Database size={19}/></div><div><p className="text-sm font-semibold">Memória privada</p><p className="text-xs text-white/45">{loadingStatus ? "Conferindo sua memória…" : `${status?.documents ?? 0} registro(s) guardado(s)`}{status?.lastIndexedAt ? ` · atualizado em ${new Date(status.lastIndexedAt).toLocaleDateString("pt-BR")}` : ""}</p></div></div><button onClick={() => reindex.mutate()} disabled={reindex.isPending} className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300/30 px-3 py-2 text-sm text-amber-200 hover:bg-amber-300/10 disabled:opacity-50">{reindex.isPending ? <Loader2 size={16} className="animate-spin"/> : <RefreshCw size={16}/>}Atualizar memória</button></section>
+      {/* Consulta falhou não é "0 registro(s) guardado(s)": a memória existe,
+          o servidor é que não respondeu. */}
+      {statusFalhou ? <div className="mt-5"><ErroDeConsulta erro={erroDoStatus} aoTentarDeNovo={() => recarregarStatus()} /></div> : <section className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[.035] p-4"><div className="flex items-center gap-3"><div className="grid place-items-center h-10 w-10 rounded-xl bg-amber-400/10 text-amber-300"><Database size={19}/></div><div><p className="text-sm font-semibold">Memória privada</p><p className="text-xs text-white/45">{loadingStatus ? "Conferindo sua memória…" : `${status?.documents ?? 0} registro(s) guardado(s)`}{status?.lastIndexedAt ? ` · atualizado em ${new Date(status.lastIndexedAt).toLocaleDateString("pt-BR")}` : ""}</p></div></div><button onClick={() => reindex.mutate()} disabled={reindex.isPending} className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300/30 px-3 py-2 text-sm text-amber-200 hover:bg-amber-300/10 disabled:opacity-50">{reindex.isPending ? <Loader2 size={16} className="animate-spin"/> : <RefreshCw size={16}/>}Atualizar memória</button></section>}
 
       {search.isPending && <section className="mt-6 rounded-2xl border border-white/10 bg-white/[.035] p-10 text-center"><BrainCircuit className="mx-auto animate-pulse text-amber-300" size={34}/><h2 className="mt-4 font-semibold">Consultando sua memória privada…</h2><p className="mt-2 text-sm text-white/45">Procurando nos seus contatos, contextos e reuniões.</p></section>}
       {search.data && <section className="mt-6 space-y-5">{(search.data.pending ?? 0) > 0 && <div className="rounded-xl border border-sky-300/30 bg-sky-300/10 px-4 py-3 text-sm text-sky-100/85">Sua memória ainda está sendo indexada ({search.data.pending} registro(s) na fila) — os resultados podem estar incompletos. Pergunte de novo em instantes.</div>}{(search.data.truncated ?? 0) > 0 && <div className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100/85">{search.data.truncated} registro(s) ficaram fora da memória porque sua conta passou do limite de documentos — a busca não os enxerga.</div>}<div className="rounded-2xl border border-amber-400/20 bg-amber-400/[.06] p-5"><div className="flex items-center gap-2 text-amber-300"><Sparkles size={18}/><h2 className="font-semibold">Resposta baseada nos seus registros</h2></div><p className="mt-3 whitespace-pre-wrap leading-7 text-white/85">{search.data.answer}</p></div><div><h2 className="text-lg font-semibold mb-3">Fontes privadas utilizadas</h2>{search.data.hits.length ? <div className="grid md:grid-cols-2 gap-3">{search.data.hits.map((hit, index) => <article key={hit.id} className="rounded-2xl border border-white/10 bg-white/[.035] p-5"><div className="flex items-start justify-between gap-3"><div><span className="text-xs text-amber-300">[{index + 1}] {typeLabel[hit.sourceType] ?? hit.sourceType}</span><h3 className="font-semibold mt-1">{hit.title}</h3></div><span className="text-xs text-white/40">{Math.round(hit.score * 100)}% relevante</span></div><p className="mt-3 text-sm leading-6 text-white/55 line-clamp-4">{hit.content}</p>{typeof hit.metadata.href === "string" && <button onClick={() => navigate(hit.metadata.href as string)} className="mt-4 inline-flex items-center gap-1 text-sm text-amber-300 hover:text-amber-200">Abrir fonte <ExternalLink size={14}/></button>}</article>)}</div> : <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-white/45"><FileText className="mx-auto mb-3" size={25}/>Nenhuma fonte encontrada.</div>}</div></section>}

@@ -19,6 +19,11 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
 
 const createPrivateContact = vi.fn(async () => 7);
 const updatePrivateContact = vi.fn(async () => true);
+// O que getPrivateContactById devolve "antes" de um delete: é dali que o
+// router tira photoUrl/cardImageUrl para decidir o que sai do bucket.
+let contatoExistente: Record<string, unknown> | null = null;
+// Outro contato da dona ainda usa a imagem? Decide se o objeto sai do bucket.
+const imagemUsadaPorOutroContato = vi.fn(async () => false);
 const listVitrineColetiva = vi.fn(async () => [{ contatoRef: "a1b2c3d4e5", country: "Chile", city: "Santiago", possui: [], procura: [] }]);
 const getMatchesForUser = vi.fn(async () => [
   { matchId: 1, matchedUserId: 2, overallScore: 90 },
@@ -34,7 +39,8 @@ vi.mock("./db", async () => ({
   updatePrivateContact: (...args: unknown[]) => updatePrivateContact(...(args as [])),
   deletePrivateContact: async () => true,
   listPrivateContacts: async () => ({ data: [], total: 0 }),
-  getPrivateContactById: async () => null,
+  getPrivateContactById: async () => contatoExistente,
+  imagemUsadaPorOutroContato: (...args: unknown[]) => imagemUsadaPorOutroContato(...(args as [])),
   listVitrineColetiva: (...args: unknown[]) => listVitrineColetiva(...(args as [])),
   getMatchesForUser: (...args: unknown[]) => getMatchesForUser(...(args as [])),
   dismissMatch: async () => {},
@@ -51,6 +57,11 @@ vi.mock("./match-service", () => ({
   recalculatePrivateMatches: async () => ({ created: 0, updated: 0, removed: 0, total: 0 }),
   slugifyMatchTag: (v: string) => v.toLowerCase(),
 }));
+const storageDelete = vi.fn(async () => {});
+vi.mock("./storage", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./storage")>();
+  return { ...real, storageDelete: (...args: unknown[]) => storageDelete(...(args as [string])) };
+});
 
 const { networkRouter } = await import("./routers/network");
 const { profileMatchesRouter } = await import("./routers/profileMatches");
@@ -68,6 +79,41 @@ beforeEach(() => {
   hasValidConsent.mockClear(); hasValidConsent.mockResolvedValue(true);
   usersComConsentimento.mockClear();
   usersComConsentimento.mockImplementation(async (ids: number[]) => new Set(ids));
+  storageDelete.mockClear();
+  imagemUsadaPorOutroContato.mockClear(); imagemUsadaPorOutroContato.mockResolvedValue(false);
+  contatoExistente = null;
+});
+
+describe("Etapa 1/8 — imagem compartilhada por duas fichas da mesma dona fica no bucket", () => {
+  // A reverificação de 04/09 achou o modal de edição criando uma duplicata com
+  // o MESMO photoUrl; excluir a duplicata apagava o objeto e a foto do contato
+  // original quebrava (o proxy assina, o bucket devolve 404).
+  const rede = networkRouter.createCaller(ctx);
+  const foto = "/manus-storage/contacts/dona-1/foto_ana.jpg";
+
+  it("delete: outro contato da dona ainda usa a foto ⇒ o objeto NÃO sai do bucket", async () => {
+    contatoExistente = { id: 8, ownerId: "dona-1", photoUrl: foto, cardImageUrl: null };
+    imagemUsadaPorOutroContato.mockResolvedValue(true);
+    await rede.delete({ id: 8 });
+    expect(storageDelete).not.toHaveBeenCalled();
+    // A pergunta é feita na rede DESTA dona, sobre ESTA chave, excluindo a ficha que sai.
+    expect(imagemUsadaPorOutroContato).toHaveBeenCalledWith("dona-1", foto, 8);
+  });
+
+  it("delete: nenhum outro contato usa a foto ⇒ o objeto sai do bucket", async () => {
+    contatoExistente = { id: 8, ownerId: "dona-1", photoUrl: foto, cardImageUrl: null };
+    imagemUsadaPorOutroContato.mockResolvedValue(false);
+    await rede.delete({ id: 8 });
+    expect(storageDelete).toHaveBeenCalledTimes(1);
+    expect(storageDelete).toHaveBeenCalledWith("contacts/dona-1/foto_ana.jpg");
+  });
+
+  it("update trocando a foto: a velha fica se outra ficha ainda a usa", async () => {
+    contatoExistente = { id: 8, ownerId: "dona-1", photoUrl: foto, cardImageUrl: null };
+    imagemUsadaPorOutroContato.mockResolvedValue(true);
+    await rede.update({ id: 8, photoUrl: "/manus-storage/contacts/dona-1/foto_nova.jpg" });
+    expect(storageDelete).not.toHaveBeenCalled();
+  });
 });
 
 describe("Etapa 8 — o nível é escolha da dona", () => {

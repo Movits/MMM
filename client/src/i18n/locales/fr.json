@@ -1386,6 +1386,30 @@
     "errorIdLabel": "Code de référence :",
     "retryButton": "↻ Réessayer",
     "backHome": "← Retour à l'accueil",
-    "tip": "Si le problème persiste, essayez de vider le cache de votre navigateur (Ctrl+Shift+R)."
+    "tip": "Si le problème persiste, essayez de vider le cache de votre navigateur (Ctrl+Shift+R).",
+    "serverUnavailable": "Le serveur n’a pas répondu. Réessayez dans quelques instants."
+  },
+  "appHeader": {
+    "menuButton": "Menu",
+    "navigation": "Navigation",
+    "goldPanel": "Panneau Or",
+    "goldPanelDesc": "Gouvernance et validations",
+    "myProfile": "Mon Profil",
+    "menu": {
+      "opportunities": "Opportunités",
+      "opportunitiesDesc": "Propositions et affaires en cours",
+      "verification": "Vérification",
+      "verificationDesc": "Identité et sceau SIVC",
+      "network": "Mon réseau",
+      "networkDesc": "Votre base privée de contacts",
+      "contexts": "Contextes",
+      "contextsDesc": "Où et comment vous avez rencontré chaque personne",
+      "meetings": "Réunions",
+      "meetingsDesc": "Enregistrements et transcriptions",
+      "memory": "Mémoire IA",
+      "memoryDesc": "Interrogez votre historique",
+      "intelligentMatches": "Connexions intelligentes",
+      "intelligentMatchesDesc": "Suggestions entre vos contacts"
+    }
   }
 }
