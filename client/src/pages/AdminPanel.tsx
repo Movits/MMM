@@ -216,7 +216,7 @@ export default function AdminPanel() {
                 style={playfairStyle}
                 className="text-xl font-bold text-white hover:text-[#D4AF37] transition-colors"
               >
-                MMM<span className="text-[#D4AF37]">OS</span>
+                MMM
               </button>
               <p className="text-xs text-gray-400">Painel Administrativo Seguro</p>
             </div>

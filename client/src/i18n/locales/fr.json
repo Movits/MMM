@@ -108,18 +108,18 @@
   },
   "cta": {
     "title": "Prête à transformer votre avenir?",
-    "subtitle": "Rejoignez MMM OS et connectez-vous avec des femmes extraordinaires.",
+    "subtitle": "Rejoignez MMM et connectez-vous avec des femmes extraordinaires.",
     "button": "Créer un compte"
   },
   "footer": {
     "tagline": "Le pouvoir des femmes, ensemble.",
-    "rights": "© 2026 MMM OS. Tous droits réservés.",
+    "rights": "© 2026 MMM. Tous droits réservés.",
     "privacy": "Confidentialité",
     "terms": "Conditions",
     "contact": "Contact"
   },
   "onboarding": {
-    "title": "Bienvenue sur MMM OS",
+    "title": "Bienvenue sur MMM",
     "subtitle": "IA qui connecte des femmes extraordinaires",
     "step": "Étape {{current}} sur {{total}}",
     "next": "Suivant",
@@ -541,7 +541,7 @@
     "greetingTotal_two": "{{count}} opportunités compatibles trouvées pour vous",
     "greetingTotal_few": "{{count}} opportunités compatibles trouvées pour vous",
     "greetingTotal_many": "{{count}} opportunités compatibles trouvées pour vous",
-    "greetingWelcome": "Bienvenue sur MMM OS ! Générez vos premiers matches ci-dessous"
+    "greetingWelcome": "Bienvenue sur MMM ! Générez vos premiers matches ci-dessous"
   },
   "auth": {
     "login": "Se connecter",
@@ -649,7 +649,7 @@
     "label": "Gouvernance",
     "title1": "Une plateforme avec",
     "title2": "intégrité institutionnelle",
-    "subtitle": "L'accès à MMM OS ne s'achète pas. Il se conquiert.",
+    "subtitle": "L'accès à MMM ne s'achète pas. Il se conquiert.",
     "silver": {
       "title": "Membre Argent",
       "desc": "Toutes les femmes qui s'inscrivent sur la plateforme entrent en tant que Membres Argent. Accès complet au système de matching, aux opportunités publiques et aux connexions avec d'autres femmes du réseau.",

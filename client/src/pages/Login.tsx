@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Lock, Mail, ArrowRight, Shield, Sparkles } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function Login() {
   const { t } = useTranslation();
@@ -68,10 +69,7 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center mb-8" style={{ animation: "fadeInUp 0.4s ease-out both" }}>
           <Link href="/">
-            <span className="text-3xl font-black tracking-tight cursor-pointer inline-flex items-center gap-1">
-              <span className="text-white">MMM</span>
-              <span className="text-amber-400">OS</span>
-            </span>
+            <BrandLogo variante="destaque" className="w-56 max-w-[70%] mx-auto cursor-pointer" />
           </Link>
           <div className="flex items-center justify-center gap-1.5 mt-2">
             <Sparkles className="w-3.5 h-3.5 text-amber-400/60" />

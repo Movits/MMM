@@ -56,7 +56,7 @@ export const matchingRouter = router({
       messages: [
         {
           role: "system",
-          content: `Você é o motor de matchmaking semântico da plataforma MMM OS. Analise o perfil da usuária e as oportunidades disponíveis. Retorne um JSON com os índices das oportunidades mais compatíveis e o score de compatibilidade (0-100) para cada uma. Considere sinônimos, setores relacionados, necessidades implícitas e sinergia entre "O que tenho" e "O que preciso". Retorne apenas as oportunidades com score >= 40. Máximo de 10 resultados.`,
+          content: `Você é o motor de matchmaking semântico da plataforma MMM. Analise o perfil da usuária e as oportunidades disponíveis. Retorne um JSON com os índices das oportunidades mais compatíveis e o score de compatibilidade (0-100) para cada uma. Considere sinônimos, setores relacionados, necessidades implícitas e sinergia entre "O que tenho" e "O que preciso". Retorne apenas as oportunidades com score >= 40. Máximo de 10 resultados.`,
         },
         {
           role: "user",
@@ -165,7 +165,7 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
 
       const aiResp = await invokeLLM({
         messages: [
-          { role: "system", content: "Você é o motor de alertas do MMM OS. Analise uma oportunidade e os perfis de usuárias para identificar quem tem alta compatibilidade (>= 80%). Retorne apenas os índices dos perfis compatíveis com score >= 80." },
+          { role: "system", content: "Você é o motor de alertas do MMM. Analise uma oportunidade e os perfis de usuárias para identificar quem tem alta compatibilidade (>= 80%). Retorne apenas os índices dos perfis compatíveis com score >= 80." },
           { role: "user", content: `OPORTUNIDADE:\n${oppContext}\n\nPERFIS:\n${profilesContext}\n\nRetorne JSON: {"alerts": [{"index": 0, "score": 85}]}` },
         ],
         response_format: {

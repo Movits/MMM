@@ -10,6 +10,7 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/NotificationBell";
+import { BrandMark } from "@/components/BrandLogo";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { LANGUAGES } from "@/i18n";
@@ -162,9 +163,7 @@ export function AppHeader({ title, backTo, actions }: {
     <nav className="border-b border-white/[0.06] px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-40 bg-[#060e1a]/95 backdrop-blur-2xl">
       <div className="flex items-center gap-3 min-w-0">
         <Link href="/dashboard">
-          <span className="text-xl font-black cursor-pointer tracking-tight">
-            <span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span>
-          </span>
+          <BrandMark />
         </Link>
         {backTo && (
           <Link href={backTo}>

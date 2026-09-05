@@ -25,7 +25,7 @@
     "connections": "Erfolgreiche Verbindungen"
   },
   "steps": {
-    "title": "So funktioniert MMM OS",
+    "title": "So funktioniert MMM",
     "subtitle": "Einfach, sicher und effektiv",
     "step1": {
       "title": "Profil erstellen",
@@ -113,13 +113,13 @@
   },
   "footer": {
     "tagline": "Stärke weibliche Führungskräfte weltweit.",
-    "rights": "© 2026 MMM OS. Alle Rechte vorbehalten.",
+    "rights": "© 2026 MMM. Alle Rechte vorbehalten.",
     "privacy": "Datenschutz",
     "terms": "Nutzungsbedingungen",
     "contact": "Kontakt"
   },
   "onboarding": {
-    "title": "Willkommen bei MMM OS",
+    "title": "Willkommen bei MMM",
     "subtitle": "KI, die außergewöhnliche Frauen verbindet",
     "step": "Schritt {{current}} von {{total}}",
     "next": "Weiter",
@@ -541,7 +541,7 @@
     "greetingTotal_two": "{{count}} passende Möglichkeiten für Sie gefunden",
     "greetingTotal_few": "{{count}} passende Möglichkeiten für Sie gefunden",
     "greetingTotal_many": "{{count}} passende Möglichkeiten für Sie gefunden",
-    "greetingWelcome": "Willkommen bei MMM OS! Erstellen Sie unten Ihre ersten Matches"
+    "greetingWelcome": "Willkommen bei MMM! Erstellen Sie unten Ihre ersten Matches"
   },
   "auth": {
     "login": "Anmelden",
@@ -649,7 +649,7 @@
     "label": "Governance",
     "title1": "Eine Plattform mit",
     "title2": "institutioneller Integrität",
-    "subtitle": "Der Zugang zu MMM OS wird nicht gekauft. Er wird verdient.",
+    "subtitle": "Der Zugang zu MMM wird nicht gekauft. Er wird verdient.",
     "silver": {
       "title": "Silber-Mitglied",
       "desc": "Alle Frauen, die sich auf der Plattform registrieren, treten als Silber-Mitglieder bei. Vollständiger Zugang zum Matching-System, öffentlichen Möglichkeiten und Verbindungen mit anderen Frauen im Netzwerk.",

@@ -42,10 +42,7 @@ export default function NotFound() {
       >
         {/* Logo */}
         <Link href="/">
-          <span className="inline-block text-2xl font-black tracking-tight mb-10 cursor-pointer">
-            <span className="text-white">MMM</span>
-            <span className="text-[#f5a623]">OS</span>
-          </span>
+          <span className="inline-block text-2xl font-black tracking-tight mb-10 cursor-pointer text-white">MMM</span>
         </Link>
 
         {/* 404 number */}

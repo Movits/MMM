@@ -8,6 +8,11 @@
 <meta property="og:title" content="MMM | Mulheres que Movem o Mundo" />
 <meta property="og:description" content="CRM inteligente de networking para mulheres empreendedoras e líderes de negócios." />
 <meta property="og:type" content="website" />
+<meta property="og:image" content="https://movits.github.io/MMM/brand/og-image.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" type="image/png" sizes="32x32" href="brand/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="brand/favicon-16.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="brand/apple-touch-icon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -42,13 +47,14 @@
     backdrop-filter: blur(20px);
   }
   nav .wrap { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; padding-bottom: 14px; }
-  .logo { font-weight: 800; font-size: 20px; letter-spacing: -.02em; text-decoration: none; }
-  .logo .g { color: var(--gold); }
+  .logo { font-weight: 800; font-size: 20px; letter-spacing: -.02em; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+  .logo img { height: 28px; width: 28px; }
   .tag {
     font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600;
     color: var(--gold); border: 1px solid rgba(245,166,35,.25); background: rgba(245,166,35,.08);
-    padding: 3px 9px; border-radius: 999px; margin-left: 10px; vertical-align: 3px;
+    padding: 3px 9px; border-radius: 999px;
   }
+  .hero-lockup { width: 190px; height: auto; display: block; margin-bottom: 18px; }
   .btn {
     display: inline-flex; align-items: center; gap: 8px;
     background: var(--gold); color: #060e1a; font-weight: 700; font-size: 14px;
@@ -167,7 +173,7 @@
 
 <nav>
   <div class="wrap">
-    <a class="logo" href="#top">MMM<span class="g">OS</span><span class="tag">vitrine</span></a>
+    <a class="logo" href="#top"><img src="brand/monograma-branco.png" alt="" />MMM<span class="tag">vitrine</span></a>
     <a class="btn btn-ghost" href="https://github.com/Movits/MMM">Ver o código</a>
   </div>
 </nav>
@@ -175,6 +181,7 @@
 <header class="hero" id="top">
   <div class="wrap grid">
     <div>
+      <img class="hero-lockup" src="brand/lockup-branco-pt.png" alt="MMM — Mulheres que Movem o Mundo" />
       <div class="pill"><span class="dot"></span> Mulheres que Movem o Mundo</div>
       <h1>Cada contato guarda uma <span class="g">oportunidade</span>. A IA encontra qual.</h1>
       <p class="lede">
@@ -296,7 +303,7 @@
 
 <footer>
   <div class="wrap">
-    <p><strong style="color:rgba(255,255,255,.6)">MMM</strong><span style="color:#f5a623">OS</span> | Mulheres que Movem o Mundo</p>
+    <p style="display:flex;align-items:center;gap:10px"><img src="brand/lockup-branco-pt.png" alt="MMM" style="height:44px;width:auto;opacity:.85" /> Mulheres que Movem o Mundo</p>
     <p>Projeto em desenvolvimento</p>
     <a href="https://github.com/Movits/MMM">github.com/Movits/MMM</a>
   </div>

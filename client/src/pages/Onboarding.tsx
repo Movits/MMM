@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { BrainCircuit, CheckCircle } from "lucide-react";
+import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
 import { formatCnpj, isValidCnpj } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
@@ -433,7 +434,7 @@ export default function Onboarding() {
             gradiente local no lugar da imagem de fundo. */}
         <div className="absolute inset-0 opacity-40" style={{ background: "radial-gradient(ellipse at 20% 15%, rgba(245,166,35,0.18), transparent 55%), radial-gradient(ellipse at 85% 80%, rgba(59,130,246,0.14), transparent 50%)" }}/>
         <div className="relative z-10 mb-12">
-          <span className="text-2xl font-black"><span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span></span>
+          <BrandLogo variante="lockup" className="w-40" />
         </div>
         <div className="relative z-10 flex-1 overflow-y-auto">
           {STEPS.map((s) => {
@@ -467,7 +468,7 @@ export default function Onboarding() {
           <div className="h-full bg-gradient-to-r from-[#f5a623] to-[#ffd166] transition-all duration-500 ease-out" style={{ width: `${progress}%` }}/>
         </div>
         <div className="lg:hidden flex items-center justify-between px-6 py-4 border-b border-white/5">
-          <span className="text-2xl font-black"><span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span></span>
+          <BrandMark />
           <span className="text-sm text-white/40">{step} / {STEPS.length}</span>
         </div>
 

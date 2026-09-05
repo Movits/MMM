@@ -541,7 +541,7 @@
     "greetingTotal_two": "{{count}} oportunidades compatíveis encontradas para você",
     "greetingTotal_few": "{{count}} oportunidades compatíveis encontradas para você",
     "greetingTotal_many": "{{count}} oportunidades compatíveis encontradas para você",
-    "greetingWelcome": "Bem-vinda ao MMM OS! Gere seus primeiros matches abaixo"
+    "greetingWelcome": "Bem-vinda ao MMM! Gere seus primeiros matches abaixo"
   },
   "auth": {
     "login": "Fazer login",
@@ -649,7 +649,7 @@
     "label": "Governança",
     "title1": "Uma plataforma com",
     "title2": "regras claras e confiança",
-    "subtitle": "O acesso na MMM OS não se compra. Ele se conquista.",
+    "subtitle": "O acesso na MMM não se compra. Ele se conquista.",
     "silver": {
       "title": "Membro Prata",
       "desc": "Todas as mulheres que se cadastram na plataforma entram como Membros Prata. Acesso completo ao sistema de matching, oportunidades públicas e conexões com outras mulheres da rede.",

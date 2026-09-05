@@ -228,7 +228,7 @@ describe("Dashboard em inglês — nada em português fixo", () => {
     await i18n.changeLanguage("en");
     render(<Dashboard />);
 
-    expect(screen.getByText("Welcome to MMM OS! Generate your first matches below")).toBeInTheDocument();
+    expect(screen.getByText("Welcome to MMM! Generate your first matches below")).toBeInTheDocument();
     // O banner entra meio segundo depois (tempo real: por isso a ESPERA de 3 s).
     expect(await screen.findByText("Congratulations! You received the Gold Seal!", {}, ESPERA)).toBeInTheDocument();
     expect(screen.getByText(/Gold Institutional Exclusivity Seal/)).toBeInTheDocument();

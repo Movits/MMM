@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, KeyRound, Loader2, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function ResetPassword() {
   const { t } = useTranslation();
@@ -88,10 +89,7 @@ export default function ResetPassword() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/">
-            <span className="text-3xl font-black tracking-tight cursor-pointer">
-              <span className="text-foreground">MMM</span>
-              <span className="text-amber-500">OS</span>
-            </span>
+            <BrandLogo variante="lockup" className="w-44 mx-auto cursor-pointer" />
           </Link>
         </div>
 

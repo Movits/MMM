@@ -14,7 +14,7 @@ describe("Email Service", () => {
     expect(html).toContain("https://mmmos.space/reset-password?token=abc123");
     expect(html).toContain("Redefinição de senha");
     expect(html).toContain("1 hora");
-    expect(html).toContain("MMM OS");
+    expect(html).toContain("MMM");
 
     // Verificar que o texto plano também está correto
     expect(text).toContain("Maria Silva");

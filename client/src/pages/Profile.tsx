@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BrandMark } from "@/components/BrandLogo";
 import { toast } from "sonner";
 import { formatCnpj, isValidCnpj, maskCnpj } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
@@ -252,9 +253,7 @@ export default function Profile() {
           </span>
         </Link>
         <Link href="/dashboard">
-          <span className="text-xl font-black cursor-pointer">
-            <span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span>
-          </span>
+          <BrandMark />
         </Link>
         {editing ? (
           <div className="flex items-center gap-2">
