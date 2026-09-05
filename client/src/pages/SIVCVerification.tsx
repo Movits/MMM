@@ -3,6 +3,7 @@
  * Página de verificação de identidade com upload de documentos e painel de status
  */
 import { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -207,6 +208,10 @@ function ModuleCard({
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function SIVCVerification() {
+  // Só o título do header passa por t() por enquanto: o resto da tela é
+  // pt-BR fixo (dívida registrada), mas o menu global é compartilhado e o
+  // título ao lado dele precisa acompanhar o idioma escolhido.
+  const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [consentChecked, setConsentChecked] = useState(false);
@@ -249,7 +254,7 @@ export default function SIVCVerification() {
   if (!hasVerification) {
     return (
       <div className="min-h-screen bg-transparent text-white">
-        <AppHeader title="Verificação" backTo="/dashboard"/>
+        <AppHeader title={t("appHeader.menu.verification")} backTo="/dashboard"/>
         <div className="max-w-2xl mx-auto px-4 py-12">
           {/* Header */}
           <div className="text-center mb-10">
@@ -357,7 +362,7 @@ export default function SIVCVerification() {
 
   return (
     <div className="min-h-screen bg-transparent text-white">
-        <AppHeader title="Verificação" backTo="/dashboard"/>
+        <AppHeader title={t("appHeader.menu.verification")} backTo="/dashboard"/>
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header com score */}
         <div className="flex flex-col md:flex-row items-center gap-6 mb-8 p-6 rounded-2xl border border-zinc-800 bg-zinc-900">

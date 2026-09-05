@@ -1386,6 +1386,30 @@
     "errorIdLabel": "Код ошибки:",
     "retryButton": "↻ Попробовать снова",
     "backHome": "← Вернуться на главную",
-    "tip": "Если проблема сохраняется, попробуйте очистить кэш браузера (Ctrl+Shift+R)."
+    "tip": "Если проблема сохраняется, попробуйте очистить кэш браузера (Ctrl+Shift+R).",
+    "serverUnavailable": "Сервер не ответил. Попробуйте ещё раз через несколько секунд."
+  },
+  "appHeader": {
+    "menuButton": "Меню",
+    "navigation": "Навигация",
+    "goldPanel": "Золотая панель",
+    "goldPanelDesc": "Управление и проверки",
+    "myProfile": "Мой профиль",
+    "menu": {
+      "opportunities": "Возможности",
+      "opportunitiesDesc": "Активные предложения и сделки",
+      "verification": "Верификация",
+      "verificationDesc": "Личность и печать SIVC",
+      "network": "Моя сеть",
+      "networkDesc": "Ваша личная база контактов",
+      "contexts": "Контексты",
+      "contextsDesc": "Где и как вы познакомились с каждым человеком",
+      "meetings": "Встречи",
+      "meetingsDesc": "Записи и транскрипции",
+      "memory": "Память ИИ",
+      "memoryDesc": "Спросите свою историю",
+      "intelligentMatches": "Умные связи",
+      "intelligentMatchesDesc": "Подсказки между вашими контактами"
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -330,7 +331,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
   const [showParticipantForm, setShowParticipantForm] = useState(false);
   const [partName, setPartName] = useState(""); const [partCompany, setPartCompany] = useState(""); const [partRole, setPartRole] = useState("");
 
-  const { data, isLoading, refetch } = trpc.contexts.get.useQuery({ id: contextId });
+  const { data, isLoading, isError, error, refetch } = trpc.contexts.get.useQuery({ id: contextId });
   const unlinkMut = trpc.contexts.unlinkContact.useMutation({
     onSuccess: () => { toast.success(t("contexts.toastVinculoRemovido")); refetch(); },
   });
@@ -383,6 +384,24 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
   if (isLoading) return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <div className="w-8 h-8 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin" />
+    </div>
+  );
+  // Consulta falhou não é "nada a mostrar": o `return null` abaixo sumia com o
+  // modal em silêncio e o card clicado parecia morto. Aqui a usuária vê o que
+  // houve, tenta de novo ou volta (molde: o detalhe de Meetings).
+  if (isError) return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full max-w-lg bg-[#0a1628] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/10">
+          <button onClick={onClose} className="text-white/40 hover:text-white/70 flex items-center gap-1.5 text-sm">
+            <ChevronLeft size={16} /> {t("contexts.voltarContextos")}
+          </button>
+        </div>
+        <div className="p-4">
+          <ErroDeConsulta erro={error} aoTentarDeNovo={() => refetch()} />
+        </div>
+      </div>
     </div>
   );
   if (!data) return null;
@@ -580,10 +599,19 @@ export default function Contexts() {
   };
 
   const { data: types } = trpc.contexts.listTypes.useQuery(undefined, { enabled: isAuthenticated });
-  const { data, isLoading, refetch } = trpc.contexts.list.useQuery(
+  const { data, isLoading, isError, error, refetch } = trpc.contexts.list.useQuery(
     { q: debouncedSearch || undefined, typeSlug: filterType || undefined, page, limit: 20 },
     { enabled: isAuthenticated }
   );
+
+  // Mesmo defeito da Rede: apagar o único contexto da última página deixava
+  // a consulta presa numa página que não existe mais, sem paginação para
+  // voltar. Quando o total cai abaixo da página atual, volta para a última.
+  useEffect(() => {
+    if (data && page > 1 && page > Math.max(1, Math.ceil(data.total / 20))) {
+      setPage(Math.max(1, Math.ceil(data.total / 20)));
+    }
+  }, [data, page]);
 
   const createMut = trpc.contexts.create.useMutation({
     onSuccess: () => { toast.success(t("contexts.toastContextoCriado")); setShowForm(false); refetch(); },
@@ -680,14 +708,18 @@ export default function Contexts() {
           ))}
         </div>
 
-        {/* Contador */}
-        {!isLoading && (
+        {/* Contador — some em erro: não há número a afirmar. */}
+        {!isLoading && !isError && (
           <p className="text-xs text-white/30">{total === 0 ? t("contexts.nenhumContextoEncontrado") : t("contexts.contadorContextos", { count: total })}</p>
         )}
 
         {/* Lista */}
         {isLoading ? (
           <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 rounded-2xl bg-white/5 animate-pulse" />)}</div>
+        ) : isError ? (
+          // Consulta falhou não é "nenhum contexto ainda" (regra: banco fora
+          // do ar é erro, nunca "sem dados").
+          <ErroDeConsulta erro={error} aoTentarDeNovo={() => refetch()} />
         ) : ctxList.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">

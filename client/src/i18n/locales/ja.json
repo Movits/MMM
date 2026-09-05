@@ -1386,6 +1386,30 @@
     "errorIdLabel": "参照コード：",
     "retryButton": "↻ もう一度試す",
     "backHome": "← ホームに戻る",
-    "tip": "問題が解決しない場合は、ブラウザのキャッシュを削除してみてください（Ctrl+Shift+R）。"
+    "tip": "問題が解決しない場合は、ブラウザのキャッシュを削除してみてください（Ctrl+Shift+R）。",
+    "serverUnavailable": "サーバーが応答しませんでした。しばらくしてからもう一度お試しください。"
+  },
+  "appHeader": {
+    "menuButton": "メニュー",
+    "navigation": "ナビゲーション",
+    "goldPanel": "ゴールドパネル",
+    "goldPanelDesc": "ガバナンスと承認",
+    "myProfile": "マイプロフィール",
+    "menu": {
+      "opportunities": "機会",
+      "opportunitiesDesc": "進行中の提案と商談",
+      "verification": "認証",
+      "verificationDesc": "本人確認と SIVC 認証マーク",
+      "network": "マイネットワーク",
+      "networkDesc": "あなたの非公開の連絡先",
+      "contexts": "コンテキスト",
+      "contextsDesc": "それぞれの人といつどこで出会ったか",
+      "meetings": "ミーティング",
+      "meetingsDesc": "録音と文字起こし",
+      "memory": "AI メモリー",
+      "memoryDesc": "あなたの履歴に質問する",
+      "intelligentMatches": "スマートコネクション",
+      "intelligentMatchesDesc": "連絡先どうしのマッチング提案"
+    }
   }
 }

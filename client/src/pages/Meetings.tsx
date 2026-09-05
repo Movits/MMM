@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { LANGUAGES } from "@/i18n";
 import { AppHeader } from "@/components/AppHeader";
+import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 import { segmentarTranscricao, TIPOS_DE_ENTIDADE, type TipoEntidade } from "@/lib/transcricao-destacada";
 
 const MAX_DURATION = 10 * 60;
@@ -73,7 +74,7 @@ export default function Meetings() {
   const { t } = useTranslation();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
-  const { data: meetings, isLoading } = trpc.meetings.list.useQuery();
+  const { data: meetings, isLoading, isError, error, refetch } = trpc.meetings.list.useQuery();
   const [screen, setScreen] = useState<"list" | "new" | "detail">("list");
   const [meetingId, setMeetingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -241,7 +242,7 @@ export default function Meetings() {
         <button onClick={() => setScreen("new")} className="inline-flex justify-center items-center gap-2 rounded-xl bg-[#f5a623] text-[#08121f] font-bold px-5 py-3 hover:bg-[#ffc04d]"><Plus size={18}/> {t("meetings.newMeetingButton")}</button>
       </div>
       <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100/80 mb-7"><CircleAlert size={17} className="inline mr-2"/>{t("meetings.consentNotice")}</div>
-      {isLoading ? <div className="py-20 text-center text-white/45"><Loader2 className="animate-spin inline mr-2"/>{t("meetings.loadingList")}</div> : !meetings?.length ? <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center"><Mic className="mx-auto text-amber-300 mb-4" size={34}/><h2 className="font-semibold text-xl">{t("meetings.emptyTitle")}</h2><p className="text-white/45 mt-2">{t("meetings.emptySubtitle")}</p></div> : <div className="grid gap-3">{meetings.map(meeting => <button key={meeting.id} onClick={() => { setMeetingId(meeting.id); setScreen("detail"); }} className="text-left rounded-2xl border border-white/10 bg-white/[0.035] hover:bg-white/[0.07] p-5 transition-colors"><div className="flex items-center justify-between gap-4"><div><h2 className="font-semibold">{meeting.title}</h2><p className="text-xs text-white/45 mt-1">{new Date(meeting.createdAt).toLocaleString("pt-BR")}</p></div><span className={`border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(t, meeting.status)}</span></div></button>)}</div>}
+      {isLoading ? <div className="py-20 text-center text-white/45"><Loader2 className="animate-spin inline mr-2"/>{t("meetings.loadingList")}</div> : isError ? <ErroDeConsulta erro={error} aoTentarDeNovo={() => refetch()} /> : !meetings?.length ? <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center"><Mic className="mx-auto text-amber-300 mb-4" size={34}/><h2 className="font-semibold text-xl">{t("meetings.emptyTitle")}</h2><p className="text-white/45 mt-2">{t("meetings.emptySubtitle")}</p></div> : <div className="grid gap-3">{meetings.map(meeting => <button key={meeting.id} onClick={() => { setMeetingId(meeting.id); setScreen("detail"); }} className="text-left rounded-2xl border border-white/10 bg-white/[0.035] hover:bg-white/[0.07] p-5 transition-colors"><div className="flex items-center justify-between gap-4"><div><h2 className="font-semibold">{meeting.title}</h2><p className="text-xs text-white/45 mt-1">{new Date(meeting.createdAt).toLocaleString("pt-BR")}</p></div><span className={`border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(t, meeting.status)}</span></div></button>)}</div>}
     </div>
   </main></>;
 }
@@ -269,10 +270,13 @@ function MeetingRecorder(props: { title: string; setTitle: (value: string) => vo
 function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () => void }) {
   const utils = trpc.useUtils();
   const { t, i18n } = useTranslation();
-  const { data, isLoading } = trpc.meetings.get.useQuery({ meetingId });
+  const { data, isLoading, isError, error, refetch } = trpc.meetings.get.useQuery({ meetingId });
   const [tab, setTab] = useState<"summary" | "transcript" | "contacts">("summary");
   const [falhaNoAudio, setFalhaNoAudio] = useState(false);
-  const initialLanguage = LANGUAGES.some(language => language.code === i18n.language) ? i18n.language : "pt-BR";
+  // O idioma RESOLVIDO: o pedido pode ser regional ("en-US") e cair fora da
+  // lista, mandando a tradução para pt-BR com a tela em inglês.
+  const idiomaAtual = i18n.resolvedLanguage ?? i18n.language;
+  const initialLanguage = LANGUAGES.some(language => language.code === idiomaAtual) ? idiomaAtual : "pt-BR";
   const [translationLanguage, setTranslationLanguage] = useState(initialLanguage);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const decideEntity = trpc.meetings.decideEntity.useMutation({ onSuccess: () => utils.meetings.get.invalidate({ meetingId }) });
@@ -291,6 +295,13 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
     translateTranscript.mutate({ meetingId, language: translationLanguage as "en" | "es" | "fr" | "de" | "ar" | "zh" | "hi" | "ja" | "ru" });
   }, [data?.transcript?.id, meetingId, translationLanguage]);
 
+  // Erro antes do spinner: com isLoading false e data undefined a consulta
+  // falhada caía no ramo abaixo e a usuária via um círculo girando para
+  // sempre, sem saber que a reunião existe e o servidor é que não respondeu.
+  if (isError) return <main className="min-h-screen p-4 md:p-8 text-white bg-transparent"><div className="max-w-5xl mx-auto">
+    <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-white/55 hover:text-white mb-6"><ArrowLeft size={16}/> {t("meetings.allMeetings")}</button>
+    <ErroDeConsulta erro={error} aoTentarDeNovo={() => refetch()} />
+  </div></main>;
   if (isLoading || !data) return <main className="min-h-screen grid place-items-center text-white"><Loader2 className="animate-spin"/></main>;
   const { meeting, transcript, entities, suggestions, recording, recordingExpired } = data;
   const displayTranscript = translationLanguage === "pt-BR" ? transcript?.transcript : translatedText;

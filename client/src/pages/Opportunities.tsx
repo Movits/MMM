@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 import { useTranslation } from "react-i18next";
 import { opportunitySectorLabel } from "@/lib/opportunity-sectors";
 import { Badge } from "@/components/ui/badge";
@@ -270,13 +271,13 @@ export default function Opportunities() {
   const [showSaved, setShowSaved] = useState(false);
 
   // Buscar IDs das oportunidades salvas para mostrar o ícone amarelo nos cards
-  const { data: savedData, refetch: refetchSaved } = trpc.opportunities.saved.useQuery(
+  const { data: savedData, refetch: refetchSaved, isError: salvasFalharam, error: erroDasSalvas } = trpc.opportunities.saved.useQuery(
     undefined,
     { enabled: !!user }
   );
   const savedIds = new Set<number>((savedData ?? []).map((s: any) => s.opportunity?.id ?? s.id).filter(Boolean));
 
-  const { data: opps, isLoading } = trpc.opportunities.list.useQuery({
+  const { data: opps, isLoading, isError: listaFalhou, error: erroDaLista, refetch: recarregarLista } = trpc.opportunities.list.useQuery({
     search: search || undefined,
     type: type !== "all" ? (type as any) : undefined,
     complianceLevel: complianceLevel !== "all" ? (complianceLevel as any) : undefined,
@@ -287,12 +288,12 @@ export default function Opportunities() {
   // Etapa 8 — a vitrine coletiva: oportunidades dos contatos que as membras
   // marcaram como públicos. Só o que possui/procura, cidade e país — o servidor
   // nem seleciona os dados pessoais.
-  const { data: vitrine } = trpc.network.vitrine.useQuery(undefined, { enabled: !!user });
+  const { data: vitrine, isError: vitrineFalhou, error: erroDaVitrine, refetch: recarregarVitrine } = trpc.network.vitrine.useQuery(undefined, { enabled: !!user });
 
   // Etapa 10 — o acervo Ouro: contatos que as donas marcaram "Compartilhado
   // com Usuários Ouro". A rota é goldProcedure; aqui só evitamos a chamada
   // (e o erro FORBIDDEN no console) para quem não é Ouro.
-  const { data: acervoOuro } = trpc.network.acervoOuro.useQuery(undefined, { enabled: isGold });
+  const { data: acervoOuro, isError: acervoFalhou, error: erroDoAcervo, refetch: recarregarAcervo } = trpc.network.acervoOuro.useQuery(undefined, { enabled: isGold });
 
   return (
     <div className="min-h-screen bg-transparent text-white">
@@ -440,7 +441,9 @@ export default function Opportunities() {
               <h2 className="text-white font-semibold text-sm">{t("opportunitiesPage.savedTitle")}</h2>
               <span className="text-white/40 text-xs">({savedIds.size})</span>
             </div>
-            {!savedData || savedIds.size === 0 ? (
+            {salvasFalharam ? (
+              <ErroDeConsulta erro={erroDasSalvas} aoTentarDeNovo={() => refetchSaved()} />
+            ) : !savedData || savedIds.size === 0 ? (
               <div className="text-center py-20">
                 <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
                   <Bookmark size={24} className="text-white/20" />
@@ -472,6 +475,10 @@ export default function Opportunities() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => <OpportunitySkeleton key={i} />)}
           </div>
+        ) : listaFalhou ? (
+          // Consulta falhou não é "nenhuma oportunidade encontrada" (regra:
+          // banco fora do ar é erro, nunca "sem dados").
+          <ErroDeConsulta erro={erroDaLista} aoTentarDeNovo={() => recarregarLista()} />
         ) : !opps?.length ? (
           <div className="text-center py-20">
             <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
@@ -497,6 +504,15 @@ export default function Opportunities() {
               />
             ))}
           </div>
+        )}
+
+        {/* A vitrine e o acervo somem em silêncio quando a consulta falha —
+            aqui o erro fica visível no lugar da seção. */}
+        {!showSaved && vitrineFalhou && (
+          <div className="mt-10"><ErroDeConsulta erro={erroDaVitrine} aoTentarDeNovo={() => recarregarVitrine()} /></div>
+        )}
+        {!showSaved && isGold && acervoFalhou && (
+          <div className="mt-10"><ErroDeConsulta erro={erroDoAcervo} aoTentarDeNovo={() => recarregarAcervo()} /></div>
         )}
 
         {/* Vitrine do ecossistema (etapa 8): contatos públicos, sem dados pessoais */}

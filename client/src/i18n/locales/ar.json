@@ -1386,6 +1386,30 @@
     "errorIdLabel": "رمز المرجع:",
     "retryButton": "↻ إعادة المحاولة",
     "backHome": "← العودة إلى البداية",
-    "tip": "إذا استمرت المشكلة، جربي مسح ذاكرة التخزين المؤقت للمتصفح (Ctrl+Shift+R)."
+    "tip": "إذا استمرت المشكلة، جربي مسح ذاكرة التخزين المؤقت للمتصفح (Ctrl+Shift+R).",
+    "serverUnavailable": "لم يستجب الخادم. حاولي مرة أخرى بعد قليل."
+  },
+  "appHeader": {
+    "menuButton": "القائمة",
+    "navigation": "التنقل",
+    "goldPanel": "اللوحة الذهبية",
+    "goldPanelDesc": "الحوكمة والتحقق",
+    "myProfile": "ملفي الشخصي",
+    "menu": {
+      "opportunities": "الفرص",
+      "opportunitiesDesc": "العروض والصفقات النشطة",
+      "verification": "التحقق",
+      "verificationDesc": "الهوية وختم SIVC",
+      "network": "شبكتي",
+      "networkDesc": "قاعدة جهات اتصالك الخاصة",
+      "contexts": "السياقات",
+      "contextsDesc": "أين وكيف تعرفتِ على كل شخص",
+      "meetings": "الاجتماعات",
+      "meetingsDesc": "التسجيلات والنصوص المفرّغة",
+      "memory": "ذاكرة الذكاء الاصطناعي",
+      "memoryDesc": "اسألي سجلّك",
+      "intelligentMatches": "الاتصالات الذكية",
+      "intelligentMatchesDesc": "اقتراحات بين جهات اتصالك"
+    }
   }
 }

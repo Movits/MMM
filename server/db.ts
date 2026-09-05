@@ -657,6 +657,33 @@ export async function getPrivateContactById(
   return row ?? null;
 }
 
+/**
+ * Outro contato da MESMA dona ainda aponta para esta imagem (foto ou cartão)?
+ * Uma duplicata pode nascer com a mesma chave no bucket (o modal de edição
+ * chegou a criar uma; um cadastro repetido a partir da mesma foto faria o
+ * mesmo). Apagar o objeto ao excluir ou trocar a foto de UM contato quebraria
+ * a foto do outro: o proxy assina, o bucket devolve 404. Filtrado por ownerId
+ * como toda consulta da rede: a pergunta é sobre a rede desta dona, não sobre
+ * o bucket inteiro.
+ */
+export async function imagemUsadaPorOutroContato(
+  ownerId: string,
+  storagePath: string,
+  exceptoId: number
+): Promise<boolean> {
+  const db = await exigirDb();
+  const [row] = await db
+    .select({ id: privateContacts.id })
+    .from(privateContacts)
+    .where(and(
+      eq(privateContacts.ownerId, ownerId),
+      or(eq(privateContacts.photoUrl, storagePath), eq(privateContacts.cardImageUrl, storagePath)),
+      ne(privateContacts.id, exceptoId),
+    ))
+    .limit(1);
+  return Boolean(row);
+}
+
 export async function updatePrivateContact(
   ownerId: string,
   contactId: number,

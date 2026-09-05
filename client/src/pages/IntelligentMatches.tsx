@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { AppHeader } from "@/components/AppHeader";
+import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 import { SmartMatchConsent } from "@/components/SmartMatchConsent";
 import { analisarTermo } from "@shared/direcao-do-termo";
 
@@ -45,8 +46,8 @@ export default function IntelligentMatches() {
   const authorized = consent?.accepted ?? false;
   const [verHistorico, setVerHistorico] = useState(false);
   const { data: historico = [] } = trpc.consent.history.useQuery(undefined, { enabled: authorized });
-  const { data: matches = [], isLoading } = trpc.intelligentMatches.list.useQuery(undefined, { enabled: authorized });
-  const { data: contacts = [] } = trpc.intelligentMatches.contacts.useQuery(undefined, { enabled: authorized });
+  const { data: matches = [], isLoading, isError: matchesFalharam, error: erroDosMatches, refetch: recarregarMatches } = trpc.intelligentMatches.list.useQuery(undefined, { enabled: authorized });
+  const { data: contacts = [], isError: contatosFalharam, error: erroDosContatos, refetch: recarregarContatos } = trpc.intelligentMatches.contacts.useQuery(undefined, { enabled: authorized });
   const revoke = trpc.consent.revoke.useMutation({
     onSuccess: () => { utils.consent.status.invalidate(); toast.success(t("intelligentMatches.toastRevogado")); },
     onError: error => toast.error(error.message || t("intelligentMatches.erroRevogar")),
@@ -173,6 +174,11 @@ export default function IntelligentMatches() {
                 </strong>.</>}
         </p>
 
+        {/* Sem isto, a lista de contatos falhando virava um seletor vazio:
+            parecia que a rede não tinha ninguém para registrar. */}
+        {contatosFalharam && (
+          <div className="mb-3"><ErroDeConsulta erro={erroDosContatos} aoTentarDeNovo={() => recarregarContatos()} /></div>
+        )}
         <form onSubmit={submitEntry} className="grid gap-3 md:grid-cols-4">
           <select
             value={contactId}
@@ -242,6 +248,10 @@ export default function IntelligentMatches() {
       </section>
       {isLoading ? (
         <p className="py-16 text-center text-white/45">{t("intelligentMatches.carregandoOportunidades")}</p>
+      ) : matchesFalharam ? (
+        // Consulta falhou não é "sem oportunidades" (regra: banco fora do ar
+        // é erro, nunca "sem dados").
+        <ErroDeConsulta erro={erroDosMatches} aoTentarDeNovo={() => recarregarMatches()} />
       ) : !matches.length ? (
         <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center">
           <Sparkles className="mx-auto mb-4 text-amber-300" size={34}/>

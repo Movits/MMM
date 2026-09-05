@@ -12,6 +12,7 @@ import { LANGUAGES } from "@/i18n";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SmartMatchConsent } from "@/components/SmartMatchConsent";
 import { GlobalMenu } from "@/components/AppHeader";
+import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -438,7 +439,10 @@ function SkeletonCard() {
 function LangSelectorMini() {
   const { i18n } = useTranslation();
   const [open, setOpen] = useState(false);
-  const current = LANGUAGES.find(l => l.code === i18n.language) ?? LANGUAGES[0];
+  // O idioma RESOLVIDO: o pedido pode ser regional ("en-US") e não existir
+  // na lista — a bandeira ficava no Brasil com a tela em inglês.
+  const idiomaAtual = i18n.resolvedLanguage ?? i18n.language;
+  const current = LANGUAGES.find(l => l.code === idiomaAtual) ?? LANGUAGES[0];
   return (
     <div className="relative">
       <button onClick={() => setOpen(o => !o)}
@@ -454,7 +458,7 @@ function LangSelectorMini() {
               <button key={lang.code}
                 onClick={() => { i18n.changeLanguage(lang.code); setOpen(false); }}
                 className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors text-left ${
-                  lang.code === i18n.language ? "bg-[#f5a623]/20 text-[#f5a623]" : "text-white/60 hover:bg-white/10 hover:text-white"
+                  lang.code === idiomaAtual ? "bg-[#f5a623]/20 text-[#f5a623]" : "text-white/60 hover:bg-white/10 hover:text-white"
                 }`}>
                 <span>{lang.flag}</span><span>{lang.label}</span>
               </button>
@@ -536,16 +540,10 @@ function RecommendedOpportunities() {
         </div>
       )}
 
-      {/* Erro da consulta: não é culpa do perfil da usuária */}
+      {/* Erro da consulta: não é culpa do perfil da usuária. Este bloco foi o
+          molde do ErroDeConsulta; agora usa o componente (e sai traduzido). */}
       {!recommendedQuery.isLoading && recommendedQuery.isError && (
-        <div className="bg-[#0d1530] border border-white/8 rounded-2xl p-8 text-center">
-          <div className="text-4xl mb-3">📡</div>
-          <p className="text-white/40 text-sm">Não foi possível carregar as recomendações agora. Tente novamente em instantes.</p>
-          <button onClick={() => recommendedQuery.refetch()}
-            className="mt-4 px-5 py-2 rounded-xl text-xs font-semibold border border-[#f5a623]/30 text-[#f5a623] hover:bg-[#f5a623]/8 transition-colors">
-            Tentar de novo
-          </button>
-        </div>
+        <ErroDeConsulta erro={recommendedQuery.error} aoTentarDeNovo={() => recommendedQuery.refetch()} />
       )}
 
       {/* Lista realmente vazia */}
@@ -647,17 +645,21 @@ function DealRoomsTab() {
   const isGold = user?.role === "gold" || user?.role === "president" || user?.role === "admin";
   const [viewAll, setViewAll] = useState(false);
 
-  const { data: rooms = [], isLoading } = trpc.dealRoom.listRooms.useQuery(undefined, {
+  const { data: rooms = [], isLoading, isError: salasFalharam, error: erroDasSalas, refetch: recarregarSalas } = trpc.dealRoom.listRooms.useQuery(undefined, {
     enabled: isAuthenticated,
     refetchInterval: 30_000,
   });
-  const { data: allRooms = [], isLoading: isLoadingAll } = trpc.dealRoom.listAllRooms.useQuery(undefined, {
+  const { data: allRooms = [], isLoading: isLoadingAll, isError: todasFalharam, error: erroDeTodas, refetch: recarregarTodas } = trpc.dealRoom.listAllRooms.useQuery(undefined, {
     enabled: isAuthenticated && isGold && viewAll,
     refetchInterval: 30_000,
   });
 
   const displayRooms = (isGold && viewAll ? allRooms : rooms) as any[];
   const isLoadingDisplay = isGold && viewAll ? isLoadingAll : isLoading;
+  // A consulta que a aba está mostrando: erro nela não é "nenhuma sala".
+  const consultaExibida = isGold && viewAll
+    ? { falhou: todasFalharam, erro: erroDeTodas, recarregar: recarregarTodas }
+    : { falhou: salasFalharam, erro: erroDasSalas, recarregar: recarregarSalas };
 
   if (isLoadingDisplay) {
     return (
@@ -696,7 +698,9 @@ function DealRoomsTab() {
         </div>
       )}
 
-      {displayRooms.length === 0 ? (
+      {consultaExibida.falhou ? (
+        <ErroDeConsulta erro={consultaExibida.erro} aoTentarDeNovo={() => consultaExibida.recarregar()} />
+      ) : displayRooms.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-5xl mb-4">🔐</div>
           <h3 className="text-xl font-black mb-2">{viewAll ? "Nenhuma sala de negociação na plataforma" : "Nenhuma sala de negociação ainda"}</h3>
@@ -857,7 +861,7 @@ export default function Dashboard() {
           <LangSelectorMini />
           <Link href="/profile">
             <div className="w-9 h-9 rounded-full flex items-center justify-center text-[#060e1a] font-black text-sm cursor-pointer hover:scale-105 transition-transform ring-2 ring-transparent hover:ring-[#f5a623]/40"
-              style={{ background: "linear-gradient(135deg, #f5a623, #ffd166)" }} title="Meu Perfil">
+              style={{ background: "linear-gradient(135deg, #f5a623, #ffd166)" }} title={t("appHeader.myProfile")}>
               {(user?.name || "U")[0].toUpperCase()}
             </div>
           </Link>
@@ -879,17 +883,20 @@ export default function Dashboard() {
               ? <><span className="text-[#f5a623] font-semibold">{stats.unseen} novo{stats.unseen > 1 ? 's' : ''} match{stats.unseen > 1 ? 'es' : ''}</span> esperando pela sua atenção</>
               : stats?.total && stats.total > 0
                 ? `${stats.total} oportunidade${stats.total > 1 ? 's' : ''} compatível${stats.total > 1 ? 'is' : ''} encontrada${stats.total > 1 ? 's' : ''} para você`
-                : 'Bem-vinda ao MMM OS! Gere seus primeiros matches abaixo'}
+                // Em erro, nada de convite a "gerar os primeiros matches": eles podem existir.
+                : statsQuery.isError ? "" : 'Bem-vinda ao MMM OS! Gere seus primeiros matches abaixo'}
           </p>
         </div>
 
         {/* ─── STATS ─── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           {[
-            { label: t("dashboard.matches"), value: stats?.total ?? 0, color: "#f5a623", icon: "🎯" },
-            { label: t("dashboard.compatibility"), value: stats?.avgScore ?? 0, color: "#3b82f6", icon: "📊" },
-            { label: t("dashboard.topMatches"), value: stats?.highScore ?? 0, color: "#10b981", icon: "⭐" },
-            { label: t("dashboard.connections"), value: connections.filter(c => c.status === "accepted").length, color: "#8b5cf6", icon: "🤝" },
+            // Consulta falhou não é "0 matches": o traço diz que o número não veio
+            // (o erro com "tentar de novo" está na aba de matches, logo abaixo).
+            { label: t("dashboard.matches"), value: statsQuery.isError ? "—" : stats?.total ?? 0, color: "#f5a623", icon: "🎯" },
+            { label: t("dashboard.compatibility"), value: statsQuery.isError ? "—" : stats?.avgScore ?? 0, color: "#3b82f6", icon: "📊" },
+            { label: t("dashboard.topMatches"), value: statsQuery.isError ? "—" : stats?.highScore ?? 0, color: "#10b981", icon: "⭐" },
+            { label: t("dashboard.connections"), value: connectionsQuery.isError ? "—" : connections.filter(c => c.status === "accepted").length, color: "#8b5cf6", icon: "🤝" },
           ].map((s, i) => (
             <StatCard key={s.label} {...s} index={i} />
           ))}
@@ -946,6 +953,10 @@ export default function Dashboard() {
                 <div className="grid md:grid-cols-2 gap-4">
                   {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
                 </div>
+              ) : matchesQuery.isError ? (
+                // Consulta falhou não é "nenhum match" com botão de gerar:
+                // o servidor lança de propósito quando o banco cai.
+                <ErroDeConsulta erro={matchesQuery.error} aoTentarDeNovo={() => matchesQuery.refetch()} />
               ) : aguardandoTermo ? (
                 // Etapa 11: quando o termo do Cruzamento existe e ainda não foi
                 // aceito, a lista viria vazia SEM EXPLICAÇÃO — a trava age em
@@ -980,7 +991,9 @@ export default function Dashboard() {
           {/* TAB: CONNECTIONS */}
           {activeTab === "connections" && (
             <div className="space-y-3">
-              {connections.length === 0 ? (
+              {connectionsQuery.isError ? (
+                <ErroDeConsulta erro={connectionsQuery.error} aoTentarDeNovo={() => connectionsQuery.refetch()} />
+              ) : connections.length === 0 ? (
                 <div className="text-center py-20 animate-fade-in-up">
                   <div className="text-6xl mb-5">🤝</div>
                   <h3 className="text-2xl font-black mb-2">{t("dashboard.noMatches")}</h3>
@@ -1041,7 +1054,11 @@ export default function Dashboard() {
           {/* TAB: PROFILE */}
           {activeTab === "profile" && (
             <div className="space-y-5">
-              {profile ? (
+              {profileQuery.isError ? (
+                // Perfil que não pôde ser lido não é "crie seu perfil": o
+                // convite mandaria a usuária refazer o onboarding à toa.
+                <ErroDeConsulta erro={profileQuery.error} aoTentarDeNovo={() => profileQuery.refetch()} />
+              ) : profile ? (
                 <>
                   <div className="bg-[#0d1530] border border-white/8 rounded-2xl p-6 animate-fade-in-scale">
                     <div className="flex items-center gap-4 mb-6">

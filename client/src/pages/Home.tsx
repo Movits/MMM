@@ -61,7 +61,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function LanguageSelector() {
   const { i18n } = useTranslation();
   const [open, setOpen] = useState(false);
-  const current = LANGUAGES.find(l => l.code === i18n.language) ?? LANGUAGES[0];
+  // O idioma RESOLVIDO: o pedido pode ser regional ("en-US") e não existir
+  // na lista — o seletor mostrava a bandeira do Brasil com a página em inglês.
+  const idiomaAtual = i18n.resolvedLanguage ?? i18n.language;
+  const current = LANGUAGES.find(l => l.code === idiomaAtual) ?? LANGUAGES[0];
 
   return (
     <div className="relative">
@@ -83,7 +86,7 @@ function LanguageSelector() {
                 key={lang.code}
                 onClick={() => { i18n.changeLanguage(lang.code); setOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3.5 py-2 text-sm rounded-xl transition-colors duration-150 text-left
-                  ${lang.code === i18n.language
+                  ${lang.code === idiomaAtual
                     ? "bg-[#f5a623]/15 text-[#f5a623]"
                     : "text-white/60 hover:bg-white/[0.06] hover:text-white"
                   }`}

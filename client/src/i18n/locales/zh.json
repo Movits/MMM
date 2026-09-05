@@ -1386,6 +1386,30 @@
     "errorIdLabel": "参考代码：",
     "retryButton": "↻ 重试",
     "backHome": "← 返回首页",
-    "tip": "如果问题仍然存在，请尝试清除浏览器缓存（Ctrl+Shift+R）。"
+    "tip": "如果问题仍然存在，请尝试清除浏览器缓存（Ctrl+Shift+R）。",
+    "serverUnavailable": "服务器没有响应。请稍后再试。"
+  },
+  "appHeader": {
+    "menuButton": "菜单",
+    "navigation": "导航",
+    "goldPanel": "黄金面板",
+    "goldPanelDesc": "治理与审核",
+    "myProfile": "我的资料",
+    "menu": {
+      "opportunities": "机会",
+      "opportunitiesDesc": "进行中的提案与业务",
+      "verification": "认证",
+      "verificationDesc": "身份与 SIVC 认证标识",
+      "network": "我的人脉",
+      "networkDesc": "您的私人联系人库",
+      "contexts": "情境",
+      "contextsDesc": "您在何时何地结识每个人",
+      "meetings": "会议",
+      "meetingsDesc": "录音与转录",
+      "memory": "AI 记忆",
+      "memoryDesc": "向您的历史记录提问",
+      "intelligentMatches": "智能连接",
+      "intelligentMatchesDesc": "联系人之间的匹配建议"
+    }
   }
 }

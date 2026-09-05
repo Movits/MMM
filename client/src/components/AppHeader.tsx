@@ -20,20 +20,31 @@ import { LANGUAGES } from "@/i18n";
 // voltar lá para trocar de área. O logo aponta para /dashboard de propósito:
 // apontar para a landing fazia quem clicasse nele "sair" do app sem querer.
 
-const MENU_ITEMS = [
-  { href: "/opportunities", icon: Briefcase, label: "Oportunidades", desc: "Propostas e negócios ativos" },
-  { href: "/verification", icon: ShieldCheck, label: "Verificação", desc: "Identidade e selo SIVC" },
-  { href: "/network", icon: Users, label: "Minha Rede", desc: "Sua base particular de contatos" },
-  { href: "/contexts", icon: MapPin, label: "Contextos", desc: "Onde e como conheceu cada pessoa" },
-  { href: "/meetings", icon: Mic, label: "Reuniões", desc: "Gravações e transcrições" },
-  { href: "/memory", icon: Brain, label: "Memória IA", desc: "Pergunte ao seu histórico" },
-  { href: "/intelligent-matches", icon: Sparkles, label: "Conexões Inteligentes", desc: "Sugestões entre os seus contatos" },
-];
+type Traduzir = (key: string) => string;
+
+// Função, não constante de módulo: os rótulos dependem de t(), que só existe
+// dentro de um componente (molde: getNiveisDeVisibilidade em Network.tsx). O
+// array fixo em português era o motivo de a navegação primária do app inteiro
+// sair em pt-BR para as outras 9 línguas, ao lado de um título já traduzido.
+export function getMenuItems(t: Traduzir) {
+  return [
+    { href: "/opportunities", icon: Briefcase, label: t("appHeader.menu.opportunities"), desc: t("appHeader.menu.opportunitiesDesc") },
+    { href: "/verification", icon: ShieldCheck, label: t("appHeader.menu.verification"), desc: t("appHeader.menu.verificationDesc") },
+    { href: "/network", icon: Users, label: t("appHeader.menu.network"), desc: t("appHeader.menu.networkDesc") },
+    { href: "/contexts", icon: MapPin, label: t("appHeader.menu.contexts"), desc: t("appHeader.menu.contextsDesc") },
+    { href: "/meetings", icon: Mic, label: t("appHeader.menu.meetings"), desc: t("appHeader.menu.meetingsDesc") },
+    { href: "/memory", icon: Brain, label: t("appHeader.menu.memory"), desc: t("appHeader.menu.memoryDesc") },
+    { href: "/intelligent-matches", icon: Sparkles, label: t("appHeader.menu.intelligentMatches"), desc: t("appHeader.menu.intelligentMatchesDesc") },
+  ];
+}
 
 function LangSelectorMini() {
   const { i18n } = useTranslation();
   const [open, setOpen] = useState(false);
-  const current = LANGUAGES.find(l => l.code === i18n.language) ?? LANGUAGES[0];
+  // O idioma RESOLVIDO: o pedido pode ser regional ("en-US") e não existir
+  // na lista — a bandeira ficava no Brasil com a tela em inglês.
+  const idiomaAtual = i18n.resolvedLanguage ?? i18n.language;
+  const current = LANGUAGES.find(l => l.code === idiomaAtual) ?? LANGUAGES[0];
   return (
     <div className="relative">
       <button onClick={() => setOpen(o => !o)}
@@ -49,7 +60,7 @@ function LangSelectorMini() {
               <button key={lang.code}
                 onClick={() => { i18n.changeLanguage(lang.code); setOpen(false); }}
                 className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors text-left ${
-                  lang.code === i18n.language ? "bg-[#f5a623]/20 text-[#f5a623]" : "text-white/60 hover:bg-white/10 hover:text-white"
+                  lang.code === idiomaAtual ? "bg-[#f5a623]/20 text-[#f5a623]" : "text-white/60 hover:bg-white/10 hover:text-white"
                 }`}>
                 <span>{lang.flag}</span><span>{lang.label}</span>
               </button>
@@ -68,6 +79,7 @@ export function GlobalMenu() {
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => { logout(); navigate("/"); },
   });
+  const itens = getMenuItems(t);
 
   return (
     <DropdownMenu>
@@ -75,16 +87,16 @@ export function GlobalMenu() {
         <button
           className="group flex items-center gap-2 text-sm font-medium text-white/80 border border-white/10 pl-3 pr-2.5 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] hover:border-[#f5a623]/40 hover:text-white transition-all duration-200 active:scale-[0.97] data-[state=open]:border-[#f5a623]/50 data-[state=open]:bg-white/[0.06] data-[state=open]:text-white">
           <MenuIcon className="w-4 h-4 text-[#f5a623]" />
-          <span className="hidden sm:inline">Menu</span>
+          <span className="hidden sm:inline">{t("appHeader.menuButton")}</span>
           <ChevronDown className="w-3.5 h-3.5 text-white/40 transition-transform duration-200 group-data-[state=open]:rotate-180" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={10}
         className="w-72 rounded-2xl border-white/10 bg-[#0a1424]/95 backdrop-blur-2xl text-white shadow-2xl shadow-black/60 p-2">
         <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-widest text-white/35 px-3 pt-2 pb-1">
-          Navegação
+          {t("appHeader.navigation")}
         </DropdownMenuLabel>
-        {MENU_ITEMS.map(item => (
+        {itens.map(item => (
           <DropdownMenuItem key={item.href} asChild
             className="rounded-xl px-3 py-2.5 cursor-pointer focus:bg-white/[0.07] focus:text-white data-[highlighted]:bg-white/[0.07]">
             <Link href={item.href}>
@@ -111,8 +123,8 @@ export function GlobalMenu() {
                     <Crown className="w-4 h-4 text-amber-400" />
                   </span>
                   <span className="flex flex-col min-w-0">
-                    <span className="text-sm font-semibold text-amber-300 leading-tight">Painel Ouro</span>
-                    <span className="text-[11px] text-amber-200/40 leading-tight truncate">Governança e validações</span>
+                    <span className="text-sm font-semibold text-amber-300 leading-tight">{t("appHeader.goldPanel")}</span>
+                    <span className="text-[11px] text-amber-200/40 leading-tight truncate">{t("appHeader.goldPanelDesc")}</span>
                   </span>
                 </span>
               </Link>
@@ -144,6 +156,7 @@ export function AppHeader({ title, backTo, actions }: {
   actions?: React.ReactNode;
 }) {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <nav className="border-b border-white/[0.06] px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-40 bg-[#060e1a]/95 backdrop-blur-2xl">
@@ -169,7 +182,7 @@ export function AppHeader({ title, backTo, actions }: {
         <LangSelectorMini />
         <Link href="/profile">
           <div className="w-9 h-9 rounded-full flex items-center justify-center text-[#060e1a] font-black text-sm cursor-pointer hover:scale-105 transition-transform ring-2 ring-transparent hover:ring-[#f5a623]/40"
-            style={{ background: "linear-gradient(135deg, #f5a623, #ffd166)" }} title="Meu Perfil">
+            style={{ background: "linear-gradient(135deg, #f5a623, #ffd166)" }} title={t("appHeader.myProfile")}>
             {(user?.name || "U")[0].toUpperCase()}
           </div>
         </Link>

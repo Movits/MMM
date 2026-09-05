@@ -1386,6 +1386,30 @@
     "errorIdLabel": "संदर्भ कोड:",
     "retryButton": "↻ फिर से कोशिश करें",
     "backHome": "← होम पर वापस जाएं",
-    "tip": "अगर समस्या बनी रहे, तो ब्राउज़र का कैश साफ़ करने की कोशिश करें (Ctrl+Shift+R)।"
+    "tip": "अगर समस्या बनी रहे, तो ब्राउज़र का कैश साफ़ करने की कोशिश करें (Ctrl+Shift+R)।",
+    "serverUnavailable": "सर्वर ने जवाब नहीं दिया। कृपया थोड़ी देर बाद फिर से कोशिश करें।"
+  },
+  "appHeader": {
+    "menuButton": "मेनू",
+    "navigation": "नेविगेशन",
+    "goldPanel": "गोल्ड पैनल",
+    "goldPanelDesc": "शासन और सत्यापन",
+    "myProfile": "मेरी प्रोफ़ाइल",
+    "menu": {
+      "opportunities": "अवसर",
+      "opportunitiesDesc": "सक्रिय प्रस्ताव और सौदे",
+      "verification": "सत्यापन",
+      "verificationDesc": "पहचान और SIVC मुहर",
+      "network": "मेरा नेटवर्क",
+      "networkDesc": "आपका निजी संपर्क आधार",
+      "contexts": "संदर्भ",
+      "contextsDesc": "आप हर व्यक्ति से कहाँ और कैसे मिलीं",
+      "meetings": "बैठकें",
+      "meetingsDesc": "रिकॉर्डिंग और ट्रांसक्रिप्शन",
+      "memory": "AI मेमोरी",
+      "memoryDesc": "अपने इतिहास से पूछें",
+      "intelligentMatches": "बुद्धिमान कनेक्शन",
+      "intelligentMatchesDesc": "आपके संपर्कों के बीच सुझाव"
+    }
   }
 }

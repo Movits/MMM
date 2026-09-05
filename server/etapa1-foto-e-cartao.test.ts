@@ -34,6 +34,9 @@ vi.mock("./db", async () => ({
   deletePrivateContact: (...args: unknown[]) => deletePrivateContact(...(args as [])),
   listPrivateContacts: async () => ({ data: [], total: 0 }),
   getPrivateContactById: (...args: unknown[]) => getPrivateContactById(...(args as [])),
+  // Nenhum outro contato usa a imagem: o caminho "compartilhada" tem os seus
+  // próprios casos em etapa8-niveis.test.ts.
+  imagemUsadaPorOutroContato: async () => false,
   listVitrineColetiva: async () => [],
   getMatchesForUser: async () => [],
   dismissMatch: async () => {},

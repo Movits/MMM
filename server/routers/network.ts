@@ -5,7 +5,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import {
   exigirDb,
   createPrivateContact, listPrivateContacts, getPrivateContactById,
-  updatePrivateContact, deletePrivateContact,
+  updatePrivateContact, deletePrivateContact, imagemUsadaPorOutroContato,
 } from "../db";
 import { recalculatePrivateMatches } from "../match-service";
 import { hasValidConsent } from "./consent";
@@ -23,11 +23,19 @@ const chaveDaImagem = z.string().max(512).optional().nullable();
 
 // Foto e cartão saem do bucket como melhor esforço — um storage fora do ar
 // não pode impedir a usuária de apagar ou trocar a imagem na tela.
-async function apagarImagemDoBucket(openId: string, storagePath: string | null | undefined) {
+//
+// `contatoId` é o contato que está soltando a imagem: se OUTRO contato da
+// mesma dona ainda aponta para a mesma chave (duplicata nascida com a mesma
+// foto), o objeto fica — apagá-lo quebraria a foto do contato que sobrou.
+async function apagarImagemDoBucket(openId: string, storagePath: string | null | undefined, contatoId: number) {
   if (!storagePath) return;
   const chave = chaveDoStorageDaDona("contacts", openId, storagePath);
   if (!chave) return;
   try {
+    if (await imagemUsadaPorOutroContato(openId, storagePath, contatoId)) {
+      console.info("[Rede] imagem mantida no bucket: outro contato da dona ainda a usa:", chave);
+      return;
+    }
     await storageDelete(chave);
   } catch (erro) {
     console.warn("[Rede] objeto ficou no bucket:", erro instanceof Error ? erro.message : erro);
@@ -231,10 +239,10 @@ export const networkRouter = router({
       if (!updated) throw new Error("NOT_FOUND");
       if (antes) {
         if ("photoUrl" in data && data.photoUrl !== antes.photoUrl) {
-          await apagarImagemDoBucket(ctx.user.openId, antes.photoUrl);
+          await apagarImagemDoBucket(ctx.user.openId, antes.photoUrl, id);
         }
         if ("cardImageUrl" in data && data.cardImageUrl !== antes.cardImageUrl) {
-          await apagarImagemDoBucket(ctx.user.openId, antes.cardImageUrl);
+          await apagarImagemDoBucket(ctx.user.openId, antes.cardImageUrl, id);
         }
       }
       return { success: true };
@@ -249,8 +257,8 @@ export const networkRouter = router({
       const deleted = await deletePrivateContact(ctx.user.openId, input.id);
       if (!deleted) throw new Error("NOT_FOUND");
       if (alvo) {
-        await apagarImagemDoBucket(ctx.user.openId, alvo.photoUrl);
-        await apagarImagemDoBucket(ctx.user.openId, alvo.cardImageUrl);
+        await apagarImagemDoBucket(ctx.user.openId, alvo.photoUrl, input.id);
+        await apagarImagemDoBucket(ctx.user.openId, alvo.cardImageUrl, input.id);
       }
       // O cruzamento roda sozinho também na saída de dados, não só na entrada:
       // apagar contato muda o mapa de possui/procura, e as sugestões precisam
