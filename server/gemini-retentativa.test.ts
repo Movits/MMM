@@ -147,12 +147,19 @@ describe("Gemini — sobrecarga passageira não derruba a transcrição", () => 
     expect(fetchFalso).toHaveBeenCalledTimes(2);
   });
 
-  it("erro que não é de sobrecarga (400) sai na hora, sem retentar", async () => {
-    const { transcribeWithGemini } = await carregarGemini();
+  it("erro que não é de sobrecarga (400) sai na hora, sem retentar e sem a reserva — com frase para a dona, JSON do Google só no log", async () => {
+    const { transcribeWithGemini, GeminiRecusouChamadaError } = await carregarGemini();
+    const registro = vi.spyOn(console, "error").mockImplementation(() => {});
     fetchFalso.mockResolvedValue(resposta400());
 
-    await expect(transcribeWithGemini(audio)).rejects.toThrow(/Gemini indisponível \(400\)/);
+    const erro = await transcribeWithGemini(audio).catch((e: unknown) => e);
+    expect(erro).toBeInstanceOf(GeminiRecusouChamadaError);
+    expect((erro as Error).message).toBe("O serviço de IA recusou a chamada (HTTP 400). Avise o suporte.");
+    expect((erro as Error).message).not.toContain("bad request");
+    // 1 chamada: sem retentativa e sem o upload inútil na reserva
     expect(fetchFalso).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(registro.mock.calls)).toContain("bad request");
+    registro.mockRestore();
   });
 
   it("embeddings passam pela mesma retentativa", async () => {

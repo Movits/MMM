@@ -1,3 +1,5 @@
+import type { SQL } from "drizzle-orm";
+import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
@@ -22,41 +24,44 @@ vi.mock("./storage", () => ({
   storageDelete: (...args: unknown[]) => storageDelete(...(args as [string])),
 }));
 vi.mock("./_core/llm", () => ({ invokeLLM: async () => ({ choices: [{ message: { content: "{}" } }] }) }));
-vi.mock("./gemini", () => ({ transcribeWithGemini: async () => ({ text: "", segments: [] }) }));
+// As classes de erro vêm do módulo real: meeting-service faz instanceof nelas.
+vi.mock("./gemini", async importOriginal => ({
+  ...await importOriginal<typeof import("./gemini")>(),
+  transcribeWithGemini: async () => ({ text: "", segments: [] }),
+}));
 
 const schema = await import("../drizzle/schema");
+const { MENSAGEM_ERRO_DE_CONSULTA } = await import("./banco-indisponivel");
 
 const AGORA = Date.now();
 const TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const tabelas = new Map<unknown, Record<string, unknown>[]>();
-const delecoes: Array<{ tabela: unknown; colunas: string[] }> = [];
-const tabelasApagadas = () => delecoes.map(operacao => operacao.tabela);
 
 /**
- * Colunas citadas num predicado do drizzle. PARA na coluna: descer nela
- * levaria à tabela, que traz todas as outras — e aí qualquer condição
- * "conteria" owner_id, deixando passar o mutante que remove o escopo por dona.
+ * O WHERE de cada operação, renderizado pelo dialeto do MySQL (sem banco). O
+ * fake não executa o predicado, então o escopo por dona só se prova olhando
+ * para o SQL E os parâmetros — uma lista de colunas deixava passar `and`→`or`
+ * (cita as mesmas colunas e apaga os derivados de todas as reuniões da dona).
  */
-function colunasDe(condicao: unknown): string[] {
-  const achadas: string[] = [];
-  const visitados = new Set<unknown>();
-  const visitar = (no: unknown) => {
-    if (!no || typeof no !== "object" || visitados.has(no)) return;
-    visitados.add(no);
-    const alvo = no as Record<string, unknown>;
-    if (typeof alvo.name === "string" && alvo.table) { achadas.push(alvo.name); return; }
-    for (const valor of Object.values(alvo)) {
-      if (Array.isArray(valor)) valor.forEach(visitar);
-      else if (valor && typeof valor === "object") visitar(valor);
-    }
-  };
-  visitar(condicao);
-  return achadas;
-}
+type Predicado = { sql: string; params: unknown[] };
+const dialeto = new MySqlDialect();
+const renderizar = (condicao?: SQL): Predicado => {
+  const { sql, params } = condicao ? dialeto.sqlToQuery(condicao) : { sql: "", params: [] };
+  return { sql, params };
+};
+const REUNIAO_DA_DONA = { sql: "(`meetings`.`id` = ? and `meetings`.`owner_id` = ?)", params: ["reuniao-1", "dona-1"] };
+const derivadaDaReuniaoDaDona = (tabela: string) => ({ sql: `(\`${tabela}\`.\`meeting_id\` = ? and \`${tabela}\`.\`owner_id\` = ?)`, params: ["reuniao-1", "dona-1"] });
 
-type Operacao = { tabela: unknown; colunas: string[] };
+type Operacao = { tabela: unknown } & Predicado;
+const delecoes: Operacao[] = [];
+const tabelasApagadas = () => delecoes.map(operacao => operacao.tabela);
 const leituras: Operacao[] = [];
 const ordenacoes: unknown[] = [];
+const atualizacoes: Array<Operacao & { valores: Record<string, unknown> }> = [];
+const predicadoDe = ({ sql, params }: Operacao) => ({ sql, params });
+// A ordem de TODAS as escritas: o "deleted" precisa vir antes do primeiro
+// delete, e só a sequência prova isso.
+const sequencia: string[] = [];
 
 /** where() do drizzle é "thenable": dá para aguardar direto ou encadear. */
 const consulta = (linhas: Record<string, unknown>[]) => ({
@@ -69,16 +74,26 @@ const consulta = (linhas: Record<string, unknown>[]) => ({
 const fakeDb = {
   select: () => ({
     from: (tabela: unknown) => ({
-      where: (condicao?: unknown) => {
-        leituras.push({ tabela, colunas: colunasDe(condicao) });
+      where: (condicao?: SQL) => {
+        leituras.push({ tabela, ...renderizar(condicao) });
         return consulta(tabelas.get(tabela) ?? []);
       },
     }),
   }),
   delete: (tabela: unknown) => ({
-    where: async (condicao?: unknown) => { delecoes.push({ tabela, colunas: colunasDe(condicao) }); },
+    where: async (condicao?: SQL) => { delecoes.push({ tabela, ...renderizar(condicao) }); sequencia.push("delete"); },
   }),
-  update: () => ({ set: () => ({ where: async () => {} }) }),
+  // O mysql2 devolve [ResultSetHeader, campos]; aqui a linha "existe" se a
+  // tabela simulada tem alguma — é como o fake responde "não é dela".
+  update: (tabela: unknown) => ({
+    set: (valores: Record<string, unknown>) => ({
+      where: async (condicao?: SQL) => {
+        atualizacoes.push({ tabela, valores, ...renderizar(condicao) });
+        sequencia.push("update");
+        return [{ affectedRows: (tabelas.get(tabela) ?? []).length }];
+      },
+    }),
+  }),
   insert: () => ({ values: async () => {} }),
 };
 vi.mock("./db", () => ({ exigirDb: async () => fakeDb as never, getDb: async () => fakeDb as never }));
@@ -99,6 +114,8 @@ beforeEach(() => {
   delecoes.length = 0;
   leituras.length = 0;
   ordenacoes.length = 0;
+  atualizacoes.length = 0;
+  sequencia.length = 0;
   // mockReset (não mockClear): um mockRejectedValueOnce não consumido por um
   // teste vazaria para o próximo e o faria falhar por motivo errado.
   storageDelete.mockReset();
@@ -139,11 +156,51 @@ describe("Playback — a API entrega a gravação para a tela poder tocar", () =
     expect(storageDelete).not.toHaveBeenCalled();
   });
 
+  it("a gravação lida é a da reunião DA dona (meeting_id E owner_id) — como a reunião, a transcrição, as entidades e as sugestões", async () => {
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 1000)]);
+    await servico.getPrivateMeeting("dona-1", "reuniao-1");
+    const porTabela = (tabela: unknown) => leituras.filter(operacao => operacao.tabela === tabela).map(predicadoDe);
+    expect(porTabela(schema.meetings)).toEqual([REUNIAO_DA_DONA]);
+    expect(porTabela(schema.meetingTranscripts)).toEqual([derivadaDaReuniaoDaDona("meeting_transcripts")]);
+    expect(porTabela(schema.meetingEntities)).toEqual([derivadaDaReuniaoDaDona("meeting_entities")]);
+    expect(porTabela(schema.meetingContactSuggestions)).toEqual([derivadaDaReuniaoDaDona("meeting_contact_suggestions")]);
+    expect(porTabela(schema.meetingRecordings)).toEqual([derivadaDaReuniaoDaDona("meeting_recordings")]);
+  });
+
   it("a transcrição e as sugestões continuam vindo como antes", async () => {
     const dados = await servico.getPrivateMeeting("dona-1", "reuniao-1");
     expect(dados).toHaveProperty("transcript");
     expect(dados).toHaveProperty("entities");
     expect(dados).toHaveProperty("suggestions");
+  });
+});
+
+describe("Leitura — processing_error legado com o SQL do driver não chega à tela", () => {
+  // Antes de mensagemDaFalha, a mensagem do DrizzleQueryError ia inteira para
+  // a coluna: há linhas assim em produção, com o INSERT e os parâmetros
+  // (nome, telefone, e-mail das pessoas da reunião). Limpar a coluna depende
+  // do Roberto; até lá, quem LÊ mascara — nos dois caminhos que chegam à tela.
+  const legado = "Failed query: insert into `meeting_contact_suggestions` (`full_name`, `email`) values (?, ?)\nparams: Ana Souza,ana@vinhosdosul.com";
+
+  it("getPrivateMeeting devolve a frase neutra no lugar do SQL", async () => {
+    tabelas.set(schema.meetings, [{ ...REUNIAO, status: "failed", processingError: legado }]);
+    const dados = await servico.getPrivateMeeting("dona-1", "reuniao-1");
+    expect(dados?.meeting.processingError).toBe(MENSAGEM_ERRO_DE_CONSULTA);
+    expect(JSON.stringify(dados)).not.toContain("ana@vinhosdosul.com");
+    expect(JSON.stringify(dados)).not.toContain("Failed query");
+  });
+
+  it("listPrivateMeetings também: a lista vai inteira para o navegador", async () => {
+    tabelas.set(schema.meetings, [{ ...REUNIAO, status: "failed", processingError: legado }, { ...REUNIAO, id: "reuniao-2" }]);
+    const lista = await servico.listPrivateMeetings("dona-1");
+    expect(lista.map(reuniao => reuniao.processingError)).toEqual([MENSAGEM_ERRO_DE_CONSULTA, undefined]);
+    expect(JSON.stringify(lista)).not.toContain("Failed query");
+  });
+
+  it("frase para a dona, o código ERRO_INTERROMPIDO e null passam inteiros", () => {
+    expect(servico.processingErrorSeguro("Arquivo de áudio inválido.")).toBe("Arquivo de áudio inválido.");
+    expect(servico.processingErrorSeguro(servico.CODIGO_ERRO_INTERROMPIDO)).toBe("ERRO_INTERROMPIDO");
+    expect(servico.processingErrorSeguro(null)).toBeNull();
   });
 });
 
@@ -209,11 +266,16 @@ describe("Retenção — a varredura faz os 30 dias valerem sem depender de algu
     expect(tabelasApagadas()).not.toContain(schema.meetingRecordings);
   });
 
-  it("a varredura filtra por expiresAt — não sai apagando a base inteira", async () => {
+  it("a varredura filtra por expiresAt <= agora — não sai apagando a base inteira, nem o que ainda vale", async () => {
     tabelas.set(schema.meetingRecordings, []);
+    const antes = Date.now();
     await servico.limparGravacoesVencidas();
+    const depois = Date.now();
     const leitura = leituras.find(operacao => operacao.tabela === schema.meetingRecordings);
-    expect(leitura?.colunas).toContain("expires_at");
+    expect(leitura?.sql).toBe("`meeting_recordings`.`expires_at` <= ?");
+    expect(leitura?.params).toHaveLength(1);
+    expect(Number(leitura?.params[0])).toBeGreaterThanOrEqual(antes);
+    expect(Number(leitura?.params[0])).toBeLessThanOrEqual(depois);
   });
 });
 
@@ -229,11 +291,28 @@ describe("Exclusão — apagar a reunião apaga a VOZ, não só a linha", () => 
     expect(tabelasApagadas()).toContain(schema.meetingTranscriptTranslations);
   });
 
-  it("todo delete da exclusão é escopado por dona", async () => {
+  it("todo delete da exclusão — e a leitura das gravações — é da reunião DA dona: meeting_id E owner_id, em AND", async () => {
     tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 1000)]);
     await servico.deletePrivateMeeting("dona-1", "reuniao-1");
+
+    // A leitura que diz onde o arquivo está: sem o owner_id, o áudio de uma
+    // reunião com o mesmo id de outra dona sairia do bucket.
+    expect(leituras.filter(operacao => operacao.tabela === schema.meetingRecordings).map(predicadoDe))
+      .toEqual([derivadaDaReuniaoDaDona("meeting_recordings")]);
+
+    const esperado = new Map<unknown, Predicado>([
+      [schema.meetingContactSuggestions, derivadaDaReuniaoDaDona("meeting_contact_suggestions")],
+      [schema.meetingEntities, derivadaDaReuniaoDaDona("meeting_entities")],
+      [schema.meetingTranscripts, derivadaDaReuniaoDaDona("meeting_transcripts")],
+      [schema.meetingTranscriptTranslations, derivadaDaReuniaoDaDona("meeting_transcript_translations")],
+      [schema.meetingRecordings, derivadaDaReuniaoDaDona("meeting_recordings")],
+      [schema.meetings, REUNIAO_DA_DONA],
+    ]);
+    expect(delecoes).toHaveLength(esperado.size);
     for (const operacao of delecoes) {
-      expect(operacao.colunas).toContain("owner_id");
+      // `or` citaria as mesmas colunas e apagaria os derivados de TODAS as
+      // reuniões da dona (ou a reunião de mesmo id de outra dona).
+      expect(predicadoDe(operacao)).toEqual(esperado.get(operacao.tabela));
     }
   });
 
@@ -241,11 +320,33 @@ describe("Exclusão — apagar a reunião apaga a VOZ, não só a linha", () => 
     const { readFileSync } = require("node:fs") as typeof import("node:fs");
     const { join } = require("node:path") as typeof import("node:path");
     const fonte = readFileSync(join(__dirname, "meeting-service.ts"), "utf8");
-    const corpo = fonte.slice(fonte.indexOf("export async function deletePrivateMeeting"));
+    // A lista do que sai mora em apagarDerivadosDaReuniao, compartilhada com a
+    // compensação de processMeetingRecording.
+    const corpo = fonte.slice(fonte.indexOf("async function apagarDerivadosDaReuniao"));
     const posicaoArquivo = corpo.indexOf("apagarArquivoDaGravacao");
     const posicaoLinha = corpo.indexOf("delete(meetingRecordings)");
     expect(posicaoArquivo).toBeGreaterThan(-1);
     expect(posicaoArquivo).toBeLessThan(posicaoLinha);
+  });
+
+  it("a reunião é marcada 'deleted' ANTES do primeiro delete: é o sinal que um processamento em curso lê", async () => {
+    // Sem a marca, processMeetingRecording (1–2 min de Gemini e LLM) gravava
+    // transcrição e sugestões DEPOIS da exclusão, órfãs e indexáveis pela
+    // Memória. O UPDATE também substitui o SELECT de existência: zero linhas
+    // é "não é dela".
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 1000)]);
+
+    await servico.deletePrivateMeeting("dona-1", "reuniao-1");
+
+    expect(sequencia[0]).toBe("update");
+    expect(atualizacoes[0].tabela).toBe(schema.meetings);
+    expect(atualizacoes[0].valores).toMatchObject({ status: "deleted" });
+    expect(typeof atualizacoes[0].valores.updatedAt).toBe("number");
+    // id E owner_id, em AND: `or` marcaria 'deleted' toda reunião da dona
+    expect(predicadoDe(atualizacoes[0])).toEqual(REUNIAO_DA_DONA);
+    // e a linha da reunião só sai por último, depois dos derivados
+    expect(sequencia.filter(operacao => operacao === "delete").length).toBe(6);
+    expect(tabelasApagadas().at(-1)).toBe(schema.meetings);
   });
 
   it("falha no bucket não impede a reunião de ser excluída", async () => {
