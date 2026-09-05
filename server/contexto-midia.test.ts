@@ -156,7 +156,8 @@ describe("Mídia de contexto — upload e remoção pelo caminho do storage", ()
     expect(deleteContextMedia).toHaveBeenCalled();
   });
 
-  it("excluir o contexto leva os anexos junto: objetos no bucket e registros", async () => {
+  it("excluir o contexto leva os anexos junto: objetos no bucket e registros — o banco confirma a posse ANTES do bucket", async () => {
+    deleteContext.mockClear();
     listContextMediaByContext.mockResolvedValueOnce([
       { id: "m-1", storagePath: "/manus-storage/contexts/email_teste/ctx-1/foto_a1.jpg" },
       { id: "m-2", storagePath: "meetings/outra-dona/m-1/recording.webm" }, // fora do espaço: fica
@@ -166,7 +167,24 @@ describe("Mídia de contexto — upload e remoção pelo caminho do storage", ()
     expect(r.success).toBe(true);
     expect(storageDelete).toHaveBeenCalledTimes(1);
     expect(storageDelete).toHaveBeenCalledWith("contexts/email_teste/ctx-1/foto_a1.jpg");
-    expect(deleteContext).toHaveBeenCalled();
+    expect(deleteContext).toHaveBeenCalledWith("email_teste", "ctx-1");
+    // ordem: se o DELETE no banco falhar, o bucket ainda está intacto
+    expect(deleteContext.mock.invocationCallOrder[0]).toBeLessThan(storageDelete.mock.invocationCallOrder[0]);
+  });
+
+  it("contexto que não é dela (catálogo ou inexistente): NOT_FOUND e o bucket NÃO é tocado", async () => {
+    // Reverificação de 04/09 (etapa 5): a dona pode anexar mídia a um contexto
+    // do catálogo (uploadMedia aceita owner_id NULL); excluir esse id apagava
+    // os objetos dela no bucket e só depois respondia NOT_FOUND.
+    listContextMediaByContext.mockResolvedValueOnce([
+      { id: "m-1", storagePath: "/manus-storage/contexts/email_teste/ctx-catalogo/foto_a1.jpg" },
+      { id: "m-2", storagePath: "/manus-storage/contexts/email_teste/ctx-catalogo/nda_b2.pdf" },
+    ]);
+    deleteContext.mockResolvedValueOnce(false);
+
+    await expect(caller.delete({ id: "ctx-catalogo" })).rejects.toThrow("NOT_FOUND");
+
+    expect(storageDelete).not.toHaveBeenCalled();
   });
 });
 

@@ -29,20 +29,13 @@ export const memoryRouter = router({
 
   reindex: protectedProcedure.mutation(async ({ ctx }) => {
     enforceSearchLimit(ctx.user.openId);
-    // O clique pode cair no meio de uma rodada que uma busca já tinha começado
-    // — e essa rodada fotografou a base ANTES da mudança que motivou o clique.
-    // A segunda chamada custa sete agregados quando nada mudou, e reindexa de
-    // verdade quando a rodada em voo era antiga demais para ver a mudança.
-    const primeira = await indexOwnerMemory(ctx.user.openId);
-    const segunda = await indexOwnerMemory(ctx.user.openId);
-    return {
-      indexed: primeira.indexed + segunda.indexed,
-      skipped: primeira.skipped + segunda.skipped,
-      removed: primeira.removed + segunda.removed,
-      pending: segunda.pending,
-      truncated: segunda.truncated,
-      total: Math.max(primeira.total, segunda.total),
-    };
+    // O clique é a ordem explícita de conferir a base inteira: `forcar` ignora
+    // a assinatura lembrada (um duplicado em memory_documents nascido depois
+    // dela não a muda, e o botão devolvia "0 removidos" com o duplicado ainda
+    // pesquisável) e não se contenta com uma rodada em voo que uma busca
+    // começou ANTES da mudança que motivou o clique — espera-a e abre a sua.
+    // Antes eram duas chamadas seguidas, que cobriam só o segundo caso.
+    return indexOwnerMemory(ctx.user.openId, { forcar: true });
   }),
 
   search: protectedProcedure
