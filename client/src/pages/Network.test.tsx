@@ -1,5 +1,6 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Network from "./Network";
 
@@ -81,6 +82,7 @@ function contato(id: number, fullName = `Contato ${id}`) {
   return { id, fullName, photoUrl: FOTO, jobTitle: null, company: null, country: null, createdAt: 0, updatedAt: 0 };
 }
 const ana = contato(1, "Ana Lima");
+const bia = contato(2, "Bia Souza");
 
 // Erro como o servidor devolve (envelope tRPC, com data.code): é a mensagem
 // dele que a tela mostra. Sem o envelope, vale o genérico traduzido.
@@ -107,25 +109,112 @@ beforeEach(() => {
 });
 
 const botaoDoFormulario = () => screen.queryByRole("button", { name: /salvar|próximo/i });
+const proximo = () => screen.queryByRole("button", { name: /próximo/i });
+const campoNome = () => screen.getByPlaceholderText("Nome completo do contato");
+
+/** Abre o menu "···" do cartão daquele contato e clica em Editar. */
+function abrirEdicaoDe(nome: string) {
+  const cartao = screen.getByText(nome).closest("div.group") as HTMLElement;
+  fireEvent.click(within(cartao).getByRole("button", { name: "···" }));
+  fireEvent.click(within(cartao).getByRole("button", { name: "Editar" }));
+}
+
+/** Anda as 4 etapas do formulário e clica em ✓ Salvar (só existe na última). */
+function salvarFormulario() {
+  for (let i = 0; i < 5 && proximo(); i++) fireEvent.click(proximo()!);
+  fireEvent.click(screen.getByRole("button", { name: /salvar/i }));
+}
+
+/**
+ * Fecha o formulário pelo fundo escuro — que, de propósito, continua ativo
+ * enquanto o envio está no ar: travar o modal até o servidor responder
+ * prenderia a usuária num pedido que nunca volta. É justamente por isso que o
+ * `onSuccess` precisa conferir de quem era o salvamento.
+ */
+function fecharFormulario() {
+  const titulo = screen.getByText(/^(Editar|Novo) Contato$/);
+  fireEvent.click(titulo.closest("div.fixed") as HTMLElement);
+}
+
+/** As variáveis que a tela mandou no último `update.mutate` (inclui o id). */
+const varsDoUpdate = () => duble.mutacoes.update.mutate.mock.calls.at(-1)?.[0] as Vars;
 
 describe("Minha Rede — editar e salvar fecha o modal", () => {
   it("após o servidor confirmar a edição, nem 'Editar Contato' nem 'Novo Contato' ficam na tela, e não há 2º Salvar", () => {
     servidorResponde(() => ({ data: { data: [ana], total: 1 } }));
     render(<Network />);
 
-    fireEvent.click(screen.getByText("···"));
-    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    abrirEdicaoDe("Ana Lima");
     expect(screen.getByText("Editar Contato")).toBeInTheDocument();
     expect(botaoDoFormulario()).toBeInTheDocument();
+    salvarFormulario();
+    expect(varsDoUpdate().id).toBe(ana.id);
 
-    // O servidor confirma o update.
-    act(() => { duble.mutacoes.update.opcoes.onSuccess?.({ success: true }, {}); });
+    // O servidor confirma o update — com as MESMAS variáveis que a tela
+    // enviou, como o React Query devolve em onSuccess(dados, vars).
+    act(() => { duble.mutacoes.update.opcoes.onSuccess?.({ success: true }, varsDoUpdate()); });
 
     expect(screen.queryByText("Editar Contato")).not.toBeInTheDocument();
     expect(screen.queryByText("Novo Contato")).not.toBeInTheDocument();
     expect(botaoDoFormulario()).not.toBeInTheDocument();
     expect(duble.mutacoes.create.mutate).not.toHaveBeenCalled();
     expect(duble.refetch).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Regressão da PR #69 (major 1 da reverificação de 04/09): o `onSuccess` do
+ * update fechava o formulário SEM conferir de quem era o salvamento. Quem
+ * salvava a Ana, fechava e abria outro formulário perdia o que já tinha
+ * digitado assim que a resposta atrasada da Ana chegava — com o toast
+ * "Contato atualizado!" por cima, como se estivesse tudo certo.
+ */
+describe("Minha Rede — sucesso atrasado só fecha o formulário de quem foi salvo", () => {
+  it("salvou a Ana, fechou e abriu '+ Novo': o que está sendo digitado não some", () => {
+    servidorResponde(() => ({ data: { data: [ana], total: 1 } }));
+    render(<Network />);
+
+    abrirEdicaoDe("Ana Lima");
+    salvarFormulario();
+    const varsDaAna = varsDoUpdate();
+    expect(varsDaAna.id).toBe(ana.id);
+
+    fecharFormulario();
+    fireEvent.click(screen.getByRole("button", { name: "Novo" }));
+    expect(screen.getByText("Novo Contato")).toBeInTheDocument();
+    fireEvent.change(campoNome(), { target: { value: "Carla Nova" } });
+
+    // Só AGORA o servidor responde o salvamento da Ana.
+    act(() => { duble.mutacoes.update.opcoes.onSuccess?.({ success: true }, varsDaAna); });
+
+    expect(screen.getByText("Novo Contato")).toBeInTheDocument();
+    expect(campoNome()).toHaveValue("Carla Nova");
+    expect(duble.mutacoes.create.mutate).not.toHaveBeenCalled();
+    // O aviso e a atualização da lista continuam acontecendo sempre.
+    expect(vi.mocked(toast.success)).toHaveBeenCalledWith("Contato atualizado!");
+    expect(duble.refetch).toHaveBeenCalled();
+  });
+
+  it("salvou a Ana e abriu a edição da Bia: o formulário continua sendo o da Bia", () => {
+    servidorResponde(() => ({ data: { data: [ana, bia], total: 2 } }));
+    render(<Network />);
+
+    abrirEdicaoDe("Ana Lima");
+    salvarFormulario();
+    const varsDaAna = varsDoUpdate();
+    expect(varsDaAna.id).toBe(ana.id);
+
+    fecharFormulario();
+    abrirEdicaoDe("Bia Souza");
+    expect(screen.getByText("Editar Contato")).toBeInTheDocument();
+    expect(campoNome()).toHaveValue("Bia Souza");
+    fireEvent.change(campoNome(), { target: { value: "Bia Souza Nova" } });
+
+    act(() => { duble.mutacoes.update.opcoes.onSuccess?.({ success: true }, varsDaAna); });
+
+    expect(screen.getByText("Editar Contato")).toBeInTheDocument();
+    expect(campoNome()).toHaveValue("Bia Souza Nova");
+    expect(screen.queryByText("Novo Contato")).not.toBeInTheDocument();
   });
 });
 

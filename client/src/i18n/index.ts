@@ -37,14 +37,30 @@ export const CODIGOS = LANGUAGES.map(l => l.code);
  * cadeia ficava ["en-US", "pt-BR"], toda usuária estrangeira recebia
  * português, e o "en-US" ainda ia parar no localStorage, repetindo o erro a
  * cada visita. O detector passa por aqui antes de entregar o código ao
- * i18next: exato fica (pt-BR); regional cuja base existe vira a base; o resto
- * segue como veio, para o casamento por prefixo do próprio i18next
- * (pt-PT → pt-BR) ou o fallback decidirem.
+ * i18next, e a conversão tem três degraus:
+ *
+ * 1. código exato da lista fica (pt-BR, en, zh…);
+ * 2. regional cuja BASE é código nosso vira a base (en-US → en, es-MX → es);
+ * 3. base que não é código nosso, mas tem irmão de mesma base na lista, vira
+ *    esse irmão (pt-PT, pt-AO, pt-MZ e o "pt" seco → pt-BR).
+ *
+ * O degrau 3 não é enfeite. Antes o código voltava cru, contando com o
+ * casamento por prefixo do i18next; mas `getBestMatchFromCodes` só tenta o
+ * prefixo numa SEGUNDA passada, depois de TODOS os códigos falharem no
+ * casamento exato — e o "en" que o Chrome de Portugal põe em 3º lugar
+ * (["pt-PT","pt","en-US","en"]) ganhava a primeira passada. Como o detector
+ * `htmlTag` ainda acrescenta o "pt-BR" do index.html ao fim da lista, a
+ * segunda passada nem chegava a rodar: a usuária de Portugal abria o site em
+ * inglês e o "en" ficava gravado no localStorage.
+ *
+ * O que não tem parente nenhum (xx-YY, "cimode") segue como veio: quem decide
+ * é o `supportedLngs` e o fallback.
  */
 export function converterIdiomaDetectado(lng: string): string {
   if (CODIGOS.includes(lng)) return lng;
   const base = lng.split("-")[0];
-  return CODIGOS.includes(base) ? base : lng;
+  if (CODIGOS.includes(base)) return base;
+  return CODIGOS.find(c => c.split("-")[0] === base) ?? lng;
 }
 
 /**
@@ -71,6 +87,10 @@ export function opcoesBase(): InitOptions {
     // "en" nunca entra na cadeia. Com a lista, getBestMatchFromCodes cai para
     // a parte de idioma ("en-US" → "en") ou para o código de mesmo prefixo
     // ("pt-PT" → "pt-BR") — também em changeLanguage, fora do detector.
+    // ATENÇÃO: esse casamento por prefixo só roda numa 2ª passada, depois de
+    // TODOS os códigos falharem no exato; com LISTA de códigos (o detector) o
+    // primeiro exato ganha antes. Por isso quem normaliza a lista é
+    // `converterIdiomaDetectado`, não este casamento.
     // NÃO ligar nonExplicitSupportedLngs: com currentOnly ele aceita "en-US"
     // na cadeia sem acrescentar "en" e ainda rejeita o próprio fallback
     // "pt-BR" (a base "pt" não está na lista) — provado com os 10 JSONs.

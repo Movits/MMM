@@ -921,7 +921,19 @@ export default function Network() {
     // editContact deixava o formulário aberto como "Novo Contato" com os
     // dados recém-editados — e o 2º Salvar criava uma duplicata que
     // compartilhava a foto no bucket.
-    onSuccess: () => { toast.success(t("network.toastContatoAtualizado")); setShowForm(false); setEditContact(null); refetch(); },
+    //
+    // Mas fechar sem olhar DE QUEM era o salvamento apagava trabalho alheio:
+    // quem salva a Ana, fecha o modal e abre outro ("+ Novo", ou a edição de
+    // outra pessoa) via esse formulário sumir — com o que já tinha digitado —
+    // assim que a resposta atrasada da Ana chegava, sob o toast "Contato
+    // atualizado!". `vars.id` diz de qual contato era o envio; só fecha se o
+    // formulário aberto ainda for o dele. O aviso e o refetch da lista
+    // continuam acontecendo sempre: o salvamento aconteceu de verdade.
+    onSuccess: (_dados, vars) => {
+      toast.success(t("network.toastContatoAtualizado"));
+      if (editContact?.id === vars.id) { setShowForm(false); setEditContact(null); }
+      refetch();
+    },
     onError: (e) => toast.error(t("network.toastErroAtualizar") + e.message),
   });
   const deleteMut = trpc.network.delete.useMutation({
