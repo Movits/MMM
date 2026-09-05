@@ -48,11 +48,14 @@ vi.mock("@/lib/trpc", () => ({
     // A seção "Possui / Procura" do detalhe (PR #68) consulta e invalida por
     // aqui; sem itens ela não aparece, e é o que estes testes querem.
     useUtils: () => ({
-      network: { assetsNeeds: { invalidate: vi.fn() }, list: { invalidate: vi.fn() } },
+      network: { assetsNeeds: { invalidate: vi.fn() }, get: { invalidate: vi.fn() }, list: { invalidate: vi.fn() } },
       enrichment: { getHistory: { invalidate: vi.fn() } },
     }),
     network: {
       list: { useQuery: (...args: unknown[]) => duble.list(...args) },
+      // O detalhe relê o contato por network.get (PR do chat); sem resposta,
+      // vale o retrato da lista — é o que estes testes querem.
+      get: { useQuery: () => ({ data: undefined, isLoading: false, isError: false, error: null, refetch: vi.fn() }) },
       assetsNeeds: { useQuery: () => ({ data: { possui: [], procura: [] }, isLoading: false, isError: false, error: null, refetch: vi.fn() }) },
       removeAsset: duble.registrar("removeAsset"),
       removeNeed: duble.registrar("removeNeed"),
@@ -66,6 +69,7 @@ vi.mock("@/lib/trpc", () => ({
       startSession: duble.registrar("startSession"),
       confirmSuggestion: duble.registrar("confirmSuggestion"),
       ignoreSuggestion: duble.registrar("ignoreSuggestion"),
+      undoSuggestion: duble.registrar("undoSuggestion"),
       getHistory: { useQuery: (...args: unknown[]) => duble.getHistory(...args) },
     },
     contexts: { listByContact: { useQuery: (...args: unknown[]) => duble.listByContact(...args) } },

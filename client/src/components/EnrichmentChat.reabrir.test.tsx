@@ -19,18 +19,30 @@ import { EnrichmentChat } from "./EnrichmentChat";
  *
  * Aqui o React Query e os hooks do tRPC são os de verdade; só a rede é um
  * link falso sobre um servidor em memória que imita o router: getMessages
- * anexa o cartão pendente da etapa atual, sendMessage recusa com CONFLICT se
- * há pendente, confirmar/ignorar respondem NOT_FOUND se a sugestão não está
- * mais pendente. Fechar o contato desmonta o chat (Network.tsx:
+ * anexa TODOS os cartões pendentes da etapa atual, sendMessage recusa com
+ * CONFLICT se há pendente, confirmar/ignorar respondem NOT_FOUND se a
+ * sugestão não está mais pendente e só avançam o roteiro quando não sobra
+ * nenhum cartão da etapa. Fechar o contato desmonta o chat (Network.tsx:
  * `viewContact && <ContactDetail>`); reabrir remonta com o MESMO QueryClient.
+ *
+ * As esperas são por ESTADO (a conversa hidratada, o cache do getMessages
+ * mais novo que antes, nada em voo), com folga de tempo: este arquivo oscilava
+ * sob carga quando contava chamadas com o timeout padrão de 1 s.
  */
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
+// Cada espera tem 8 s de folga, e um teste encadeia várias: o teto por teste
+// precisa ser maior que o padrão de 5 s, senão a folga não vale nada.
+const FOLGA = { timeout: 8_000 };
+vi.setConfig({ testTimeout: 30_000 });
+
 const ETAPAS = [
-  { fieldType: "phone", question: "Qual é o telefone dele/dela?" },
-  { fieldType: "company", question: "Em qual empresa trabalha?" },
-  { fieldType: "job_title", question: "Qual é o cargo?" },
+  { fieldType: "phone", question: "Qual é o telefone dele/dela?", lista: false },
+  { fieldType: "company", question: "Em qual empresa trabalha?", lista: false },
+  // Etapa de lista: "mina, fábrica" vira dois cartões, como no router real.
+  { fieldType: "assets", question: "O que essa pessoa pode oferecer?", lista: true },
+  { fieldType: "needs", question: "O que ela está procurando?", lista: true },
 ];
 
 type Sug = { id: string; messageId: string; fieldType: string; suggestedValue: string; status: string; createdAt: number };
@@ -40,6 +52,10 @@ function erro(code: string, message: string) {
   return new TRPCClientError(message, { result: { error: { message, code: -32000, data: { code, httpStatus: 400, path: "" } } } } as never);
 }
 
+// Rotas que o chat invalida depois de gravar (perfil, lista, histórico,
+// possui/procura) e que este teste não observa: respondem vazio.
+const ROTAS_SEM_OBSERVADOR = new Set(["network.get", "network.list", "network.assetsNeeds", "enrichment.getHistory"]);
+
 function novoServidor() {
   let seq = 0;
   let agora = 1000;
@@ -48,9 +64,9 @@ function novoServidor() {
   });
   const estado = { etapa: 0, status: "active", msgs: [msg("assistant", ETAPAS[0].question)], sugs: [] as Sug[], chamadas: [] as string[] };
   const etapaAtual = () => ETAPAS[estado.etapa] ?? null;
-  const pendenteDaEtapa = () => {
+  const pendentesDaEtapa = () => {
     const e = etapaAtual();
-    return e ? estado.sugs.filter(s => s.status === "pending" && s.fieldType === e.fieldType).sort((a, b) => b.createdAt - a.createdAt)[0] : undefined;
+    return e ? estado.sugs.filter(s => s.status === "pending" && s.fieldType === e.fieldType).sort((a, b) => a.createdAt - b.createdAt) : [];
   };
   const avancar = () => {
     estado.etapa++;
@@ -60,18 +76,22 @@ function novoServidor() {
     estado.msgs.push(m);
     return m;
   };
-  // Como routers/enrichment.ts: decide, e só avança se a sugestão é da etapa atual.
+  // Como routers/enrichment.ts: decide; só avança se a sugestão é da etapa
+  // atual E não sobrou outro cartão dela.
   const decidir = (suggestionId: string, novoStatus: "applied" | "ignored") => {
     const s = estado.sugs.find(x => x.id === suggestionId);
     if (!s || s.status !== "pending") throw erro("NOT_FOUND", "SUGGESTION_NOT_FOUND");
     s.status = novoStatus;
     const e = etapaAtual();
-    if (!e || s.fieldType !== e.fieldType) return { success: true, status: novoStatus, nextQuestion: null, sessionComplete: false };
+    if (!e || s.fieldType !== e.fieldType) return { success: true, status: novoStatus, nextQuestion: null, sessionComplete: false, pendentesRestantes: 0 };
+    const restantes = pendentesDaEtapa().length;
+    if (restantes > 0) return { success: true, status: novoStatus, nextQuestion: null, sessionComplete: false, pendentesRestantes: restantes };
     const m = avancar();
     return m
-      ? { success: true, status: novoStatus, nextQuestion: m.content, nextMessageId: m.id, sessionComplete: false }
-      : { success: true, status: novoStatus, nextQuestion: null, sessionComplete: true };
+      ? { success: true, status: novoStatus, nextQuestion: m.content, nextMessageId: m.id, sessionComplete: false, pendentesRestantes: 0 }
+      : { success: true, status: novoStatus, nextQuestion: null, sessionComplete: true, pendentesRestantes: 0 };
   };
+  const cartao = (s: Sug) => ({ id: s.id, fieldType: s.fieldType, suggestedValue: s.suggestedValue, confidence: 0.9, status: "pending" });
 
   const responder = async (path: string, input: unknown) => {
     estado.chamadas.push(path);
@@ -80,32 +100,35 @@ function novoServidor() {
       case "enrichment.getActiveSession":
         return { id: "sessao-1", ownerId: "dona", contactId: 42, status: estado.status, questionsAnswered: estado.etapa, questionsSkipped: 0, summary: null };
       case "enrichment.getMessages": {
-        const cartao = estado.status === "active" ? pendenteDaEtapa() : undefined;
+        const cartoes = estado.status === "active" ? pendentesDaEtapa() : [];
         return estado.msgs.slice(-(input as { limit: number }).limit).map(m => ({
           ...m,
-          suggestions: cartao && cartao.messageId === m.id
-            ? [{ id: cartao.id, fieldType: cartao.fieldType, suggestedValue: cartao.suggestedValue, confidence: 0.9, status: "pending" }]
-            : [],
+          suggestions: cartoes.filter(c => c.messageId === m.id).map(cartao),
         }));
       }
       case "enrichment.sendMessage": {
         const e = etapaAtual()!;
-        if (pendenteDaEtapa()) throw erro("CONFLICT", "SUGGESTION_PENDING");
+        if (pendentesDaEtapa().length > 0) throw erro("CONFLICT", "SUGGESTION_PENDING");
         const { content } = input as { content: string };
         estado.msgs.push(msg("user", content));
         const ia = msg("assistant", `Confirma: ${content}?`);
         estado.msgs.push(ia);
-        const s: Sug = { id: `sug${++seq}`, messageId: ia.id, fieldType: e.fieldType, suggestedValue: content, status: "pending", createdAt: ia.createdAt };
-        estado.sugs.push(s);
+        const valores = e.lista ? content.split(",").map(v => v.trim()).filter(Boolean) : [content];
+        const novas = valores.map(v => {
+          const s: Sug = { id: `sug${++seq}`, messageId: ia.id, fieldType: e.fieldType, suggestedValue: v, status: "pending", createdAt: ++agora };
+          estado.sugs.push(s);
+          return s;
+        });
         return {
-          messageId: ia.id, aiResponse: ia.content,
-          suggestions: [{ id: s.id, fieldType: s.fieldType, suggestedValue: s.suggestedValue, confidence: 0.9, status: "pending" }],
+          messageId: ia.id, aiResponse: ia.content, suggestions: novas.map(cartao),
           sessionComplete: false, completionSummary: null, awaitingConfirmation: true,
         };
       }
       case "enrichment.confirmSuggestion": return decidir((input as { suggestionId: string }).suggestionId, "applied");
       case "enrichment.ignoreSuggestion": return decidir((input as { suggestionId: string }).suggestionId, "ignored");
-      default: throw new Error("rota não simulada: " + path);
+      default:
+        if (ROTAS_SEM_OBSERVADOR.has(path)) return null;
+        throw new Error("rota não simulada: " + path);
     }
   };
   return { estado, responder, decidir };
@@ -133,15 +156,23 @@ function novaTela() {
       </QueryClientProvider>
     </trpc.Provider>,
   );
+  // Quando o cache do getMessages foi atualizado pela última vez: é o estado
+  // que a remontagem muda (o refetch dela grava um dado mais novo).
+  const ultimaAtualizacao = () => Math.max(0, ...qc.getQueryCache()
+    .findAll({ queryKey: [["enrichment", "getMessages"]] })
+    .map(q => q.state.dataUpdatedAt));
   // Espera o refetch do getMessages disparado pela remontagem chegar. Antes de
-  // contar, deixa assentar o que ainda está em voo (a invalidação da última
-  // mutação): a remontagem se encosta nesse pedido em vez de abrir outro.
+  // marcar o ponto de partida, deixa assentar o que ainda está em voo (a
+  // invalidação da última mutação): a remontagem se encosta nesse pedido em
+  // vez de abrir outro.
   const esperarRefetch = async () => {
-    await waitFor(() => expect(qc.isFetching()).toBe(0));
-    const antes = srv.estado.chamadas.filter(c => c === "enrichment.getMessages").length;
+    await waitFor(() => expect(qc.isFetching()).toBe(0), FOLGA);
+    const antes = ultimaAtualizacao();
     return async () => {
-      await waitFor(() => expect(srv.estado.chamadas.filter(c => c === "enrichment.getMessages").length).toBeGreaterThan(antes));
-      await waitFor(() => expect(qc.isFetching()).toBe(0));
+      await waitFor(() => {
+        expect(ultimaAtualizacao()).toBeGreaterThan(antes);
+        expect(qc.isFetching()).toBe(0);
+      }, FOLGA);
     };
   };
   // Responde como a usuária: espera a conversa aparecer (hidratada, nada em
@@ -151,18 +182,31 @@ function novaTela() {
     await waitFor(() => {
       expect(screen.queryByText(/iniciando conversa/i)).not.toBeInTheDocument();
       expect(qc.isFetching()).toBe(0);
-    });
-    const campo = await screen.findByPlaceholderText("Responda aqui...");
+    }, FOLGA);
+    const campo = await screen.findByPlaceholderText("Responda aqui...", {}, FOLGA);
     fireEvent.change(campo, { target: { value: texto } });
     fireEvent.keyDown(campo, { key: "Enter" });
-    await screen.findByRole("button", { name: /^confirmar$/i });
+    // A resposta assentou quando o cartão está na tela E a digitação travou —
+    // e o refetch que a mutação dispara já voltou (nada em voo).
+    await esperarCartaoPendente();
+    await waitFor(() => expect(qc.isFetching()).toBe(0), FOLGA);
   };
   return { srv, qc, abrir, esperarRefetch, responder };
 }
 
 const botaoConfirmar = () => screen.queryByRole("button", { name: /^confirmar$/i });
+const botoesConfirmar = () => screen.queryAllByRole("button", { name: /^confirmar$/i });
 const campoDeResposta = () => screen.queryByPlaceholderText("Responda aqui...");
 const aviso = () => screen.queryByText(/confirme ou ignore/i);
+// O estado "há cartão esperando decisão", inteiro: cartão na tela (quantos
+// forem pedidos; sem número, pelo menos um), aviso visível, campo de digitar
+// fora. Esperar pelos três evita ler a tela entre dois renders.
+const esperarCartaoPendente = (quantos?: number) => waitFor(() => {
+  if (quantos === undefined) expect(botoesConfirmar().length).toBeGreaterThan(0);
+  else expect(botoesConfirmar()).toHaveLength(quantos);
+  expect(aviso()).toBeInTheDocument();
+  expect(campoDeResposta()).not.toBeInTheDocument();
+}, FOLGA);
 
 describe("EnrichmentChat — fechar e reabrir o contato em menos de 5 minutos", () => {
   beforeEach(() => { vi.clearAllMocks(); });
@@ -171,7 +215,6 @@ describe("EnrichmentChat — fechar e reabrir o contato em menos de 5 minutos", 
     const t = novaTela();
     const tela1 = t.abrir();
     await t.responder("11 99999-8888");
-    expect(campoDeResposta()).not.toBeInTheDocument();
     tela1.unmount();
 
     const esperar = await t.esperarRefetch();
@@ -180,10 +223,8 @@ describe("EnrichmentChat — fechar e reabrir o contato em menos de 5 minutos", 
 
     // Mutante "hidratar só quando messages.length === 0": o cache velho (só a
     // 1ª pergunta) ganhava e o refetch com o cartão era descartado.
-    expect(await screen.findByRole("button", { name: /^confirmar$/i })).toBeInTheDocument();
+    await esperarCartaoPendente();
     expect(screen.getByText("Confirma: 11 99999-8888?")).toBeInTheDocument();
-    expect(campoDeResposta()).not.toBeInTheDocument();
-    expect(aviso()).toBeInTheDocument();
   });
 
   it("confirmar, fechar e reabrir: o cartão já decidido NÃO volta e dá para responder a próxima pergunta", async () => {
@@ -196,8 +237,8 @@ describe("EnrichmentChat — fechar e reabrir o contato em menos de 5 minutos", 
     let esperar = await t.esperarRefetch();
     const tela2 = t.abrir();
     await esperar();
-    fireEvent.click(await screen.findByRole("button", { name: /^confirmar$/i }));
-    await screen.findByText("Em qual empresa trabalha?");
+    fireEvent.click(await screen.findByRole("button", { name: /^confirmar$/i }, FOLGA));
+    await screen.findByText("Em qual empresa trabalha?", {}, FOLGA);
     expect(t.srv.estado.sugs[0].status).toBe("applied");
     tela2.unmount();
 
@@ -208,9 +249,12 @@ describe("EnrichmentChat — fechar e reabrir o contato em menos de 5 minutos", 
     await esperar();
 
     // A pergunta seguinte só entra pela hidratação do dado fresco.
-    expect(await screen.findByText("Em qual empresa trabalha?")).toBeInTheDocument();
-    expect(botaoConfirmar()).not.toBeInTheDocument();
-    expect(aviso()).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Em qual empresa trabalha?")).toBeInTheDocument();
+      expect(botaoConfirmar()).not.toBeInTheDocument();
+      expect(aviso()).not.toBeInTheDocument();
+      expect(campoDeResposta()).toBeInTheDocument();
+    }, FOLGA);
     expect(toast.error).not.toHaveBeenCalled();
 
     // E a conversa segue de onde o servidor está.
@@ -226,11 +270,59 @@ describe("EnrichmentChat — fechar e reabrir o contato em menos de 5 minutos", 
     t.srv.decidir(t.srv.estado.sugs[0].id, "applied");
 
     fireEvent.click(botaoConfirmar()!);
-    await waitFor(() => expect(botaoConfirmar()).not.toBeInTheDocument());
-    expect(screen.getByText("Em qual empresa trabalha?")).toBeInTheDocument();
-    expect(campoDeResposta()).toBeInTheDocument();
+    await waitFor(() => {
+      expect(botaoConfirmar()).not.toBeInTheDocument();
+      expect(screen.getByText("Em qual empresa trabalha?")).toBeInTheDocument();
+      expect(campoDeResposta()).toBeInTheDocument();
+    }, FOLGA);
     expect(toast.info).toHaveBeenCalled();
     expect(toast.error).not.toHaveBeenCalled();
     tela1.unmount();
+  });
+
+  it("etapa de lista: dois cartões sobrevivem a fechar e reabrir, e o roteiro só anda quando o último é decidido", async () => {
+    const t = novaTela();
+    // Chega à pergunta de "o que oferece" respondendo e confirmando as duas anteriores.
+    const tela1 = t.abrir();
+    await t.responder("11 99999-8888");
+    fireEvent.click(botaoConfirmar()!);
+    await screen.findByText("Em qual empresa trabalha?", {}, FOLGA);
+    await t.responder("Acme");
+    fireEvent.click(botaoConfirmar()!);
+    await screen.findByText("O que essa pessoa pode oferecer?", {}, FOLGA);
+
+    await t.responder("mina de lítio, fábrica de baterias");
+    await esperarCartaoPendente(2);
+    tela1.unmount();
+
+    // Reabrir: os DOIS cartões voltam (o servidor anexa todas as pendentes da etapa).
+    let esperar = await t.esperarRefetch();
+    const tela2 = t.abrir();
+    await esperar();
+    await esperarCartaoPendente(2);
+
+    // Confirmar um: o outro fica, a digitação continua travada, sem pergunta nova.
+    fireEvent.click(botoesConfirmar()[0]);
+    await esperarCartaoPendente(1);
+    await waitFor(() => expect(t.qc.isFetching()).toBe(0), FOLGA);
+    expect(t.srv.estado.sugs.filter(s => s.fieldType === "assets" && s.status === "applied")).toHaveLength(1);
+    expect(t.srv.estado.etapa).toBe(2); // Mutante "avança a cada confirmação": já seria 3.
+    expect(screen.queryByText("O que ela está procurando?")).not.toBeInTheDocument();
+    tela2.unmount();
+
+    // Reabrir de novo: só o cartão restante volta; decidi-lo libera a próxima pergunta.
+    esperar = await t.esperarRefetch();
+    t.abrir();
+    await esperar();
+    await esperarCartaoPendente(1);
+    fireEvent.click(botoesConfirmar()[0]);
+    await waitFor(() => {
+      expect(screen.getByText("O que ela está procurando?")).toBeInTheDocument();
+      expect(botaoConfirmar()).not.toBeInTheDocument();
+      expect(aviso()).not.toBeInTheDocument();
+      expect(campoDeResposta()).toBeInTheDocument();
+    }, FOLGA);
+    expect(t.srv.estado.etapa).toBe(3);
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });

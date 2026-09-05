@@ -43,6 +43,13 @@
       "when": 1788305092156,
       "tag": "0005_termo-acesso-ouro",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1788584386455,
+      "tag": "0006_desfazer-enriquecimento",
+      "breakpoints": true
     }
   ]
 }

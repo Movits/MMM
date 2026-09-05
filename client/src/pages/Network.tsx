@@ -479,13 +479,24 @@ function ContactForm({ initial, onSave, onClose, loading }: {
 }
 
 // ─── Detalhe do contato ───────────────────────────────────────────────────────
-function ContactDetail({ contact, onEdit, onClose }: {
+function ContactDetail({ contact: contatoDaLista, onEdit, onClose }: {
   contact: Contact;
-  onEdit: () => void;
+  /** Recebe o contato FRESCO (network.get), não o retrato da lista: é ele que o formulário de edição precisa abrir. */
+  onEdit: (contato: Contact) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"info" | "history">("info");
+
+  // O contato da lista é um retrato de quando a lista foi carregada. O chat
+  // de enriquecimento grava telefone, empresa etc. no servidor e invalida
+  // network.get: lendo por aqui, o perfil aberto mostra o dado assim que ele
+  // chega, sem fechar e reabrir. Até a primeira resposta, vale o retrato.
+  const fresco = trpc.network.get.useQuery(
+    { id: contatoDaLista.id },
+    { refetchOnWindowFocus: false }
+  );
+  const contact: Contact = fresco.data ?? contatoDaLista;
 
   // Histórico de enriquecimento. Em erro, a aba não pode dizer "nenhum
   // enriquecimento ainda": o histórico existe, o servidor é que não respondeu.
@@ -501,15 +512,33 @@ function ContactDetail({ contact, onEdit, onClose }: {
     { refetchOnWindowFocus: false }
   );
 
-  const confirmMut = trpc.enrichment.confirmSuggestion.useMutation({
-    onError: () => toast.error(t("network.erroDesfazer")),
-  });
-  const ignoreMut = trpc.enrichment.ignoreSuggestion.useMutation();
-
   // Possui / procura é dado da AGENDA: o chat grava sem termo de cruzamento e
   // a vitrine já o expõe, então ver e remover precisa morar aqui, e não só na
   // tela de Conexões Inteligentes (que fica inteira atrás do termo).
   const utils = trpc.useUtils();
+
+  // Desfazer reverte no servidor o que a confirmação gravou (campo, tag,
+  // nota); tudo que lê o contato precisa ser refeito depois.
+  const undoMut = trpc.enrichment.undoSuggestion.useMutation({
+    onSuccess: (r) => {
+      toast.success(r.reverted ? t("network.toastDesfeito") : t("network.toastDesfeitoValorAlterado"));
+      utils.enrichment.getHistory.invalidate({ contactId: contact.id });
+      utils.network.get.invalidate({ id: contact.id });
+      utils.network.list.invalidate();
+      utils.network.assetsNeeds.invalidate({ contactId: contact.id });
+    },
+    onError: (e) => {
+      // O servidor não achou a sugestão como aplicada: já tinha sido desfeita
+      // (antes, ou por outra aba agora). A lista na tela está velha — o
+      // histórico é refeito (o botão some) e o aviso diz o porquê, não "erro".
+      if (e.data?.code === "NOT_FOUND") {
+        toast.info(t("network.toastJaDesfeita"));
+        utils.enrichment.getHistory.invalidate({ contactId: contact.id });
+        return;
+      }
+      toast.error(t("network.erroDesfazer"));
+    },
+  });
   const {
     data: possuiProcura,
     isError: erroPossuiProcura,
@@ -538,7 +567,10 @@ function ContactDetail({ contact, onEdit, onClose }: {
           <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors flex items-center gap-1.5 text-sm">
             <ChevronLeft size={16} /> {t("network.minhaRede")}
           </button>
-          <Button size="sm" onClick={onEdit} variant="outline"
+          {/* O formulário abre com o contato fresco: com o retrato da lista,
+              "Editar" depois de o chat confirmar o telefone abria o campo
+              vazio, e Salvar mandava phone: null por cima do dado confirmado. */}
+          <Button size="sm" onClick={() => onEdit(contact)} variant="outline"
             className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 bg-transparent">
             <Edit2 size={13} className="mr-1" /> {t("network.editar")}
           </Button>
@@ -804,8 +836,13 @@ function ContactDetail({ contact, onEdit, onClose }: {
                           </p>
                         </div>
                         {!isIgnored && !isUndone && (
-                          <button className="flex-shrink-0 p-1.5 rounded-lg text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                            title={t("network.tituloDesfazer")}>
+                          // Sugestão aplicada antes de existir o retrato do valor
+                          // anterior não tem como voltar: o botão fica, desligado, e
+                          // explica por quê.
+                          <button className="flex-shrink-0 p-1.5 rounded-lg text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40 disabled:hover:text-white/25 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                            disabled={!item.podeDesfazer || undoMut.isPending}
+                            onClick={() => undoMut.mutate({ suggestionId: item.id })}
+                            title={item.podeDesfazer ? t("network.tituloDesfazer") : t("network.desfazerIndisponivel")}>
                             <RotateCcw size={12} />
                           </button>
                         )}
@@ -1085,7 +1122,9 @@ export default function Network() {
       {viewContact && (
         <ContactDetail
           contact={viewContact}
-          onEdit={() => { setEditContact(viewContact); setViewContact(null); setShowForm(true); }}
+          // `viewContact` é o retrato de quando a lista foi clicada; o detalhe
+          // entrega o contato fresco que ele mesmo leu do servidor.
+          onEdit={(fresco) => { setEditContact(fresco); setViewContact(null); setShowForm(true); }}
           onClose={() => setViewContact(null)}
         />
       )}

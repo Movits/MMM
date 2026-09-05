@@ -38,6 +38,12 @@ const duble = vi.hoisted(() => {
       enrichment: {
         getActiveSession: { invalidate: vi.fn() },
         getMessages: { fetch: vi.fn(), invalidate: vi.fn() },
+        getHistory: { invalidate: vi.fn() },
+      },
+      network: {
+        get: { invalidate: vi.fn() },
+        list: { invalidate: vi.fn() },
+        assetsNeeds: { invalidate: vi.fn() },
       },
     },
   };
@@ -79,12 +85,16 @@ const campoDeResposta = () => screen.queryByPlaceholderText("Responda aqui...");
 const aviso = () => screen.queryByText(/confirme ou ignore/i);
 
 const erroGenerico = { message: "Erro de rede", data: { code: "INTERNAL_SERVER_ERROR" } };
-const proximaPergunta = { success: true, status: "applied", nextQuestion: "Em qual empresa trabalha?", nextMessageId: "m4", sessionComplete: false };
+const proximaPergunta = { success: true, status: "applied", nextQuestion: "Em qual empresa trabalha?", nextMessageId: "m4", sessionComplete: false, pendentesRestantes: 0 };
 
 beforeEach(() => {
   for (const m of Object.values(duble.mutacoes)) m.mutate.mockReset();
   duble.utils.enrichment.getMessages.fetch.mockReset();
   duble.utils.enrichment.getMessages.invalidate.mockReset();
+  duble.utils.enrichment.getHistory.invalidate.mockReset();
+  duble.utils.network.get.invalidate.mockReset();
+  duble.utils.network.list.invalidate.mockReset();
+  duble.utils.network.assetsNeeds.invalidate.mockReset();
   vi.mocked(toast.info).mockReset();
 });
 
@@ -198,6 +208,40 @@ describe("EnrichmentChat — cartão pendente", () => {
   });
 });
 
+describe("EnrichmentChat — IA indisponível", () => {
+  it("o aviso aparece, o texto volta ao campo para reenviar, o balão fica e a conversa NÃO é reidratada sem ele", () => {
+    // Do lado do servidor, a resposta da usuária não é gravada nesse ramo (é o
+    // que evita a duplicata ao reenviar). A revisão da PR-C achou o outro lado:
+    // a tela invalidava getMessages, a hidratação apagava o balão dela e o
+    // campo já estava vazio — a resposta sumia sem ela ter como reenviar.
+    montar([pergunta]);
+    const enviar = duble.mutacoes.sendMessage;
+    const texto = "11 99999-8888, ramal 12";
+
+    const campo = campoDeResposta()!;
+    fireEvent.change(campo, { target: { value: texto } });
+    fireEvent.keyDown(campo, { key: "Enter" });
+    expect(enviar.mutate).toHaveBeenCalledWith({ sessionId: "sessao-1", contactId: 42, content: texto });
+    expect((campoDeResposta() as HTMLInputElement).value).toBe("");
+
+    const aviso = "O assistente de IA está indisponível neste momento, então sua resposta ainda não foi processada. Tente de novo em instantes.";
+    act(() => enviar.opcoes.onSuccess?.(
+      { messageId: "m2", aiResponse: aviso, suggestions: [], sessionComplete: false, completionSummary: null, awaitingConfirmation: false, aiUnavailable: true },
+      { sessionId: "sessao-1", contactId: 42, content: texto },
+    ));
+
+    expect(screen.getByText(/indisponível neste momento/)).toBeInTheDocument();
+    // Mutante "tratar como resposta comum": o campo ficaria vazio e o
+    // getMessages invalidado (a reidratação apaga o balão da usuária).
+    expect((campoDeResposta() as HTMLInputElement).value).toBe(texto);
+    expect(screen.getByText(texto)).toBeInTheDocument();
+    expect(duble.utils.enrichment.getMessages.invalidate).not.toHaveBeenCalled();
+    // Nada foi gravado no contato: não há perfil, lista ou histórico a refazer.
+    expect(duble.utils.network.get.invalidate).not.toHaveBeenCalled();
+    expect(duble.utils.enrichment.getHistory.invalidate).not.toHaveBeenCalled();
+  });
+});
+
 describe("EnrichmentChat — reabrir o contato não pode hidratar do cache velho", () => {
   it("dado que ainda é o cache da abertura anterior (isFetchedAfterMount=false) não hidrata: espera o servidor", () => {
     // Cache velho com um cartão que, no servidor, já foi decidido. Hidratar dele
@@ -225,6 +269,29 @@ describe("EnrichmentChat — reabrir o contato não pode hidratar do cache velho
     expect(invalidar).toHaveBeenCalledTimes(3);
   });
 
+  it("confirmar, ignorar e responder refazem o perfil aberto, a lista, o Histórico IA e possui/procura", () => {
+    // A reverificação de 04/09: o telefone confirmado não aparecia no perfil
+    // nem na lista, e o badge do Histórico IA não mudava — a usuária concluía
+    // que não salvou e digitava de novo. Tudo isso lê do cache do React Query.
+    montar([pergunta, resposta, pedidoDeConfirmacao]);
+    const { enrichment, network } = duble.utils;
+
+    act(() => duble.mutacoes.confirmSuggestion.opcoes.onSuccess?.(proximaPergunta, { suggestionId: "sug-1" }));
+    expect(network.get.invalidate).toHaveBeenCalledWith({ id: 42 });
+    expect(network.list.invalidate).toHaveBeenCalledTimes(1);
+    expect(enrichment.getHistory.invalidate).toHaveBeenCalledWith({ contactId: 42 });
+    expect(network.assetsNeeds.invalidate).toHaveBeenCalledWith({ contactId: 42 });
+
+    act(() => duble.mutacoes.ignoreSuggestion.opcoes.onSuccess?.({ ...proximaPergunta, status: "ignored" }, { suggestionId: "sug-1" }));
+    act(() => duble.mutacoes.sendMessage.opcoes.onSuccess?.(
+      { messageId: "m5", aiResponse: "Confirma: Acme?", suggestions: [], sessionComplete: false, awaitingConfirmation: true }, {},
+    ));
+    expect(network.get.invalidate).toHaveBeenCalledTimes(3);
+    expect(network.list.invalidate).toHaveBeenCalledTimes(3);
+    expect(enrichment.getHistory.invalidate).toHaveBeenCalledTimes(3);
+    expect(network.assetsNeeds.invalidate).toHaveBeenCalledTimes(3);
+  });
+
   it("cartão que o servidor diz já decidido (NOT_FOUND) não fica preso: a conversa é recarregada", async () => {
     montar([pergunta, resposta, pedidoDeConfirmacao]);
     const proxima = { id: "m4", role: "assistant", content: "Em qual empresa trabalha?", suggestions: [] };
@@ -242,5 +309,71 @@ describe("EnrichmentChat — reabrir o contato não pode hidratar do cache velho
     expect(campoDeResposta()).toBeInTheDocument();
     expect(toast.info).toHaveBeenCalled();
     expect(toast.error).not.toHaveBeenCalledWith("Erro ao salvar informação.");
+  });
+});
+
+describe("EnrichmentChat — vários cartões na mesma pergunta (etapa de lista)", () => {
+  // "O que essa pessoa pode oferecer?" convida uma lista; a IA devolve N itens
+  // e cada um vira um cartão. A digitação só volta quando o servidor diz que
+  // não sobrou nenhum (pendentesRestantes) — não quando UM foi decidido.
+  const perguntaDeAtivos = { id: "m1", role: "assistant", content: "O que essa pessoa pode oferecer?", suggestions: [] };
+  const respostaDeAtivos = { id: "m2", role: "user", content: "uma mina de lítio e uma fábrica de baterias", suggestions: [] };
+  const mina = { id: "sug-mina", fieldType: "assets", suggestedValue: "mina de lítio", confidence: 0.9, status: "pending" as const };
+  const fabrica = { id: "sug-fabrica", fieldType: "assets", suggestedValue: "fábrica de baterias", confidence: 0.9, status: "pending" as const };
+  const pedidoComDois = { id: "m3", role: "assistant", content: "Confirma os dois itens?", suggestions: [mina, fabrica] };
+  const perguntaSeguinte = { success: true, status: "applied", nextQuestion: "O que ela está procurando?", nextMessageId: "m4", sessionComplete: false, pendentesRestantes: 0 };
+  const botoesConfirmar = () => screen.getAllByRole("button", { name: /^confirmar$/i });
+
+  it("ao reabrir com dois pendentes, os dois voltam e a digitação fica travada", () => {
+    montar([perguntaDeAtivos, respostaDeAtivos, pedidoComDois]);
+
+    expect(botoesConfirmar()).toHaveLength(2);
+    expect(screen.getByText("mina de lítio")).toBeInTheDocument();
+    expect(screen.getByText("fábrica de baterias")).toBeInTheDocument();
+    expect(campoDeResposta()).not.toBeInTheDocument();
+    expect(aviso()).toBeInTheDocument();
+  });
+
+  it("confirmar o 1º mantém o 2º e o aviso; confirmar o 2º libera o campo com a próxima pergunta", () => {
+    montar([perguntaDeAtivos, respostaDeAtivos, pedidoComDois]);
+    const confirmar = duble.mutacoes.confirmSuggestion;
+
+    fireEvent.click(botoesConfirmar()[0]);
+    expect(confirmar.mutate).toHaveBeenCalledWith({ suggestionId: "sug-mina", editedValue: undefined });
+    act(() => confirmar.opcoes.onSuccess?.(
+      { success: true, status: "applied", nextQuestion: null, sessionComplete: false, pendentesRestantes: 1 }, { suggestionId: "sug-mina" },
+    ));
+
+    // Mutante "setAwaitingConfirmation(false) no sucesso": o campo voltaria com a fábrica ainda pendente.
+    expect(botoesConfirmar()).toHaveLength(1);
+    expect(screen.queryByText("mina de lítio")).not.toBeInTheDocument();
+    expect(screen.getByText("fábrica de baterias")).toBeInTheDocument();
+    expect(aviso()).toBeInTheDocument();
+    expect(campoDeResposta()).not.toBeInTheDocument();
+
+    // O cartão restante continua clicável (a decisão anterior já voltou).
+    fireEvent.click(botoesConfirmar()[0]);
+    expect(confirmar.mutate).toHaveBeenCalledWith({ suggestionId: "sug-fabrica", editedValue: undefined });
+    act(() => confirmar.opcoes.onSuccess?.(perguntaSeguinte, { suggestionId: "sug-fabrica" }));
+
+    expect(botaoConfirmar()).not.toBeInTheDocument();
+    expect(screen.getByText("O que ela está procurando?")).toBeInTheDocument();
+    expect(campoDeResposta()).toBeInTheDocument();
+    expect(aviso()).not.toBeInTheDocument();
+  });
+
+  it("ignorar um com o outro pendente também não libera o campo", () => {
+    montar([perguntaDeAtivos, respostaDeAtivos, pedidoComDois]);
+    const ignorar = duble.mutacoes.ignoreSuggestion;
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^ignorar$/i })[1]);
+    act(() => ignorar.opcoes.onSuccess?.(
+      { success: true, status: "ignored", nextQuestion: null, sessionComplete: false, pendentesRestantes: 1 }, { suggestionId: "sug-fabrica" },
+    ));
+
+    expect(botoesConfirmar()).toHaveLength(1);
+    expect(screen.getByText("mina de lítio")).toBeInTheDocument();
+    expect(campoDeResposta()).not.toBeInTheDocument();
+    expect(aviso()).toBeInTheDocument();
   });
 });

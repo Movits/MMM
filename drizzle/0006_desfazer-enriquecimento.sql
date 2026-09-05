@@ -1,0 +1,1 @@
+ALTER TABLE `enrichment_suggestions` ADD `undo_snapshot` json;

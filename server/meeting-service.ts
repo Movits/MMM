@@ -125,8 +125,16 @@ export function decodeMeetingAudio(base64: string, mimeType: string) {
   return audio;
 }
 
+// A extração roda dentro do submit síncrono da reunião (proxy do Render,
+// ~100 s, já descontada a transcrição): teto por chamada e orçamento total
+// mais folgados que os do chat, mas ainda dentro do que a requisição aguenta.
+const TIMEOUT_DA_EXTRACAO_MS = 45_000;
+const ORCAMENTO_DA_EXTRACAO_MS = 60_000;
+
 export async function extractMeetingData(transcript: string): Promise<MeetingExtraction> {
   const response = await invokeLLM({
+    timeoutMs: TIMEOUT_DA_EXTRACAO_MS,
+    orcamentoMs: ORCAMENTO_DA_EXTRACAO_MS,
     messages: [
       {
         role: "system",
@@ -226,6 +234,16 @@ export function ajustarSugestaoAosLimites(contato: MeetingExtraction["contacts"]
   };
 }
 
+// A tradução pede a transcrição INTEIRA de volta: até 48 000 caracteres de
+// entrada viram ~12 000 tokens de saída (≈ 4 caracteres por token), e a
+// 150–250 tokens/s são 48–80 s só de geração, antes da leitura da entrada. O
+// padrão de 60 s por tentativa estourava no meio e o orçamento de 120 s não
+// cabia uma 2ª tentativa inteira — a tradução longa nunca terminava. 180 s
+// cobre o pior caso com folga; os 200 s de orçamento só dão retentativa a
+// uma falha rápida (5xx, conexão recusada), não a outra geração inteira.
+const TIMEOUT_DA_TRADUCAO_MS = 180_000;
+const ORCAMENTO_DA_TRADUCAO_MS = 200_000;
+
 export async function translatePrivateMeetingTranscript(ownerId: string, meetingId: string, language: string) {
   const normalizedLanguage = language === "pt" ? "pt-BR" : language;
   if (!(normalizedLanguage in MEETING_LANGUAGES)) throw new Error("Idioma de tradução não suportado.");
@@ -246,6 +264,8 @@ export async function translatePrivateMeetingTranscript(ownerId: string, meeting
   if (cached) return { language: normalizedLanguage, text: cached.translatedText, cached: true };
 
   const response = await invokeLLM({
+    timeoutMs: TIMEOUT_DA_TRADUCAO_MS,
+    orcamentoMs: ORCAMENTO_DA_TRADUCAO_MS,
     messages: [
       { role: "system", content: `Traduza a transcrição a seguir para ${targetLanguage}. Preserve nomes próprios, empresas, números, telefones, e-mails e a estrutura dos parágrafos. Não resuma, não explique e não adicione informações.` },
       { role: "user", content: transcript.transcript.slice(0, 48_000) },
