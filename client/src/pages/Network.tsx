@@ -880,10 +880,26 @@ export default function Network() {
     debounceRef.current = setTimeout(() => { setDebouncedSearch(v); setPage(1); }, 300) as ReturnType<typeof setTimeout>;
   };
 
-  const { data, isLoading, isError, error, refetch } = trpc.network.list.useQuery(
+  const { data, isLoading, isError, error, refetch, fetchStatus, isSuccess } = trpc.network.list.useQuery(
     { q: debouncedSearch || undefined, tag: filterTag || undefined, page, limit: 20 },
     { enabled: isAuthenticated }
   );
+
+  // `data` sozinho não distingue a resposta que o servidor acabou de dar da
+  // resposta VELHA que o React Query guardou para esta mesma página. Quando a
+  // página 2 esvazia, a entrada [["network","list"],{page:2,limit:20}] fica no
+  // cache com {data: [], total: 20} por até 5 minutos (main.tsx cria
+  // `new QueryClient()`, gcTime padrão). Se a rede voltar a ter 21 contatos, o
+  // primeiro "Próxima →" recebe esse total velho ANTES da resposta nova, o
+  // clamp dispara e a tela volta sozinha para a página 1 — o clique some.
+  //
+  // A condição é `fetchStatus === "idle"`, e não `!isFetching`: o React Query
+  // tem TRÊS estados de busca ("fetching", "paused", "idle"). Sem rede ele nem
+  // tenta buscar e marca "paused" — `isFetching` é false, `isSuccess` continua
+  // true com o dado velho no cache, e o clamp voltaria a agir sobre o total
+  // velho. Só "idle" quer dizer que a consulta DESTA página já assentou: o
+  // total é o que o servidor respondeu, para a página que está sendo pedida.
+  const respostaFrescaDaPagina = isSuccess && fetchStatus === "idle";
 
   // Excluir o único contato da última página deixava a tela presa: a consulta
   // continuava pedindo a página 2, o servidor devolvia lista vazia com
@@ -891,10 +907,10 @@ export default function Network() {
   // sobre "Sua rede está vazia", sem caminho de volta além de recarregar.
   // Quando o total cai abaixo da página atual, volta para a última que existe.
   useEffect(() => {
-    if (data && page > 1 && page > Math.max(1, Math.ceil(data.total / 20))) {
+    if (data && respostaFrescaDaPagina && page > 1 && page > Math.max(1, Math.ceil(data.total / 20))) {
       setPage(Math.max(1, Math.ceil(data.total / 20)));
     }
-  }, [data, page]);
+  }, [data, respostaFrescaDaPagina, page]);
 
   const createMut = trpc.network.create.useMutation({
     onSuccess: (data) => {
@@ -988,6 +1004,10 @@ export default function Network() {
 
   const contacts: Contact[] = data?.data ?? [];
   const total = data?.total ?? 0;
+  // Nunca menor que a página aberta: quando o clamp está parado (sem rede,
+  // erro, resposta velha), `total` pode ser o de antes e o denominador ficaria
+  // atrás do numerador.
+  const totalDePaginas = Math.max(page, Math.ceil(total / 20));
 
   return (
     <div className="min-h-screen bg-[#060e1a] text-white">
@@ -1101,15 +1121,23 @@ export default function Network() {
           </div>
         )}
 
-        {/* Paginação */}
-        {total > 20 && (
+        {/* Paginação — aparece também com `page > 1`, e não só com
+            `total > 20`: fora da página 1 a saída não pode depender do clamp.
+            O clamp só age sobre resposta fresca, então em qualquer estado em
+            que ele fique parado (sem rede, consulta em erro, resposta velha do
+            cache) a tela ficaria numa página vazia sem "← Anterior" — o beco
+            sem saída que este bloco existe para não deixar acontecer. Na
+            página 1 vazia continua não havendo paginação. */}
+        {(total > 20 || page > 1) && (
           <div className="flex items-center justify-center gap-3 pt-4">
             <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}
               className="border-white/15 text-white/60 bg-transparent hover:bg-white/8">
               {t("network.paginaAnterior")}
             </Button>
-            <span className="text-xs text-white/40">{t("network.paginaContador", { page, total: Math.ceil(total / 20) })}</span>
-            <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / 20)} onClick={() => setPage(p => p + 1)}
+            {/* "Página 2 de 1" não existe: fora da página 1, o denominador
+                nunca é menor que a página aberta. */}
+            <span className="text-xs text-white/40">{t("network.paginaContador", { page, total: totalDePaginas })}</span>
+            <Button variant="outline" size="sm" disabled={page >= totalDePaginas} onClick={() => setPage(p => p + 1)}
               className="border-white/15 text-white/60 bg-transparent hover:bg-white/8">
               {t("network.paginaProxima")}
             </Button>

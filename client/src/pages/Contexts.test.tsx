@@ -55,10 +55,14 @@ function contexto(n: number, nome = `Contexto ${n}`) {
 
 type Resposta = { data?: { data: ReturnType<typeof contexto>[]; total: number }; isLoading?: boolean; isError?: boolean; error?: typeof erroDoServidor | null };
 function servidorResponde(porPagina: (page: number) => Resposta) {
-  duble.list.mockImplementation((input: { page: number }) => ({
-    data: undefined, isLoading: false, isError: false, error: null, refetch: duble.refetchLista,
-    ...porPagina(input.page),
-  }));
+  duble.list.mockImplementation((input: { page: number }) => {
+    const resposta = { data: undefined, isLoading: false, isError: false, error: null, refetch: duble.refetchLista, ...porPagina(input.page) };
+    // Dublê SÍNCRONO: `data` é função pura de `page`, então a resposta é
+    // sempre a que o servidor acabou de dar. Cache, resposta velha e modo
+    // offline ficam em Contexts.paginacao-cache.test.tsx, com o React Query
+    // de verdade.
+    return { ...resposta, fetchStatus: resposta.isLoading ? "fetching" : "idle", isSuccess: !resposta.isLoading && !resposta.isError };
+  });
 }
 
 beforeEach(() => {

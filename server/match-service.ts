@@ -159,6 +159,38 @@ async function semanticScore(
   }
 }
 
+/**
+ * Quantas linhas o UPDATE alcançou. O mysql2 devolve o cabeçalho do resultado na
+ * primeira posição e liga CLIENT_FOUND_ROWS por padrão, então `affectedRows`
+ * conta a linha que o WHERE ENCONTROU (não a que mudou de valor) — é justamente
+ * o que se quer de uma trava otimista: 1 significa "a linha ainda estava como eu
+ * li". Conferido contra MariaDB 12.3. Sem cabeçalho reconhecível, zero: quem não
+ * consegue provar que escreveu não anuncia nada para a dona.
+ *
+ * O mesmo número NÃO serve para o insert: num `on duplicate key update`, o
+ * CLIENT_FOUND_ROWS faz a duplicata que grava os mesmos valores voltar 1, igual
+ * a um insert de verdade. Lá a decisão é pelo erro (ver `ehChaveDuplicada`).
+ */
+function linhasAfetadas(resultado: unknown) {
+  const cabecalho = Array.isArray(resultado) ? resultado[0] : resultado;
+  return (cabecalho as { affectedRows?: number } | null | undefined)?.affectedRows ?? 0;
+}
+
+/**
+ * Chave duplicada (ER_DUP_ENTRY, errno 1062) em qualquer ponto da cadeia de
+ * `cause`: o drizzle embrulha o erro do driver num `DrizzleQueryError`, como em
+ * `ehErroDeBancoIndisponivel`. O limite de saltos é contra cadeia circular.
+ */
+function ehChaveDuplicada(erro: unknown) {
+  let atual: unknown = erro;
+  for (let salto = 0; atual && salto < 10; salto += 1) {
+    const { code, errno } = atual as { code?: unknown; errno?: unknown };
+    if (code === "ER_DUP_ENTRY" || errno === 1062) return true;
+    atual = (atual as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 export async function recalculatePrivateMatches(ownerId: string, ownerEmail?: string | null) {
   const db = await exigirDb();
   const [assets, needs, contacts, existing] = await Promise.all([
@@ -267,27 +299,130 @@ export async function recalculatePrivateMatches(ownerId: string, ownerEmail?: st
       // 05/09). dismissedAt/acceptedAt ficam como histórico da decisão
       // anterior. O slug antigo pode estar vazio (linha anterior ao conserto
       // da escrita não latina): recalcula-se do rótulo, como no laço lá em cima.
-      const slugsAntigos = new Set([...(previous.matchedAssets ?? []), ...(previous.matchedNeeds ?? [])]
-        .map(razao => razao.slug || slugifyMatchTag(razao.label)));
-      const razaoTotalmenteNova = ![...values.matchedAssets, ...values.matchedNeeds].some(razao => slugsAntigos.has(razao.slug));
+      const listaDeRazoes = (guardado: unknown) => (Array.isArray(guardado) ? guardado as MatchReason[] : []);
+      const slugsAntigos = new Set([...listaDeRazoes(previous.matchedAssets), ...listaDeRazoes(previous.matchedNeeds)]
+        .map(razao => razao?.slug || slugifyMatchTag(razao?.label ?? ""))
+        .filter(Boolean));
+      // Reabrir exige PROVA de que a razão mudou, e a prova é a razão antiga.
+      // Sem nenhum slug antigo registrado (linha guardada com `null` ou lista
+      // vazia no JSON, de antes de a coluna ser preenchida) a interseção é
+      // vazia por falta de dado, não por troca de razão — e o par dispensado
+      // voltava a pendente, com e-mail de "nova oportunidade", sem nada ter
+      // mudado. Na dúvida a decisão da dona é que vale: fica como está.
+      const razaoTotalmenteNova = slugsAntigos.size > 0
+        && ![...values.matchedAssets, ...values.matchedNeeds].some(razao => slugsAntigos.has(razao.slug));
       const reabrir = razaoTotalmenteNova && (previous.status === "dismissed" || previous.status === "accepted" || previous.status === "viewed");
-      const patch = reabrir ? { ...values, status: "pending" as const, viewedAt: null, notifiedAt: null } : values;
-      await db.update(aiMatchSuggestions).set(patch).where(and(eq(aiMatchSuggestions.id, previous.id), eq(aiMatchSuggestions.ownerId, ownerId)));
+      // Caso que fica de fora, de propósito: corrigir a escrita de uma tag
+      // ressuscita o par. Não existe edição de tag no produto — `contact_assets`
+      // e `contact_needs` só recebem INSERT e DELETE (`addAsset`/`addNeed` e
+      // `removeAsset`/`removeNeed` em `routers/matches.ts`, mais o insert do
+      // enriquecimento em `db.ts`) e a tela só oferece "adicionar" e o X. Trocar
+      // "Vinho" por "Vinhos" é remover e adicionar: nasce LINHA NOVA, com id
+      // novo e slug novo. Por isso o "caminho limpo" que se costuma propor —
+      // guardar na linha do match os ids de contact_assets/contact_needs em vez
+      // dos slugs — NÃO resolveria este caso: o id também muda. Ele só serviria
+      // se antes existisse uma edição de tag que preservasse a linha. Enquanto
+      // não existir, correção de escrita é razão nova para o cruzamento e um par
+      // dispensado volta a pendente por causa dela: é o preço de reabrir por
+      // troca de razão, e a decisão (Nicolas, 04/09) é pagar esse preço.
+
+      // Reabrir é uma decisão tomada sobre o status que ACABAMOS de ler. Dois
+      // recálculos simultâneos (duas abas, ou "Reanalisar" clicado duas vezes)
+      // liam a mesma linha dispensada, os dois reabriam e saíam DOIS e-mails
+      // "1 nova(s) oportunidade(s)" para o mesmo par. Por isso a reabertura é
+      // condicional no banco — o status entra no WHERE, como em
+      // `advanceEnrichmentSession` — e só quem achou a linha ainda como a leu
+      // (affectedRows === 1) conta para o e-mail.
+      let reabriuDeFato = false;
       if (reabrir) {
+        const resultado = await db.update(aiMatchSuggestions)
+          .set({ ...values, status: "pending" as const, viewedAt: null, notifiedAt: null })
+          .where(and(
+            eq(aiMatchSuggestions.id, previous.id),
+            eq(aiMatchSuggestions.ownerId, ownerId),
+            eq(aiMatchSuggestions.status, previous.status),
+          ));
+        reabriuDeFato = linhasAfetadas(resultado) === 1;
+      }
+      let gravouANota = false;
+      if (reabriuDeFato) {
         const decisao = previous.status === "accepted" ? "aceitado" : previous.status === "dismissed" ? "dispensado" : "visto";
         console.info(`[Match] Par ${chave} reaberto: a razão que a usuária tinha ${decisao} sumiu e nasceu outra.`);
+      } else if (reabrir) {
+        // A reabertura casou zero linhas: o status mudou entre a leitura e a
+        // escrita. Pode ter sido a outra rodada (que já gravou esta mesma razão)
+        // ou a própria dona, que ACEITOU o par na tela. A gravação de consolo
+        // repete a MESMA guarda de status, senão a linha ficaria "aceita" com o
+        // texto e as razões que a dona nunca viu — e o par ficaria PRESO, porque
+        // no recálculo seguinte a razão nova já seria a "antiga" e a interseção
+        // nunca mais seria vazia. Sem escrever nada, a rodada seguinte encontra
+        // o retrato de verdade e reabre o par como deve.
+        await db.update(aiMatchSuggestions).set(values).where(and(
+          eq(aiMatchSuggestions.id, previous.id),
+          eq(aiMatchSuggestions.ownerId, ownerId),
+          eq(aiMatchSuggestions.status, previous.status),
+        ));
+      } else {
+        // Caminho comum: a razão mudou de peso, não de identidade. A nota lida
+        // entra no WHERE porque o e-mail depende de ter sido ESTA rodada a
+        // cruzar o limiar: sem isso, um par pendente que sobe de 60 para 100 em
+        // duas abas contava duas vezes e a dona recebia dois e-mails "1 nova(s)
+        // oportunidade(s)". Quem escreve a nota é quem anuncia.
+        //
+        // Sub-caso conhecido e em aberto: se duas rodadas calcularem a MESMA
+        // nota a partir de retratos diferentes, a que chegar depois ainda
+        // sobrescreve o texto da que tinha o retrato mais novo. Só uma trava
+        // otimista por `updated_at` fecharia isso, e ela custaria a escrita do
+        // texto no caminho normal.
+        const resultado = await db.update(aiMatchSuggestions).set(values).where(and(
+          eq(aiMatchSuggestions.id, previous.id),
+          eq(aiMatchSuggestions.ownerId, ownerId),
+          eq(aiMatchSuggestions.matchScore, previous.matchScore),
+        ));
+        gravouANota = linhasAfetadas(resultado) === 1;
       }
       updated += 1;
       // Só conta para o e-mail o que a usuária ainda vai ver. Par aceito ou
       // dispensado que sobe de nota pela mesma razão não é oportunidade nova
       // para ela — antes o e-mail saía e na tela não havia nada novo.
-      const statusFinal = reabrir ? "pending" : previous.status;
-      const aindaPorDecidir = statusFinal === "pending" || statusFinal === "viewed";
-      if (aindaPorDecidir && values.matchScore >= EMAIL_THRESHOLD && (previous.matchScore < EMAIL_THRESHOLD || reabrir)) newHighScore += 1;
+      const aindaPorDecidir = previous.status === "pending" || previous.status === "viewed";
+      const cruzouOLimiar = gravouANota && previous.matchScore < EMAIL_THRESHOLD;
+      if (values.matchScore >= EMAIL_THRESHOLD && (reabriuDeFato || (aindaPorDecidir && cruzouOLimiar))) newHighScore += 1;
     } else {
-      await db.insert(aiMatchSuggestions).values({ id: crypto.randomUUID(), ownerId, pairLowContactId: par.lowId, pairHighContactId: par.highId, status: "pending", notifiedAt: null, viewedAt: null, acceptedAt: null, dismissedAt: null, createdAt: timestamp, ...values });
-      created += 1;
-      if (values.matchScore >= EMAIL_THRESHOLD) newHighScore += 1;
+      // O par é novo para ESTA rodada, mas o índice único (dona, par) é a
+      // verdade: em dois recálculos simultâneos os dois leem "não existe" e os
+      // dois inserem. O segundo levava ER_DUP_ENTRY e, como `matches.addAsset`
+      // RETORNA este recálculo, o erro virava falha da mutação na tela ("Erro ao
+      // consultar o banco de dados") com a tag já gravada — e os pares seguintes
+      // da rodada ficavam sem calcular. Gatilhos: salvar contato
+      // (`routers/network.ts`), o chat de enriquecimento e "Reanalisar" noutra
+      // aba.
+      //
+      // Quem perde reprocessa o par pelo caminho de `previous`: grava só
+      // `values`. Status, notifiedAt, viewedAt, acceptedAt e dismissedAt ficam
+      // de fora de propósito — o insert perdedor não pode rebaixar nem
+      // desmarcar um par que a dona já decidiu na tela.
+      //
+      // É o ERRO que decide quem criou, e não `affectedRows`: com
+      // `on duplicate key update` e o CLIENT_FOUND_ROWS que o mysql2 liga por
+      // padrão, a duplicata que grava os mesmos valores também volta 1 — e as
+      // duas rodadas se achariam a criadora, com dois e-mails "1 nova(s)
+      // oportunidade(s)". Duas rodadas no mesmo milissegundo gravam exatamente
+      // os mesmos valores, então esse era o caso comum, não o raro.
+      try {
+        await db.insert(aiMatchSuggestions).values({ id: crypto.randomUUID(), ownerId, pairLowContactId: par.lowId, pairHighContactId: par.highId, status: "pending", notifiedAt: null, viewedAt: null, acceptedAt: null, dismissedAt: null, createdAt: timestamp, ...values });
+        created += 1;
+        if (values.matchScore >= EMAIL_THRESHOLD) newHighScore += 1;
+      } catch (erro) {
+        if (!ehChaveDuplicada(erro)) throw erro;
+        console.info(`[Match] Par ${chave} nasceu em outro recálculo ao mesmo tempo: aqui só a razão foi atualizada.`);
+        await db.update(aiMatchSuggestions).set(values).where(and(
+          eq(aiMatchSuggestions.ownerId, ownerId),
+          eq(aiMatchSuggestions.pairLowContactId, par.lowId),
+          eq(aiMatchSuggestions.pairHighContactId, par.highId),
+        ));
+        updated += 1;
+      }
     }
   }
 
