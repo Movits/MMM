@@ -14,6 +14,7 @@ import type { i18n as I18n } from "i18next";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SmartMatchConsent } from "@/components/SmartMatchConsent";
 import { GlobalMenu } from "@/components/AppHeader";
+import { BrandMark } from "@/components/BrandLogo";
 import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 import {
   DropdownMenu,
@@ -838,9 +839,7 @@ export default function Dashboard() {
       <nav className="border-b border-white/[0.06] px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-40 bg-[#060e1a]/90 backdrop-blur-2xl">
         {/* O logo levava para a landing e tirava a usuária do app sem querer. */}
         <Link href="/dashboard">
-          <span className="text-xl font-black cursor-pointer tracking-tight">
-            <span className="text-white">MMM</span><span className="text-[#f5a623]">OS</span>
-          </span>
+          <BrandMark />
         </Link>
         <div className="flex items-center gap-2 sm:gap-3">
           {pendingConnections.length > 0 && (
