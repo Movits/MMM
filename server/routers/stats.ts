@@ -40,4 +40,31 @@ export const statsRouter = router({
       return empty;
     }
   }),
+
+  // Presença agregada POR PAÍS — nunca por pessoa: só a sigla ISO e a
+  // contagem saem daqui. É o que o globo da home desenha no lugar das praças
+  // inventadas do protótipo (PR #52). "XX" é o "outro país" do Onboarding e
+  // não tem lugar no mapa. Mesma exceção deliberada ao exigirDb() do
+  // platform acima: a home é pública e degrada para vazio com erro no log —
+  // sem praças o planeta continua inteiro.
+  presencaPorPais: publicProcedure.query(async (): Promise<Array<{ pais: string; total: number }>> => {
+    const db = await getDb();
+    if (!db) {
+      console.error("[Stats] Banco de dados indisponível; o globo da home fica sem praças.");
+      return [];
+    }
+    try {
+      const linhas = await db
+        .select({ pais: users.country, total: sql`COUNT(*)` })
+        .from(users)
+        .where(sql`${users.country} IS NOT NULL AND ${users.country} <> '' AND ${users.country} <> 'XX'`)
+        .groupBy(users.country);
+      return linhas
+        .map(l => ({ pais: String(l.pais).toUpperCase(), total: Number(l.total) }))
+        .sort((a, b) => b.total - a.total);
+    } catch (error) {
+      console.warn("[Stats] Falha ao apurar presença por país:", error);
+      return [];
+    }
+  }),
 });
