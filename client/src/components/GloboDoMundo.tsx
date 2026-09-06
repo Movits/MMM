@@ -374,7 +374,28 @@ export default function GloboDoMundo({ progresso, animar = true }: Props) {
         posicionar(progresso());
         renderizador.render(cena, camera);
       };
+      // A rolagem continua girando o planeta mesmo sem o laço de animação: é
+      // ela que dá sentido ao globo, e a heurística de aparelho fraco desligava
+      // as duas coisas juntas — quem caía nela rolava a página e via um planeta
+      // parado, como se estivesse quebrado. Um quadro por rolagem, via rAF; os
+      // pulsos continuam imóveis. Quem pediu menos movimento no SISTEMA segue
+      // parado de verdade: o hook pina o progresso em 1 e o quadro redesenhado
+      // é idêntico ao anterior. O rAF daqui roda depois do rAF de medição do
+      // hook (listener registrado antes, na montagem da Home), então o valor
+      // lido já é o da rolagem atual.
+      let quadroDeRolagem = 0;
+      const aoRolar = () => {
+        if (quadroDeRolagem) return;
+        quadroDeRolagem = requestAnimationFrame(() => {
+          quadroDeRolagem = 0;
+          posicionar(progresso());
+          renderizador.render(cena, camera);
+        });
+      };
+      window.addEventListener("scroll", aoRolar, { passive: true });
       return () => {
+        window.removeEventListener("scroll", aoRolar);
+        if (quadroDeRolagem) cancelAnimationFrame(quadroDeRolagem);
         redesenharParado = null;
         observador.disconnect();
         for (const d of descartaveis) d.dispose();
