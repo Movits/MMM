@@ -1265,7 +1265,7 @@
     "attachFileButton": "Attach File",
     "dropToUpload": "Drop to upload",
     "dragDropHint": "Drag files here or click to select",
-    "fileTypesHint": "PDF, Word, Excel, images, ZIP (max. 16MB per file)",
+    "fileTypesHint": "PDF, Word, Excel, images, ZIP (max. 10MB per file)",
     "noDocsYet": "No documents shared yet.",
     "sendDocsSecurely": "Securely send confidential documents.",
     "youLabel": "You",

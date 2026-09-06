@@ -117,7 +117,7 @@
   },
   "footer": {
     "tagline": "Le pouvoir des femmes, ensemble.",
-    "rights": "© 2026 MMM. Tous droits réservés.",
+    "rights": "Tous droits réservés.",
     "privacy": "Confidentialité",
     "terms": "Conditions",
     "contact": "Contact"
@@ -1265,7 +1265,7 @@
     "attachFileButton": "Joindre un fichier",
     "dropToUpload": "Déposez pour envoyer",
     "dragDropHint": "Glissez des fichiers ici ou cliquez pour en sélectionner",
-    "fileTypesHint": "PDF, Word, Excel, images, ZIP (16 Mo max. par fichier)",
+    "fileTypesHint": "PDF, Word, Excel, images, ZIP (10 Mo max. par fichier)",
     "noDocsYet": "Aucun document partagé pour l'instant.",
     "sendDocsSecurely": "Envoyez vos documents confidentiels en toute sécurité.",
     "youLabel": "Vous",

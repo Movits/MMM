@@ -1265,7 +1265,7 @@
     "attachFileButton": "Anexar Arquivo",
     "dropToUpload": "Solte para enviar",
     "dragDropHint": "Arraste arquivos aqui ou clique para selecionar",
-    "fileTypesHint": "PDF, Word, Excel, imagens, ZIP (máx. 16MB por arquivo)",
+    "fileTypesHint": "PDF, Word, Excel, imagens, ZIP (máx. 10MB por arquivo)",
     "noDocsYet": "Nenhum documento compartilhado ainda.",
     "sendDocsSecurely": "Envie documentos confidenciais com segurança.",
     "youLabel": "Você",

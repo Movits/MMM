@@ -117,7 +117,7 @@
   },
   "footer": {
     "tagline": "منصة MMM: حيث تلتقي القائدات لتشكيل المستقبل.",
-    "rights": "جميع الحقوق محفوظة لـ MMM © 2026",
+    "rights": "جميع الحقوق محفوظة.",
     "privacy": "الخصوصية",
     "terms": "الشروط",
     "contact": "اتصل بنا"
@@ -1265,7 +1265,7 @@
     "attachFileButton": "إرفاق ملف",
     "dropToUpload": "أفلتي هنا للإرسال",
     "dragDropHint": "اسحبي الملفات هنا أو انقري للاختيار",
-    "fileTypesHint": "PDF، Word، Excel، صور، ZIP (بحد أقصى 16 ميغابايت لكل ملف)",
+    "fileTypesHint": "PDF، Word، Excel، صور، ZIP (بحد أقصى 10 ميغابايت لكل ملف)",
     "noDocsYet": "لا يوجد مستند مشترك بعد.",
     "sendDocsSecurely": "أرسلي المستندات السرية بأمان.",
     "youLabel": "أنتِ",

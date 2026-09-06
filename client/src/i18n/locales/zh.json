@@ -117,7 +117,7 @@
   },
   "footer": {
     "tagline": "赋能女性，共创未来。",
-    "rights": "© 2026 MMM. 保留所有权利。",
+    "rights": "保留所有权利。",
     "privacy": "隐私政策",
     "terms": "条款",
     "contact": "联系我们"
@@ -1265,7 +1265,7 @@
     "attachFileButton": "添加附件",
     "dropToUpload": "松开以上传",
     "dragDropHint": "将文件拖到此处，或点击选择",
-    "fileTypesHint": "PDF、Word、Excel、图片、ZIP（每个文件最大16MB）",
+    "fileTypesHint": "PDF、Word、Excel、图片、ZIP（每个文件最大10MB）",
     "noDocsYet": "尚未共享任何文件。",
     "sendDocsSecurely": "安全发送保密文件。",
     "youLabel": "您",

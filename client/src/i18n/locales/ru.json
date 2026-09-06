@@ -1265,7 +1265,7 @@
     "attachFileButton": "Прикрепить файл",
     "dropToUpload": "Отпустите, чтобы загрузить",
     "dragDropHint": "Перетащите файлы сюда или нажмите, чтобы выбрать",
-    "fileTypesHint": "PDF, Word, Excel, изображения, ZIP (макс. 16 МБ на файл)",
+    "fileTypesHint": "PDF, Word, Excel, изображения, ZIP (макс. 10 МБ на файл)",
     "noDocsYet": "Пока нет общих документов.",
     "sendDocsSecurely": "Отправляйте конфиденциальные документы безопасно.",
     "youLabel": "Вы",

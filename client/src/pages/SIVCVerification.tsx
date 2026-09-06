@@ -134,7 +134,7 @@ function DocumentUploadCard({
         <div className="flex flex-col items-center gap-2">
           <Upload className="w-5 h-5 text-zinc-500" />
           <span className="text-xs text-zinc-400">{docType}</span>
-          <span className="text-xs text-zinc-600">PDF, JPG, PNG • máx 16MB</span>
+          <span className="text-xs text-zinc-600">PDF, JPG, PNG • máx 10MB</span>
         </div>
       )}
     </div>
