@@ -14,6 +14,7 @@ import { serveStatic, setupVite } from "./vite";
 import { montarDiretivasCsp } from "./csp";
 import { autenticarCron } from "./cron";
 import { cleanupExpiredSessions, createAuditLog } from "../security";
+import { corpoGrandeParaUploads } from "./corpo-grande-para-uploads";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -192,6 +193,11 @@ async function startServer() {
 
   // Rate limiting global
   app.use(globalLimiter);
+
+  // Uploads dentro de um LOTE do tRPC ("/api/trpc/a,b"): os recortes por
+  // caminho abaixo não casam com a lista; este middleware reconhece cada
+  // procedimento da URL (ver server/_core/corpo-grande-para-uploads.ts).
+  app.use(corpoGrandeParaUploads);
 
   // A gravação de reunião usa Base64 (até 10 MB de áudio, ~14 MB no JSON).
   // O limite ampliado é aplicado somente ao procedimento privado de reunião.

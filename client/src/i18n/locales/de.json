@@ -117,7 +117,7 @@
   },
   "footer": {
     "tagline": "Stärke weibliche Führungskräfte weltweit.",
-    "rights": "© 2026 MMM. Alle Rechte vorbehalten.",
+    "rights": "Alle Rechte vorbehalten.",
     "privacy": "Datenschutz",
     "terms": "Nutzungsbedingungen",
     "contact": "Kontakt"
@@ -1265,7 +1265,7 @@
     "attachFileButton": "Datei anhängen",
     "dropToUpload": "Zum Hochladen ablegen",
     "dragDropHint": "Dateien hierher ziehen oder klicken, um auszuwählen",
-    "fileTypesHint": "PDF, Word, Excel, Bilder, ZIP (max. 16MB pro Datei)",
+    "fileTypesHint": "PDF, Word, Excel, Bilder, ZIP (max. 10MB pro Datei)",
     "noDocsYet": "Noch keine Dokumente geteilt.",
     "sendDocsSecurely": "Senden Sie vertrauliche Dokumente sicher.",
     "youLabel": "Sie",

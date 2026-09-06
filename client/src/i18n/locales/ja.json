@@ -117,7 +117,7 @@
   },
   "footer": {
     "tagline": "女性リーダーのための力を与えるつながり。",
-    "rights": "© 2026 MMM. 全著作権所有。",
+    "rights": "全著作権所有。",
     "privacy": "プライバシー",
     "terms": "利用規約",
     "contact": "お問い合わせ"
@@ -1265,7 +1265,7 @@
     "attachFileButton": "ファイルを添付",
     "dropToUpload": "ドロップして送信",
     "dragDropHint": "ここにファイルをドラッグするか、クリックして選択してください",
-    "fileTypesHint": "PDF、Word、Excel、画像、ZIP（1ファイルあたり最大16MB）",
+    "fileTypesHint": "PDF、Word、Excel、画像、ZIP（1ファイルあたり最大10MB）",
     "noDocsYet": "共有された書類はまだありません。",
     "sendDocsSecurely": "非公開書類を安全に送信できます。",
     "youLabel": "あなた",

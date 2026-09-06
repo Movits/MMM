@@ -175,8 +175,14 @@ function sectorLabel(t: (k: string, o?: Record<string, unknown>) => string, i18n
   for (const codigo of CODIGOS) {
     const setores: Record<string, string> | undefined = i18n.getResourceBundle(codigo, "translation")?.onboarding?.sectors;
     const chave = setores && Object.keys(setores).find(k => setores[k] === valor);
-    if (chave) return optionLabel(t, chave);
+    // Traduz pelo namespace de SETORES: optionLabel procura specialties antes,
+    // e "health", "education" e "retail" existem nos dois, com rótulos diferentes
+    // (o Dashboard mostrava a especialidade no lugar do setor).
+    if (chave) return t(`onboarding.sectors.${chave}`, { defaultValue: chave });
   }
+  // Perfis novos já gravam a chave do setor: mesma regra.
+  const direto = t(`onboarding.sectors.${valor}`, { defaultValue: "" });
+  if (direto) return direto;
   return optionLabel(t, valor);
 }
 

@@ -117,7 +117,7 @@
   },
   "footer": {
     "tagline": "Conectando mujeres. Impulsando el éxito.",
-    "rights": "© 2026 MMM. Todos los derechos reservados.",
+    "rights": "Todos los derechos reservados.",
     "privacy": "Privacidad",
     "terms": "Términos",
     "contact": "Contacto"
@@ -1265,7 +1265,7 @@
     "attachFileButton": "Adjuntar Archivo",
     "dropToUpload": "Suelta para enviar",
     "dragDropHint": "Arrastra archivos aquí o haz clic para seleccionar",
-    "fileTypesHint": "PDF, Word, Excel, imágenes, ZIP (máx. 16 MB por archivo)",
+    "fileTypesHint": "PDF, Word, Excel, imágenes, ZIP (máx. 10 MB por archivo)",
     "noDocsYet": "Aún no hay documentos compartidos.",
     "sendDocsSecurely": "Envía documentos confidenciales con seguridad.",
     "youLabel": "Tú",
