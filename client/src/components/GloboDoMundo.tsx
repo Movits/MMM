@@ -311,10 +311,17 @@ export default function GloboDoMundo({ progresso, animar = true }: Props) {
     const GIRO_TOTAL = anguloParaLongitude(60) - ANGULO_INICIAL;
 
     let precisaDesenhar = true;
+    // No modo estático, redesenha assim que o tamanho muda (definido abaixo).
+    let redesenharParado: (() => void) | null = null;
     const dimensionar = () => {
       const { clientWidth: l, clientHeight: a } = alvo;
       if (!l || !a) return;
-      renderizador.setSize(l, a, false);
+      // updateStyle fica ligado de propósito: com devicePixelRatio > 1 (todo
+      // celular, notebook retina) o three.js grava canvas.width = l*dpr e, sem
+      // style.width, o canvas ocupava l*dpr px CSS: planeta em dobro do tamanho,
+      // deslocado para o canto. Com o estilo, o canvas mede l×a px e desenha em
+      // alta densidade por dentro.
+      renderizador.setSize(l, a);
       camera.aspect = l / a;
       // Em tela larga o planeta sai do centro e vai para a direita, liberando a
       // coluna do texto. No celular volta ao meio, senão metade sai do quadro.
@@ -322,6 +329,7 @@ export default function GloboDoMundo({ progresso, animar = true }: Props) {
       camera.updateProjectionMatrix();
       // A rolagem não mudou, mas o quadro anterior ficou do tamanho errado.
       precisaDesenhar = true;
+      redesenharParado?.();
     };
     dimensionar();
     const observador = new ResizeObserver(dimensionar);
@@ -355,16 +363,19 @@ export default function GloboDoMundo({ progresso, animar = true }: Props) {
       // origem de cada rota e o planeta na posição de abertura.
       posicionar(progresso());
       renderizador.render(cena, camera);
-      // Redesenha só se a janela mudar de tamanho — custo praticamente nulo.
-      const aoRedimensionar = () => {
+      // Redesenha só quando o contêiner muda de tamanho — custo praticamente
+      // nulo. Fica atrelado ao ResizeObserver (dentro de dimensionar), depois do
+      // setSize: o evento resize da janela disparava ANTES do observer, o quadro
+      // saía com o tamanho velho e o setSize seguinte limpava o canvas, deixando
+      // o planeta em branco ao girar o celular ou recolher a barra de endereço.
+      redesenharParado = () => {
         if (!precisaDesenhar) return;
         precisaDesenhar = false;
         posicionar(progresso());
         renderizador.render(cena, camera);
       };
-      window.addEventListener("resize", aoRedimensionar, { passive: true });
       return () => {
-        window.removeEventListener("resize", aoRedimensionar);
+        redesenharParado = null;
         observador.disconnect();
         for (const d of descartaveis) d.dispose();
         renderizador.dispose();
