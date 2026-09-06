@@ -125,13 +125,14 @@ const CABECAS_NOMINAIS_EN = new Set([
  */
 const COMPOSTOS_FIXOS = new Set(["sell side", "buy side"]);
 
-const COMPLEMENTOS_NOMINAIS = new Set([
+// Complementos que NUNCA são mercadoria: burocracia, papéis e organizações.
+// Depois de qualquer cabeça ambígua, formam composto que nomeia uma coisa.
+const COMPLEMENTOS_NUNCA_MERCADORIA = new Set([
   "license", "licence", "permit", "duty", "tariff", "quota", "chain", "order",
-  "credit", "insurance", "finance", "financing", "agreement", "contract",
-  "management", "side", "compliance", "logistics", "control", "regulation",
-  "regulations", "documentation", "consulting", "advisory", "services",
-  "department", "agent", "agents", "broker", "brokers", "market", "markets",
-  "data", "strategy", "process", "procedure", "planning",
+  "management", "side", "compliance", "control", "regulation",
+  "regulations", "documentation", "agreement", "contract",
+  "department", "agent", "agents", "broker", "brokers",
+  "strategy", "process", "procedure", "planning",
   // papéis e organizações — "Export manager" × "Import manager" saía em 100
   // com objeto "manager" dos dois lados (revisão adversarial de 05/09)
   "manager", "managers", "director", "directors", "team", "teams", "company",
@@ -140,11 +141,26 @@ const COMPLEMENTOS_NOMINAIS = new Set([
   "declaration", "declarations", "clearance", "document", "documents",
 ]);
 
+// Complementos que PODEM ser a própria mercadoria (seguro, crédito, dados,
+// serviços…): só formam composto atrás das cabeças fortemente nominais de
+// comércio exterior ("Export credit insurance", "Import finance"). Atrás dos
+// sinônimos que também são verbo corrente (purchase, supply, selling,
+// buying…), a palavra é o objeto do negócio — a lista única aplicada a todas
+// as cabeças derrubava "Purchase insurance" × "Sell insurance" e "Selling
+// data" × "Buying data" de 100 para 60 (card da revisão de 06/09).
+const COMPLEMENTOS_SO_COM_CABECA_FORTE = new Set([
+  "credit", "insurance", "finance", "financing", "consulting", "advisory",
+  "services", "logistics", "market", "markets", "data",
+]);
+const CABECAS_FORTES_EN = new Set(["export", "exporting", "import", "importing"]);
+
 /** Cabeça + palavra seguinte formam composto nominal (neutro)? */
 function ehCompostoNominal(cabeca: string, seguinte: string | undefined): boolean {
   if (!seguinte) return false;
   if (COMPOSTOS_FIXOS.has(`${cabeca} ${seguinte}`)) return true;
-  return CABECAS_NOMINAIS_EN.has(cabeca) && COMPLEMENTOS_NOMINAIS.has(seguinte);
+  if (!CABECAS_NOMINAIS_EN.has(cabeca)) return false;
+  if (COMPLEMENTOS_NUNCA_MERCADORIA.has(seguinte)) return true;
+  return CABECAS_FORTES_EN.has(cabeca) && COMPLEMENTOS_SO_COM_CABECA_FORTE.has(seguinte);
 }
 
 /**
@@ -229,15 +245,33 @@ const LOCATIVOS = new Set([
  * "a varejo", "retail", "wholesale". Depois delas não vem mercadoria, e sim
  * COMO se negocia — o mesmo papel dos LOCATIVOS. Sem esta lista, "Exportação
  * a granel" × "Importação a granel" reduzia os dois lados a "granel" e saía em
- * 100 (reverificação de 04/09). Em inglês a expressão vem SEM preposição
- * ("Sell retail"), por isso a guarda também vale quando nada foi descascado.
- * "Al contado" e "al por mayor" já param no "al" dos LOCATIVOS; "contado" e
- * "mayoreo" ficam aqui para a forma sem contração.
+ * 100 (reverificação de 04/09). "Al contado" e "al por mayor" já param no
+ * "al" dos LOCATIVOS; "contado" e "mayoreo" ficam aqui para a forma sem
+ * contração. Esta lista só vale ATRÁS da preposição: sem ela, a mesma palavra
+ * costuma ser a mercadoria (ver MODOS_SEM_PREPOSICAO).
  */
 const MODOS_E_CONDICOES = new Set([
   "granel", "prazo", "vista", "varejo", "atacado", "domicilio", "consignacao",
   "credito", "bulk", "retail", "wholesale", "plazo", "contado", "mayoreo",
 ]);
+
+/**
+ * Só o inglês diz modo SEM preposição, e só com estes advérbios: "Sell
+ * retail", "Buy wholesale". A primeira versão aplicava MODOS_E_CONDICOES
+ * inteira também sem preposição, e "Fornecer crédito" × "Contratar crédito"
+ * perdia o objeto (crédito ali É a mercadoria — sem o "a" de "Vender a
+ * crédito"); o mesmo derrubava "Buy bulk" e "Vender varejo" (card da revisão
+ * de 06/09).
+ */
+const MODOS_SEM_PREPOSICAO = new Set(["retail", "wholesale"]);
+
+/**
+ * Conjunções que coordenam duas direções no mesmo termo ("Importar e
+ * exportar", "Buy and sell"). A barra de "Import/export" é separador de
+ * palavra na tokenização, então vira adjacência — por isso a posição 0 conta
+ * como coordenada mesmo sem conjunção.
+ */
+const CONJUNCOES_DE_COORDENACAO = new Set(["e", "and", "y"]);
 
 /**
  * O objeto que vem depois de uma cabeça, ou `null` quando não há objeto
@@ -265,7 +299,8 @@ function objetoDepoisDe(resto: string[], complementoDeDirecao = false): string[]
   // China") o lugar segue como objeto: é o motor de match que o descarta.
   const preposicaoAmbigua = descascada === "a" || descascada === "as";
   const nadaDescascado = descascada === undefined && complementoDeDirecao;
-  if ((preposicaoAmbigua || nadaDescascado) && (ehLugar(palavras) || MODOS_E_CONDICOES.has(palavras[0]))) return null;
+  if (preposicaoAmbigua && (ehLugar(palavras) || MODOS_E_CONDICOES.has(palavras[0]))) return null;
+  if (nadaDescascado && (ehLugar(palavras) || MODOS_SEM_PREPOSICAO.has(palavras[0]))) return null;
   return palavras;
 }
 
@@ -360,8 +395,15 @@ function analisar(rotulo: string): Analise {
   // sentidos no mesmo termo nomeiam o fluxo inteiro (a atividade, o serviço),
   // não a ação de quem escreveu. Lido pela primeira palavra, "Import/export"
   // × idem saía 0 como "concorrentes" (revisão adversarial de 05/09). Neutro,
-  // e o termo vale por inteiro.
-  if (depois.some(palavra => { const outra = DIRECAO_POR_CABECA.get(palavra); return !!outra && outra !== direcao; })) return neutro;
+  // e o termo vale por inteiro. Só conta coordenação DE VERDADE: adjacente à
+  // cabeça (a barra vira adjacência na tokenização) ou atrás de conjunção. A
+  // varredura solta derrubava "Fornecer software de compras" — "compras" no
+  // fundo do complemento não coordena nada (card da revisão de 06/09).
+  if (depois.some((palavra, i) => {
+    const outra = DIRECAO_POR_CABECA.get(palavra);
+    if (!outra || outra === direcao) return false;
+    return i === 0 || CONJUNCOES_DE_COORDENACAO.has(depois[i - 1]);
+  })) return neutro;
 
   // Substantivo de ação com a coisa no genitivo: a forma que, igual dos dois
   // lados, é serviço prestado × serviço procurado (ver saoConcorrentes).
