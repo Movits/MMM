@@ -877,6 +877,7 @@
     "botaoSalvar": "✓ Salvar",
     "vincularContatoTitulo": "Vincular Contato",
     "toastVinculadoSucesso": "{{name}} vinculada ao {{context}}!",
+    "toastVinculoAtualizado": "Vínculo de {{name}} com {{context}} atualizado.",
     "toastErroVincular": "Erro ao vincular: {{message}}",
     "relTipoPessoal": "Pessoal",
     "relTipoProfissional": "Profissional",

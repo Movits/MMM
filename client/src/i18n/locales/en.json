@@ -877,6 +877,7 @@
     "botaoSalvar": "✓ Save",
     "vincularContatoTitulo": "Link Contact",
     "toastVinculadoSucesso": "{{name}} linked to {{context}}!",
+    "toastVinculoAtualizado": "{{name}}'s link to {{context}} updated.",
     "toastErroVincular": "Error linking: {{message}}",
     "relTipoPessoal": "Personal",
     "relTipoProfissional": "Professional",

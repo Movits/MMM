@@ -877,6 +877,7 @@
     "botaoSalvar": "✓ حفظ",
     "vincularContatoTitulo": "ربط جهة اتصال",
     "toastVinculadoSucesso": "تم ربط {{name}} بـ{{context}}!",
+    "toastVinculoAtualizado": "تم تحديث ارتباط {{name}} بـ{{context}}.",
     "toastErroVincular": "خطأ أثناء الربط: {{message}}",
     "relTipoPessoal": "شخصي",
     "relTipoProfissional": "مهني",

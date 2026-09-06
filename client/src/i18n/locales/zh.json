@@ -877,6 +877,7 @@
     "botaoSalvar": "✓ 保存",
     "vincularContatoTitulo": "关联联系人",
     "toastVinculadoSucesso": "{{name}} 已关联到 {{context}}！",
+    "toastVinculoAtualizado": "{{name}} 与 {{context}} 的关联已更新。",
     "toastErroVincular": "关联失败：{{message}}",
     "relTipoPessoal": "私人",
     "relTipoProfissional": "职业",

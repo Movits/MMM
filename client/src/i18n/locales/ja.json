@@ -877,6 +877,7 @@
     "botaoSalvar": "✓ 保存",
     "vincularContatoTitulo": "連絡先を紐付け",
     "toastVinculadoSucesso": "{{name}}を{{context}}に紐付けました！",
+    "toastVinculoAtualizado": "{{name}}と{{context}}の紐付けを更新しました。",
     "toastErroVincular": "紐付けエラー：{{message}}",
     "relTipoPessoal": "個人的",
     "relTipoProfissional": "職業的",

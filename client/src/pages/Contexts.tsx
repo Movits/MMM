@@ -190,8 +190,9 @@ function ContextForm({ initial, types, onSave, onClose, loading }: {
 }
 
 // ─── Modal de vincular contato ────────────────────────────────────────────────
-function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
-  contextId: string; contextName: string; onClose: () => void; onLinked: () => void;
+function LinkContactModal({ contextId, contextName, linkedContactIds, onClose, onLinked }: {
+  contextId: string; contextName: string; linkedContactIds: number[];
+  onClose: () => void; onLinked: () => void;
 }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
@@ -200,7 +201,9 @@ function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
   const [eventDate, setEventDate] = useState("");
   const [city, setCity] = useState("");
   const [notes, setNotes] = useState("");
-  const [relType, setRelType] = useState<"pessoal" | "profissional" | "ambos">("profissional");
+  // null = a dona não tocou nos botões. Pré-marcar "profissional" fazia o modal
+  // enviar uma escolha que ela nunca fez, apagando o tipo do vínculo antigo.
+  const [relType, setRelType] = useState<"pessoal" | "profissional" | "ambos" | null>(null);
 
   const debRef = { current: null as ReturnType<typeof setTimeout> | null };
   const handleSearch = (v: string) => {
@@ -214,12 +217,21 @@ function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
     { enabled: !!debouncedSearch }
   );
 
+  // Quem já está no contexto não aparece na busca: o modal não dizia quem já
+  // estava vinculado, e re-selecionar a mesma pessoa parecia um vínculo novo.
+  const jaVinculados = new Set(linkedContactIds);
+  const resultados = (contacts?.data ?? []).filter(c => !jaVinculados.has(c.id));
+
   const linkMut = trpc.contexts.linkContact.useMutation({
-    onSuccess: () => { toast.success(t("contexts.toastVinculadoSucesso", { name: selectedContact?.fullName, context: contextName })); onLinked(); onClose(); },
+    onSuccess: (r) => {
+      const chave = r?.created === false ? "contexts.toastVinculoAtualizado" : "contexts.toastVinculadoSucesso";
+      toast.success(t(chave, { name: selectedContact?.fullName, context: contextName }));
+      onLinked(); onClose();
+    },
     onError: (e) => toast.error(t("contexts.toastErroVincular", { message: e.message })),
   });
 
-  const relTypeLabels: Record<typeof relType, string> = {
+  const relTypeLabels: Record<"pessoal" | "profissional" | "ambos", string> = {
     pessoal: t("contexts.relTipoPessoal"),
     profissional: t("contexts.relTipoProfissional"),
     ambos: t("contexts.relTipoAmbos"),
@@ -242,9 +254,9 @@ function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
                   placeholder={t("contexts.placeholderBuscarContato")}
                   className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-amber-500/50" />
               </div>
-              {contacts?.data && contacts.data.length > 0 && (
+              {resultados.length > 0 && (
                 <div className="space-y-1">
-                  {contacts.data.map(c => (
+                  {resultados.map(c => (
                     <button key={c.id} onClick={() => setSelectedContact({ id: c.id, fullName: c.fullName })}
                       className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-left">
                       <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold text-sm flex-shrink-0">
@@ -258,7 +270,7 @@ function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
                   ))}
                 </div>
               )}
-              {debouncedSearch && !contacts?.data?.length && (
+              {debouncedSearch && resultados.length === 0 && (
                 <p className="text-sm text-white/40 text-center py-4">{t("contexts.nenhumContatoEncontrado")}</p>
               )}
             </>
@@ -310,7 +322,7 @@ function LinkContactModal({ contextId, contextName, onClose, onLinked }: {
             <Button onClick={() => linkMut.mutate({
               contextId, contactId: selectedContact.id,
               eventDate: eventDate || null, city: city || null,
-              notes: notes || null, relationshipType: relType,
+              notes: notes || null, relationshipType: relType ?? undefined,
             })} disabled={linkMut.isPending}
               className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold">
               {linkMut.isPending ? t("contexts.vinculando") : t("contexts.botaoVincular")}
@@ -573,6 +585,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
 
       {showLinkModal && (
         <LinkContactModal contextId={contextId} contextName={ctx.name}
+          linkedContactIds={(ctx.links ?? []).map(l => l.contactId)}
           onClose={() => setShowLinkModal(false)} onLinked={() => refetch()} />
       )}
     </div>

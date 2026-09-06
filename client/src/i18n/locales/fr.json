@@ -877,6 +877,7 @@
     "botaoSalvar": "✓ Enregistrer",
     "vincularContatoTitulo": "Lier un contact",
     "toastVinculadoSucesso": "{{name}} liée à {{context}} !",
+    "toastVinculoAtualizado": "Lien de {{name}} avec {{context}} mis à jour.",
     "toastErroVincular": "Erreur lors de la liaison : {{message}}",
     "relTipoPessoal": "Personnel",
     "relTipoProfissional": "Professionnel",

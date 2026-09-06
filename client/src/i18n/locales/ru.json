@@ -877,6 +877,7 @@
     "botaoSalvar": "✓ Сохранить",
     "vincularContatoTitulo": "Связать контакт",
     "toastVinculadoSucesso": "{{name}} привязана к {{context}}!",
+    "toastVinculoAtualizado": "Связь {{name}} с {{context}} обновлена.",
     "toastErroVincular": "Ошибка при связывании: {{message}}",
     "relTipoPessoal": "Личное",
     "relTipoProfissional": "Профессиональное",

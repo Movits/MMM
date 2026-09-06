@@ -877,6 +877,7 @@
     "botaoSalvar": "✓ सहेजें",
     "vincularContatoTitulo": "संपर्क लिंक करें",
     "toastVinculadoSucesso": "{{name}} को {{context}} से जोड़ दिया गया!",
+    "toastVinculoAtualizado": "{{name}} का {{context}} से जुड़ाव अपडेट किया गया।",
     "toastErroVincular": "लिंक करने में त्रुटि: {{message}}",
     "relTipoPessoal": "व्यक्तिगत",
     "relTipoProfissional": "पेशेवर",

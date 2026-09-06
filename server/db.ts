@@ -1095,7 +1095,7 @@ export async function listContextMediaByContext(ownerId: string, contextId: stri
 export async function linkContactToContext(
   ownerId: string,
   data: { contactId: number; contextId: string; eventDate?: string; city?: string; country?: string; notes?: string; relationshipType?: string }
-): Promise<string> {
+): Promise<{ id: string; created: boolean }> {
   const db = await exigirDb();
   // Vincular duas vezes não duplica: o vínculo existente é atualizado com o
   // que veio preenchido e devolvido. Jogar fora o que a usuária digitou (data,
@@ -1118,7 +1118,7 @@ export async function linkContactToContext(
       await db.update(contactContexts).set({ ...atualiza, updatedAt: Date.now() })
         .where(and(eq(contactContexts.id, jaExiste.id), eq(contactContexts.ownerId, ownerId)));
     }
-    return jaExiste.id;
+    return { id: jaExiste.id, created: false };
   }
   const id = crypto.randomUUID();
   const now = Date.now();
@@ -1135,7 +1135,7 @@ export async function linkContactToContext(
     createdAt: now,
     updatedAt: now,
   });
-  return id;
+  return { id, created: true };
 }
 
 export async function unlinkContactFromContext(ownerId: string, linkId: string): Promise<boolean> {
