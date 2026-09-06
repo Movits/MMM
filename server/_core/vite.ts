@@ -85,6 +85,14 @@ export function serveStatic(app: Express) {
       setHeaders(res, filePath) {
         if (filePath.endsWith(".html")) {
           res.setHeader("Cache-Control", "no-cache");
+          return;
+        }
+        // /brand e /images não levam hash no nome: um logo trocado com o mesmo
+        // nome ficaria até 1 h velho no navegador de quem já abriu o site.
+        // no-cache revalida pelo ETag a cada visita (304 quando não mudou, sem
+        // baixar de novo); só os bundles em /assets merecem o cache de 1 ano.
+        if (/[\\/](brand|images)[\\/]/.test(filePath)) {
+          res.setHeader("Cache-Control", "no-cache");
         }
       },
     })

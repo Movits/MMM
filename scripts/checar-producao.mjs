@@ -323,6 +323,9 @@ async function blocoInfra(home) {
     const asset = await fetch(`${BASE}/${bundle}`, { method: "HEAD", signal: AbortSignal.timeout(20_000) });
     rel.ok("assets com cache de 1 ano", /immutable/.test(asset.headers.get("cache-control") || ""));
   }
+  // Sem no-cache no index.html, quem já abriu o site ficaria presa numa versão
+  // antiga depois do deploy (o HTML antigo aponta para bundles que já não existem).
+  rel.ok("index.html sem cache (Cache-Control: no-cache)", /no-cache/.test(home.headers.get("cache-control") || ""), home.headers.get("cache-control") || "sem cabeçalho");
   const csp = home.headers.get("content-security-policy") || "";
   const scriptSrc = (csp.split(";").map(d => d.trim()).find(d => d.startsWith("script-src ")) || "").replace(/^script-src\s+/, "");
   rel.ok("CSP estrita (script-src só 'self')", scriptSrc === "'self'", scriptSrc || "sem cabeçalho CSP");
@@ -337,6 +340,9 @@ async function blocoInfra(home) {
   }
   if (saude.status !== 200) rel.falha("banco responde (system.health)", `status ${saude.status}: o exame chamou errado ou o servidor mudou, não é queda de banco`);
   else rel.ok("banco responde (system.health)", saude.dado?.ok === true);
+  // O servidor expõe o SHA curto do commit que o Render construiu (RENDER_GIT_COMMIT):
+  // compare com `git log -1 --oneline origin/main` para saber se o deploy já saiu.
+  rel.info(`commit no ar: ${saude.dado?.commit ?? "não informado (versão anterior a esta checagem ou fora do Render)"}`);
 
   const stats = await chamar("GET", "stats.platform");
   checar("servidor enxerga o banco (stats.platform)", stats, d => (d?.users ?? 0) > 0);

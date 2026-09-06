@@ -426,7 +426,7 @@ describe("system.health", () => {
   it("banco respondendo: ok:true e status intocado", async () => {
     dubles.bancoFalso = { execute: async () => [] };
     const { status, resultado } = chamar();
-    await expect(resultado).resolves.toEqual({ ok: true });
+    await expect(resultado).resolves.toEqual({ ok: true, commit: null });
     expect(status).not.toHaveBeenCalled();
   });
 });
