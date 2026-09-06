@@ -376,6 +376,45 @@ describe("Revisão adversarial da PR-F (05/09) — o que a primeira rodada deixo
     });
   });
 
+  describe("revisão de 06/09 (card): as três guardas não engolem o objeto do negócio", () => {
+    it("palavra de direção no fundo do complemento não é coordenação: 'Fornecer software de compras' casa", () => {
+      // A varredura solta via "compras" em qualquer posição e devolvia neutro;
+      // coordenação de verdade é adjacente à cabeça ou atrás de conjunção.
+      expect(analisarTermo("Fornecer software de compras")).toEqual({ direcao: "oferta", objeto: "software-de-compras", verbo: "fornecer" });
+      expect(scoreMatch(possui("Fornecer software de compras"), possui("Contratar software de compras"))).toEqual(exact);
+      // e a coordenação de verdade continua neutra (pinos da suíte acima)
+      expect(analisarTermo("Importar e exportar").direcao).toBe("neutro");
+    });
+
+    it("modo sem preposição é só o advérbio inglês: 'Fornecer crédito' e 'Buy bulk' têm objeto", () => {
+      // MODOS_E_CONDICOES inteira valia também sem preposição, e "crédito",
+      // "bulk", "varejo" sumiam como se fossem "a granel".
+      expect(analisarTermo("Fornecer crédito")).toEqual({ direcao: "oferta", objeto: "credito", verbo: "fornecer" });
+      expect(scoreMatch(possui("Fornecer crédito"), possui("Contratar crédito"))).toEqual(exact);
+      expect(scoreMatch(possui("Buy bulk"), possui("Sell bulk"))).toEqual(exact);
+      expect(scoreMatch(possui("Vender varejo"), possui("Comprar varejo"))).toEqual(exact);
+    });
+
+    it("com a preposição o modo segue modo: 'Vender a crédito' e 'Vender a varejo' valem por inteiro", () => {
+      expect(analisarTermo("Vender a crédito")).toEqual({ direcao: "oferta", objeto: "vender-a-credito", verbo: "vender" });
+      expect(analisarTermo("Vender a varejo").objeto).toBe("vender-a-varejo");
+      // e o advérbio inglês continua modo mesmo sem preposição
+      expect(analisarTermo("Sell retail").objeto).toBe("sell-retail");
+      expect(scoreMatch(possui("Sell retail"), possui("Buy retail")).score).toBeLessThan(100);
+    });
+
+    it("complemento que pode ser mercadoria só compõe atrás de export/import: 'Purchase insurance' × 'Sell insurance' casa", () => {
+      // A lista única de complementos derrubava estes pares para 60.
+      expect(scoreMatch(possui("Purchase insurance"), possui("Sell insurance"))).toEqual(exact);
+      expect(scoreMatch(possui("Selling data"), possui("Buying data"))).toEqual(exact);
+      expect(scoreMatch(possui("Supply credit"), possui("Buy credit"))).toEqual(exact);
+      expect(analisarTermo("Purchase insurance")).toEqual({ direcao: "demanda", objeto: "insurance", verbo: "purchase" });
+      // atrás de cabeça forte o composto de comércio exterior segue neutro
+      expect(analisarTermo("Export credit insurance").direcao).toBe("neutro");
+      expect(analisarTermo("Import finance").direcao).toBe("neutro");
+    });
+  });
+
   describe("a isenção entre dois substantivos de ação exige o MESMO objeto", () => {
     it("'Captação de recursos' × idem e 'Exportação de vinho' × idem seguem em 100", () => {
       expect(scoreMatch(possui("Captação de recursos"), possui("Captação de recursos"))).toEqual(exact);
