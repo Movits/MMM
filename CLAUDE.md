@@ -108,7 +108,7 @@ se criar arquivo em `drizzle/`) → banco do zero em MariaDB 11.4 com `criar-ban
 `pnpm build`. Rode o mesmo antes da PR.
 
 **Servidor.** Lógica nova em `server/` ganha ou atualiza um `*.test.ts` ao lado
-(42 hoje, fora os dois `*.integracao.test.ts`). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
+(66 em 05/09/2026, fora os dois `*.integracao.test.ts`). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
 `skipIf`; a suíte NUNCA lê `DATABASE_URL` (`server/test/setup-banco.ts` a troca por
 `DATABASE_URL_TESTES`, um banco descartável; sem ela o `*.integracao.test.ts` se pula),
 porque o `.env` de trabalho já apontou para produção e `pnpm test` chegou a promover
@@ -206,7 +206,9 @@ em `client/src/pages/` roteadas com wouter em `App.tsx`; shadcn/ui em
 `components/ui/`; Tailwind 4 configurado no próprio CSS (`client/src/index.css`, não
 há `tailwind.config`); o tema escuro está desligado. i18n: 10 JSONs em
 `client/src/i18n/locales/` com o mesmo conjunto de chaves (`conferir-locales.mjs`
-garante); só 13 de 37 telas usam `useTranslation`, as mais novas têm pt-BR fixo.
+garante); 20 das 24 páginas usam `useTranslation` (em 05/09/2026); `AdminPanel`,
+`PresidentPanel` e `LegalPage` continuam em pt-BR fixo, e só 2 dos 10 componentes
+compartilhados traduzem.
 Código morto conhecido (não construa sobre ele): `ComponentShowcase`, `AuthModal`,
 `Map`, `ManusDialog`, `AIChatBox`, `server/index.ts`.
 

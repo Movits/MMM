@@ -10,6 +10,14 @@ correspondente no quadro do projeto.
 **Trava:** ajuste A11 (contrato de comissão no cadastro), etapa 13.
 **Parado desde:** 12/08/2026.
 
+**Respondida pela Glenda em 31/08/2026, no grupo "Projetos IA"** (registro do
+Roberto; o grupo é o canal das decisões dela e nem tudo chega ao Notion): o
+percentual é individualizado por negócio, definido manualmente por enquanto, com
+teto de 50% do lucro declarado; a divisão entre duas indicadoras se resolve caso a
+caso. Falta o texto contratual: em 05/09 a Cris pediu ao Roberto as orientações
+originais da Glenda sobre comissão e remuneração para concluir o acordo de
+intermediação e o contrato de comissão.
+
 Perguntas:
 
 1. Qual o percentual da comissão do MMM?
@@ -45,6 +53,10 @@ tributário.
 **Recomendação técnica:** o primeiro caminho para 10/09, o segundo como alvo da
 versão seguinte. O terceiro não deveria entrar em discussão sem parecer jurídico.
 
+**Respondida pela Glenda em 31/08/2026, no grupo:** o dinheiro não passa pela
+plataforma na primeira versão; o MMM só registra o negócio fechado. É o primeiro
+caminho da tabela. O A14 continua bloqueado para uma versão futura.
+
 ---
 
 ## D3: Até onde bloquear o contato direto
@@ -61,6 +73,12 @@ Perguntas:
 Ver a seção sobre o alcance real do bloqueio em
 [privacidade.md](./privacidade.md#acesso-após-o-aceite-etapa-13-e-ajuste-a13).
 
+**Respondida pela Glenda em 31/08/2026, no grupo, e endurecida no mesmo dia:** os
+contatos das partes aparecem somente para o consultor de negócios, nunca entre as
+partes, nem depois da aprovação (a spec previa revelação entre as partes; a regra
+nova prevalece e a etapa 11/13 deve segui-la). O bloqueio de e-mail e telefone em
+texto livre foi mantido como barreira extra e está no ar desde a PR #48 (A13).
+
 ---
 
 ## D4: Destaque de produto, pago ou gratuito?
@@ -72,6 +90,10 @@ para semanas.
 |---|---|
 | Gratuito | Uma marcação e uma ordenação. Um dia de trabalho. |
 | Pago | Meio de pagamento, cobrança, controle de validade do destaque. Semanas. |
+
+**Parcialmente respondida pela Glenda em 31/08/2026, no grupo:** a vitrine foi
+aprovada; se o destaque será pago ou gratuito continua em aberto. Enquanto não
+houver resposta, o A12 (Lucas) deve seguir o caminho gratuito da tabela.
 
 ---
 

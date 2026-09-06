@@ -11,6 +11,23 @@ import "./index.css";
 
 const queryClient = new QueryClient();
 
+// Depois de um deploy, uma aba aberta antes dele ainda pede os chunks antigos
+// (nomes com hash) e o servidor responde 404 de propósito (fallthrough:false
+// em server/_core/vite.ts); o Vite avisa por este evento antes de a tela cair
+// no ErrorBoundary. Recarregar uma vez traz o index.html novo (que sai com
+// no-cache). A marca no sessionStorage evita laço se a causa for outra.
+window.addEventListener("vite:preloadError", event => {
+  const marca = "mmm:recarregado-por-chunk-antigo";
+  try {
+    if (sessionStorage.getItem(marca) === window.location.href) return;
+    sessionStorage.setItem(marca, window.location.href);
+  } catch {
+    // sessionStorage bloqueado: recarrega assim mesmo, uma vez por aba nova.
+  }
+  event.preventDefault();
+  window.location.reload();
+});
+
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
