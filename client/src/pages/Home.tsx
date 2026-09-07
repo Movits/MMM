@@ -1,10 +1,11 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/i18n";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { trpc } from "@/lib/trpc";
+import { montarPracasDoGlobo, type Ligacao, type Praca } from "@/lib/pracas-do-globo";
 import {
   Briefcase, HandCoins, GraduationCap, Handshake, Rocket, Lightbulb,
   Lock, ShieldCheck, BadgeCheck, KeyRound,
@@ -431,7 +432,12 @@ function ChaveDoMovimento({ ativo, alternar }: { ativo: boolean; alternar: () =>
  * que aparece se o WebGL não existir (aparelho antigo, GPU bloqueada) — assim
  * a falha degrada para o desenho anterior em vez de um retângulo preto.
  */
-function FundoDoPlaneta({ progresso, animar }: { progresso: () => number; animar: boolean }) {
+function FundoDoPlaneta({ progresso, animar, pracas, ligacoes }: {
+  progresso: () => number;
+  animar: boolean;
+  pracas: Praca[];
+  ligacoes: Ligacao[];
+}) {
   return (
     <div className="fixed inset-0 pointer-events-none" aria-hidden="true">
       <img src={HERO_IMG} alt=""
@@ -440,7 +446,7 @@ function FundoDoPlaneta({ progresso, animar }: { progresso: () => number; animar
         style={{ background: "linear-gradient(180deg, rgba(6,11,20,0.80) 0%, rgba(6,11,20,0.88) 45%, rgba(6,11,20,0.94) 100%)" }} />
       <Suspense fallback={null}>
         <div className="absolute inset-0">
-          <GloboDoMundo progresso={progresso} animar={animar} />
+          <GloboDoMundo progresso={progresso} animar={animar} pracas={pracas} ligacoes={ligacoes} />
         </div>
       </Suspense>
     </div>
@@ -468,6 +474,14 @@ export default function Home() {
 
   // Números reais da plataforma — nunca valores fictícios.
   const { data: stats } = trpc.stats.platform.useQuery();
+
+  // Praças do globo: agregado por país das usuárias reais. staleTime infinito
+  // porque o dado muda no ritmo de cadastros, não de rolagem — refetch em foco
+  // derrubaria e reconstruiria a cena 3D à toa. useMemo pelo mesmo motivo: as
+  // props do globo estão nas deps do useEffect que monta a cena, e precisam
+  // manter identidade entre renders.
+  const { data: presenca } = trpc.stats.presencaPorPais.useQuery(undefined, { staleTime: Infinity });
+  const { pracas, ligacoes } = useMemo(() => montarPracasDoGlobo(presenca), [presenca]);
   const users = useCounter(stats?.users ?? 0, 1600, statsInView && !!stats);
   const opps = useCounter(stats?.opportunities ?? 0, 1600, statsInView && !!stats);
   const countries = useCounter(stats?.countries ?? 0, 1400, statsInView && !!stats);
@@ -505,7 +519,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#060b14] text-white overflow-x-hidden antialiased">
-      <FundoDoPlaneta progresso={progressoDaPagina} animar={movimentoAtivo} />
+      <FundoDoPlaneta progresso={progressoDaPagina} animar={movimentoAtivo} pracas={pracas} ligacoes={ligacoes} />
       <ChaveDoMovimento ativo={movimentoAtivo} alternar={alternarMovimento} />
 
       {/* ─── NAVBAR ─── */}

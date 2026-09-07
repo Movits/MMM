@@ -2,16 +2,16 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { mesh } from "topojson-client";
 import mundo from "world-atlas/countries-110m.json";
+import type { Ligacao, Praca } from "@/lib/pracas-do-globo";
 
 /**
  * O planeta do MMM: gira conforme a rolagem e mostra as praças onde a rede faz
  * negócio, ligadas por rotas acesas.
  *
  * Por que 3D e não uma sequência de imagens: a rotação é contínua e pesa uma
- * geometria só, em vez de 60 a 120 quadros (3 a 5 MB). E o globo pode carregar
- * DADOS — hoje as praças são uma lista fixa, mas o mesmo desenho aceita o que
- * vier do servidor, agregado por país. Uma imagem seria enfeite; isto vira
- * informação.
+ * geometria só, em vez de 60 a 120 quadros (3 a 5 MB). E o globo carrega
+ * DADOS: as praças vêm do servidor, agregadas por país. Uma imagem seria
+ * enfeite; isto é informação.
  *
  * As fronteiras vêm do Natural Earth (world-atlas, domínio público).
  *
@@ -23,25 +23,15 @@ import mundo from "world-atlas/countries-110m.json";
 const RAIO = 1;
 const OURO = new THREE.Color(0xf5a623);
 
-// Onde o MMM faz negócio. Lista fixa por enquanto: quando houver endpoint
-// público agregado POR PAÍS (nunca por pessoa), estes pontos saem de lá.
-const PRACAS = [
-  { nome: "São Paulo", lat: -23.55, lon: -46.63 },
-  { nome: "Lagos", lat: 6.52, lon: 3.38 },
-  { nome: "Lisboa", lat: 38.72, lon: -9.14 },
-  { nome: "Frankfurt", lat: 50.11, lon: 8.68 },
-  { nome: "Dubai", lat: 25.2, lon: 55.27 },
-  { nome: "Joanesburgo", lat: -26.2, lon: 28.05 },
-];
-
-const LIGACOES: Array<[number, number]> = [
-  [0, 1],
-  [0, 2],
-  [1, 4],
-  [2, 3],
-  [1, 5],
-  [3, 4],
-];
+// Onde o MMM faz negócio, agora de verdade: as praças chegam por props, do
+// agregado por país das usuárias reais (stats.presencaPorPais, montado por
+// montarPracasDoGlobo) — nunca por pessoa. Sem dado, sem praça: o planeta
+// continua inteiro (continentes, atmosfera, rotação). Os padrões são
+// constantes de módulo de propósito: um [] inline nas props teria identidade
+// nova a cada render da Home e, como estão nas deps do useEffect, derrubaria
+// e reconstruiria a cena inteira sem necessidade.
+const SEM_PRACAS: Praca[] = [];
+const SEM_LIGACOES: Ligacao[] = [];
 
 function paraEsfera(lat: number, lon: number, raio = RAIO): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
@@ -112,9 +102,13 @@ type Props = {
   progresso: () => number;
   /** Falso = um quadro só, sem laço de animação. Para aparelho fraco. */
   animar?: boolean;
+  /** Agregado por país (montarPracasDoGlobo) — nunca dado de uma pessoa. */
+  pracas?: Praca[];
+  /** Pares de índices em `pracas`; índice inválido é ignorado. */
+  ligacoes?: Ligacao[];
 };
 
-export default function GloboDoMundo({ progresso, animar = true }: Props) {
+export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PRACAS, ligacoes = SEM_LIGACOES }: Props) {
   const hospedeiro = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -269,7 +263,7 @@ export default function GloboDoMundo({ progresso, animar = true }: Props) {
     const materialDoHalo = registrar(
       new THREE.MeshBasicMaterial({ color: OURO, transparent: true, opacity: 0.28, depthWrite: false }),
     );
-    for (const praca of PRACAS) {
+    for (const praca of pracas) {
       const p = paraEsfera(praca.lat, praca.lon, RAIO * 1.008);
       const nucleo = new THREE.Mesh(geometriaDaPraca, materialDaPraca);
       nucleo.position.copy(p);
@@ -287,10 +281,13 @@ export default function GloboDoMundo({ progresso, animar = true }: Props) {
     const materialDoPulso = registrar(new THREE.MeshBasicMaterial({ color: 0xfff3d6 }));
     const pulsos: Array<{ curva: THREE.QuadraticBezierCurve3; malha: THREE.Mesh; atraso: number }> = [];
 
-    LIGACOES.forEach(([de, para], i) => {
+    // Índice fora da lista (dado vindo de fora) não pode derrubar a cena:
+    // rota inválida é descartada, o resto do planeta segue.
+    const rotas = ligacoes.filter(([de, para]) => de !== para && pracas[de] && pracas[para]);
+    rotas.forEach(([de, para], i) => {
       const curva = curvaEntre(
-        paraEsfera(PRACAS[de].lat, PRACAS[de].lon, RAIO * 1.006),
-        paraEsfera(PRACAS[para].lat, PRACAS[para].lon, RAIO * 1.006),
+        paraEsfera(pracas[de].lat, pracas[de].lon, RAIO * 1.006),
+        paraEsfera(pracas[para].lat, pracas[para].lon, RAIO * 1.006),
       );
       const g = registrar(new THREE.BufferGeometry().setFromPoints(curva.getPoints(64)));
       grupo.add(new THREE.Line(g, materialDaRota));
@@ -300,7 +297,7 @@ export default function GloboDoMundo({ progresso, animar = true }: Props) {
       grupo.add(malha);
       // Atraso próprio por rota: sem ele todos os pulsos partem juntos e o
       // planeta pisca em bloco, como um letreiro.
-      pulsos.push({ curva, malha, atraso: i / LIGACOES.length });
+      pulsos.push({ curva, malha, atraso: i / rotas.length });
     });
 
     // Inclinação do eixo, para não parecer um mapa girando num pino.
@@ -326,6 +323,16 @@ export default function GloboDoMundo({ progresso, animar = true }: Props) {
       // Em tela larga o planeta sai do centro e vai para a direita, liberando a
       // coluna do texto. No celular volta ao meio, senão metade sai do quadro.
       grupo.position.x = l / a > 1.2 ? 0.55 : 0;
+      // Celular em pé: o campo de visão VERTICAL é fixo (38°), então quanto
+      // mais estreita a tela, menor o campo horizontal — e a esfera, calibrada
+      // para tela larga com a câmera a 4.2, estourava as laterais e o globo
+      // aparecia cortado. A câmera recua até o planeta inteiro (atmosfera a
+      // 1.22 × RAIO, mais folga) caber na LARGURA. Em tela larga a conta dá
+      // menos que 4.2 e o enquadramento de sempre não muda. A esfera cabe no
+      // campo quando o seno da meia-abertura cobre o raio: d = r / sen(θ).
+      const meiaAltura = (camera.fov / 2) * (Math.PI / 180);
+      const meiaLargura = Math.atan(Math.tan(meiaAltura) * camera.aspect);
+      camera.position.z = Math.max(4.2, (RAIO * 1.29) / Math.sin(Math.min(meiaAltura, meiaLargura)));
       camera.updateProjectionMatrix();
       // A rolagem não mudou, mas o quadro anterior ficou do tamanho errado.
       precisaDesenhar = true;
@@ -411,7 +418,7 @@ export default function GloboDoMundo({ progresso, animar = true }: Props) {
       renderizador.dispose();
       if (renderizador.domElement.parentNode === alvo) alvo.removeChild(renderizador.domElement);
     };
-  }, [progresso, animar]);
+  }, [progresso, animar, pracas, ligacoes]);
 
   return <div ref={hospedeiro} className="w-full h-full" aria-hidden="true" />;
 }

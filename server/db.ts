@@ -57,8 +57,8 @@ export async function getDb() {
  * traduz os dois casos para a usuária com a mesma frase.
  *
  * getDb() continua devolvendo null para quem precisa decidir sozinho o que
- * fazer sem banco. Hoje são só stats.platform e system.health, que degradam
- * de propósito para não derrubar a página inicial.
+ * fazer sem banco. Hoje são só stats.platform, stats.presencaPorPais e
+ * system.health, que degradam de propósito para não derrubar a página inicial.
  */
 export async function exigirDb() {
   const db = await getDb();
