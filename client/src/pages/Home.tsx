@@ -70,8 +70,15 @@ const MOSTRAR_CARTAO_DO_HERO = false;
  * movimento recebe progresso = 1 (não 0): o planeta aparece na posição final,
  * parado, em vez de escondido no início — informação a menos, não movimento a
  * menos.
+ *
+ * `movimentoLigado` é a escolha explícita no botão do site, e ela VENCE a
+ * preferência do sistema — a mesma regra de movimentoPadrao ("quem clicou
+ * sabe o que quer"). Sem isto, quem tem os efeitos de animação desligados no
+ * Windows clicava em "Movimento ligado", via os pulsos andarem, e o planeta
+ * continuava pregado na posição final ignorando a rolagem (relato do Nicolas,
+ * 06/09, no site publicado).
  */
-function useProgressoDaPagina() {
+function useProgressoDaPagina(movimentoLigado: boolean) {
   const valor = useRef(0);
   const progresso = useRef(() => valor.current).current;
   const [semMovimento, setSemMovimento] = useState(
@@ -86,7 +93,7 @@ function useProgressoDaPagina() {
   }, []);
 
   useEffect(() => {
-    if (semMovimento) {
+    if (semMovimento && !movimentoLigado) {
       valor.current = 1;
       return;
     }
@@ -111,7 +118,7 @@ function useProgressoDaPagina() {
       window.removeEventListener("resize", aoRolar);
       if (quadro) cancelAnimationFrame(quadro);
     };
-  }, [semMovimento]);
+  }, [semMovimento, movimentoLigado]);
 
   return progresso;
 }
@@ -460,8 +467,8 @@ export default function Home() {
   const { ref: stepsRef, inView: stepsInView } = useInView();
   const { ref: oppsRef, inView: oppsInView } = useInView();
   const heroRef = useParallax<HTMLElement>();
-  const progressoDaPagina = useProgressoDaPagina();
   const [movimentoAtivo, setMovimentoAtivo] = useState(movimentoPadrao);
+  const progressoDaPagina = useProgressoDaPagina(movimentoAtivo);
   const alternarMovimento = () => {
     setMovimentoAtivo(atual => {
       const proximo = !atual;
