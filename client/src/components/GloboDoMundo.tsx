@@ -274,8 +274,14 @@ export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PR
     }
 
     // ── Rotas e os pulsos que viajam nelas ────────────────────────────────
+    // A praça 0 é o hub (Brasil/DF, ver montarPracasDoGlobo): rota que o toca
+    // é PRINCIPAL — linha mais acesa e pulso dobrado. As demais formam a malha
+    // entre as outras praças, mais discretas para não virar novelo.
+    const materialDaRotaPrincipal = registrar(
+      new THREE.LineBasicMaterial({ color: 0xffe2a6, transparent: true, opacity: 0.9 }),
+    );
     const materialDaRota = registrar(
-      new THREE.LineBasicMaterial({ color: 0xffd489, transparent: true, opacity: 0.7 }),
+      new THREE.LineBasicMaterial({ color: 0xffd489, transparent: true, opacity: 0.4 }),
     );
     const geometriaDoPulso = registrar(new THREE.SphereGeometry(0.018, 10, 10));
     const materialDoPulso = registrar(new THREE.MeshBasicMaterial({ color: 0xfff3d6 }));
@@ -285,12 +291,13 @@ export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PR
     // rota inválida é descartada, o resto do planeta segue.
     const rotas = ligacoes.filter(([de, para]) => de !== para && pracas[de] && pracas[para]);
     rotas.forEach(([de, para], i) => {
+      const principal = de === 0 || para === 0;
       const curva = curvaEntre(
         paraEsfera(pracas[de].lat, pracas[de].lon, RAIO * 1.006),
         paraEsfera(pracas[para].lat, pracas[para].lon, RAIO * 1.006),
       );
       const g = registrar(new THREE.BufferGeometry().setFromPoints(curva.getPoints(64)));
-      grupo.add(new THREE.Line(g, materialDaRota));
+      grupo.add(new THREE.Line(g, principal ? materialDaRotaPrincipal : materialDaRota));
 
       const malha = new THREE.Mesh(geometriaDoPulso, materialDoPulso);
       malha.position.copy(curva.getPoint(0));
@@ -298,6 +305,13 @@ export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PR
       // Atraso próprio por rota: sem ele todos os pulsos partem juntos e o
       // planeta pisca em bloco, como um letreiro.
       pulsos.push({ curva, malha, atraso: i / rotas.length });
+      if (principal) {
+        // Segundo pulso em contrafase: a rota da sede pulsa em dobro.
+        const eco = new THREE.Mesh(geometriaDoPulso, materialDoPulso);
+        eco.position.copy(curva.getPoint(0));
+        grupo.add(eco);
+        pulsos.push({ curva, malha: eco, atraso: i / rotas.length + 0.5 });
+      }
     });
 
     // Inclinação do eixo, para não parecer um mapa girando num pino.
