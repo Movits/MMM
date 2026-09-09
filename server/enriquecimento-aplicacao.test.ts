@@ -80,15 +80,23 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
     expect(busca!.params).toEqual(expect.arrayContaining(["dona-1", 42, "fabrica"]));
   });
 
-  it("'como se conheceram' anota no contato E vira contexto com vínculo (etapa 5)", async () => {
+  /**
+   * Estes casos mudaram de lado. Até o PR #29, "como se conheceram" CRIAVA um
+   * contexto com os primeiros 100 caracteres da resposta livre, e os testes
+   * daqui fixavam isso. O efeito na tela de Contextos era "Fomos apresentadas
+   * por uma amiga em comum" aparecendo como contexto da dona, com uma linha
+   * nova a cada variação da frase. O requisito atual: corresponder a contexto
+   * existente vincula; não corresponder fica só na nota; criar contexto é
+   * decisão explícita da dona, nunca efeito colateral do chat.
+   */
+  it("'como se conheceram' que corresponde a um contexto existente REUSA esse contexto", async () => {
     respostas = [
-      [[42]],   // contato vivo
-      [[null]], // notes atual: null → vai anotar
-      [],       // update das notas
-      [],       // não existe contexto com esse nome → vai criar
-      [],       // insert do contexto
-      [],       // não existe vínculo → vai criar
-      [],       // insert do vínculo
+      [[42]],                                       // contato vivo
+      [[null]],                                     // notes atual: null → vai anotar
+      [],                                           // update das notas
+      [["ctx-1", "Em um evento", "dona-1"]],        // contexto com esse nome já existe
+      [],                                           // não existe vínculo → vai criar
+      [],                                           // insert do vínculo
     ];
     const gravou = await aplicarRespostaAoContato(db, "dona-1", 42, "how_met", "Em um evento", 1000);
 
@@ -97,42 +105,86 @@ describe("Enriquecimento — cada resposta chega ao seu destino", () => {
     expect(update).toBeDefined();
     expect(String(update!.params[0])).toContain("Como se conheceram: Em um evento");
 
-    const insertContexto = sqlDe("insert into `contexts`");
-    expect(insertContexto).toBeDefined();
-    expect(insertContexto!.params).toContain("Em um evento");
-    expect(insertContexto!.params).toContain("dona-1");
+    // O que este teste existe para impedir: contexto nascido da resposta.
+    expect(sqlDe("insert into `contexts`")).toBeUndefined();
 
     const insertVinculo = sqlDe("insert into `contact_contexts`");
     expect(insertVinculo).toBeDefined();
+    expect(insertVinculo!.params).toContain("ctx-1");
     expect(insertVinculo!.params).toContain(42);
   });
 
-  it("'como se conheceram' repetido não duplica nada: nota, contexto e vínculo já existem", async () => {
+  it("caixa e espaços não criam duplicata: a resposta acha o mesmo contexto", async () => {
+    respostas = [
+      [[42]],
+      [[null]],
+      [],
+      [["ctx-1", "Feira de Milão", "dona-1"]],
+      [],
+      [],
+    ];
+    const gravou = await aplicarRespostaAoContato(db, "dona-1", 42, "how_met", "  feira   de MILAO  ", 1000);
+
+    expect(gravou).toBe(true);
+    expect(sqlDe("insert into `contexts`")).toBeUndefined();
+    expect(sqlDe("insert into `contact_contexts`")!.params).toContain("ctx-1");
+  });
+
+  it("nomes diferentes continuam contextos diferentes: nada de aproximar frases", async () => {
+    respostas = [
+      [[42]],
+      [[null]],
+      [],
+      [["ctx-1", "Feira de Bolonha", "dona-1"]], // parecido, mas outro evento
+    ];
+    await aplicarRespostaAoContato(db, "dona-1", 42, "how_met", "Feira de Milão", 1000);
+
+    expect(sqlDe("insert into `contexts`")).toBeUndefined();
+    expect(sqlDe("insert into `contact_contexts`")).toBeUndefined();
+  });
+
+  it("sem contexto correspondente, a resposta fica SÓ na nota e não cria contexto", async () => {
+    // A frase do relato: resposta livre e legítima que não é nome de contexto.
+    respostas = [
+      [[42]],   // contato vivo
+      [[null]], // notes atual: null → vai anotar
+      [],       // update das notas
+      [],       // nenhum contexto com esse nome
+    ];
+    const gravou = await aplicarRespostaAoContato(
+      db, "dona-1", 42, "how_met", "Fomos apresentadas por uma amiga em comum", 1000,
+    );
+
+    expect(gravou).toBe(true); // a nota foi gravada
+    const update = sqlDe("update `private_contacts`");
+    expect(String(update!.params[0])).toContain("Como se conheceram: Fomos apresentadas por uma amiga em comum");
+
+    expect(sqlDe("insert into `contexts`")).toBeUndefined();
+    expect(sqlDe("insert into `contact_contexts`")).toBeUndefined();
+  });
+
+  it("'como se conheceram' repetido não duplica nada: nota e vínculo já existem", async () => {
     respostas = [
       [[42]],                                 // contato vivo
       [["Como se conheceram: Em um evento"]], // nota já está lá
-      [["ctx-1"]],                            // contexto já existe
+      [["ctx-1", "Em um evento", "dona-1"]],  // contexto já existe
       [["vinc-1"]],                           // vínculo já existe
     ];
     expect(await aplicarRespostaAoContato(db, "dona-1", 42, "how_met", "Em um evento", 1000)).toBe(false);
     expect(consultas.some(c => c.sql.startsWith("insert") || c.sql.startsWith("update"))).toBe(false);
   });
 
-  it("resposta antiga recuperada (só nota) ganha o vínculo que faltava ao reprocessar", async () => {
-    // As respostas confirmadas antes desta mudança só viraram nota; reprocessar
-    // pelo script de recuperação completa o contexto e o vínculo.
+  it("reprocessamento em lote de resposta antiga não cria contexto nenhum", async () => {
+    // scripts/recuperar-enriquecimento.ts reaplica por aqui, em massa. Era este
+    // o caminho que enchia a tela de Contextos com respostas de anos atrás.
     respostas = [
       [[42]],                                 // contato vivo
       [["Como se conheceram: Em um evento"]], // nota já está lá
-      [],                                     // contexto ainda não existe
-      [],                                     // insert do contexto
-      [],                                     // vínculo não existe
-      [],                                     // insert do vínculo
+      [],                                     // nenhum contexto corresponde
     ];
-    expect(await aplicarRespostaAoContato(db, "dona-1", 42, "how_met", "Em um evento", 1000)).toBe(true);
+    expect(await aplicarRespostaAoContato(db, "dona-1", 42, "how_met", "Em um evento", 1000)).toBe(false);
+    expect(consultas.some(c => c.sql.startsWith("insert"))).toBe(false);
     expect(sqlDe("update `private_contacts`")).toBeUndefined(); // nota não é regravada
-    expect(sqlDe("insert into `contexts`")).toBeDefined();
-    expect(sqlDe("insert into `contact_contexts`")).toBeDefined();
   });
 
   it("'relacionamento' entra nas anotações do contato, uma vez só", async () => {

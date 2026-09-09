@@ -27,6 +27,8 @@ const estado = vi.hoisted(() => ({
   telefoneAtual: "11 90000-0000" as string | null,
   notasAtuais: null as string | null,
   tagJaExiste: false,
+  /** Linha de `contexts` (id, name, owner_id) que a busca por nome encontra. */
+  contextoExistente: null as unknown[] | null,
   linhasMarcadas: 1,
   sessao: null as unknown[] | null,
   linhasDaSessao: 1,
@@ -50,7 +52,7 @@ vi.mock("drizzle-orm/mysql2", async (importOriginal) => {
       if (/^select `notes` from `private_contacts`/.test(sql)) return [[[estado.notasAtuais]], []];
       if (/^select `id` from `private_contacts`/.test(sql)) return [[[42]], []];
       if (/^select `id` from `contact_(assets|needs)`/.test(sql)) return [estado.tagJaExiste ? [[7]] : [], []];
-      if (sql.includes("from `contexts`")) return [[], []];
+      if (sql.includes("from `contexts`")) return [estado.contextoExistente ? [estado.contextoExistente] : [], []];
       if (sql.includes("from `contact_contexts`")) return [[], []];
       return [[], []];
     },
@@ -95,6 +97,7 @@ beforeEach(() => {
   estado.telefoneAtual = "11 90000-0000";
   estado.notasAtuais = null;
   estado.tagJaExiste = false;
+  estado.contextoExistente = null;
   estado.linhasMarcadas = 1;
   estado.sessao = null;
   estado.linhasDaSessao = 1;
@@ -139,18 +142,38 @@ describe("confirmar guarda o retrato do que vai cobrir, por tipo de destino", ()
     expect(snapshotGravado()).toEqual({ kind: "tag", tabela: "contact_needs", inseriu: false, linhaId: 7, slug: "investidores", rotulo: "investidores" });
   });
 
-  it("como se conheceram: guarda a linha de nota, o contexto (criado) e o id do vínculo", async () => {
+  it("como se conheceram, com contexto correspondente: guarda a nota e o id do vínculo, sem criar contexto", async () => {
     estado.sugestao = linhaDeSugestao({ fieldType: "how_met", suggestedValue: "Em um evento", status: "pending" });
     estado.notasAtuais = "Nota antiga";
+    estado.contextoExistente = ["ctx-1", "Em um evento", DONA];
 
     await db.applyEnrichmentSuggestion("sug-1", DONA);
 
     const snapshot = snapshotGravado();
-    expect(snapshot).toMatchObject({ kind: "how_met", linhaDeNota: "Como se conheceram: Em um evento", contextoCriado: true });
-    expect(typeof snapshot.contextoId).toBe("string");
+    expect(snapshot).toMatchObject({
+      kind: "how_met", linhaDeNota: "Como se conheceram: Em um evento",
+      contextoId: "ctx-1", contextoCriado: false,
+    });
     expect(typeof snapshot.vinculoId).toBe("string");
     // O id guardado é o mesmo que foi para o INSERT do vínculo.
     expect(sqlDe("insert into `contact_contexts`")!.params).toContain(snapshot.vinculoId);
+    expect(sqlDe("insert into `contexts`")).toBeUndefined();
+  });
+
+  it("como se conheceram, sem contexto correspondente: só a nota, e o retrato não tem contexto nem vínculo", async () => {
+    // A resposta livre não vira contexto. O retrato precisa dizer isso, senão o
+    // desfazer procuraria um vínculo que nunca existiu.
+    estado.sugestao = linhaDeSugestao({ fieldType: "how_met", suggestedValue: "Fomos apresentadas por uma amiga em comum", status: "pending" });
+    estado.notasAtuais = "Nota antiga";
+
+    await db.applyEnrichmentSuggestion("sug-1", DONA);
+
+    expect(snapshotGravado()).toMatchObject({
+      kind: "how_met", linhaDeNota: "Como se conheceram: Fomos apresentadas por uma amiga em comum",
+      contextoId: null, contextoCriado: false, vinculoId: null,
+    });
+    expect(sqlDe("insert into `contexts`")).toBeUndefined();
+    expect(sqlDe("insert into `contact_contexts`")).toBeUndefined();
   });
 
   it("relacionamento: guarda a linha acrescentada às anotações", async () => {
