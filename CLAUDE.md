@@ -150,14 +150,20 @@ estático de `dist/public` (prod). Não há proxy de dev: front e API na mesma o
 `server/routers/`, agregados em `server/routers.ts` (atenção aos apelidos: `matches`
 no appRouter é o `profileMatchesRouter`; `routers/matches.ts` entra como
 `intelligentMatches`). O client consome tudo tipado via `client/src/lib/trpc.ts` +
-React Query. **Há duas camadas de procedures base**:
-`server/_core/trpc.ts` tem `publicProcedure`, `protectedProcedure` e um
-`adminProcedure` estrito (só `role === "admin"`); `server/routers/_procedures.ts` tem
+React Query. As procedures base ficam em `server/routers/_procedures.ts`:
 `adminProcedure`, `presidentProcedure` e `goldProcedure`, e **as três aceitam o mesmo
-conjunto {admin, president, gold}**: é a regra "Ouro = Presidente = administradora",
-pedida pela cliente e confirmada pelo Roberto em 02/09/2026: toda conta Ouro tem o
-painel administrativo. Consequência: contas Ouro criadas só para teste (inclusive a do
-Roberto) precisam voltar a Prata antes da entrega. Checagens "Ouro ou acima" ainda
+conjunto {admin, president, gold}**. `server/_core/trpc.ts` exporta só `router`,
+`publicProcedure` e `protectedProcedure` (o `adminProcedure` estrito saiu na limpeza
+do Manus, commit 5bce2aa). É a regra "Ouro = Presidente = administradora", pedida pela
+cliente e confirmada pelo Roberto em 02/09/2026: toda conta Ouro tem o painel
+administrativo. Consequência: contas Ouro criadas só para teste (inclusive a do
+Roberto) precisam voltar a Prata antes da entrega.
+
+**Mas Ouro NÃO é staff em tudo.** A única assimetria de papel no servidor é `isStaff`
+em `oportunidade-acesso.ts`, que aceita só admin e president: uma conta Ouro APROVA
+uma oportunidade pendente e leva 403 ao tentar ABRI-LA. Some-se outra armadilha:
+`grantGoldAccess` grava `role = "gold"` por cima do que havia, e `revokeGoldAccess`
+grava `"silver"` — conceder Ouro a uma presidente a REBAIXA, e revogar a joga em Prata. Checagens "Ouro ou acima" ainda
 estão repetidas inline em `routers/dealRoom.ts`, `routers/matching.ts`,
 `routers/opportunities.ts`, `_core/storageProxy.ts` e no client (`ProtectedRoute`,
 `AppHeader`, `Connections`).
