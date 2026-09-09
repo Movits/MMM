@@ -877,6 +877,7 @@
     "botaoSalvar": "✓ Speichern",
     "vincularContatoTitulo": "Kontakt verknüpfen",
     "toastVinculadoSucesso": "{{name}} mit {{context}} verknüpft!",
+    "toastVinculoAtualizado": "Verknüpfung von {{name}} mit {{context}} aktualisiert.",
     "toastErroVincular": "Fehler beim Verknüpfen: {{message}}",
     "relTipoPessoal": "Persönlich",
     "relTipoProfissional": "Beruflich",
