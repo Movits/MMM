@@ -104,11 +104,12 @@ conclui: outra pessoa do time valida no link de teste e só ela marca "Concluíd
 O CI (`.github/workflows/testes.yml`, toda PR e push na `main`) roda, nesta ordem:
 `conferir-locales.mjs` (10 idiomas com as mesmas chaves) → `pnpm db:generate` (falha
 se criar arquivo em `drizzle/`) → banco do zero em MariaDB 11.4 com `criar-banco.mjs`
-→ `nivelar-banco.mjs` exigindo "Nada a nivelar" → `pnpm check` → `pnpm test` →
+→ `nivelar-banco.mjs` exigindo "Nada a nivelar" → `pnpm check` → `node --check` nos
+scripts (`scripts/*.mjs`, `scripts/exame/*.mjs`, `.claude/hooks/*.mjs`) → `pnpm test` →
 `pnpm build`. Rode o mesmo antes da PR.
 
 **Servidor.** Lógica nova em `server/` ganha ou atualiza um `*.test.ts` ao lado
-(66 em 05/09/2026, fora os dois `*.integracao.test.ts`). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
+(fora os dois `*.integracao.test.ts`). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
 `skipIf`; a suíte NUNCA lê `DATABASE_URL` (`server/test/setup-banco.ts` a troca por
 `DATABASE_URL_TESTES`, um banco descartável; sem ela o `*.integracao.test.ts` se pula),
 porque o `.env` de trabalho já apontou para produção e `pnpm test` chegou a promover
@@ -138,17 +139,18 @@ verifiquei" na PR listando as telas. Função pura do client pode ser testada em
 Aplicação full-stack TypeScript num único pacote: React 19 + Vite no client,
 tRPC 11 sobre Express 4 no servidor, MySQL via Drizzle.
 
-**Entrada e boot.** A entrada real é `server/_core/index.ts` (`server/index.ts` é um
-resto morto). Ordem: migrações no boot (só em produção, ver "Banco"), helmet,
+**Entrada e boot.** A entrada real é `server/_core/index.ts`. Ordem: migrações no
+boot (só em produção, ver "Banco"), helmet,
 compression, cabeçalhos de segurança, bloqueio de scanners, rate limit global, body
 parsers (15 MB só em `meetings.submitRecording` e `contexts.uploadMedia`, 5 MB no
 resto), proxy de storage, tRPC em `/api/trpc`, e por fim Vite em middleware (dev) ou
 estático de `dist/public` (prod). Não há proxy de dev: front e API na mesma origem.
 
 **Fluxo de tipos ponta a ponta (tRPC).** Cada área de negócio tem um router em
-`server/routers/` (auth, network, matches, opportunities, dealRoom, meetings, sivc,
-president, consent…), agregados em `server/routers.ts`. O client consome tudo tipado
-via `client/src/lib/trpc.ts` + React Query. **Há duas camadas de procedures base**:
+`server/routers/`, agregados em `server/routers.ts` (atenção aos apelidos: `matches`
+no appRouter é o `profileMatchesRouter`; `routers/matches.ts` entra como
+`intelligentMatches`). O client consome tudo tipado via `client/src/lib/trpc.ts` +
+React Query. **Há duas camadas de procedures base**:
 `server/_core/trpc.ts` tem `publicProcedure`, `protectedProcedure` e um
 `adminProcedure` estrito (só `role === "admin"`); `server/routers/_procedures.ts` tem
 `adminProcedure`, `presidentProcedure` e `goldProcedure`, e **as três aceitam o mesmo
@@ -156,8 +158,9 @@ conjunto {admin, president, gold}**: é a regra "Ouro = Presidente = administrad
 pedida pela cliente e confirmada pelo Roberto em 02/09/2026: toda conta Ouro tem o
 painel administrativo. Consequência: contas Ouro criadas só para teste (inclusive a do
 Roberto) precisam voltar a Prata antes da entrega. Checagens "Ouro ou acima" ainda
-estão repetidas inline em `dealRoom.ts`, `matching.ts`, `opportunities.ts`,
-`storageProxy.ts` e no client.
+estão repetidas inline em `routers/dealRoom.ts`, `routers/matching.ts`,
+`routers/opportunities.ts`, `_core/storageProxy.ts` e no client (`ProtectedRoute`,
+`AppHeader`, `Connections`).
 
 **Acesso a dados.** `server/db.ts` é a camada única (usuárias, oportunidades, Ouro,
 segurança, matches, rede privada, contextos, enriquecimento). Banco fora do ar é ERRO,
@@ -206,11 +209,10 @@ em `client/src/pages/` roteadas com wouter em `App.tsx`; shadcn/ui em
 `components/ui/`; Tailwind 4 configurado no próprio CSS (`client/src/index.css`, não
 há `tailwind.config`); o tema escuro está desligado. i18n: 10 JSONs em
 `client/src/i18n/locales/` com o mesmo conjunto de chaves (`conferir-locales.mjs`
-garante); 20 das 24 páginas usam `useTranslation` (em 05/09/2026); `AdminPanel`,
-`PresidentPanel` e `LegalPage` continuam em pt-BR fixo, e só 2 dos 10 componentes
-compartilhados traduzem.
-Código morto conhecido (não construa sobre ele): `ComponentShowcase`, `AuthModal`,
-`Map`, `ManusDialog`, `AIChatBox`, `server/index.ts`.
+garante); `AdminPanel`, `PresidentPanel` e `LegalPage` continuam em pt-BR fixo, e a
+maioria dos componentes compartilhados não traduz.
+Código morto conhecido (não construa sobre ele): `ComponentShowcase` e `AIChatBox`
+(importado só por ele).
 
 **`shared/`** tem constantes e tipos usados por client e servidor, inclusive
 `direcao-do-termo.ts` (direção oferta/demanda de um termo) e `types.ts`, que
@@ -229,7 +231,7 @@ por etapa vindas do Manus.
 ## Banco e migrações
 
 Schema e migrações em `drizzle/` (`schema.ts` + SQL versionado, com baseline
-`0000_fundacao`). Todas as 50 tabelas, incluindo as `sivc_*`, estão no schema.
+`0000_fundacao`). Todas as tabelas, incluindo as `sivc_*`, estão no schema.
 
 - **Mudança de schema SÓ via `pnpm db:generate` + `pnpm db:migrate`.** Editar o
   `schema.ts` sem gerar a migração já quebrou produção uma vez (coluna existia
