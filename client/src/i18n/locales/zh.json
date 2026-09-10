@@ -703,6 +703,7 @@
       "individual": "自然人",
       "legalEntity": "法人实体",
       "mei": "个体微型创业者（MEI）",
+      "nonprofit": "非营利组织",
       "companySize": "企业规模",
       "companySizePlaceholder": "请选择规模",
       "sizeMei": "MEI",

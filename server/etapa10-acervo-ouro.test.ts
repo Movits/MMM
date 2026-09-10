@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -149,10 +149,14 @@ describe("Etapa 10 — o vocabulário do termo está pronto para o texto da Cris
     const bruto = readFileSync(join(__dirname, "..", "drizzle", "meta", "_journal.json"));
     expect(bruto[0]).toBe(0x7b); // '{' — nunca EF BB BF
     const journal = JSON.parse(bruto.toString("utf8"));
-    // A última migração muda a cada PR com schema (a 0007 é a trilha de aceite
-    // da etapa 13); o que fica pinado é o journal legível e a 0005 nele.
+    // A última migração muda a cada PR com schema; o que fica pinado é o journal
+    // legível, a 0005 nele e o journal apontar para os arquivos que existem.
     expect(journal.entries.some((e: { tag: string }) => e.tag === "0005_termo-acesso-ouro")).toBe(true);
-    expect(journal.entries[journal.entries.length - 1].tag).toBe("0007_trilha-de-aceite");
+    const arquivos = readdirSync(join(__dirname, "..", "drizzle"))
+      .filter(nome => nome.endsWith(".sql"))
+      .map(nome => nome.replace(/\.sql$/, ""))
+      .sort();
+    expect(journal.entries.map((e: { tag: string }) => e.tag)).toEqual(arquivos);
   });
 });
 

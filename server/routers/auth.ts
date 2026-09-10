@@ -142,9 +142,19 @@ export const authRouter = router({
           html,
           text,
         });
-        if (!emailSent) console.error("[PasswordReset] A Resend não aceitou a solicitação de envio.");
+        if (!emailSent) {
+          console.error("[PasswordReset] A Resend não aceitou a solicitação de envio para:", user.email);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Falha ao enviar e-mail de recuperação. Tente novamente em alguns instantes.",
+          });
+        }
       } catch (error) {
         console.error("[PasswordReset] Falha ao enviar e-mail de recuperação:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Não foi possível enviar o e-mail de recuperação. Verifique se o e-mail está correto e tente novamente.",
+        });
       }
       return genericResponse;
     }),

@@ -703,6 +703,7 @@
       "individual": "個人",
       "legalEntity": "法人",
       "mei": "個人零細事業者（MEI）",
+      "nonprofit": "非営利団体",
       "companySize": "会社規模",
       "companySizePlaceholder": "規模を選択",
       "sizeMei": "MEI",

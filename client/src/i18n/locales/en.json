@@ -703,6 +703,7 @@
       "individual": "Individual",
       "legalEntity": "Legal entity",
       "mei": "Individual micro-entrepreneur (MEI)",
+      "nonprofit": "Nonprofit",
       "companySize": "Company size",
       "companySizePlaceholder": "Select the size",
       "sizeMei": "MEI",

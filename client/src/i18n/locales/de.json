@@ -703,6 +703,7 @@
       "individual": "Natürliche Person",
       "legalEntity": "Juristische Person",
       "mei": "Einzelne Kleinstunternehmerin (MEI)",
+      "nonprofit": "Gemeinnützige Organisation",
       "companySize": "Unternehmensgröße",
       "companySizePlaceholder": "Größe auswählen",
       "sizeMei": "MEI",

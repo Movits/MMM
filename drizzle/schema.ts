@@ -76,7 +76,7 @@ export const userProfiles = mysqlTable("user_profiles", {
 
   // --- Novos campos de perfil profissional (regras de negócio v2) ---
   company: varchar("company", { length: 200 }),           // Empresa
-  personType: mysqlEnum("personType", ["individual", "legal_entity", "mei"]),
+  personType: mysqlEnum("personType", ["individual", "legal_entity", "mei", "nonprofit"]),
   companySize: mysqlEnum("companySize", ["mei", "micro", "small", "medium", "large"]),
   companyCnpj: varchar("companyCnpj", { length: 18 }),
   jobTitle: varchar("jobTitle", { length: 200 }),          // Cargo

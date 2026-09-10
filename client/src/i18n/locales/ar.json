@@ -703,6 +703,7 @@
       "individual": "شخص طبيعي",
       "legalEntity": "شخص اعتباري",
       "mei": "رائدة أعمال فردية صغيرة (MEI)",
+      "nonprofit": "منظمة غير ربحية",
       "companySize": "حجم الشركة",
       "companySizePlaceholder": "اختاري الحجم",
       "sizeMei": "MEI",

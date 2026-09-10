@@ -703,6 +703,7 @@
       "individual": "Физическое лицо",
       "legalEntity": "Юридическое лицо",
       "mei": "Индивидуальная микропредпринимательница (MEI)",
+      "nonprofit": "Некоммерческая организация",
       "companySize": "Размер компании",
       "companySizePlaceholder": "Выберите размер",
       "sizeMei": "MEI",

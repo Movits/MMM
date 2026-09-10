@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { BrainCircuit, CheckCircle } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
-import { formatCnpj, isValidCnpj } from "@shared/business-registration";
+import { exigeCnpj, formatCnpj, isValidCnpj } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
 
 
@@ -56,7 +56,7 @@ interface FormData {
   incomeRange: string; investmentCapacity: string; lookingForInvestment: boolean;
   workStyle: string; values: string[]; languages: string[];
   gender: "" | "male" | "female" | "prefer_not_to_say";
-  personType: "" | "individual" | "legal_entity" | "mei";
+  personType: "" | "individual" | "legal_entity" | "mei" | "nonprofit";
   companySize: "" | "mei" | "micro" | "small" | "medium" | "large";
   companyCnpj: string;
   customSector: string;
@@ -377,9 +377,8 @@ export default function Onboarding() {
     if (step === 1) return form.displayName.trim().length >= 2 && form.city.trim().length >= 2;
     if (step === 2) {
       const temEspecialidade = form.primarySpecialties.length > 0 || form.customSpecialty.trim().length > 0;
-      // Quem se declara MEI ou pessoa juridica tem CNPJ por definicao (A7).
-      const precisaCnpj = form.personType === "mei" || form.personType === "legal_entity";
-      const cnpjOk = !precisaCnpj || isValidCnpj(form.companyCnpj);
+      // Quem se declara MEI, pessoa juridica ou sem fins lucrativos tem CNPJ por definicao (A7).
+      const cnpjOk = !exigeCnpj(form.personType) || isValidCnpj(form.companyCnpj);
       return temEspecialidade && cnpjOk;
     }
     if (step === 3) return form.seekingTypes.length > 0 && form.incomeRange.length > 0 && form.workStyle.length > 0;
@@ -560,11 +559,12 @@ export default function Onboarding() {
                     <h2 className="text-white font-semibold text-base">{t("profile.business.personType")}</h2>
                     <p className="text-xs text-white/45 mt-1">{t("profile.business.cnpjHint")}</p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {sortOptionsAlphabetically([
                       { value: "individual", label: t("profile.business.individual"), icon: "👤" },
                       { value: "legal_entity", label: t("profile.business.legalEntity"), icon: "🏢" },
                       { value: "mei", label: t("profile.business.mei"), icon: "🌱" },
+                      { value: "nonprofit", label: t("profile.business.nonprofit"), icon: "🤝" },
                     ], i18n.language).map(option => (
                       <CardOption key={option.value} selected={form.personType === option.value}
                         onClick={() => {
@@ -574,7 +574,7 @@ export default function Onboarding() {
                         }} icon={option.icon} label={option.label}/>
                     ))}
                   </div>
-                  {(form.personType === "legal_entity" || form.personType === "mei") && (
+                  {exigeCnpj(form.personType) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                       <SelectInput label={t("profile.business.companySize")} value={form.companySize}
                         onChange={value => set("companySize", value as FormData["companySize"])}

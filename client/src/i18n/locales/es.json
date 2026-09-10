@@ -703,6 +703,7 @@
       "individual": "Persona física",
       "legalEntity": "Persona jurídica",
       "mei": "Microemprendedora individual (MEI)",
+      "nonprofit": "Sin fines de lucro",
       "companySize": "Tamaño de la empresa",
       "companySizePlaceholder": "Selecciona el tamaño",
       "sizeMei": "MEI",

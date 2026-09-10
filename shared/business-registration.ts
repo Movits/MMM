@@ -1,8 +1,13 @@
-export const BUSINESS_PERSON_TYPES = ["individual", "legal_entity", "mei"] as const;
+export const BUSINESS_PERSON_TYPES = ["individual", "legal_entity", "mei", "nonprofit"] as const;
 export const BUSINESS_SIZES = ["mei", "micro", "small", "medium", "large"] as const;
 
 export type BusinessPersonType = (typeof BUSINESS_PERSON_TYPES)[number];
 export type BusinessSize = (typeof BUSINESS_SIZES)[number];
+
+/** Tipos que têm CNPJ por definição (A7): só a pessoa física fica de fora. */
+export function exigeCnpj(personType: string | null | undefined): boolean {
+  return personType === "legal_entity" || personType === "mei" || personType === "nonprofit";
+}
 
 export function normalizeCnpj(value: string): string {
   return value.replace(/\D/g, "");
