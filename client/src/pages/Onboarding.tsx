@@ -492,7 +492,7 @@ export default function Onboarding() {
                   const labels = [t("onboarding.fields.displayName"), t("onboarding.fields.city"), t("profile.gender.label"), t("onboarding.fields.age"), t("onboarding.fields.bio")];
                   return <>
                     <div>
-                      <TextInput label={t("onboarding.fields.age")} value={form.age ?? ""} type="number" min={16} max={120}
+                      <TextInput label={t("onboarding.fields.age")} value={form.age ?? ""} type="number" min={16}
                         onChange={v => set("age", v ? parseInt(v) : null)}
                         placeholder={t("onboarding.fields.agePlaceholder")} hint={t("onboarding.fields.ageHint")}/>
                     </div>
@@ -707,7 +707,7 @@ export default function Onboarding() {
               <div className="flex flex-col gap-6">
                 <div>
                   <SelectInput label={t("onboarding.fields.sector")} value={form.sector} onChange={v => set("sector", v)}
-                    options={sortOptionsAlphabetically(SECTORS.map(s => ({ value: s.label, label: s.label })), i18n.language)} placeholder={t("onboarding.fields.selectPlaceholder")}/>
+                    options={[...sortOptionsAlphabetically(SECTORS.filter(s => s.key !== "other").map(s => ({ value: s.label, label: s.label })), i18n.language), { value: OTHER_SECTOR_LABEL, label: t("onboarding.sectors.other") }]} placeholder={t("onboarding.fields.selectPlaceholder")}/>
                   {form.sector === OTHER_SECTOR_LABEL && (
                     <div className="mt-3">
                       <TextInput label={t("onboarding.fields.customSector")} value={form.customSector}
