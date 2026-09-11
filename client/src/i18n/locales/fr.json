@@ -199,7 +199,9 @@
       "s8_title": "Ce que j'ai",
       "s8_sub": "Actifs et ressources disponibles",
       "s9_title": "Ce dont j'ai besoin",
-      "s9_sub": "Demandes et besoins"
+      "s9_sub": "Demandes et besoins",
+      "s10_title": "Conditions Générales",
+      "s10_sub": "Lisez et acceptez nos conditions"
     },
     "specialties": {
       "tech": "Technologie & Logiciel",
@@ -429,6 +431,11 @@
       "selectedPlural": "sélectionnés",
       "selectedF": "sélectionnée",
       "selectedFPlural": "sélectionnées"
+    },
+    "terms": {
+      "title": "Conditions d'Utilisation et Accord de Commission",
+      "accept": "J'accepte les Conditions d'Utilisation",
+      "required": "Vous devez accepter les conditions"
     }
   },
   "dashboard": {

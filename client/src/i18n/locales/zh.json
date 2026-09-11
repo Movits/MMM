@@ -199,7 +199,9 @@
       "s8_title": "我拥有什么",
       "s8_sub": "可用资产与资源",
       "s9_title": "我需要什么",
-      "s9_sub": "需求与诉求"
+      "s9_sub": "需求与诉求",
+      "s10_title": "条款和条件",
+      "s10_sub": "阅读并接受我们的条款"
     },
     "specialties": {
       "tech": "技术与软件",
@@ -429,6 +431,11 @@
       "selectedPlural": "已选择",
       "selectedF": "已选择",
       "selectedFPlural": "已选择"
+    },
+    "terms": {
+      "title": "使用条款和佣金协议",
+      "accept": "我同意使用条款",
+      "required": "您必须同意条款"
     }
   },
   "dashboard": {

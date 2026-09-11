@@ -199,7 +199,9 @@
       "s8_title": "Lo que tengo",
       "s8_sub": "Activos y recursos disponibles",
       "s9_title": "Lo que necesito",
-      "s9_sub": "Demandas y necesidades"
+      "s9_sub": "Demandas y necesidades",
+      "s10_title": "Términos y Condiciones",
+      "s10_sub": "Lee y acepta nuestros términos"
     },
     "specialties": {
       "tech": "Tecnología & Software",
@@ -429,6 +431,11 @@
       "selectedPlural": "seleccionados",
       "selectedF": "seleccionada",
       "selectedFPlural": "seleccionadas"
+    },
+    "terms": {
+      "title": "Términos de Uso y Acuerdo de Comisión",
+      "accept": "Acepto los Términos de Uso",
+      "required": "Debe aceptar los términos"
     }
   },
   "dashboard": {

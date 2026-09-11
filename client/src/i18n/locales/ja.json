@@ -199,7 +199,9 @@
       "s8_title": "私が持つもの",
       "s8_sub": "利用可能な資産とリソース",
       "s9_title": "私が必要なもの",
-      "s9_sub": "要求とニーズ"
+      "s9_sub": "要求とニーズ",
+      "s10_title": "利用規約",
+      "s10_sub": "利用規約を読んで同意してください"
     },
     "specialties": {
       "tech": "テクノロジー＆ソフトウェア",
@@ -429,6 +431,11 @@
       "selectedPlural": "選択済み",
       "selectedF": "選択済み",
       "selectedFPlural": "選択済み"
+    },
+    "terms": {
+      "title": "利用規約と手数料契約",
+      "accept": "利用規約に同意します",
+      "required": "利用規約に同意する必要があります"
     }
   },
   "dashboard": {

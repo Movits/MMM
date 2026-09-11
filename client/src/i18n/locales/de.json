@@ -199,7 +199,9 @@
       "s8_title": "Was ich habe",
       "s8_sub": "Verfügbare Ressourcen und Vermögenswerte",
       "s9_title": "Was ich brauche",
-      "s9_sub": "Anforderungen und Bedürfnisse"
+      "s9_sub": "Anforderungen und Bedürfnisse",
+      "s10_title": "Geschäftsbedingungen",
+      "s10_sub": "Lesen und akzeptieren Sie unsere Bedingungen"
     },
     "specialties": {
       "tech": "Technologie & Software",
@@ -429,6 +431,11 @@
       "selectedPlural": "ausgewählt",
       "selectedF": "ausgewählt",
       "selectedFPlural": "ausgewählt"
+    },
+    "terms": {
+      "title": "Nutzungsbedingungen und Provisionsvereinbarung",
+      "accept": "Ich akzeptiere die Nutzungsbedingungen",
+      "required": "Sie müssen den Bedingungen zustimmen"
     }
   },
   "dashboard": {

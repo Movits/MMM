@@ -199,7 +199,9 @@
       "s8_title": "What I have",
       "s8_sub": "Available assets and resources",
       "s9_title": "What I need",
-      "s9_sub": "Demands and needs"
+      "s9_sub": "Demands and needs",
+      "s10_title": "Terms and Conditions",
+      "s10_sub": "Read and accept our terms"
     },
     "specialties": {
       "tech": "Technology & Software",
@@ -429,6 +431,11 @@
       "selectedPlural": "selected",
       "selectedF": "selected",
       "selectedFPlural": "selected"
+    },
+    "terms": {
+      "title": "Terms of Use and Commission Agreement",
+      "accept": "I agree to the Terms of Use",
+      "required": "You must accept the terms"
     }
   },
   "dashboard": {

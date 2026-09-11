@@ -65,6 +65,8 @@ interface FormData {
   company: string; jobTitle: string; activityArea: string;
   institutionalNetwork: string; interestSectors: string[];
   whatIHave: string[]; whatINeed: string[];
+  // Contrato e termos
+  agreedToTerms: boolean;
 }
 
 const INITIAL: FormData = {
@@ -84,6 +86,7 @@ const INITIAL: FormData = {
   company: "", jobTitle: "", activityArea: "",
   institutionalNetwork: "", interestSectors: [],
   whatIHave: [], whatINeed: [],
+  agreedToTerms: false,
 };
 
 // ─── Componentes reutilizáveis ────────────────────────────────────────────────
@@ -347,6 +350,7 @@ export default function Onboarding() {
     { id: 6, title: t("onboarding.steps.s8_title"), subtitle: t("onboarding.steps.s8_sub"), icon: "✦" },
     { id: 7, title: t("onboarding.steps.s9_title"), subtitle: t("onboarding.steps.s9_sub"), icon: "◈" },
     { id: 8, title: t("onboarding.steps.s6_title"), subtitle: t("onboarding.steps.s6_sub"), icon: "🚀" },
+    { id: 9, title: t("onboarding.steps.s10_title"), subtitle: t("onboarding.steps.s10_sub"), icon: "📋" },
   ];
 
   const saveOnboarding = trpc.profile.completeOnboarding.useMutation({
@@ -383,6 +387,7 @@ export default function Onboarding() {
     }
     if (step === 3) return form.seekingTypes.length > 0 && form.incomeRange.length > 0 && form.workStyle.length > 0;
     if (step === 4) return form.sector.length > 0;
+    if (step === 9) return form.agreedToTerms;
     // Etapas profissionais e de ativos são opcionais — sempre pode avançar
     return true;
   };
@@ -881,6 +886,47 @@ export default function Onboarding() {
                   </div>
                 </div>
                 <p className="text-xs text-white/30 text-center">🔒 {t("onboarding.dataPrivacy")}</p>
+              </div>
+            )}
+
+            {step === 9 && (
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-[#f5a623]/25 bg-[#f5a623]/5 p-6 space-y-4 max-h-[600px] overflow-y-auto">
+                  <h2 className="text-white font-semibold text-lg mb-4">{t("onboarding.terms.title")}</h2>
+
+                  <div className="space-y-4 text-sm text-white/70 leading-relaxed">
+                    <div>
+                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause1_title")}</h3>
+                      <p>{t("onboarding.terms.clause1_text")}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause2_title")}</h3>
+                      <p>{t("onboarding.terms.clause2_text")}</p>
+                      <ul className="list-disc list-inside space-y-1 mt-2 text-xs">
+                        <li>{t("onboarding.terms.clause2_item1")}</li>
+                        <li>{t("onboarding.terms.clause2_item2")}</li>
+                        <li>{t("onboarding.terms.clause2_item3")}</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause3_title")}</h3>
+                      <p>{t("onboarding.terms.clause3_text")}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200" style={{borderColor: form.agreedToTerms ? "#f5a623" : "rgba(255,255,255,0.1)", backgroundColor: form.agreedToTerms ? "rgba(245,166,35,0.1)" : "rgba(255,255,255,0.02)"}}>
+                    <input type="checkbox" checked={form.agreedToTerms} onChange={e => set("agreedToTerms", e.target.checked)} className="w-5 h-5 mt-0.5 cursor-pointer accent-[#f5a623]"/>
+                    <span className="text-sm text-white font-medium">{t("onboarding.terms.accept")}</span>
+                  </label>
+
+                  {!form.agreedToTerms && (
+                    <p className="text-xs text-red-400/70 text-center">{t("onboarding.terms.required")}</p>
+                  )}
+                </div>
               </div>
             )}
 
