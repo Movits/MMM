@@ -285,6 +285,7 @@
     "successMsg": "🎉 档案创建成功！正在跳转到您的仪表板...",
     "errorMsg": "无法保存您的档案。",
     "maxValues": "最多选择4个价值观",
+    "maxSpecialties": "最多选择5个专业",
     "dataPrivacy": "您的数据已加密，未经授权绝不共享",
     "nav": {
       "back": "返回",

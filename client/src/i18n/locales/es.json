@@ -285,6 +285,7 @@
     "successMsg": "🎉 ¡Perfil creado! Redirigiendo a tu panel...",
     "errorMsg": "No se pudo guardar tu perfil.",
     "maxValues": "Máximo 4 valores seleccionados",
+    "maxSpecialties": "Máximo de 5 especialidades seleccionadas",
     "dataPrivacy": "Tus datos están cifrados y nunca se comparten sin tu autorización",
     "nav": {
       "back": "Atrás",

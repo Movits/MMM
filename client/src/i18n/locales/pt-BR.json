@@ -285,6 +285,7 @@
     "successMsg": "🎉 Perfil criado com sucesso! Levando você para a sua página inicial...",
     "errorMsg": "Não conseguimos salvar seu perfil. Tente de novo em instantes.",
     "maxValues": "Máximo de 4 valores selecionados",
+    "maxSpecialties": "Máximo de 5 especialidades selecionadas",
     "dataPrivacy": "Seus dados ficam guardados em segurança e nunca são compartilhados sem a sua autorização",
     "nav": {
       "back": "Voltar",

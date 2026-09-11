@@ -285,6 +285,7 @@
     "successMsg": "🎉 Profil créé ! Redirection vers votre tableau de bord...",
     "errorMsg": "Impossible de sauvegarder votre profil.",
     "maxValues": "Maximum 4 valeurs sélectionnées",
+    "maxSpecialties": "Maximum de 5 spécialités sélectionnées",
     "dataPrivacy": "Vos données sont chiffrées et jamais partagées sans votre autorisation",
     "nav": {
       "back": "Retour",

@@ -285,6 +285,7 @@
     "successMsg": "🎉 Profil erstellt! Weiterleitung zum Dashboard...",
     "errorMsg": "Profil konnte nicht gespeichert werden.",
     "maxValues": "Maximal 4 Werte ausgewählt",
+    "maxSpecialties": "Maximal 5 Fachrichtungen ausgewählt",
     "dataPrivacy": "Ihre Daten sind verschlüsselt und werden ohne Ihre Genehmigung niemals geteilt",
     "nav": {
       "back": "Zurück",

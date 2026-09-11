@@ -285,6 +285,7 @@
     "successMsg": "🎉 Profile created! Redirecting to your dashboard...",
     "errorMsg": "Could not save your profile.",
     "maxValues": "Maximum 4 values selected",
+    "maxSpecialties": "Maximum of 5 specialties selected",
     "dataPrivacy": "Your data is encrypted and never shared without your authorization",
     "nav": {
       "back": "Back",

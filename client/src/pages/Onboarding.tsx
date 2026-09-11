@@ -544,7 +544,13 @@ export default function Onboarding() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {sortOptionsAlphabetically(SPECIALTIES, i18n.language).map(s => (
                       <CardOption key={s.key} selected={form.primarySpecialties.includes(s.key)}
-                        onClick={() => set("primarySpecialties", togglePrimarySpecialty(form.primarySpecialties, s.key))}
+                        onClick={() => {
+                          if (form.primarySpecialties.includes(s.key) || form.primarySpecialties.length < 5) {
+                            set("primarySpecialties", togglePrimarySpecialty(form.primarySpecialties, s.key));
+                          } else {
+                            toast.error(t("onboarding.maxSpecialties"));
+                          }
+                        }}
                         icon={s.icon} label={s.label}/>
                     ))}
                   </div>
