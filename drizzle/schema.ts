@@ -693,6 +693,13 @@ export const sivcDocuments = mysqlTable("sivc_documents", {
   createdAt:       timestamp("createdAt").defaultNow().notNull(),
 }, (table) => ({
   verIdx: index("sivc_doc_ver_idx").on(table.verificationId),
+  // Nenhuma TELA filtra por usuária (o painel entra por verificationId, que já
+  // tem o índice acima). Quem lê este HOJE é `scripts/exame/limpeza.mjs`, que
+  // apaga sivc_documents por userId ao limpar as contas do exame de produção —
+  // e amanhã a exclusão de conta, que faz o mesmo. Sem ele, apagar uma conta
+  // varre a tabela de documentos de identidade inteira. É índice de escrita
+  // rara e exclusão confiável, não de consulta: não tire achando que é morto.
+  userIdx: index("sivc_doc_user_idx").on(table.userId),
 }));
 
 // ============================================================
@@ -786,7 +793,12 @@ export const contexts = mysqlTable("contexts", {
   visibility:    varchar("visibility", { length: 10 }).default("private").notNull(),
   createdAt:     bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:     bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  // A rede particular é sempre lida por dona. Sem índice, listar contextos varre
+  // a tabela inteira: invisível com 3 linhas, caro com a base de participantes
+  // carregada no primeiro dia.
+  ownerIdx: index("ctx_owner_idx").on(table.ownerId),
+}));
 
 export const contactContexts = mysqlTable("contact_contexts", {
   id:               varchar("id", { length: 36 }).primaryKey(),
@@ -801,7 +813,10 @@ export const contactContexts = mysqlTable("contact_contexts", {
   visibility:       varchar("visibility", { length: 10 }).default("private").notNull(),
   createdAt:        bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:        bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  ownerContextIdx: index("cc_owner_context_idx").on(table.ownerId, table.contextId),
+  ownerContactIdx: index("cc_owner_contact_idx").on(table.ownerId, table.contactId),
+}));
 
 export const contextParticipants = mysqlTable("context_participants", {
   id:                 varchar("id", { length: 36 }).primaryKey(),
@@ -814,7 +829,9 @@ export const contextParticipants = mysqlTable("context_participants", {
   convertedContactId: bigint("converted_contact_id", { mode: "number" }),
   createdAt:          bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:          bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  ownerContextIdx: index("cpart_owner_context_idx").on(table.ownerId, table.contextId),
+}));
 
 export const contextMedia = mysqlTable("context_media", {
   id:            varchar("id", { length: 36 }).primaryKey(),
@@ -830,7 +847,9 @@ export const contextMedia = mysqlTable("context_media", {
   uploadedBy:    varchar("uploaded_by", { length: 128 }).notNull(),
   createdAt:     bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:     bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  ownerContextIdx: index("cmedia_owner_context_idx").on(table.ownerId, table.contextId),
+}));
 
 // Tipos exportados — Contextos
 export type ContextType = typeof contextTypes.$inferSelect;
@@ -854,7 +873,9 @@ export const enrichmentSessions = mysqlTable("enrichment_sessions", {
   completedAt:       bigint("completed_at", { mode: "number" }),
   createdAt:         bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:         bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  ownerContactIdx: index("enr_sess_owner_contact_idx").on(table.ownerId, table.contactId),
+}));
 
 export const enrichmentMessages = mysqlTable("enrichment_messages", {
   id:         varchar("id", { length: 36 }).primaryKey(),
@@ -866,7 +887,9 @@ export const enrichmentMessages = mysqlTable("enrichment_messages", {
   tokenCount: int("token_count"),
   createdAt:  bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:  bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  ownerSessionIdx: index("enr_msg_owner_session_idx").on(table.ownerId, table.sessionId),
+}));
 
 export const enrichmentSuggestions = mysqlTable("enrichment_suggestions", {
   id:             varchar("id", { length: 36 }).primaryKey(),
@@ -890,7 +913,16 @@ export const enrichmentSuggestions = mysqlTable("enrichment_suggestions", {
   undoSnapshot:   jsonCompat("undo_snapshot"),
   createdAt:      bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:      bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  // getEnrichmentHistory filtra (dona, contato) e ordena por data.
+  ownerContactIdx: index("enr_sug_owner_contact_idx").on(table.ownerId, table.contactId),
+  // getPendingEnrichmentSuggestions (server/db.ts) filtra sessão + dona + status,
+  // e é o que roda a cada abertura do chat de enriquecimento. Só o prefixo
+  // `owner_id` do índice acima não basta: ele tiraria a varredura global, mas
+  // ainda leria TODAS as sugestões daquela dona para achar as pendentes de uma
+  // sessão.
+  ownerSessionStatusIdx: index("enr_sug_owner_session_status_idx").on(table.ownerId, table.sessionId, table.status),
+}));
 
 // ============================================================
 // ASSISTENTE DE REUNIÕES — Etapa 5
