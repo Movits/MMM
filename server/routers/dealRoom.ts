@@ -10,6 +10,7 @@ import { decodeDocumentoBase64, MAX_DOCUMENTO_BASE64_CHARS } from "../documento-
 import { getRequestIp } from "../password-reset-security";
 
 import {
+  dealClosures,
   dealRooms,
   dealRoomMessages,
   dealRoomDocuments,
@@ -373,4 +374,106 @@ export const dealRoomRouter = router({
     }));
     return enriched;
   }),
+  /**
+   * A11 / etapa 12 — encerrar a negociação registrando o negócio e a comissão.
+   *
+   * A decisão D2 da cliente é que o dinheiro NÃO passa pela plataforma nesta
+   * versão. Então o que o site faz é registrar: valor do negócio, lucro
+   * declarado, percentual combinado e a comissão que isso dá. Sem esse registro,
+   * cobrar depois é palavra contra palavra — e era isso que faltava para a A11
+   * deixar de ser meio cartão.
+   *
+   * Teto de 50% sobre o LUCRO declarado, e não sobre o valor do negócio: é o que
+   * a Dra. Glenda fixou em 31/08 (D1). O percentual em si é caso a caso, também
+   * por decisão dela, então o servidor não o calcula — só recusa acima do teto.
+   *
+   * Encerrar é evento único: `deal_closure_room_unique` garante uma linha por
+   * sala, e encerrar de novo devolve o registro que já existe em vez de criar
+   * outro (mesmo tratamento de corrida do consent.accept).
+   */
+  closeRoom: protectedProcedure
+    .input(z.object({
+      roomId: z.number().int(),
+      currency: z.enum(["BRL", "USD", "EUR"]).default("BRL"),
+      dealValue: z.number().positive().max(99_999_999_999.99),
+      declaredProfit: z.number().nonnegative().max(99_999_999_999.99),
+      commissionPercent: z.number().min(0).max(50),
+      notes: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await exigirDb();
+
+      const [room] = await db.select().from(dealRooms).where(eq(dealRooms.id, input.roomId)).limit(1);
+      if (!room) throw new TRPCError({ code: "NOT_FOUND", message: "Sala não encontrada." });
+      // Quem encerra é quem negociou. Ouro entra em sala alheia para acompanhar,
+      // mas registrar negócio dos outros não é leitura: é ato de parte.
+      if (room.ownerId !== ctx.user.id && room.interestedId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Só quem participa da negociação pode encerrá-la." });
+      }
+      if (room.status === "awaiting_nda") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "A sala ainda aguarda o aceite do acordo pelas duas partes." });
+      }
+      // O lucro não pode ser maior que o negócio: erro de digitação comum, e
+      // inflaria a comissão devida.
+      if (input.declaredProfit > input.dealValue) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "O lucro declarado não pode ser maior que o valor do negócio." });
+      }
+
+      const [jaFechado] = await db.select().from(dealClosures).where(eq(dealClosures.roomId, input.roomId)).limit(1);
+      if (jaFechado) return { success: true, closure: jaFechado, jaEstavaFechado: true };
+
+      // Duas casas, arredondadas uma vez só: o valor gravado é o que a fatura vai
+      // cobrar, então não pode depender de quem recalcula depois.
+      const comissao = Math.round(input.declaredProfit * input.commissionPercent) / 100;
+
+      try {
+        await db.insert(dealClosures).values({
+          roomId: input.roomId,
+          opportunityId: room.opportunityId,
+          closedByUserId: ctx.user.id,
+          currency: input.currency,
+          dealValue: input.dealValue.toFixed(2),
+          declaredProfit: input.declaredProfit.toFixed(2),
+          commissionPercent: input.commissionPercent.toFixed(2),
+          commissionAmount: comissao.toFixed(2),
+          notes: input.notes ?? null,
+        });
+      } catch (erro) {
+        // Corrida perdida: a outra parte encerrou no mesmo instante. O resultado
+        // que esta chamada pediu já aconteceu.
+        const [agora] = await db.select().from(dealClosures).where(eq(dealClosures.roomId, input.roomId)).limit(1);
+        if (!agora) throw erro;
+        return { success: true, closure: agora, jaEstavaFechado: true };
+      }
+
+      await db.update(dealRooms).set({ status: "closed" }).where(eq(dealRooms.id, input.roomId));
+
+      // A outra parte precisa saber que o negócio foi registrado, e com que
+      // números — é ela quem vai conferir se bate com o que combinaram.
+      const outraParte = room.ownerId === ctx.user.id ? room.interestedId : room.ownerId;
+      await createNotification({
+        userId: outraParte,
+        type: "deal_closed",
+        title: "Negociação encerrada e registrada",
+        body: `Valor ${input.currency} ${input.dealValue.toFixed(2)}, lucro declarado ${input.declaredProfit.toFixed(2)}, comissão de ${input.commissionPercent.toFixed(2)}% = ${input.currency} ${comissao.toFixed(2)}.`,
+        actionUrl: `/deal-room/${input.roomId}`,
+      });
+
+      const [closure] = await db.select().from(dealClosures).where(eq(dealClosures.roomId, input.roomId)).limit(1);
+      return { success: true, closure, jaEstavaFechado: false };
+    }),
+
+  /** O registro do negócio desta sala, se já houver. */
+  getClosure: protectedProcedure
+    .input(z.object({ roomId: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      const db = await exigirDb();
+      const [room] = await db.select().from(dealRooms).where(eq(dealRooms.id, input.roomId)).limit(1);
+      if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!isGoldOrAbove(ctx.user.role) && room.ownerId !== ctx.user.id && room.interestedId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const [closure] = await db.select().from(dealClosures).where(eq(dealClosures.roomId, input.roomId)).limit(1);
+      return closure ?? null;
+    }),
 });
