@@ -873,7 +873,16 @@
     "altFotoContato": "連絡先の写真",
     "enviarFoto": "写真をアップロード",
     "enviarCartao": "名刺をアップロード",
-    "enviandoImagem": "アップロード中..."
+    "enviandoImagem": "アップロード中...",
+    "ouroCarregando": "規約を読み込んでいます…",
+    "ouroPrecisaAutorizar": "許可がまだありません",
+    "ouroPrecisaAutorizarDetalhe": "連絡先を共有に設定するだけでは足りません。この許可がないとゴールドのアーカイブに表示されません。いつでも取り消すことができ、すぐに反映されます。",
+    "ouroLerTermo": "規約を読む",
+    "ouroEsconderTermo": "規約を隠す",
+    "ouroAutorizarBotao": "許可する",
+    "ouroJaAutorizado": "すでに許可済みです。共有に設定した連絡先はゴールドのアーカイブに表示されます。",
+    "ouroAutorizadoToast": "許可を記録しました。",
+    "ouroFalhaToast": "許可を記録できませんでした。"
   },
   "contexts": {
     "editarContextoTitulo": "コンテキストを編集",

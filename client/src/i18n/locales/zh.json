@@ -873,7 +873,16 @@
     "altFotoContato": "联系人照片",
     "enviarFoto": "上传照片",
     "enviarCartao": "上传名片",
-    "enviandoImagem": "上传中..."
+    "enviandoImagem": "上传中...",
+    "ouroCarregando": "正在加载条款…",
+    "ouroPrecisaAutorizar": "还缺少您的授权",
+    "ouroPrecisaAutorizarDetalhe": "仅把联系人标记为共享还不够：没有此授权，它不会出现在金卡藏库中。您可以随时撤销，立即生效。",
+    "ouroLerTermo": "阅读条款",
+    "ouroEsconderTermo": "隐藏条款",
+    "ouroAutorizarBotao": "授权",
+    "ouroJaAutorizado": "您已授权。标记为共享的联系人会出现在金卡藏库中。",
+    "ouroAutorizadoToast": "授权已记录。",
+    "ouroFalhaToast": "无法记录授权。"
   },
   "contexts": {
     "editarContextoTitulo": "编辑背景",

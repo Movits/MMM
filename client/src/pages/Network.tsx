@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
+import { AutorizacaoAcervoOuro } from "@/components/AutorizacaoAcervoOuro";
 
 // ─── Tags de perfil predefinidas ─────────────────────────────────────────────
 // Os valores em si permanecem em português: é o que fica salvo no contato
@@ -449,6 +450,11 @@ function ContactForm({ initial, onSave, onClose, loading }: {
                     </button>
                   ))}
                 </div>
+                {/* A autorização do acervo Ouro só faz sentido no instante em que
+                    ela escolhe compartilhar: sem o termo aceito o contato some do
+                    acervo sem explicação, porque o servidor reavalia o consentimento
+                    a cada leitura. */}
+                {form.nivelVisibilidade === "ouro" && <AutorizacaoAcervoOuro />}
               </div>
             </>
           )}

@@ -873,7 +873,16 @@
     "altFotoContato": "صورة جهة الاتصال",
     "enviarFoto": "رفع الصورة",
     "enviarCartao": "رفع البطاقة",
-    "enviandoImagem": "جارٍ الرفع..."
+    "enviandoImagem": "جارٍ الرفع...",
+    "ouroCarregando": "جارٍ تحميل الشروط…",
+    "ouroPrecisaAutorizar": "ينقص إذنكِ",
+    "ouroPrecisaAutorizarDetalhe": "لا يكفي تعليم جهة الاتصال كمُشاركة: بدون هذا الإذن لن تظهر في أرشيف الذهب. يمكنكِ سحبه في أي وقت، والأثر فوري.",
+    "ouroLerTermo": "قراءة الشروط",
+    "ouroEsconderTermo": "إخفاء الشروط",
+    "ouroAutorizarBotao": "منح الإذن",
+    "ouroJaAutorizado": "لقد منحتِ الإذن بالفعل. جهات الاتصال المعلَّمة كمُشاركة تظهر في أرشيف الذهب.",
+    "ouroAutorizadoToast": "تم تسجيل الإذن.",
+    "ouroFalhaToast": "تعذّر تسجيل الإذن."
   },
   "contexts": {
     "editarContextoTitulo": "تعديل السياق",

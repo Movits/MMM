@@ -399,7 +399,23 @@ export default function Onboarding() {
     const dir = next > step ? "forward" : "back";
     setAnimDir(dir);
     setVisible(false);
-    setTimeout(() => { setStep(next); setVisible(true); }, 220);
+    setTimeout(() => {
+      setStep(next);
+      setVisible(true);
+      // O passo novo precisa começar do topo. Sem isto a página mantinha a
+      // rolagem do passo anterior e a pessoa caía no meio (ou no fim) do
+      // formulário novo, tendo que subir na mão para ler o título e o primeiro
+      // campo — relatado pelo Rosber em 09/09: "quando você muda de um fichário
+      // pro outro (...) a página não abre no topo".
+      // `scrollTo` no window cobre o caso normal; `scrollingElement` cobre o
+      // navegador que rola o documento em vez da janela. Em jsdom o método não
+      // existe, então a guarda também serve ao teste.
+      if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
+        window.scrollTo({ top: 0, behavior: "auto" });
+      }
+      const raiz = document.scrollingElement ?? document.documentElement;
+      if (raiz) raiz.scrollTop = 0;
+    }, 220);
   };
 
   const canProceed = () => {

@@ -58,9 +58,41 @@ export class Relatorio {
 
   info(texto) { this.#linha("info", texto); }
 
+  /**
+   * Exceção que derrubou o exame.
+   *
+   * Em 09/09 o exame parou em 58 OK com a mensagem "exame interrompido por
+   * exceção: investigue antes de seguir" e MAIS NADA: nem o erro, nem onde. Com
+   * a mensagem cortada em 200 caracteres e sem pilha, não havia o que investigar.
+   *
+   * Agora a linha carrega o tipo do erro, a mensagem inteira, o código quando
+   * existe (ECONNRESET, ETIMEDOUT, ER_*) e a ÚLTIMA checagem que o exame tinha
+   * anunciado antes de morrer — que é a resposta prática para "parou onde?". A
+   * pilha vai em linhas próprias logo abaixo.
+   *
+   * Nada aqui imprime valor vindo do servidor: só o texto do erro e nomes de
+   * checagem, que são literais deste repositório.
+   */
   excecao(erro) {
     this.houveExcecao = true;
-    this.#linha("excecao", String(erro && erro.message ? erro.message : erro).slice(0, 200));
+    const tipo = erro && erro.name ? erro.name : "Erro";
+    const mensagem = String(erro && erro.message ? erro.message : erro);
+    const codigo = erro && erro.code ? ` [${erro.code}]` : "";
+    const ultima = this.ultimaChecagem();
+    const onde = ultima ? ` | parou depois de: ${ultima}` : " | parou antes da primeira checagem";
+    this.#linha("excecao", `${tipo}${codigo}: ${mensagem}${onde}`);
+    const pilha = erro && typeof erro.stack === "string" ? erro.stack.split("\n").slice(1, 6) : [];
+    for (const quadro of pilha) this.#linha("excecao", `  ${quadro.trim()}`);
+  }
+
+  /** Nome da última checagem anunciada, para situar a exceção. */
+  ultimaChecagem() {
+    for (let i = this.linhas.length - 1; i >= 0; i--) {
+      const l = this.linhas[i];
+      if (l.tipo === "excecao") continue;
+      return l.nome;
+    }
+    return null;
   }
 
   limpezaComErro(texto) { this.houveErroDeLimpeza = true; this.#linha("limpeza", texto); }
