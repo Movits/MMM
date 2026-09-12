@@ -1523,5 +1523,28 @@
       "intelligentMatches": "Smart Connections",
       "intelligentMatchesDesc": "Suggestions among your contacts"
     }
+  },
+  "conta": {
+    "excluir": {
+      "titulo": "Delete my account",
+      "descricao": "Leaving the platform erases everything that is yours from the database: profile, contacts, meetings, opportunities and files.",
+      "botao": "Delete my account",
+      "ultimaAdministradora": "You are the platform's last administrator. Promote another member to Gold before deleting your account.",
+      "semSenha": "This account has no password set. Use \"Forgot my password\" to create one and then come back here.",
+      "dialogoTitulo": "Delete my account",
+      "dialogoTexto": "Once you confirm, this data is erased immediately:",
+      "item1": "Your profile, your photos and the terms you accepted.",
+      "item2": "Your private contact network, with what each contact has and needs.",
+      "item3": "Your contexts, your meetings, the recordings and the transcripts.",
+      "item4": "Your opportunities, your interests and the deal rooms you are in.",
+      "item5": "Your verification documents and the files you uploaded.",
+      "semVolta": "Deletion is immediate and the platform has no way to undo it.",
+      "labelConfirmacao": "To confirm, type: {{valor}}",
+      "labelSenha": "Your password",
+      "cancelar": "Cancel",
+      "confirmar": "Delete permanently",
+      "excluindo": "Deleting...",
+      "sucesso": "Your account and your data have been deleted."
+    }
   }
 }

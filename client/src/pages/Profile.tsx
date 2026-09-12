@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BrandMark } from "@/components/BrandLogo";
+import { ExcluirMinhaConta } from "@/components/ExcluirMinhaConta";
 import { toast } from "sonner";
 import { exigeCnpj, formatCnpj, isValidCnpj, maskCnpj } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
@@ -639,6 +640,10 @@ export default function Profile() {
             )
           )}
         </Section>
+
+        {/* Zona de risco: o caminho de saída da plataforma (não durante a edição,
+            para não competir com o botão de salvar) */}
+        {!editing && <ExcluirMinhaConta />}
 
         {/* Botão de salvar no rodapé (mobile) */}
         {editing && (

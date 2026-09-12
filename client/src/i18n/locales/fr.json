@@ -1523,5 +1523,28 @@
       "intelligentMatches": "Connexions intelligentes",
       "intelligentMatchesDesc": "Suggestions entre vos contacts"
     }
+  },
+  "conta": {
+    "excluir": {
+      "titulo": "Supprimer mon compte",
+      "descricao": "Quitter la plateforme efface de la base tout ce qui vous appartient : profil, contacts, réunions, opportunités et fichiers.",
+      "botao": "Supprimer mon compte",
+      "ultimaAdministradora": "Vous êtes la dernière administratrice de la plateforme. Promouvez une autre membre au niveau Or avant de supprimer votre compte.",
+      "semSenha": "Ce compte n'a pas de mot de passe. Utilisez « Mot de passe oublié » pour en créer un, puis revenez ici.",
+      "dialogoTitulo": "Supprimer mon compte",
+      "dialogoTexto": "Dès la confirmation, ces données sont effacées :",
+      "item1": "Votre profil, vos photos et les conditions que vous avez acceptées.",
+      "item2": "Votre réseau privé de contacts, avec ce que chaque contact possède et recherche.",
+      "item3": "Vos contextes, vos réunions, les enregistrements et les transcriptions.",
+      "item4": "Vos opportunités, vos marques d'intérêt et les salles de négociation dont vous faites partie.",
+      "item5": "Vos documents de vérification et les fichiers que vous avez envoyés.",
+      "semVolta": "La suppression est immédiate et la plateforme ne peut pas l'annuler.",
+      "labelConfirmacao": "Pour confirmer, saisissez : {{valor}}",
+      "labelSenha": "Votre mot de passe",
+      "cancelar": "Annuler",
+      "confirmar": "Supprimer définitivement",
+      "excluindo": "Suppression...",
+      "sucesso": "Votre compte et vos données ont été supprimés."
+    }
   }
 }

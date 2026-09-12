@@ -1,0 +1,397 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import { and, eq, inArray } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/mysql2";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
+
+/**
+ * Cartão "Não existe caminho para excluir os dados de uma usuária": o caminho
+ * agora existe (server/exclusao-de-conta.ts + server/routers/conta.ts) e este
+ * teste é o que impede que ele apodreça.
+ *
+ * Duas direções, as mesmas do teste da limpeza do exame:
+ *
+ * A) SCHEMA → PLANO. Toda coluna de usuária do `drizzle/schema.ts` tem de estar
+ *    no plano, na lista de atores secundários preservados (com motivo escrito)
+ *    ou na lista das que saem pelo id do pai. Tabela nova com `userId` deixa
+ *    este teste vermelho até alguém decidir o que acontece com ela na exclusão
+ *    — que é exatamente o buraco que o cartão descreve, só que em 2027.
+ *
+ * B) COMPORTAMENTO. `excluirConta` roda de verdade contra um banco falso que
+ *    NÃO engole o WHERE: se um passo perder o `eq(ownerId, ...)`, o teste
+ *    acusa, porque um DELETE sem a chave da conta apagaria a plataforma
+ *    inteira. Também se prova a ordem (arquivo antes de linha, `users` por
+ *    último) e que falha no bucket não aborta a exclusão.
+ */
+
+import {
+  PLANO_DE_EXCLUSAO,
+  ATORES_SECUNDARIOS_PRESERVADOS,
+  COBERTAS_PELO_PAI,
+  ACOES_DE_AUDITORIA_PRESERVADAS,
+  nomeDoPasso,
+  excluirConta,
+  lerChavesDaConta,
+  chavesDeArquivosDaConta,
+  tirarDosGruposAlheios,
+} from "./exclusao-de-conta";
+import { COLUNAS_DE_USUARIA } from "../scripts/exame/limpeza.mjs";
+import {
+  contextMedia, dealRoomDocuments, dealRooms, loginAttempts, meetingRecordings,
+  opportunities, opportunityMatches, privateContacts, sivcDocuments, sivcVerifications,
+  strategicGroups, users,
+} from "../drizzle/schema";
+
+const AQUI: string = (import.meta as { dirname?: string }).dirname ?? path.dirname(fileURLToPath(import.meta.url));
+const FONTE_SCHEMA = readFileSync(path.resolve(AQUI, "..", "drizzle", "schema.ts"), "utf8");
+
+// Mesmos padrões do teste do exame: o "\n\}" fecha o objeto de colunas antes do
+// bloco de índices, senão nome de índice entraria como coluna.
+const RE_TABELA = /mysqlTable\(\s*"([^"]+)"\s*,\s*\{([\s\S]*?)\n\}/g;
+const RE_COLUNA = /^[ \t]+[A-Za-z_$][\w$]*:\s*(?:[A-Za-z_$][\w$]*)(?:<[^>]*>)?\(\s*"([^"]+)"/gm;
+
+function paresDeUsuariaNoSchema(): { tabela: string; coluna: string }[] {
+  const pares: { tabela: string; coluna: string }[] = [];
+  for (const tabela of FONTE_SCHEMA.matchAll(RE_TABELA)) {
+    if (tabela[1] === "users") continue; // a própria conta tem passo próprio
+    for (const coluna of tabela[2].matchAll(RE_COLUNA)) {
+      if (COLUNAS_DE_USUARIA.test(coluna[1])) pares.push({ tabela: tabela[1], coluna: coluna[1] });
+    }
+  }
+  return pares;
+}
+
+const PARES = paresDeUsuariaNoSchema();
+const noPlano = (tabela: string, coluna: string) =>
+  PLANO_DE_EXCLUSAO.some(passo => nomeDoPasso(passo) === `${tabela}.${coluna}`);
+
+// ═══════════════ A) schema → plano: nada de usuária fica sem decisão ═══════════
+describe("A) toda coluna de usuária do schema tem destino declarado na exclusão", () => {
+  it("o parse do schema encontra os pares esperados", () => {
+    // Igualdade de propósito: subir é normal ao criar tabela, e o teste abaixo
+    // exige que a coluna nova entre em uma das três listas.
+    expect(PARES).toHaveLength(57);
+    expect(PARES).toContainEqual({ tabela: "private_contacts", coluna: "ownerId" });
+    expect(PARES).toContainEqual({ tabela: "gold_access_grants", coluna: "revokedBy" });
+    expect(PARES).toContainEqual({ tabela: "deal_rooms", coluna: "interestedId" });
+  });
+
+  it.each(PARES)(
+    "$tabela.$coluna está no plano, entre os atores preservados ou coberta pelo pai",
+    ({ tabela, coluna }) => {
+      const preservada = ATORES_SECUNDARIOS_PRESERVADOS.find(a => a.tabela === tabela && a.coluna === coluna);
+      const pelosPai = COBERTAS_PELO_PAI.find(c => c.tabela === tabela && c.coluna === coluna);
+      const destinos = [noPlano(tabela, coluna), Boolean(preservada), Boolean(pelosPai)].filter(Boolean);
+      expect(destinos, `${tabela}.${coluna} não tem destino declarado na exclusão`).toHaveLength(1);
+      if (preservada) expect(preservada.motivo.length).toBeGreaterThan(20);
+      if (pelosPai) expect(noPlano(pelosPai.passo.split(" ")[0].split(".")[0], pelosPai.passo.split(" ")[0].split(".")[1])).toBe(true);
+    },
+  );
+
+  it("a conta não sai pelo plano: `users` tem passo próprio, com as duas chaves", () => {
+    expect(PLANO_DE_EXCLUSAO.some(passo => nomeDoPasso(passo).startsWith("users."))).toBe(false);
+  });
+});
+
+// ═══════════════════════ A2) ordem: filha antes da mãe ════════════════════════
+describe("A2) a ordem do plano não deixa órfão", () => {
+  const indiceDe = (nome: string) => PLANO_DE_EXCLUSAO.findIndex(passo => nomeDoPasso(passo) === nome);
+
+  it.each([
+    ["deal_room_messages.dealRoomId", "deal_rooms.id"],
+    ["deal_room_documents.dealRoomId", "deal_rooms.id"],
+    ["nda_acceptances.dealRoomId", "deal_rooms.id"],
+    ["sivc_checks.verificationId", "sivc_verifications.userId"],
+    ["opportunity_matches.opportunityAId", "opportunities.publishedBy"],
+    ["president_validations.opportunityId", "opportunities.publishedBy"],
+    ["opportunity_documents.opportunityId", "opportunities.publishedBy"],
+  ])("%s vem antes de %s", (filha, mae) => {
+    expect(indiceDe(filha)).toBeGreaterThanOrEqual(0);
+    expect(indiceDe(mae)).toBeGreaterThanOrEqual(0);
+    expect(indiceDe(filha)).toBeLessThan(indiceDe(mae));
+  });
+});
+
+// ═══════════════════════════ banco falso (executa) ════════════════════════════
+type Delecao = { tabela: unknown; colunas: string[]; sql: string };
+let delecoes: Delecao[] = [];
+let atualizacoes: Array<{ tabela: unknown; valores: Record<string, unknown> }> = [];
+let linhasPorTabela: Map<unknown, unknown[]>;
+let apagadosNoBucket: string[] = [];
+let ordemDosEfeitos: string[] = [];
+let bucketFalha: Set<string>;
+
+/** Nomes de coluna citados numa condição do drizzle (mesma varredura de exclusao-e-nucleo). */
+function colunasDe(condicao: unknown): string[] {
+  const achadas: string[] = [];
+  const visitados = new Set<unknown>();
+  const visitar = (no: unknown) => {
+    if (!no || typeof no !== "object" || visitados.has(no)) return;
+    visitados.add(no);
+    const alvo = no as Record<string, unknown>;
+    if (typeof alvo.name === "string" && alvo.table) { achadas.push(alvo.name); return; }
+    for (const valor of Object.values(alvo)) {
+      if (Array.isArray(valor)) valor.forEach(visitar);
+      else if (valor && typeof valor === "object") visitar(valor);
+    }
+  };
+  visitar(condicao);
+  return achadas;
+}
+
+/** Os literais de uma condição (para provar o filtro das ações preservadas). */
+function textoDe(condicao: unknown): string {
+  const partes: string[] = [];
+  const visitados = new Set<unknown>();
+  const visitar = (no: unknown) => {
+    if (no === null || no === undefined) return;
+    if (typeof no === "string" || typeof no === "number") { partes.push(String(no)); return; }
+    if (typeof no !== "object" || visitados.has(no)) return;
+    visitados.add(no);
+    for (const valor of Object.values(no as Record<string, unknown>)) visitar(valor);
+  };
+  visitar(condicao);
+  return partes.join(" ");
+}
+
+function selecionar(tabela: unknown) {
+  const linhas = linhasPorTabela.get(tabela) ?? [];
+  const resultado = Promise.resolve(linhas);
+  return {
+    where: () => resultado,
+    then: resultado.then.bind(resultado),
+  };
+}
+
+const fakeDb = {
+  select: () => ({ from: (tabela: unknown) => selecionar(tabela) }),
+  delete: (tabela: unknown) => ({
+    where: async (condicao: unknown) => {
+      delecoes.push({ tabela, colunas: colunasDe(condicao), sql: textoDe(condicao) });
+      ordemDosEfeitos.push("delete");
+      return [{ affectedRows: (linhasPorTabela.get(tabela) ?? []).length || 1 }];
+    },
+  }),
+  update: (tabela: unknown) => ({
+    set: (valores: Record<string, unknown>) => ({
+      where: async () => { atualizacoes.push({ tabela, valores }); ordemDosEfeitos.push("update"); },
+    }),
+  }),
+} as never;
+
+const apagarArquivo = async (chave: string) => {
+  ordemDosEfeitos.push("bucket");
+  if (bucketFalha.has(chave)) throw new Error("bucket recusou");
+  apagadosNoBucket.push(chave);
+};
+
+const CONTA = { id: 7, openId: "open-7", email: "Dona@Exemplo.com " };
+
+beforeEach(() => {
+  delecoes = [];
+  atualizacoes = [];
+  apagadosNoBucket = [];
+  ordemDosEfeitos = [];
+  bucketFalha = new Set();
+  linhasPorTabela = new Map<unknown, unknown[]>([
+    [opportunities, [{ id: 101 }, { id: 102 }]],
+    [dealRooms, [{ id: 55 }]],
+    [sivcVerifications, [{ id: 9 }]],
+    [privateContacts, [{ foto: "/manus-storage/contacts/open-7/foto.jpg", cartao: null }]],
+    [contextMedia, [{ caminho: "contexts/open-7/ctx/imagem.png", miniatura: "contexts/open-7/ctx/mini.png" }]],
+    [meetingRecordings, [{ chave: "meetings/open-7/reuniao-1/recording.webm" }]],
+    [sivcDocuments, [{ chave: "sivc/7/9/1234-rg.png" }]],
+    [dealRoomDocuments, [{ chave: "deal-rooms/55/1234-planilha.xlsx", sala: 55 }]],
+    [strategicGroups, [
+      { id: 1, membros: [7, 8] },
+      { id: 2, membros: [8, 9] },
+    ]],
+  ]);
+});
+
+// ══════════════════════ B) comportamento, executado ═══════════════════════════
+describe("B) excluirConta apaga o que é da conta, na ordem, e nada além", () => {
+  it("lê as chaves do pai antes de apagar (oportunidades, salas, verificações)", async () => {
+    const chaves = await lerChavesDaConta(fakeDb, CONTA);
+    expect(chaves).toMatchObject({
+      id: 7, openId: "open-7", email: "dona@exemplo.com",
+      oportunidades: [101, 102], salas: [55], verificacoes: [9],
+    });
+  });
+
+  it("todo DELETE cita a chave da conta ou o id de um pai dela", async () => {
+    await excluirConta(fakeDb, CONTA, { apagarArquivo });
+    expect(delecoes.length).toBeGreaterThan(40);
+    for (const delecao of delecoes) {
+      expect(delecao.colunas.length, `DELETE sem WHERE em ${String(delecao.sql).slice(0, 40)}`).toBeGreaterThan(0);
+    }
+  });
+
+  it("`users` é o último DELETE e exige id E openId", async () => {
+    await excluirConta(fakeDb, CONTA, { apagarArquivo });
+    const ultima = delecoes[delecoes.length - 1];
+    expect(ultima.tabela).toBe(users);
+    expect(ultima.colunas).toContain("id");
+    expect(ultima.colunas).toContain("openId");
+  });
+
+  it("os arquivos saem antes da primeira linha do banco", async () => {
+    await excluirConta(fakeDb, CONTA, { apagarArquivo });
+    expect(ordemDosEfeitos.indexOf("bucket")).toBeGreaterThanOrEqual(0);
+    expect(ordemDosEfeitos.indexOf("bucket")).toBeLessThan(ordemDosEfeitos.indexOf("delete"));
+  });
+
+  it("falha no bucket não aborta a exclusão: volta no relatório e as linhas saem", async () => {
+    bucketFalha.add("sivc/7/9/1234-rg.png");
+    const relatorio = await excluirConta(fakeDb, CONTA, { apagarArquivo });
+    expect(relatorio.arquivosComFalha).toEqual(["sivc/7/9/1234-rg.png"]);
+    expect(relatorio.arquivosApagados).toBeGreaterThan(0);
+    expect(delecoes[delecoes.length - 1].tabela).toBe(users);
+  });
+
+  it("o passo de audit_logs preserva as duas ações da decisão de 02/09", async () => {
+    await excluirConta(fakeDb, CONTA, { apagarArquivo });
+    const auditoria = delecoes.find(d => d.colunas.includes("action"));
+    expect(auditoria, "nenhum DELETE em audit_logs com filtro por ação").toBeDefined();
+    for (const acao of ACOES_DE_AUDITORIA_PRESERVADAS) {
+      expect(auditoria!.sql).toContain(acao);
+    }
+  });
+
+  it("conta sem e-mail não apaga login_attempts (o identifier é o e-mail)", async () => {
+    await excluirConta(fakeDb, { ...CONTA, email: null }, { apagarArquivo });
+    expect(delecoes.some(d => d.tabela === loginAttempts)).toBe(false);
+    const comEmail = (delecoes = [], await excluirConta(fakeDb, CONTA, { apagarArquivo }), delecoes);
+    expect(comEmail.some(d => d.tabela === loginAttempts)).toBe(true);
+  });
+
+  it("sem oportunidade publicada, os passos das oportunidades são pulados", async () => {
+    linhasPorTabela.set(opportunities, []);
+    await excluirConta(fakeDb, CONTA, { apagarArquivo });
+    expect(delecoes.some(d => d.tabela === opportunityMatches)).toBe(false);
+  });
+
+  it("o relatório soma as linhas e nomeia os passos", async () => {
+    const relatorio = await excluirConta(fakeDb, CONTA, { apagarArquivo });
+    expect(relatorio.linhasApagadas).toBeGreaterThan(0);
+    expect(relatorio.passos.map(p => p.nome)).toContain("users.id + users.openId");
+    expect(relatorio.passos.every(p => p.linhas > 0)).toBe(true);
+  });
+});
+
+// ═════════════ B2) arquivo só sai quando a chave prova a posse ════════════════
+describe("B2) chave de bucket sem prova de posse não é apagada", () => {
+  it("colhe as chaves da própria dona", async () => {
+    const chaves = await lerChavesDaConta(fakeDb, CONTA);
+    const arquivos = await chavesDeArquivosDaConta(fakeDb, chaves);
+    expect(arquivos).toEqual([
+      "contacts/open-7/foto.jpg",
+      "contexts/open-7/ctx/imagem.png",
+      "contexts/open-7/ctx/mini.png",
+      "meetings/open-7/reuniao-1/recording.webm",
+      "sivc/7/9/1234-rg.png",
+      "deal-rooms/55/1234-planilha.xlsx",
+    ]);
+  });
+
+  it("chave de outra dona, de outro id ou de outra sala é ignorada", async () => {
+    linhasPorTabela.set(privateContacts, [{ foto: "contacts/open-OUTRA/foto.jpg", cartao: "/etc/passwd" }]);
+    linhasPorTabela.set(contextMedia, [{ caminho: "contexts/open-OUTRA/x.png", miniatura: null }]);
+    linhasPorTabela.set(meetingRecordings, [{ chave: "meetings/open-OUTRA/r/recording.webm" }]);
+    linhasPorTabela.set(sivcDocuments, [{ chave: "sivc/999/9/rg.png" }]);
+    linhasPorTabela.set(dealRoomDocuments, [{ chave: "deal-rooms/999/doc.pdf", sala: 55 }]);
+    const chaves = await lerChavesDaConta(fakeDb, CONTA);
+    expect(await chavesDeArquivosDaConta(fakeDb, chaves)).toEqual([]);
+  });
+
+  it("a mesma chave repetida em duas linhas é apagada uma vez", async () => {
+    linhasPorTabela.set(privateContacts, [
+      { foto: "contacts/open-7/foto.jpg", cartao: null },
+      { foto: "contacts/open-7/foto.jpg", cartao: null },
+    ]);
+    const chaves = await lerChavesDaConta(fakeDb, CONTA);
+    const arquivos = await chavesDeArquivosDaConta(fakeDb, chaves);
+    expect(arquivos.filter(c => c === "contacts/open-7/foto.jpg")).toHaveLength(1);
+  });
+});
+
+// ════════════ B3) grupo estratégico de outra pessoa: sai da lista ═════════════
+describe("B3) a conta sai da lista de membros dos grupos alheios", () => {
+  it("tira o id dela e não mexe em grupo que não a tem", async () => {
+    const alterados = await tirarDosGruposAlheios(fakeDb, 7);
+    expect(alterados).toBe(1);
+    expect(atualizacoes).toHaveLength(1);
+    expect(atualizacoes[0].tabela).toBe(strategicGroups);
+    expect(atualizacoes[0].valores).toEqual({ memberIds: [8] });
+  });
+
+  it("lista com o id em texto (JSON do Manus) também sai", async () => {
+    linhasPorTabela.set(strategicGroups, [{ id: 3, membros: ["7", "8"] }]);
+    await tirarDosGruposAlheios(fakeDb, 7);
+    expect(atualizacoes[0].valores).toEqual({ memberIds: ["8"] });
+  });
+
+  it("memberIds nulo não vira array vazio", async () => {
+    linhasPorTabela.set(strategicGroups, [{ id: 4, membros: null }]);
+    expect(await tirarDosGruposAlheios(fakeDb, 7)).toBe(0);
+    expect(atualizacoes).toHaveLength(0);
+  });
+});
+
+// ═════════ C) o SQL que sai de cada passo (sem conectar em banco nenhum) ══════
+// Esta máquina não tem MySQL local nem Docker, e o `.env` de trabalho aponta
+// para a PRODUÇÃO: não há como rodar a exclusão de ponta a ponta aqui sem
+// apagar conta de gente. O que dá para provar sem conexão é o SQL: o drizzle
+// monta o comando com os nomes reais do schema, e `toSQL()` devolve texto e
+// parâmetros sem tocar na rede (o pool do mysql2 só conecta na primeira query).
+describe("C) cada passo gera um DELETE parametrizado com a coluna certa", () => {
+  // Host inexistente de propósito: se algum dia este teste tentar conectar, ele
+  // falha na hora em vez de falar com um banco de verdade.
+  const db = drizzle("mysql://ninguem:ninguem@127.0.0.1:1/banco-que-nao-existe");
+  const chaves = {
+    id: 7, openId: "open-7", email: "dona@exemplo.com",
+    oportunidades: [101, 102], salas: [55], verificacoes: [9],
+  };
+  const valores: Record<string, (string | number)[]> = {
+    id: [chaves.id], openId: [chaves.openId], email: [chaves.email],
+    oportunidades: chaves.oportunidades, salas: chaves.salas, verificacoes: chaves.verificacoes,
+  };
+
+  it.each(PLANO_DE_EXCLUSAO.map(passo => [nomeDoPasso(passo), passo] as const))(
+    "%s",
+    (nome, passo) => {
+      const lista = valores[passo.origem];
+      const condicoes = [lista.length === 1 ? eq(passo.coluna, lista[0]) : inArray(passo.coluna, lista)];
+      const extra = passo.filtro?.(chaves as never);
+      if (extra) condicoes.push(extra);
+      const { sql: texto, params } = db.delete(passo.tabela).where(and(...condicoes)).toSQL();
+      const [tabela, coluna] = nome.split(".");
+      expect(texto).toMatch(/^delete from `/);
+      expect(texto).toContain("`" + tabela + "`");
+      expect(texto).toContain("`" + coluna + "`");
+      // Parametrizado: nenhum valor da conta entra no texto do comando.
+      expect(texto).not.toContain("open-7");
+      expect(texto).not.toContain("dona@exemplo.com");
+      expect(params.length).toBeGreaterThanOrEqual(lista.length);
+    },
+  );
+
+  it("o passo de audit_logs preserva as duas ações, com placeholder para cada uma", () => {
+    const passo = PLANO_DE_EXCLUSAO.find(p => nomeDoPasso(p) === "audit_logs.userId")!;
+    const { sql: texto, params } = db.delete(passo.tabela)
+      .where(and(eq(passo.coluna, 7), passo.filtro!(chaves as never)!)).toSQL();
+    expect(texto).toMatch(/`action` NOT IN \(\?, \?\)/i);
+    expect(params).toEqual([7, ...ACOES_DE_AUDITORIA_PRESERVADAS]);
+  });
+
+  it("a conta sai com as duas chaves no mesmo WHERE", () => {
+    const { sql: texto, params } = db.delete(users)
+      .where(and(eq(users.id, 7), eq(users.openId, "open-7"))).toSQL();
+    expect(texto).toContain("`id` = ?");
+    expect(texto).toContain("`openId` = ?");
+    expect(params).toEqual([7, "open-7"]);
+  });
+});
