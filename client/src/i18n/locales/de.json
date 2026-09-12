@@ -435,7 +435,16 @@
     "terms": {
       "title": "Nutzungsbedingungen und Provisionsvereinbarung",
       "accept": "Ich akzeptiere die Nutzungsbedingungen",
-      "required": "Sie müssen den Bedingungen zustimmen"
+      "required": "Sie müssen den Bedingungen zustimmen",
+      "clause1_title": "1. Gegenstand",
+      "clause1_text": "MMM ist eine Plattform für die Vernetzung ihrer Mitglieder. Sie stellt Personen vor, deren Interessen sich ergänzen, und erfasst die Geschäfte, die aus diesen Vorstellungen entstehen. Die Plattform ist nicht Vertragspartei: Die Mitglieder schließen die Verträge untereinander.",
+      "clause2_title": "2. Provision",
+      "clause2_text": "Ein Geschäft, das aus einer Vorstellung über die Plattform entsteht, begründet eine Provision für MMM, und zwar unter folgenden Bedingungen:",
+      "clause2_item1": "der Prozentsatz wird im Einzelfall festgelegt, je nach Art und Umfang des Geschäfts;",
+      "clause2_item2": "die Obergrenze liegt bei 50 % des für das Geschäft erklärten Gewinns;",
+      "clause2_item3": "in dieser Version erfolgt die Zahlung außerhalb der Plattform; die Website erfasst nur das Geschäft und die fällige Provision.",
+      "clause3_title": "3. Laufzeit und Änderungen",
+      "clause3_text": "Dieser Text ist vorläufig und wird rechtlich geprüft. Sobald die endgültige Fassung veröffentlicht ist, werden Sie benachrichtigt und müssen erneut zustimmen. Datum und genauer Wortlaut dieser Zustimmung werden gespeichert."
     }
   },
   "dashboard": {

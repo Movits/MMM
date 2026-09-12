@@ -435,7 +435,16 @@
     "terms": {
       "title": "Terms of Use and Commission Agreement",
       "accept": "I agree to the Terms of Use",
-      "required": "You must accept the terms"
+      "required": "You must accept the terms",
+      "clause1_title": "1. Purpose",
+      "clause1_text": "MMM is a networking platform for its members. It introduces people whose interests complement each other and records the deals that come out of those introductions. The platform is not a party to the deal: the members contract with each other.",
+      "clause2_title": "2. Commission",
+      "clause2_text": "A deal originating from an introduction made by the platform owes a commission to MMM, under the following conditions:",
+      "clause2_item1": "the percentage is set case by case, according to the type and size of the deal;",
+      "clause2_item2": "the cap is 50% of the profit declared for the deal;",
+      "clause2_item3": "in this version payment happens outside the platform; the site only records the deal and the commission owed.",
+      "clause3_title": "3. Term and changes",
+      "clause3_text": "This text is provisional and under legal review. When the final version is published you will be notified and asked to accept it again. The date and the exact text of this acceptance are recorded."
     }
   },
   "dashboard": {

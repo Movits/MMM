@@ -353,10 +353,35 @@ export default function Onboarding() {
     { id: 9, title: t("onboarding.steps.s10_title"), subtitle: t("onboarding.steps.s10_sub"), icon: "📋" },
   ];
 
+  // O aceite dos Termos precisa deixar RASTRO no servidor. A caixinha marcada
+  // só no navegador não prova nada: numa discussão sobre comissão, o que vale é
+  // saber quem aceitou, quando, de qual endereço e QUAL texto estava no ar.
+  // Reusamos a trilha que já existe (consents + document_versions), a mesma do
+  // termo do Smart Match, que grava IP, user-agent e o hash do texto vigente.
+  const registrarAceiteDosTermos = trpc.consent.accept.useMutation();
+
+  const concluir = () => {
+    toast.success(t("onboarding.successMsg"));
+    navigate("/dashboard");
+  };
+
   const saveOnboarding = trpc.profile.completeOnboarding.useMutation({
     onSuccess: () => {
-      toast.success(t("onboarding.successMsg"));
-      navigate("/dashboard");
+      // Enquanto o contrato_comissao não tiver versão publicada, o servidor
+      // responde NOT_FOUND: não há texto vigente para consentir. Isso NÃO pode
+      // travar o cadastro de quem acabou de preencher tudo — o perfil já foi
+      // salvo. Segue para o Dashboard nos dois casos; a falha vai para o
+      // console e o cartão do termo provisório cuida da publicação.
+      registrarAceiteDosTermos.mutate(
+        { type: "contrato_comissao" },
+        {
+          onSuccess: concluir,
+          onError: (erro: { message: string }) => {
+            console.error("[Onboarding] Não foi possível registrar o aceite dos Termos:", erro.message);
+            concluir();
+          },
+        },
+      );
     },
     onError: (err: { message: string }) => {
       toast.error(t("onboarding.errorMsg") + " " + (err.message || ""));

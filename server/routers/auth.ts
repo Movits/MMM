@@ -142,19 +142,22 @@ export const authRouter = router({
           html,
           text,
         });
+        // A falha de envio NÃO pode virar erro para quem chamou. Este
+        // procedimento responde sempre a mesma coisa de propósito: e-mail que
+        // não existe já sai por `if (!user) return genericResponse` lá em cima.
+        // Se o e-mail cadastrado respondesse 500 quando a Resend falha, bastaria
+        // estourar a cota diária (o plano gratuito tem teto de 100 por dia) para
+        // transformar este endereço num oráculo: 500 = a conta existe, 200 = não
+        // existe. O problema de entrega é NOSSO e sai no log, não na resposta.
+        //
+        // O log também não leva o e-mail da usuária: `userId` identifica a linha
+        // para quem for investigar, sem espalhar dado pessoal pelos registros do
+        // Render.
         if (!emailSent) {
-          console.error("[PasswordReset] A Resend não aceitou a solicitação de envio para:", user.email);
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Falha ao enviar e-mail de recuperação. Tente novamente em alguns instantes.",
-          });
+          console.error(`[PasswordReset] A Resend não aceitou a solicitação de envio (userId ${user.id}).`);
         }
       } catch (error) {
-        console.error("[PasswordReset] Falha ao enviar e-mail de recuperação:", error);
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Não foi possível enviar o e-mail de recuperação. Verifique se o e-mail está correto e tente novamente.",
-        });
+        console.error(`[PasswordReset] Falha ao enviar e-mail de recuperação (userId ${user.id}):`, error);
       }
       return genericResponse;
     }),

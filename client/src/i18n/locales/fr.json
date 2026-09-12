@@ -435,7 +435,16 @@
     "terms": {
       "title": "Conditions d'Utilisation et Accord de Commission",
       "accept": "J'accepte les Conditions d'Utilisation",
-      "required": "Vous devez accepter les conditions"
+      "required": "Vous devez accepter les conditions",
+      "clause1_title": "1. Objet",
+      "clause1_text": "MMM est une plateforme de mise en relation entre ses membres. Elle présente des personnes dont les intérêts se complètent et enregistre les affaires nées de ces présentations. La plateforme n’est pas partie à l’affaire : ce sont les membres qui contractent entre elles.",
+      "clause2_title": "2. Commission",
+      "clause2_text": "Une affaire issue d’une présentation faite par la plateforme donne lieu à une commission pour MMM, aux conditions suivantes :",
+      "clause2_item1": "le pourcentage est fixé au cas par cas, selon le type et la taille de l’affaire ;",
+      "clause2_item2": "le plafond est de 50 % du bénéfice déclaré pour l’affaire ;",
+      "clause2_item3": "dans cette version, le paiement a lieu hors de la plateforme ; le site enregistre seulement l’affaire et la commission due.",
+      "clause3_title": "3. Durée et modifications",
+      "clause3_text": "Ce texte est provisoire et en cours de révision juridique. Lors de la publication de la version finale, vous serez prévenue et devrez l’accepter à nouveau. La date et le texte exact de cette acceptation sont enregistrés."
     }
   },
   "dashboard": {

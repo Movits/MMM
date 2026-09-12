@@ -435,7 +435,16 @@
     "terms": {
       "title": "Termos de Uso e Acordo de Comissionamento",
       "accept": "Concordo com os Termos de Uso",
-      "required": "Você precisa aceitar os termos"
+      "required": "Você precisa aceitar os termos",
+      "clause1_title": "1. Objeto",
+      "clause1_text": "O MMM é uma plataforma de relacionamento entre membras. Ela apresenta pessoas cujos interesses se complementam e registra os negócios que nascem dessas apresentações. A plataforma não é parte do negócio: quem contrata são as membras entre si.",
+      "clause2_title": "2. Comissionamento",
+      "clause2_text": "Negócio originado de uma apresentação feita pela plataforma gera comissão ao MMM, nas seguintes condições:",
+      "clause2_item1": "o percentual é definido caso a caso, conforme o tipo e o tamanho do negócio;",
+      "clause2_item2": "o limite é de 50% do lucro declarado no negócio;",
+      "clause2_item3": "nesta versão o pagamento acontece fora da plataforma; o site apenas registra o negócio e a comissão devida.",
+      "clause3_title": "3. Vigência e alterações",
+      "clause3_text": "Este texto é provisório e está em revisão jurídica. Quando a versão final for publicada, você será avisada e precisará aceitá-la novamente. A data e o texto exato deste aceite ficam registrados."
     }
   },
   "dashboard": {
