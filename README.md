@@ -61,8 +61,10 @@ Todo o texto do repositório — documentação, commits, PRs, comentários — 
 5. **Publicar uma oportunidade.** Uma membra Ouro ou a presidência valida antes de
    ir ao ar, e uma análise automática sugere que documentação aquele negócio pede.
 6. **Negociar.** Quem se interessa abre uma **Sala de Negociação**, que só destrava
-   depois das duas partes aceitarem o acordo de confidencialidade. Fechado o
-   negócio, o valor e o lucro declarado são registrados com o aviso de comissão.
+   depois das duas partes aceitarem o acordo de confidencialidade. O registro do
+   negócio fechado — valor, lucro declarado e aviso de comissão — **ainda não
+   está no ar**: é o ajuste A11, em rascunho na PR #94, e depende de decisões
+   comerciais da cliente que seguem em aberto.
 
 ## Os três níveis, que são regra de banco e não de tela
 
