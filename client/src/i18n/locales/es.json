@@ -1532,5 +1532,28 @@
       "intelligentMatches": "Conexiones Inteligentes",
       "intelligentMatchesDesc": "Sugerencias entre tus contactos"
     }
+  },
+  "conta": {
+    "excluir": {
+      "titulo": "Eliminar mi cuenta",
+      "descricao": "Salir de la plataforma borra de la base de datos todo lo que es tuyo: perfil, contactos, reuniones, oportunidades y archivos.",
+      "botao": "Eliminar mi cuenta",
+      "ultimaAdministradora": "Eres la última administradora de la plataforma. Promueve a otra miembra a Oro antes de eliminar tu cuenta.",
+      "semSenha": "Esta cuenta no tiene contraseña. Usa \"Olvidé mi contraseña\" para crear una y luego vuelve aquí.",
+      "dialogoTitulo": "Eliminar mi cuenta",
+      "dialogoTexto": "Al confirmar, estos datos se borran de inmediato:",
+      "item1": "Tu perfil, tus fotos y los términos que aceptaste.",
+      "item2": "Tu red privada de contactos, con lo que cada contacto tiene y busca.",
+      "item3": "Tus contextos, tus reuniones, las grabaciones y las transcripciones.",
+      "item4": "Tus oportunidades, tus intereses y las salas de negociación en las que estás.",
+      "item5": "Tus documentos de verificación y los archivos que enviaste.",
+      "semVolta": "La eliminación es inmediata y la plataforma no puede deshacerla.",
+      "labelConfirmacao": "Para confirmar, escribe: {{valor}}",
+      "labelSenha": "Tu contraseña",
+      "cancelar": "Cancelar",
+      "confirmar": "Eliminar definitivamente",
+      "excluindo": "Eliminando...",
+      "sucesso": "Tu cuenta y tus datos fueron eliminados."
+    }
   }
 }

@@ -1532,5 +1532,28 @@
       "intelligentMatches": "Intelligente Verbindungen",
       "intelligentMatchesDesc": "Vorschläge zwischen Ihren Kontakten"
     }
+  },
+  "conta": {
+    "excluir": {
+      "titulo": "Mein Konto löschen",
+      "descricao": "Wenn Sie die Plattform verlassen, wird alles Ihre aus der Datenbank gelöscht: Profil, Kontakte, Meetings, Chancen und Dateien.",
+      "botao": "Mein Konto löschen",
+      "ultimaAdministradora": "Sie sind die letzte Administratorin der Plattform. Befördern Sie ein anderes Mitglied zu Gold, bevor Sie Ihr Konto löschen.",
+      "semSenha": "Für dieses Konto ist kein Passwort festgelegt. Nutzen Sie „Passwort vergessen“, um eines zu erstellen, und kommen Sie dann zurück.",
+      "dialogoTitulo": "Mein Konto löschen",
+      "dialogoTexto": "Mit der Bestätigung werden diese Daten sofort gelöscht:",
+      "item1": "Ihr Profil, Ihre Fotos und die von Ihnen akzeptierten Bedingungen.",
+      "item2": "Ihr privates Kontaktnetz, mit dem, was jeder Kontakt hat und sucht.",
+      "item3": "Ihre Kontexte, Ihre Meetings, die Aufnahmen und die Transkripte.",
+      "item4": "Ihre Chancen, Ihre Interessensbekundungen und die Verhandlungsräume, in denen Sie sind.",
+      "item5": "Ihre Verifizierungsdokumente und die von Ihnen hochgeladenen Dateien.",
+      "semVolta": "Die Löschung erfolgt sofort und die Plattform kann sie nicht zurücknehmen.",
+      "labelConfirmacao": "Zur Bestätigung eingeben: {{valor}}",
+      "labelSenha": "Ihr Passwort",
+      "cancelar": "Abbrechen",
+      "confirmar": "Endgültig löschen",
+      "excluindo": "Wird gelöscht...",
+      "sucesso": "Ihr Konto und Ihre Daten wurden gelöscht."
+    }
   }
 }

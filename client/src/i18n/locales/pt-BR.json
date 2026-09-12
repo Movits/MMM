@@ -1532,5 +1532,28 @@
       "intelligentMatches": "Conexões Inteligentes",
       "intelligentMatchesDesc": "Sugestões entre os seus contatos"
     }
+  },
+  "conta": {
+    "excluir": {
+      "titulo": "Excluir minha conta",
+      "descricao": "Sair da plataforma apaga do banco tudo o que é seu: perfil, contatos, reuniões, oportunidades e arquivos.",
+      "botao": "Excluir minha conta",
+      "ultimaAdministradora": "Você é a última administradora da plataforma. Promova outra membra a Ouro antes de excluir sua conta.",
+      "semSenha": "Esta conta não tem senha cadastrada. Use \"Esqueci minha senha\" para criar uma e depois volte aqui.",
+      "dialogoTitulo": "Excluir minha conta",
+      "dialogoTexto": "Ao confirmar, estes dados são apagados na hora:",
+      "item1": "Seu perfil, suas fotos e os termos que você aceitou.",
+      "item2": "Sua rede particular de contatos, com o que cada contato possui e procura.",
+      "item3": "Seus contextos, suas reuniões, as gravações e as transcrições.",
+      "item4": "Suas oportunidades, seus interesses e as salas de negociação em que você está.",
+      "item5": "Seus documentos de verificação e os arquivos que você enviou.",
+      "semVolta": "A exclusão é imediata e a plataforma não tem como desfazê-la.",
+      "labelConfirmacao": "Para confirmar, digite: {{valor}}",
+      "labelSenha": "Sua senha",
+      "cancelar": "Cancelar",
+      "confirmar": "Excluir definitivamente",
+      "excluindo": "Excluindo...",
+      "sucesso": "Sua conta e seus dados foram excluídos."
+    }
   }
 }
