@@ -15,6 +15,23 @@ function generateOpenId(): string {
   return "email_" + crypto.randomBytes(16).toString("hex");
 }
 
+/**
+ * Conta sem `passwordHash`. A mensagem antiga mandava "tentar com Google ou
+ * outro provedor", e não existe login por provedor nenhum neste produto: quem
+ * caía aqui ficava sem saída. São dois casos reais, e "Esqueci minha senha"
+ * resolve os dois — o fluxo grava o hash no fim:
+ *
+ * - conta vinda da carga da base de participantes
+ *   (`scripts/importar-participantes.mjs`), que nasce sem senha de propósito,
+ *   porque senha não entra por planilha;
+ * - conta antiga, herdada do Manus, com `loginMethod` que não é "email".
+ *
+ * Exportada para o script da carga instruir exatamente a mesma coisa que a tela
+ * de login diz — se uma mudar, o teste da carga acusa a outra.
+ */
+export const MENSAGEM_CONTA_SEM_SENHA =
+  'Esta conta ainda não tem senha. Use "Esqueci minha senha" para criar a sua e depois entre normalmente.';
+
 // ─── Registrar novo usuário ───────────────────────────────────
 export async function registerUser(params: {
   name: string;
@@ -105,7 +122,7 @@ export async function loginUser(params: {
   }
 
   if (!user.passwordHash) {
-    throw new Error("Esta conta foi criada com outro método de login. Tente com Google ou outro provedor.");
+    throw new Error(MENSAGEM_CONTA_SEM_SENHA);
   }
 
   const passwordOk = await bcrypt.compare(params.password, user.passwordHash);
