@@ -82,6 +82,39 @@ existem porque a versão frouxa quebra matches legítimos que já funcionam.
 (`server/match-service.ts`): ele decide justamente por parecença, que é o que
 confunde "exportar" com "importar".
 
+### 2c. Serviço só casa com necessidade declarada
+
+Quem registra "Advocacia tributária" em *o que tenho* casava com meia rede: quase
+toda empresa "poderia precisar" de um tributarista, e o motor tratava essa
+necessidade presumida como se fosse declarada. A regra (pedido de 12/09/2026):
+antes de qualquer cruzamento, cada item de *o que tenho* é classificado
+(`shared/tipo-da-oferta.ts`) em serviço, produto, ativo, oportunidade,
+investimento/capital, conexão/network, tecnologia, imóvel/infraestrutura ou outros —
+e o item do tipo **serviço** só casa com uma necessidade que alguém DECLAROU em
+*o que preciso*. A necessidade não precisa usar as mesmas palavras (equivalência
+semântica é permitida), mas precisa existir.
+
+| oferta | outro lado | resultado |
+|---|---|---|
+| serviços jurídicos tributários | procura "assessoria tributária para revisar a carga fiscal" | **match** — necessidade declarada e equivalente |
+| serviços jurídicos tributários | indústria farmacêutica que procura "distribuidor para a África" | **sem match** — toda indústria tem impostos, mas ninguém declarou precisar |
+| consultoria em internacionalização | empresa com operações internacionais que procura "investidor para a fábrica" | **sem match** — operar fora não é procurar consultoria |
+
+Não contam como necessidade: setor ou atividade econômica, porte, localização, cargo,
+problemas típicos do segmento, obrigações legais, serviços "que seriam úteis",
+necessidades prováveis. Essas informações só podem subir a nota de um match que já
+passou pelo portão; nunca criá-lo. A restrição vale para serviço e só para serviço:
+produtos, ativos, investimento, conexões etc. continuam casando como antes.
+
+Onde ela mora: no motor privado (`scoreMatch`), a categoria em comum deixa de valer
+para serviço — sobra tag, objeto e núcleo, que são exatamente "alguém nomeou o
+serviço"; no motor de perfis (`server/matching.ts`), o par sustentado só por serviço
+sem demanda expressa dá zero, apaga a linha gravada antes da regra e some da leitura;
+nos dois prompts por LLM de `routers/matching.ts`, o modelo classifica o item, cita o
+trecho literal da oportunidade que declara a necessidade e
+`server/portao-da-demanda-expressa.ts` confere a citação no texto antes de exibir —
+prompt é pedido, a conferência é a garantia.
+
 ### 3. Nada que a IA extrair entra sozinho
 
 A etapa 3 manda a IA ler o áudio de uma reunião e sugerir contatos. Toda informação

@@ -1443,6 +1443,7 @@
     "avisoAutorizacaoExistente": "如果您之前已授权，该授权仍然有效。请稍后再试。",
     "botaoTentarNovo": "重试",
     "explicacao": "记录每位联系人能提供什么、正在寻找什么。MMM会比对这些信息，建议谁可以帮助谁。",
+    "avisoServico": "服务（咨询、法律等）只有在另一位联系人在“寻找什么”中明确表示需要时才会生成连接。MMM不会根据行业、规模或业务推断需求。",
     "abaPossui": "拥有什么",
     "abaProcura": "寻找什么",
     "registrandoPrefixo": "正在记录",

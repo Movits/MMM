@@ -19,7 +19,13 @@ export const profileMatchesRouter = router({
       const lista = await getMatchesForUser(ctx.user.id, input.limit);
       const ids = lista.map(m => m.matchedUserId).filter((id): id is number => id !== null);
       const comTermo = await usersComConsentimento(ids, "termo_smart_match");
-      return lista.filter(m => m.matchedUserId !== null && comTermo.has(m.matchedUserId));
+      // Regra da demanda expressa (12/09/2026), também na LEITURA: a linha
+      // gravada antes da regra (ou antes de o perfil mudar) não volta à tela
+      // como recomendação — serviço casado por presunção some na hora, como
+      // o cruzamento some quando o termo é revogado, sem esperar "Reanalisar".
+      const { matchesBloqueadosPelaDemandaExpressa } = await import("../matching");
+      const bloqueados = await matchesBloqueadosPelaDemandaExpressa(ctx.user.id, ids);
+      return lista.filter(m => m.matchedUserId !== null && comTermo.has(m.matchedUserId) && !bloqueados.has(m.matchedUserId));
     }),
 
   // Etapa 13 (prontidão): quantos matches EXISTEM mas estão ocultos porque o

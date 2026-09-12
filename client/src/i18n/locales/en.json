@@ -1443,6 +1443,7 @@
     "avisoAutorizacaoExistente": "Your authorization, if it already existed, is still valid. Try again shortly.",
     "botaoTentarNovo": "Try again",
     "explicacao": "Note what each contact has to offer and what they're looking for. MMM compares this information and suggests who can help whom.",
+    "avisoServico": "A service (consulting, advisory, legal…) only creates a connection when another contact has stated they need it under “What you're looking for”. MMM doesn't assume needs from sector, size or activity.",
     "abaPossui": "What you have",
     "abaProcura": "What you're looking for",
     "registrandoPrefixo": "Recording what",

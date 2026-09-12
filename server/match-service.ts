@@ -5,7 +5,8 @@ import { cosineSimilarity, normalizeVector } from "./memory-service";
 import { exigirDb } from "./db";
 import { sendEmail } from "./_core/email";
 import { embedWithGemini } from "./gemini";
-import { analisarTermo, ehLugar, normalizar, nucleoDoTermo, saoConcorrentes, SEPARADOR_DE_PALAVRA } from "@shared/direcao-do-termo";
+import { nomeiamAMesmaCoisa, saoConcorrentes, slugDoTermo } from "@shared/direcao-do-termo";
+import { classificarOferta } from "@shared/tipo-da-oferta";
 
 const SEMANTIC_THRESHOLD = 0.7;
 const SAVE_THRESHOLD = 50;
@@ -44,11 +45,11 @@ type Par = { lowId: number; highId: number; encontros: Encontro[] };
 export function slugifyMatchTag(value: string) {
   // A MESMA normalização do analisador de termo: o slug é o objeto inteiro, e
   // os dois precisam enxergar as mesmas letras (antes, [a-z0-9] aqui e lá
-  // apagava qualquer tag fora do alfabeto latino). O corte é por caractere,
-  // não por unidade UTF-16: tag_slug é varchar(160) em utf8mb4, e uma
-  // surrogate pair partida ao meio nem entra no banco.
-  const slug = normalizar(value).replace(SEPARADOR_DE_PALAVRA, "-").replace(/^-+|-+$/g, "");
-  return Array.from(slug).slice(0, 160).join("");
+  // apagava qualquer tag fora do alfabeto latino). A implementação mora em
+  // shared/direcao-do-termo.ts (slugDoTermo) porque o motor de perfis também
+  // compara texto livre por slug desde a regra da demanda expressa; o nome
+  // fica aqui pelos importadores e pelos vi.mock que o conhecem.
+  return slugDoTermo(value);
 }
 
 export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore = 0) {
@@ -84,24 +85,28 @@ export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore 
   // direção nas palavras, "China" × "Procura China" é a mesma coisa dita de
   // dois jeitos, como "Terras raras" × "Procura terras raras" (revisão
   // adversarial de 05/09). Tag idêntica ("China" × "China") casa pelo slug.
-  const termoAsset = analisarTermo(asset.label);
-  const termoNeed = analisarTermo(need.label);
-  const direcaoDeclarada = termoAsset.verbo !== null || termoNeed.verbo !== null;
-  const ehSubstancia = (x: string) => !!x && !(direcaoDeclarada && ehLugar(x.split("-")));
-  const objetoAsset = termoAsset.objeto;
-  const objetoNeed = termoNeed.objeto;
-  if (ehSubstancia(objetoAsset) && objetoAsset === objetoNeed) return { score: 100, type: "exact" as const };
-
+  //
   // E o núcleo atravessa a cabeça transparente: "mina DE terras raras" e
   // "fornecedor DE terras raras" falam ambos de terras raras — o exemplo de
-  // aceite da etapa 7, que sem isto pontuava 0 e não virava sugestão.
-  const nucleoAsset = nucleoDoTermo(asset.label);
-  const nucleoNeed = nucleoDoTermo(need.label);
-  if (ehSubstancia(nucleoAsset) && nucleoAsset === nucleoNeed) return { score: 100, type: "exact" as const };
+  // aceite da etapa 7, que sem isto pontuava 0 e não virava sugestão. Objeto,
+  // núcleo e a guarda de lugar moram juntos em `nomeiamAMesmaCoisa`
+  // (shared/direcao-do-termo.ts), porque o motor de perfis passou a precisar
+  // da mesma equivalência.
+  if (nomeiamAMesmaCoisa(asset.label, need.label)) return { score: 100, type: "exact" as const };
+
+  // Regra da demanda expressa (pedido do Nicolas, 12/09/2026): SERVIÇO só casa
+  // com necessidade que o NOMEIA — e os três critérios acima (tag, objeto,
+  // núcleo) são exatamente isso: alguém declarou precisar do serviço. A
+  // categoria não é evidência: "Advocacia tributária" e "Distribuidor para a
+  // África", ambos em "Serviços", saíam em 60 — o match presumido que o pedido
+  // veta ("quase toda empresa poderia precisar de um tributarista"). Para
+  // produtos, ativos, investimento, conexões etc. a categoria segue valendo
+  // 60, como sempre: a restrição é específica do tipo serviço.
+  const ofertaEhServico = classificarOferta(asset.label, asset.category) === "servico";
 
   const categoriaAsset = slugifyMatchTag(asset.category ?? "");
   const categoriaNeed = slugifyMatchTag(need.category ?? "");
-  if (categoriaAsset && categoriaNeed && categoriaAsset === categoriaNeed) return { score: 60, type: "category" as const };
+  if (!ofertaEhServico && categoriaAsset && categoriaNeed && categoriaAsset === categoriaNeed) return { score: 60, type: "category" as const };
   // 45 fica DE PROPÓSITO abaixo de SAVE_THRESHOLD (50), o que mantém o critério
   // semântico desligado. Não é esquecimento: com SEMANTIC_THRESHOLD em 0.7, ele
   // casa tudo com tudo. Medido em 31/08/2026 numa rede de 10 contatos — ao subir
@@ -110,7 +115,16 @@ export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore 
   // com dados reais antes, não mexer nesta linha. A regra da etapa 11 reforça
   // este desligamento: parecença de texto é justamente o que confunde "exportar"
   // com "importar", e é por parecença que o critério semântico decide.
+  //
+  // Para SERVIÇO, a similaridade (quando religada) é a "compatibilidade
+  // semântica" que o pedido prevê DEPOIS do portão: aqui toda necessidade é
+  // expressa por construção (é uma linha de contact_needs), então o que se
+  // mede é se ela corresponde ao serviço — não se alguém "poderia precisar".
   if (semanticScore > SEMANTIC_THRESHOLD) return { score: SEMANTIC_SCORE, type: "semantic" as const };
+  // O bloqueio nomeado deixa a decisão visível a quem depura: a oferta é um
+  // serviço e nenhuma necessidade o nomeia (a categoria em comum, se havia,
+  // não contou).
+  if (ofertaEhServico) return { score: 0, type: "semantic" as const, bloqueio: "servico-sem-demanda-expressa" as const };
   return { score: 0, type: "semantic" as const };
 }
 

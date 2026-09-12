@@ -1443,6 +1443,7 @@
     "avisoAutorizacaoExistente": "Sua autorização, se já existia, continua valendo. Tente de novo daqui a pouco.",
     "botaoTentarNovo": "Tentar de novo",
     "explicacao": "Anote o que cada contato tem a oferecer e o que está procurando. O MMM compara essas informações e sugere quem pode ajudar quem.",
+    "avisoServico": "Serviço (consultoria, assessoria, advocacia…) só gera conexão quando outro contato declarou precisar dele em “O que procura”. O MMM não presume necessidade por setor, porte ou atividade.",
     "abaPossui": "O que possui",
     "abaProcura": "O que procura",
     "registrandoPrefixo": "Registrando o que",
