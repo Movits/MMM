@@ -242,3 +242,22 @@ describe("requisitosDaExclusao (o que a tela pergunta antes de oferecer o botão
     });
   });
 });
+
+// ══ conta de governança DESATIVADA não conta como governança viva ════════════
+// Achado da revisão adversarial de 12/09, confirmado por dois verificadores: a
+// contagem filtrava só por papel. Com uma única administradora ATIVA e outra
+// desativada, a trava liberava — e a plataforma ficava sem ninguém que
+// conseguisse entrar para moderar, porque conta inativa é recusada no login e
+// reativá-la exige um procedimento de admin.
+describe("a trava da última administradora olha quem está ATIVA", () => {
+  it("as duas consultas de governança filtram isActive", async () => {
+    const { readFileSync } = await import("node:fs");
+    const fonte = readFileSync(new URL("./routers/conta.ts", import.meta.url), "utf8");
+    const contagens = fonte.split("inArray(users.role");
+    expect(contagens.length - 1, "esperava duas contagens de governança").toBe(2);
+    for (const trecho of contagens.slice(1)) {
+      const janela = trecho.slice(0, 400);
+      expect(janela).toContain("eq(users.isActive, true)");
+    }
+  });
+});

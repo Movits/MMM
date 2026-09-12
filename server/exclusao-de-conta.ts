@@ -394,10 +394,19 @@ export async function excluirConta(
   // Notificação que a oportunidade dela gerou em conta de TERCEIRA (alerta de
   // compatibilidade, aprovação): a chave é a URL, não a usuária. Sem isso, a
   // outra membra fica com um aviso que leva a uma página que não existe mais.
-  if (chaves.oportunidades.length) {
-    const urls = chaves.oportunidades.map(id => `/opportunities/${id}`);
+  //
+  // O mesmo vale para a SALA, e aqui é pior que link morto: a notificação de
+  // mensagem nova guarda os 100 primeiros caracteres do que foi escrito na sala
+  // (routers/dealRoom.ts), então o texto dela continuaria legível para a
+  // contraparte depois da conta apagada — exatamente o que esta rota existe
+  // para impedir.
+  const urlsMortas = [
+    ...chaves.oportunidades.map(id => `/opportunities/${id}`),
+    ...chaves.salas.map(id => `/deal-room/${id}`),
+  ];
+  if (urlsMortas.length) {
     const [resultado] = await db.delete(platformNotifications)
-      .where(inArray(platformNotifications.actionUrl, urls));
+      .where(inArray(platformNotifications.actionUrl, urlsMortas));
     const linhas = Number((resultado as { affectedRows?: number } | undefined)?.affectedRows ?? 0);
     if (linhas > 0) passos.push({ nome: "platform_notifications.actionUrl", linhas });
     linhasApagadas += linhas;

@@ -274,6 +274,17 @@ describe("B) excluirConta apaga o que é da conta, na ordem, e nada além", () =
     expect(delecoes.some(d => d.tabela === opportunityMatches)).toBe(false);
   });
 
+  it("a notificação da SALA também sai, e não só a da oportunidade", async () => {
+    // Achado da revisão de 12/09: a notificação de mensagem nova guarda os 100
+    // primeiros caracteres do texto escrito na sala. Se ela ficasse, o conteúdo
+    // continuaria legível para a contraparte depois da conta apagada.
+    await excluirConta(fakeDb, CONTA, { apagarArquivo });
+    const daUrl = delecoes.find(d => d.colunas.includes("actionUrl"));
+    expect(daUrl, "nenhum DELETE por actionUrl").toBeDefined();
+    expect(daUrl!.sql).toContain("/deal-room/55");
+    expect(daUrl!.sql).toContain("/opportunities/101");
+  });
+
   it("o relatório soma as linhas e nomeia os passos", async () => {
     const relatorio = await excluirConta(fakeDb, CONTA, { apagarArquivo });
     expect(relatorio.linhasApagadas).toBeGreaterThan(0);

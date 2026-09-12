@@ -71,6 +71,11 @@ export const contaRouter = router({
       .from(users)
       .where(and(
         inArray(users.role, [...PAPEIS_DE_GOVERNANCA]),
+        // Conta desativada não governa nada: ela não entra (o
+        // `sdk.authenticateRequest` recusa conta inativa) e reativá-la exige um
+        // procedimento de admin. Sem este filtro, a última administradora ATIVA
+        // se apaga achando que deixou outra no lugar.
+        eq(users.isActive, true),
         sql`${users.id} <> ${ctx.user.id}`,
       ));
     const souGovernanca = (PAPEIS_DE_GOVERNANCA as readonly string[]).includes(ctx.user.role);
@@ -145,6 +150,7 @@ export const contaRouter = router({
           .from(users)
           .where(and(
             inArray(users.role, [...PAPEIS_DE_GOVERNANCA]),
+            eq(users.isActive, true),
             sql`${users.id} <> ${ctx.user.id}`,
           ));
         if (Number(outras?.total ?? 0) === 0) {
