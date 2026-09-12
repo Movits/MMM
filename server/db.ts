@@ -189,9 +189,43 @@ export async function listOpportunities(filters: {
   if (filters.search) conditions.push(like(opportunities.title, `%${filters.search}%`));
   return db.select().from(opportunities)
     .where(and(...conditions))
-    .orderBy(desc(opportunities.frauenTrustScore), desc(opportunities.createdAt))
+    // A12: destaque VIGENTE primeiro, e só então o critério de sempre. O
+    // `> NOW()` é o que diferencia destaque de etiqueta permanente: quando o
+    // prazo vence, a oportunidade volta sozinha para a ordem normal, sem
+    // ninguém precisar limpar nada. Ordenar pela coluna crua colocaria as
+    // vencidas na frente das que nunca foram destacadas.
+    .orderBy(
+      desc(sql`(${opportunities.destaqueAte} IS NOT NULL AND ${opportunities.destaqueAte} > NOW())`),
+      desc(opportunities.frauenTrustScore),
+      desc(opportunities.createdAt),
+    )
     .limit(filters.limit ?? 20)
     .offset(filters.offset ?? 0);
+}
+
+/**
+ * A12 — dá (ou tira) o destaque de uma oportunidade. Enquanto o meio de
+ * pagamento está fora do recorte, quem concede é a presidência: por isso
+ * `concedidoPor` é obrigatório e fica gravado. `dias = 0` remove.
+ *
+ * Devolve false quando a oportunidade não existe, para o procedimento
+ * responder NOT_FOUND em vez de dizer que destacou o que não existe.
+ */
+export async function definirDestaqueDaOportunidade(
+  opportunityId: number,
+  dias: number,
+  concedidoPor: number,
+): Promise<boolean> {
+  const db = await exigirDb();
+  const [alvo] = await db.select({ id: opportunities.id })
+    .from(opportunities).where(eq(opportunities.id, opportunityId)).limit(1);
+  if (!alvo) return false;
+
+  const ate = dias > 0 ? new Date(Date.now() + dias * 24 * 60 * 60 * 1000) : null;
+  await db.update(opportunities)
+    .set({ destaqueAte: ate, destacadaPor: ate ? concedidoPor : null })
+    .where(eq(opportunities.id, opportunityId));
+  return true;
 }
 
 export async function createOpportunity(data: Omit<typeof opportunities.$inferInsert, "id">) {

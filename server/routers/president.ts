@@ -3,7 +3,7 @@ import { z } from "zod";
 import { eq, desc, sql } from "drizzle-orm";
 import { router } from "../_core/trpc";
 import { presidentProcedure } from "./_procedures";
-import { exigirDb, grantGoldAccess, revokeGoldAccess, createNotification, listUsers, contarUsuarias } from "../db";
+import { exigirDb, grantGoldAccess, revokeGoldAccess, createNotification, listUsers, contarUsuarias, definirDestaqueDaOportunidade } from "../db";
 import { createAuditLog } from "../security";
 import { users, goldAccessGrants, opportunities } from "../../drizzle/schema";
 import { notifyHighCompatibilityForOpportunity } from "./matching";
@@ -290,4 +290,41 @@ export const presidentRouter = router({
       redFlagOpportunities: redOpps.count,
     };
   }),
+
+  // ============================================================
+  // A12 — DESTAQUE DE OPORTUNIDADE (estilo OLX)
+  // ============================================================
+  // O destaque é PAGO por decisão do Roberto em 12/09, mas o meio de pagamento
+  // está fora do recorte de 16/09. Então o que existe aqui é a metade que não
+  // depende de pagamento: a presidência concede à mão, por um prazo, e fica
+  // registrado quem concedeu. No dia em que a cobrança entrar, é este mesmo
+  // procedimento que o pagamento chama — nada do que está aqui é jogado fora.
+  //
+  // Não há notificação à autora de propósito: destaque concedido à mão, sem
+  // ela ter pedido nem pago, seria um aviso que ela não sabe interpretar.
+  destacarOportunidade: presidentProcedure
+    .input(z.object({
+      opportunityId: z.number().int().positive(),
+      // 0 remove o destaque; o teto de 90 existe para ninguém digitar 3650 sem
+      // querer e a oportunidade ficar no topo por dez anos.
+      dias: z.number().int().min(0).max(90),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const achou = await definirDestaqueDaOportunidade(input.opportunityId, input.dias, ctx.user.id);
+      if (!achou) throw new TRPCError({ code: "NOT_FOUND", message: "Oportunidade não encontrada" });
+
+      await createAuditLog({
+        userId: ctx.user.id,
+        action: input.dias > 0 ? "OPPORTUNITY_HIGHLIGHT_GRANT" : "OPPORTUNITY_HIGHLIGHT_REVOKE",
+        resource: "opportunities",
+        resourceId: String(input.opportunityId),
+        details: { dias: input.dias },
+        ipAddress: ctx.req.headers["x-forwarded-for"] as string,
+        userAgent: ctx.req.headers["user-agent"],
+        status: "success",
+        riskLevel: "medium",
+      });
+
+      return { sucesso: true as const, dias: input.dias };
+    }),
 });
