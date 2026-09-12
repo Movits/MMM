@@ -873,7 +873,16 @@
     "altFotoContato": "संपर्क की फ़ोटो",
     "enviarFoto": "फ़ोटो अपलोड करें",
     "enviarCartao": "कार्ड अपलोड करें",
-    "enviandoImagem": "अपलोड हो रहा है..."
+    "enviandoImagem": "अपलोड हो रहा है...",
+    "ouroCarregando": "शर्तें लोड हो रही हैं…",
+    "ouroPrecisaAutorizar": "आपकी अनुमति बाकी है",
+    "ouroPrecisaAutorizarDetalhe": "संपर्क को साझा चिह्नित करना काफ़ी नहीं है: इस अनुमति के बिना वह गोल्ड संग्रह में नहीं दिखेगा। आप इसे कभी भी वापस ले सकती हैं, असर तुरंत होता है।",
+    "ouroLerTermo": "शर्तें पढ़ें",
+    "ouroEsconderTermo": "शर्तें छिपाएँ",
+    "ouroAutorizarBotao": "अनुमति दें",
+    "ouroJaAutorizado": "आपने पहले ही अनुमति दे दी है। साझा चिह्नित संपर्क गोल्ड संग्रह में दिखेंगे।",
+    "ouroAutorizadoToast": "अनुमति दर्ज की गई।",
+    "ouroFalhaToast": "अनुमति दर्ज नहीं की जा सकी।"
   },
   "contexts": {
     "editarContextoTitulo": "संदर्भ संपादित करें",

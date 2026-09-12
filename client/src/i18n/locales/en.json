@@ -352,8 +352,8 @@
       "workStyle": "Preferred work style *",
       "values": "Your core values",
       "languages": "Languages you speak",
-      "customSector": "Seu setor não está na lista?",
-      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
+      "customSector": "Is your sector not on the list?",
+      "customSectorPlaceholder": "Type your sector here"
     },
     "companySize": {
       "micro": "Micro (1–9)",
@@ -873,7 +873,16 @@
     "altFotoContato": "Contact photo",
     "enviarFoto": "Upload photo",
     "enviarCartao": "Upload card",
-    "enviandoImagem": "Uploading..."
+    "enviandoImagem": "Uploading...",
+    "ouroCarregando": "Loading the terms…",
+    "ouroPrecisaAutorizar": "Your authorisation is missing",
+    "ouroPrecisaAutorizarDetalhe": "Marking the contact as shared is not enough: without this authorisation it will not show in the Gold archive. You can revoke it at any time, and it takes effect immediately.",
+    "ouroLerTermo": "Read the terms",
+    "ouroEsconderTermo": "Hide the terms",
+    "ouroAutorizarBotao": "Authorise",
+    "ouroJaAutorizado": "You have already authorised. Contacts you mark as shared will show in the Gold archive.",
+    "ouroAutorizadoToast": "Authorisation recorded.",
+    "ouroFalhaToast": "The authorisation could not be recorded."
   },
   "contexts": {
     "editarContextoTitulo": "Edit Context",
@@ -1265,7 +1274,7 @@
     "ndaClause4Title": "4. Digital Acceptance:",
     "ndaClause4Text": "Acceptance on this platform constitutes valid and legally binding digital acceptance, with a record of the date, time, and identity of the parties.",
     "ndaOpportunityLabel": "Opportunity:",
-    "ndaRoomIdLabel": "Deal Room ID: #{{roomId}}",
+    "ndaRoomIdLabel": "Deal room no. {{roomId}}",
     "ndaCreatedLabel": "Creation date:",
     "ndaSignedBoth": "NDA signed by both parties",
     "ndaSignedBothDesc": "The private negotiation room is active. Use the Chat and Documents tabs.",

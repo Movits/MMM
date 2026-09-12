@@ -873,7 +873,16 @@
     "altFotoContato": "Kontaktfoto",
     "enviarFoto": "Foto hochladen",
     "enviarCartao": "Karte hochladen",
-    "enviandoImagem": "Wird hochgeladen..."
+    "enviandoImagem": "Wird hochgeladen...",
+    "ouroCarregando": "Bedingungen werden geladen…",
+    "ouroPrecisaAutorizar": "Ihre Zustimmung fehlt",
+    "ouroPrecisaAutorizarDetalhe": "Den Kontakt als geteilt zu markieren reicht nicht: ohne diese Zustimmung erscheint er nicht im Gold-Bestand. Sie können sie jederzeit widerrufen, mit sofortiger Wirkung.",
+    "ouroLerTermo": "Bedingungen lesen",
+    "ouroEsconderTermo": "Bedingungen ausblenden",
+    "ouroAutorizarBotao": "Zustimmen",
+    "ouroJaAutorizado": "Sie haben bereits zugestimmt. Als geteilt markierte Kontakte erscheinen im Gold-Bestand.",
+    "ouroAutorizadoToast": "Zustimmung gespeichert.",
+    "ouroFalhaToast": "Die Zustimmung konnte nicht gespeichert werden."
   },
   "contexts": {
     "editarContextoTitulo": "Kontext bearbeiten",
@@ -1265,7 +1274,7 @@
     "ndaClause4Title": "4. Digitale Zustimmung:",
     "ndaClause4Text": "Die Zustimmung auf dieser Plattform stellt eine gültige und rechtsverbindliche digitale Zustimmung dar, mit Erfassung von Datum, Uhrzeit und Identität der Parteien.",
     "ndaOpportunityLabel": "Möglichkeit:",
-    "ndaRoomIdLabel": "Deal Room ID: #{{roomId}}",
+    "ndaRoomIdLabel": "Verhandlungsraum Nr. {{roomId}}",
     "ndaCreatedLabel": "Erstellungsdatum:",
     "ndaSignedBoth": "NDA von beiden Parteien unterzeichnet",
     "ndaSignedBothDesc": "Der private Verhandlungsraum ist aktiv. Nutzen Sie die Tabs Chat und Dokumente.",

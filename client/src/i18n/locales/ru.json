@@ -873,7 +873,16 @@
     "altFotoContato": "Фото контакта",
     "enviarFoto": "Загрузить фото",
     "enviarCartao": "Загрузить визитку",
-    "enviandoImagem": "Загрузка..."
+    "enviandoImagem": "Загрузка...",
+    "ouroCarregando": "Загрузка условий…",
+    "ouroPrecisaAutorizar": "Не хватает вашего разрешения",
+    "ouroPrecisaAutorizarDetalhe": "Отметить контакт как общий недостаточно: без этого разрешения он не появится в золотом архиве. Вы можете отозвать его в любой момент, действует сразу.",
+    "ouroLerTermo": "Прочитать условия",
+    "ouroEsconderTermo": "Скрыть условия",
+    "ouroAutorizarBotao": "Разрешить",
+    "ouroJaAutorizado": "Вы уже дали разрешение. Контакты, отмеченные как общие, появляются в золотом архиве.",
+    "ouroAutorizadoToast": "Разрешение записано.",
+    "ouroFalhaToast": "Не удалось записать разрешение."
   },
   "contexts": {
     "editarContextoTitulo": "Редактировать контекст",
@@ -1265,7 +1274,7 @@
     "ndaClause4Title": "4. Цифровое принятие:",
     "ndaClause4Text": "Принятие на этой платформе является действительным и юридически обязывающим цифровым принятием с фиксацией даты, времени и личности сторон.",
     "ndaOpportunityLabel": "Возможность:",
-    "ndaRoomIdLabel": "ID Deal Room: №{{roomId}}",
+    "ndaRoomIdLabel": "Переговорная комната № {{roomId}}",
     "ndaCreatedLabel": "Дата создания:",
     "ndaSignedBoth": "NDA подписан обеими сторонами",
     "ndaSignedBothDesc": "Приватная комната переговоров активна. Используйте вкладки «Чат» и «Документы».",

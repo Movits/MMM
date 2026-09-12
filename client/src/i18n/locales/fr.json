@@ -873,7 +873,16 @@
     "altFotoContato": "Photo du contact",
     "enviarFoto": "Envoyer la photo",
     "enviarCartao": "Envoyer la carte",
-    "enviandoImagem": "Envoi en cours..."
+    "enviandoImagem": "Envoi en cours...",
+    "ouroCarregando": "Chargement des conditions…",
+    "ouroPrecisaAutorizar": "Votre autorisation manque",
+    "ouroPrecisaAutorizarDetalhe": "Marquer le contact comme partagé ne suffit pas : sans cette autorisation, il n’apparaît pas dans le fonds Or. Vous pouvez la révoquer à tout moment, avec effet immédiat.",
+    "ouroLerTermo": "Lire les conditions",
+    "ouroEsconderTermo": "Masquer les conditions",
+    "ouroAutorizarBotao": "Autoriser",
+    "ouroJaAutorizado": "Vous avez déjà autorisé. Les contacts marqués comme partagés apparaissent dans le fonds Or.",
+    "ouroAutorizadoToast": "Autorisation enregistrée.",
+    "ouroFalhaToast": "Impossible d’enregistrer l’autorisation."
   },
   "contexts": {
     "editarContextoTitulo": "Modifier le contexte",
@@ -1265,7 +1274,7 @@
     "ndaClause4Title": "4. Acceptation numérique :",
     "ndaClause4Text": "L'acceptation sur cette plateforme constitue une acceptation numérique valide et juridiquement contraignante, avec enregistrement de la date, de l'heure et de l'identité des parties.",
     "ndaOpportunityLabel": "Opportunité :",
-    "ndaRoomIdLabel": "ID du Deal Room : #{{roomId}}",
+    "ndaRoomIdLabel": "Salle de négociation n° {{roomId}}",
     "ndaCreatedLabel": "Date de création :",
     "ndaSignedBoth": "NDA signé par les deux parties",
     "ndaSignedBothDesc": "La salle de négociation privée est active. Utilisez les onglets Chat et Documents.",
