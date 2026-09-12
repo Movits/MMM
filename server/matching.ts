@@ -604,8 +604,9 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
     // um match dispensado voltaria à tela (revisão adversarial de 12/09).
     if (scores.bloqueio) continue;
 
-    // Only create matches with score >= 40
-    if (scores.overall < 40) continue;
+    // Only create matches with score >= 50 (pesos: complementaridade 30%, setor 20%,
+    // investimento 20%, especialidade 15%, valores 10%, localização 5%)
+    if (scores.overall < 50) continue;
 
     // Insight de IA só para os melhores, só quando ainda não existe um DE
     // VERDADE (enchimento antigo não conta), e no máximo INSIGHTS_POR_RODADA
