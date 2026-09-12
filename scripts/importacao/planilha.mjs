@@ -218,7 +218,7 @@ export function separarTags(bruto, limite = 30) {
  */
 export const VOCABULARIO_POSSUI = {
   industria: ["industria", "fabrica", "manufatura", "producao industrial", "planta"],
-  fazenda: ["fazenda", "agro", "agronegocio", "agricultura", "pecuaria", "plantacao", "vinicola", "safra"],
+  fazenda: ["fazenda", "agro", "agronegocio", "agricultura", "pecuaria", "plantacao", "plantio", "vinicola", "safra"],
   laboratorio: ["laboratorio", "pesquisa", "p&d", "pd", "analise clinica"],
   tecnologia: ["tecnologia", "software", "sistema", "plataforma", "aplicativo", "app", "ti", "dados"],
   investidores: ["investidor", "rede de investidores", "capital", "fundo", "aporte"],
@@ -227,7 +227,12 @@ export const VOCABULARIO_POSSUI = {
   licencas: ["licenca", "certificacao", "certificado", "registro sanitario", "anvisa", "selo"],
   imoveis: ["imovel", "imoveis", "terreno", "galpao", "sala comercial"],
   logistica: ["logistica", "transporte", "frete", "armazenagem", "armazem", "distribuicao propria", "frota", "alfandeg"],
-  canais_comerciais: ["canal comercial", "canais comerciais", "rede de lojas", "representante", "ponto de venda", "varejo", "carteira de clientes", "importacao", "exportacao"],
+  // "importacao" e "exportacao" NÃO entram aqui: são a DIREÇÃO do negócio, não
+  // o ativo que a pessoa tem. Quem escreve "exportação de vinho" está dizendo
+  // que tem vinho — e a regra da cliente é que o match cruza pelo OBJETO do
+  // termo (shared/direcao-do-termo.ts: exportar vinho × importar vinho casam).
+  // Com elas na lista, o termo mais longo "exportacao" roubava a tag do vinho.
+  canais_comerciais: ["canal comercial", "canais comerciais", "rede de lojas", "representante", "ponto de venda", "varejo", "carteira de clientes"],
 };
 
 export const VOCABULARIO_PROCURA = {
@@ -243,23 +248,76 @@ export const VOCABULARIO_PROCURA = {
 };
 
 /**
+ * Termos que só valem como PALAVRA INTEIRA, mesmo tendo 5 letras ou mais,
+ * porque cada um é prefixo de outra coisa: "planta" abre "plantacao" (e roubava
+ * a plantação da fazenda para a indústria), "banco" abre "banco de dados",
+ * "dados" é genérico demais para valer como começo de palavra.
+ */
+const TERMOS_SO_EXATOS = new Set(["planta", "banco", "dados"]);
+
+function escaparRegex(termo) {
+  return termo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Quantas letras o termo casou na tag, ou 0 se não casou.
+ *
+ * O casamento é ANCORADO NO COMEÇO DA PALAVRA. Termo com menos de 5 letras, e
+ * termo de TERMOS_SO_EXATOS, precisa casar a palavra inteira.
+ */
+function forcaDoTermo(chave, termo) {
+  const soExato = termo.length < 5 || TERMOS_SO_EXATOS.has(termo);
+  const regex = new RegExp("(^|[^a-z0-9])" + escaparRegex(termo) + (soExato ? "($|[^a-z0-9])" : ""));
+  return regex.test(chave) ? termo.length : 0;
+}
+
+/**
  * Traduz as tags escritas à mão para os ids que o cruzamento entende.
- * Casa por CONTÉM, sobre o texto achatado: "exportação de vinho" acha "vinho"
- * (commodities) e "distribuidor na Europa" acha "distribuidor" (distribuidores).
+ *
+ * A PRIMEIRA VERSÃO DESTA FUNÇÃO ESTAVA ERRADA, e o erro era silencioso. Ela
+ * usava `chave.includes(termo)`, sem âncora: o termo "ti" (de tecnologia)
+ * aparece DENTRO de logística, certificação, têxtil, alimentício, ativos e até
+ * "rede de investidores" — as seis viravam `tecnologia`. Como a tag "casou",
+ * nenhum aviso saía no ensaio (o aviso só existe para tag NÃO reconhecida), e
+ * o estrago era o oposto do que esta função existe para evitar: id errado
+ * gravado em whatIHave, a mulher de logística cruzando com quem procura
+ * tecnologia, e a tela do perfil afirmando um ativo que ela nunca declarou.
+ * Pior, `--aplicar` não atualiza e-mail que já existe: arrumar o vocabulário
+ * depois não conserta a conta já criada. Achado pela revisão adversarial de
+ * 12/09/2026, confirmado por dois verificadores independentes.
+ *
+ * Três regras, nesta ordem:
+ *
+ * 1. O termo só casa no COMEÇO de uma palavra — "investidor" continua achando
+ *    "investidores", e "ti" não acha mais "logistica".
+ * 2. Termo curto, ou da lista TERMOS_SO_EXATOS, casa só como palavra inteira.
+ * 3. Ganha o termo MAIS LONGO, não o primeiro do vocabulário: assim a ordem das
+ *    chaves deixa de decidir, e "plantacao" (9) vence "planta" (6).
+ *
+ * Empate entre ids DIFERENTES não vira chute: a tag sai como AMBÍGUA, fica fora
+ * dos ids e entra no relatório junto com as não reconhecidas. Preferir o
+ * silêncio foi exatamente o defeito anterior.
  */
 export function classificarTags(tags, vocabulario) {
   const ids = [];
   const naoReconhecidas = [];
+  const ambiguas = [];
   for (const tag of tags) {
     const chave = achatar(tag);
-    let achou = null;
+    let melhor = null;
+    let empatado = false;
     for (const [id, termos] of Object.entries(vocabulario)) {
-      if (termos.some(termo => chave.includes(termo))) { achou = id; break; }
+      let forca = 0;
+      for (const termo of termos) forca = Math.max(forca, forcaDoTermo(chave, termo));
+      if (!forca) continue;
+      if (!melhor || forca > melhor.forca) { melhor = { id, forca }; empatado = false; }
+      else if (forca === melhor.forca && id !== melhor.id) { empatado = true; }
     }
-    if (achou) { if (!ids.includes(achou)) ids.push(achou); }
-    else naoReconhecidas.push(tag);
+    if (!melhor) naoReconhecidas.push(tag);
+    else if (empatado) ambiguas.push(tag);
+    else if (!ids.includes(melhor.id)) ids.push(melhor.id);
   }
-  return { ids, naoReconhecidas };
+  return { ids, naoReconhecidas, ambiguas };
 }
 
 function cortar(valor, tamanho) {
@@ -298,9 +356,14 @@ export function validarLinha(linha, mapa, numero, emailsJaVistos) {
   // O que o cruzamento entende, e o que sobrou como texto.
   const classePossui = classificarTags(possui, VOCABULARIO_POSSUI);
   const classeProcura = classificarTags(procura, VOCABULARIO_PROCURA);
-  const soltas = [...classePossui.naoReconhecidas, ...classeProcura.naoReconhecidas];
-  if (soltas.length) {
-    avisos.push(`sem equivalente no vocabulário do cruzamento (vai como texto livre no perfil): ${soltas.join(", ")}`);
+  const ambiguas = [...classePossui.ambiguas, ...classeProcura.ambiguas];
+  const soltas = [...classePossui.naoReconhecidas, ...classeProcura.naoReconhecidas, ...ambiguas];
+  if (classePossui.naoReconhecidas.length || classeProcura.naoReconhecidas.length) {
+    const nao = [...classePossui.naoReconhecidas, ...classeProcura.naoReconhecidas];
+    avisos.push(`sem equivalente no vocabulário do cruzamento (vai como texto livre no perfil): ${nao.join(", ")}`);
+  }
+  if (ambiguas.length) {
+    avisos.push(`casou com mais de um id, com a mesma força, e por isso NÃO foi classificada (decida na planilha): ${ambiguas.join(", ")}`);
   }
   if ((possui.length || procura.length) && !classePossui.ids.length && !classeProcura.ids.length) {
     avisos.push("nenhuma tag foi reconhecida: o perfil entra NEUTRO no cruzamento, não penalizado");

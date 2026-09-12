@@ -455,10 +455,61 @@ describe("carga e login dizem a mesma coisa sobre a conta sem senha", () => {
 // PIOR que os 50 de um perfil vazio. Toda a base carregada ficaria abaixo de
 // quem não preencheu nada, e o patamar mútuo seria inalcançável.
 describe("as tags viram os ids que o cruzamento entende", () => {
-  it("traduz o que a pessoa escreveu, casando por dentro do termo", () => {
+  it("traduz o que a pessoa escreveu, casando no começo da palavra", () => {
     expect(classificarTags(["exportação de vinho"], VOCABULARIO_POSSUI).ids).toEqual(["commodities"]);
     expect(classificarTags(["distribuidor na Europa"], VOCABULARIO_PROCURA).ids).toEqual(["distribuidores"]);
     expect(classificarTags(["Armazém alfandegado"], VOCABULARIO_POSSUI).ids).toEqual(["logistica"]);
+  });
+
+  // ── A REGRESSÃO QUE ESTE BLOCO EXISTE PARA IMPEDIR ────────────────────────
+  // A primeira versão de classificarTags casava por `includes` solto. O termo
+  // "ti" (de tecnologia) mora DENTRO de logística, certificação, têxtil,
+  // alimentício, ativos e "rede de investidores": as seis viravam `tecnologia`
+  // em silêncio, porque tag que "casa" não gera aviso nenhum no ensaio. Cada
+  // linha abaixo é um caso que o verificador rodou e viu sair errado.
+  it.each([
+    ["logística própria", "logistica"],
+    ["certificação ISO 9001", "licencas"],
+    ["certificado de origem", "licencas"],
+    ["rede de investidores", "investidores"],
+    ["plantação de soja", "fazenda"],
+    ["plantio de café", "fazenda"],
+    ["planta industrial", "industria"],
+    ["fábrica de embalagens", "industria"],
+    ["TI", "tecnologia"],
+    ["app próprio", "tecnologia"],
+  ])("'%s' vira '%s', e não tecnologia por causa das letras 'ti'", (tag, id) => {
+    expect(classificarTags([tag], VOCABULARIO_POSSUI).ids).toEqual([id]);
+  });
+
+  it.each([["têxtil"], ["alimentício"], ["artigos de vestuário"], ["atividade rural"], ["ativos imobiliários"]])(
+    "'%s' não casa com nada e volta como não reconhecida, em vez de virar tecnologia",
+    tag => {
+      const r = classificarTags([tag], VOCABULARIO_POSSUI);
+      expect(r.ids).toEqual([]);
+      expect(r.naoReconhecidas).toEqual([tag]);
+    },
+  );
+
+  it("ganha o termo mais longo, então a ordem das chaves do vocabulário não decide", () => {
+    // "planta" (industria) é prefixo de "plantacao" (fazenda), e industria vem
+    // antes no objeto. Com o primeiro-que-casa, a plantação virava indústria.
+    expect(classificarTags(["plantação de soja"], VOCABULARIO_POSSUI).ids).toEqual(["fazenda"]);
+  });
+
+  it("empate entre ids diferentes não vira chute: sai como ambígua", () => {
+    const vocabulario = { primeiro: ["alfa"], segundo: ["beta"] };
+    const r = classificarTags(["alfa e beta"], vocabulario);
+    expect(r.ids).toEqual([]);
+    expect(r.ambiguas).toEqual(["alfa e beta"]);
+    expect(r.naoReconhecidas).toEqual([]);
+  });
+
+  it("importação e exportação são direção do negócio, não ativo: não roubam a tag do objeto", () => {
+    // A regra da cliente é cruzar pelo OBJETO ("exportar vinho" × "importar
+    // vinho"), então "exportacao" não pode vencer "vinho" por ser mais longa.
+    expect(classificarTags(["exportação de vinho"], VOCABULARIO_POSSUI).ids).toEqual(["commodities"]);
+    expect(classificarTags(["importação de azeite"], VOCABULARIO_POSSUI).ids).toEqual(["commodities"]);
   });
 
   it("o que não casa não é inventado nem jogado fora: volta como não reconhecida", () => {
