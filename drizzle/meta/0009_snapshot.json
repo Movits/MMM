@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "7211bffc-80f6-4b52-a10a-652e4cf15021",
+  "id": "cb13cd95-5f8c-433c-8267-cca52651957e",
   "prevId": "224ec345-c7a5-4527-a6b5-9e5e9011ff77",
   "tables": {
     "ai_match_suggestions": {
@@ -2042,6 +2042,15 @@
           "columns": [
             "owner_id",
             "contact_id"
+          ],
+          "isUnique": false
+        },
+        "enr_sug_owner_session_status_idx": {
+          "name": "enr_sug_owner_session_status_idx",
+          "columns": [
+            "owner_id",
+            "session_id",
+            "status"
           ],
           "isUnique": false
         }

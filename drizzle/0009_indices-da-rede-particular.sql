@@ -6,4 +6,5 @@ CREATE INDEX `ctx_owner_idx` ON `contexts` (`owner_id`);--> statement-breakpoint
 CREATE INDEX `enr_msg_owner_session_idx` ON `enrichment_messages` (`owner_id`,`session_id`);--> statement-breakpoint
 CREATE INDEX `enr_sess_owner_contact_idx` ON `enrichment_sessions` (`owner_id`,`contact_id`);--> statement-breakpoint
 CREATE INDEX `enr_sug_owner_contact_idx` ON `enrichment_suggestions` (`owner_id`,`contact_id`);--> statement-breakpoint
+CREATE INDEX `enr_sug_owner_session_status_idx` ON `enrichment_suggestions` (`owner_id`,`session_id`,`status`);--> statement-breakpoint
 CREATE INDEX `sivc_doc_user_idx` ON `sivc_documents` (`userId`);

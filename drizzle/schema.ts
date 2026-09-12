@@ -693,6 +693,11 @@ export const sivcDocuments = mysqlTable("sivc_documents", {
   createdAt:       timestamp("createdAt").defaultNow().notNull(),
 }, (table) => ({
   verIdx: index("sivc_doc_ver_idx").on(table.verificationId),
+  // Nenhuma TELA filtra por usuária (o painel entra por verificationId, que já
+  // tem o índice acima). Quem lê este é a EXCLUSÃO DE CONTA, que apaga
+  // sivc_documents por userId: sem ele, apagar uma conta varre a tabela de
+  // documentos de identidade inteira. É índice de escrita rara e exclusão
+  // confiável, não de consulta.
   userIdx: index("sivc_doc_user_idx").on(table.userId),
 }));
 
@@ -908,7 +913,14 @@ export const enrichmentSuggestions = mysqlTable("enrichment_suggestions", {
   createdAt:      bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:      bigint("updated_at", { mode: "number" }).notNull(),
 }, (table) => ({
+  // getEnrichmentHistory filtra (dona, contato) e ordena por data.
   ownerContactIdx: index("enr_sug_owner_contact_idx").on(table.ownerId, table.contactId),
+  // getPendingEnrichmentSuggestions (server/db.ts) filtra sessão + dona + status,
+  // e é o que roda a cada abertura do chat de enriquecimento. Só o prefixo
+  // `owner_id` do índice acima não basta: ele tiraria a varredura global, mas
+  // ainda leria TODAS as sugestões daquela dona para achar as pendentes de uma
+  // sessão.
+  ownerSessionStatusIdx: index("enr_sug_owner_session_status_idx").on(table.ownerId, table.sessionId, table.status),
 }));
 
 // ============================================================
