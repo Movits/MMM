@@ -693,6 +693,7 @@ export const sivcDocuments = mysqlTable("sivc_documents", {
   createdAt:       timestamp("createdAt").defaultNow().notNull(),
 }, (table) => ({
   verIdx: index("sivc_doc_ver_idx").on(table.verificationId),
+  userIdx: index("sivc_doc_user_idx").on(table.userId),
 }));
 
 // ============================================================
@@ -786,7 +787,12 @@ export const contexts = mysqlTable("contexts", {
   visibility:    varchar("visibility", { length: 10 }).default("private").notNull(),
   createdAt:     bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:     bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  // A rede particular é sempre lida por dona. Sem índice, listar contextos varre
+  // a tabela inteira: invisível com 3 linhas, caro com a base de participantes
+  // carregada no primeiro dia.
+  ownerIdx: index("ctx_owner_idx").on(table.ownerId),
+}));
 
 export const contactContexts = mysqlTable("contact_contexts", {
   id:               varchar("id", { length: 36 }).primaryKey(),
@@ -801,7 +807,10 @@ export const contactContexts = mysqlTable("contact_contexts", {
   visibility:       varchar("visibility", { length: 10 }).default("private").notNull(),
   createdAt:        bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:        bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  ownerContextIdx: index("cc_owner_context_idx").on(table.ownerId, table.contextId),
+  ownerContactIdx: index("cc_owner_contact_idx").on(table.ownerId, table.contactId),
+}));
 
 export const contextParticipants = mysqlTable("context_participants", {
   id:                 varchar("id", { length: 36 }).primaryKey(),
@@ -814,7 +823,9 @@ export const contextParticipants = mysqlTable("context_participants", {
   convertedContactId: bigint("converted_contact_id", { mode: "number" }),
   createdAt:          bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:          bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  ownerContextIdx: index("cpart_owner_context_idx").on(table.ownerId, table.contextId),
+}));
 
 export const contextMedia = mysqlTable("context_media", {
   id:            varchar("id", { length: 36 }).primaryKey(),
@@ -830,7 +841,9 @@ export const contextMedia = mysqlTable("context_media", {
   uploadedBy:    varchar("uploaded_by", { length: 128 }).notNull(),
   createdAt:     bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:     bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  ownerContextIdx: index("cmedia_owner_context_idx").on(table.ownerId, table.contextId),
+}));
 
 // Tipos exportados — Contextos
 export type ContextType = typeof contextTypes.$inferSelect;
@@ -854,7 +867,9 @@ export const enrichmentSessions = mysqlTable("enrichment_sessions", {
   completedAt:       bigint("completed_at", { mode: "number" }),
   createdAt:         bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:         bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  ownerContactIdx: index("enr_sess_owner_contact_idx").on(table.ownerId, table.contactId),
+}));
 
 export const enrichmentMessages = mysqlTable("enrichment_messages", {
   id:         varchar("id", { length: 36 }).primaryKey(),
@@ -866,7 +881,9 @@ export const enrichmentMessages = mysqlTable("enrichment_messages", {
   tokenCount: int("token_count"),
   createdAt:  bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:  bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  ownerSessionIdx: index("enr_msg_owner_session_idx").on(table.ownerId, table.sessionId),
+}));
 
 export const enrichmentSuggestions = mysqlTable("enrichment_suggestions", {
   id:             varchar("id", { length: 36 }).primaryKey(),
@@ -890,7 +907,9 @@ export const enrichmentSuggestions = mysqlTable("enrichment_suggestions", {
   undoSnapshot:   jsonCompat("undo_snapshot"),
   createdAt:      bigint("created_at", { mode: "number" }).notNull(),
   updatedAt:      bigint("updated_at", { mode: "number" }).notNull(),
-});
+}, (table) => ({
+  ownerContactIdx: index("enr_sug_owner_contact_idx").on(table.ownerId, table.contactId),
+}));
 
 // ============================================================
 // ASSISTENTE DE REUNIÕES — Etapa 5
