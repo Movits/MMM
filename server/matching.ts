@@ -513,8 +513,9 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
     if (!autorizadas.has(candidate.userId as number)) continue;
     const scores = calculateCompatibilityScore(myProfile as UserProfile, candidate as UserProfile);
 
-    // Only create matches with score >= 40
-    if (scores.overall < 40) continue;
+    // Only create matches with score >= 50 (pesos: complementaridade 30%, setor 20%,
+    // investimento 20%, especialidade 15%, valores 10%, localização 5%)
+    if (scores.overall < 50) continue;
 
     // Insight de IA só para os melhores, só quando ainda não existe um DE
     // VERDADE (enchimento antigo não conta), e no máximo INSIGHTS_POR_RODADA
