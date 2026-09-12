@@ -27,10 +27,19 @@ describe.skipIf(!temBanco)("Match — regeneração não duplica (integração)"
     await limpar(db);
     // Dois perfis desenhados para casar: mesmo setor + mesmo objetivo buscado
     // dão score ~49 (>= 40), abaixo de 70 para não chamar o LLM.
+    //
+    // `investmentCapacity` entrou junto com o portão de dados suficientes
+    // (`temDadosSuficientesParaMatch`): setor + especialidade sozinhos apuram
+    // 0,35 do peso da fórmula, abaixo do mínimo de 0,5, e o par seria descartado
+    // antes de pontuar — este teste passaria a falhar por falta de dado, não por
+    // duplicação. Com a capacidade declarada nos dois, o peso apurado vai a 0,55
+    // e o score continua o mesmo (55): a dimensão de investimento já caía no
+    // ramo de co-investimento. O que o teste mede — upsert e dispensa — não muda.
     for (const id of [A, B]) {
       await db.insert(users).values({ id, openId: `teste-dup-${id}`, isActive: true } as never);
       await db.insert(userProfiles).values({
         userId: id, sector: "tecnologia", seekingTypes: ["investimento"], primarySpecialty: `esp-${id}`,
+        investmentCapacity: "10k_50k",
       } as never);
     }
   });
