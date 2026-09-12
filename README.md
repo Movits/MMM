@@ -26,7 +26,7 @@ não aqui. Este repositório é para código e desenho técnico.
 
 ## Quem é quem
 
-- **Roberto** (`Movits`) lidera, revisa e é quem mescla na `main`.
+- **Roberto** (`Movits`) lidera o projeto e fala com a cliente.
 - **Nicolas** (`nicolasriber19`), **Gabriel** (`DevGabriel03`) e **Lucas Yan**
   (`pacocateamo123-max`) desenvolvem. Cada um instrui o próprio Claude, e é por isso
   que o [CLAUDE.md](./CLAUDE.md) existe: ele é lido por todas essas máquinas.
@@ -144,16 +144,22 @@ resolvendo o que dizia. Por isso:
 
 1. A `main` é protegida e todo merge nela **vira deploy em produção**. Trabalhe em
    branch (`feat/`, `fix/`, `docs/`) e abra PR.
-2. Antes de começar, leia o que entrou (`git log`, `gh pr list`), confira o quadro
+2. **Quem mescla é quem revisou.** A proteção da `main` pede duas coisas: uma
+   aprovação de quem **não** é autor da PR e o check "Tipos, banco do zero e testes"
+   verde. Não há restrição de pessoa — os quatro têm permissão de escrita, então
+   depois de aprovar você já pode mesclar, sem esperar pelo Roberto. Só por
+   `gh pr merge`: o botão do site passa ao largo do hook.
+3. Antes de começar, leia o que entrou (`git log`, `gh pr list`), confira o quadro
    do Notion e o grupo de WhatsApp, e registre a conferência com
    `node .claude/hooks/carimbo.mjs --carimbar`. Sem carimbo válido, o hook recusa
-   `git commit`, `git push`, `git merge` e `gh pr merge`.
-3. Rode o que o CI roda: `pnpm check`, `pnpm test`, `pnpm build`;
+   `git commit`, `git push`, `git merge` e `gh pr merge` — para todo mundo igual, no
+   seu próprio clone: o hook não sabe quem está rodando, é disciplina e não portaria.
+4. Rode o que o CI roda: `pnpm check`, `pnpm test`, `pnpm build`;
    `node scripts/conferir-locales.mjs` se tocou em texto de tela; e `pnpm db:generate`
    não pode gerar arquivo se você mexeu no schema.
-4. A PR diz **o que mudou, por quê e como verificar**. Título de commit não é
+5. A PR diz **o que mudou, por quê e como verificar**. Título de commit não é
    evidência.
-5. **"Feito (a validar)" no Notion é trabalho à espera de validação por OUTRA
+6. **"Feito (a validar)" no Notion é trabalho à espera de validação por OUTRA
    pessoa**, não "Concluído". Quem fez não conclui. Validar item de colega faz parte
    do trabalho.
 
