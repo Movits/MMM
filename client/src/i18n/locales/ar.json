@@ -967,6 +967,7 @@
     "toastDeleteSuccess": "تمت إزالة الفرصة بنجاح",
     "toastDeleteError": "خطأ أثناء إزالة الفرصة",
     "pendingReviewBadge": "قيد التحليل، مرئية لكِ فقط",
+      "destaqueBadge": "مميّز",
     "unsaveTooltip": "إزالة من المحفوظات",
     "saveTooltip": "حفظ الفرصة",
     "confirmDeleteOpportunity": "إزالة الفرصة \"{{title}}\"؟ لا يمكن التراجع عن هذا الإجراء.",

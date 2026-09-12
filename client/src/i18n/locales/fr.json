@@ -967,6 +967,7 @@
     "toastDeleteSuccess": "Opportunité supprimée avec succès",
     "toastDeleteError": "Erreur lors de la suppression de l'opportunité",
     "pendingReviewBadge": "En cours d'analyse, visible uniquement par vous",
+      "destaqueBadge": "En vedette",
     "unsaveTooltip": "Retirer des favoris",
     "saveTooltip": "Enregistrer l'opportunité",
     "confirmDeleteOpportunity": "Supprimer l'opportunité « {{title}} » ? Cette action est irréversible.",

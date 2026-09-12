@@ -164,6 +164,13 @@ export const opportunities = mysqlTable("opportunities", {
   moderationNote: text("moderationNote"),
   moderatedAt: timestamp("moderatedAt"),
 
+  // A12 — Destaque (estilo OLX). Duas colunas e não um booleano, por dois
+  // motivos: destaque sem prazo vira permanente e a lista nunca mais roda, e
+  // quando o pagamento entrar o que se compra é JUSTAMENTE o prazo. Enquanto o
+  // meio de pagamento está fora do recorte de 16/09, quem concede é a
+  // presidência, à mão, e `destacadaPor` guarda quem foi.
+  destaqueAte: timestamp("destaqueAte"),
+  destacadaPor: int("destacadaPor"),
   viewCount: int("viewCount").default(0),
   interestCount: int("interestCount").default(0),
   expiresAt: timestamp("expiresAt"),
@@ -177,6 +184,9 @@ export const opportunities = mysqlTable("opportunities", {
   sectorIdx: index("opp_sector_idx").on(table.sector),
   countryIdx: index("opp_country_idx").on(table.country),
   complianceIdx: index("opp_compliance_idx").on(table.complianceLevel),
+  // A lista ordena por destaque ativo antes de tudo: sem índice, cada abertura
+  // da vitrine de oportunidades varre a tabela para descobrir quem está no ar.
+  destaqueIdx: index("opp_destaque_idx").on(table.destaqueAte),
   ftsIdx: index("opp_fts_idx").on(table.frauenTrustScore),
 }));
 

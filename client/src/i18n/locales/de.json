@@ -967,6 +967,7 @@
     "toastDeleteSuccess": "Möglichkeit erfolgreich entfernt",
     "toastDeleteError": "Fehler beim Entfernen der Möglichkeit",
     "pendingReviewBadge": "In Prüfung, nur für Sie sichtbar",
+      "destaqueBadge": "Hervorgehoben",
     "unsaveTooltip": "Aus den Favoriten entfernen",
     "saveTooltip": "Möglichkeit speichern",
     "confirmDeleteOpportunity": "Möglichkeit „{{title}}“ entfernen? Diese Aktion kann nicht rückgängig gemacht werden.",

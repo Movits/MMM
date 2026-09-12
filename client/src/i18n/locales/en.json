@@ -967,6 +967,7 @@
     "toastDeleteSuccess": "Opportunity removed successfully",
     "toastDeleteError": "Error removing opportunity",
     "pendingReviewBadge": "Under review, visible only to you",
+      "destaqueBadge": "Featured",
     "unsaveTooltip": "Remove from saved",
     "saveTooltip": "Save opportunity",
     "confirmDeleteOpportunity": "Remove the opportunity \"{{title}}\"? This action cannot be undone.",

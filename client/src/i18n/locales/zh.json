@@ -967,6 +967,7 @@
     "toastDeleteSuccess": "机会已成功删除",
     "toastDeleteError": "删除机会失败",
     "pendingReviewBadge": "审核中，仅您可见",
+      "destaqueBadge": "精选",
     "unsaveTooltip": "取消收藏",
     "saveTooltip": "收藏此机会",
     "confirmDeleteOpportunity": "删除机会“{{title}}”？此操作无法撤销。",

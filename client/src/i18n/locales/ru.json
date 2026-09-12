@@ -967,6 +967,7 @@
     "toastDeleteSuccess": "Возможность успешно удалена",
     "toastDeleteError": "Ошибка при удалении возможности",
     "pendingReviewBadge": "На рассмотрении, видно только вам",
+      "destaqueBadge": "Рекомендуем",
     "unsaveTooltip": "Удалить из сохранённых",
     "saveTooltip": "Сохранить возможность",
     "confirmDeleteOpportunity": "Удалить возможность «{{title}}»? Это действие нельзя отменить.",

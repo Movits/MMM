@@ -967,6 +967,7 @@
     "toastDeleteSuccess": "अवसर सफलतापूर्वक हटाया गया",
     "toastDeleteError": "अवसर हटाने में त्रुटि",
     "pendingReviewBadge": "समीक्षा में, केवल आपको दिखाई देता है",
+      "destaqueBadge": "विशेष",
     "unsaveTooltip": "सहेजे गए से हटाएं",
     "saveTooltip": "अवसर सहेजें",
     "confirmDeleteOpportunity": "अवसर \"{{title}}\" हटाएं? यह क्रिया पूर्ववत नहीं की जा सकती।",
