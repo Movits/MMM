@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
 
+const AQUI_TESTE: string = (import.meta as { dirname?: string }).dirname ?? ".";
+
 /**
  * A carga da base de participantes (scripts/importacao/planilha.mjs), que é o
  * primeiro item do escopo de 16/09: "carregar a base de gente no primeiro dia,
@@ -25,8 +27,8 @@ import { resolve as pathResolve } from "node:path";
 
 import {
   achatar, lerCsv, mapearCabecalho, normalizarEmail, emailValido, normalizarPais,
-  separarTags, completude, validarLinha, prepararImportacao, resumo,
-  COLUNAS, OBRIGATORIAS, PROIBIDAS,
+  separarTags, completude, validarLinha, prepararImportacao, resumo, classificarTags,
+  COLUNAS, OBRIGATORIAS, PROIBIDAS, VOCABULARIO_POSSUI, VOCABULARIO_PROCURA,
 } from "../scripts/importacao/planilha.mjs";
 
 const CABECALHO = "nome;email;empresa;cargo;setor;pais;cidade;possui;procura";
@@ -287,12 +289,15 @@ describe("prepararImportacao — o arquivo inteiro", () => {
 
   it("500 linhas válidas passam, e a ordem é preservada", () => {
     const linhas = Array.from({ length: 500 }, (_, i) =>
-      `Participante ${i};p${i}@exemplo.com;Empresa ${i};Sócia;Saúde;Brasil;Recife;servico ${i};demanda ${i}`);
+      `Participante ${i};p${i}@exemplo.com;Empresa ${i};Sócia;Saúde;Brasil;Recife;tecnologia;investidores`);
     const r = prepararImportacao(planilha(...linhas));
     expect(r.participantes).toHaveLength(500);
     expect(r.recusadas).toEqual([]);
     expect(r.avisos).toEqual([]);
     expect(r.participantes[499].email).toBe("p499@exemplo.com");
+    // Tag do vocabulário entra como id: é isso que o cruzamento lê.
+    expect(r.participantes[0].idsPossui).toEqual(["tecnologia"]);
+    expect(r.participantes[0].idsProcura).toEqual(["investidores"]);
   });
 });
 
@@ -439,5 +444,90 @@ describe("carga e login dizem a mesma coisa sobre a conta sem senha", () => {
     const AQUI = (import.meta as { dirname?: string }).dirname ?? ".";
     const fonte = readFileSync(pathResolve(AQUI, "..", "scripts", "importar-participantes.mjs"), "utf8");
     expect(fonte).toContain("Esqueci minha senha");
+  });
+});
+
+
+// ══ 12. o vocabulário fechado do cruzamento ══════════════════════════════════
+// Achado da revisão adversarial de 12/09, confirmado por dois verificadores:
+// server/matching.ts cruza por ID, não por texto. Gravar texto livre em
+// whatIHave/whatINeed fazia a complementaridade (30% do score) cair para 20 —
+// PIOR que os 50 de um perfil vazio. Toda a base carregada ficaria abaixo de
+// quem não preencheu nada, e o patamar mútuo seria inalcançável.
+describe("as tags viram os ids que o cruzamento entende", () => {
+  it("traduz o que a pessoa escreveu, casando por dentro do termo", () => {
+    expect(classificarTags(["exportação de vinho"], VOCABULARIO_POSSUI).ids).toEqual(["commodities"]);
+    expect(classificarTags(["distribuidor na Europa"], VOCABULARIO_PROCURA).ids).toEqual(["distribuidores"]);
+    expect(classificarTags(["Armazém alfandegado"], VOCABULARIO_POSSUI).ids).toEqual(["logistica"]);
+  });
+
+  it("o que não casa não é inventado nem jogado fora: volta como não reconhecida", () => {
+    const r = classificarTags(["rótulo próprio", "tecnologia"], VOCABULARIO_POSSUI);
+    expect(r.ids).toEqual(["tecnologia"]);
+    expect(r.naoReconhecidas).toEqual(["rótulo próprio"]);
+  });
+
+  it("id repetido entra uma vez só", () => {
+    expect(classificarTags(["software", "sistema", "plataforma"], VOCABULARIO_POSSUI).ids).toEqual(["tecnologia"]);
+  });
+
+  it("todo id do vocabulário existe no motor de cruzamento", async () => {
+    const { readFileSync } = await import("node:fs");
+    const fonte = readFileSync(pathResolve(AQUI_TESTE, "matching.ts"), "utf8");
+    const mapa = fonte.slice(fonte.indexOf("const HAVE_SATISFIES_NEED"), fonte.indexOf("/** Quantas necessidades"));
+    for (const id of Object.keys(VOCABULARIO_POSSUI)) {
+      expect(mapa, `possui '${id}' não existe em HAVE_SATISFIES_NEED`).toContain(`${id}:`);
+    }
+    for (const id of Object.keys(VOCABULARIO_PROCURA)) {
+      expect(mapa, `procura '${id}' não é satisfeito por nada`).toContain(`"${id}"`);
+    }
+  });
+
+  it("linha com tags fora do vocabulário entra NEUTRA, não penalizada", () => {
+    const r = prepararImportacao(planilha(
+      "Maria;maria@exemplo.com;;;;;;coisa que ninguém mapeou;outra coisa estranha",
+    ));
+    const p = r.participantes[0];
+    expect(p.idsPossui).toEqual([]);
+    expect(p.idsProcura).toEqual([]);
+    // O texto não se perde: sai no aviso, e o script grava em currentResources.
+    expect(p.possui).toEqual(["coisa que ninguém mapeou"]);
+    expect(r.avisos.some(a => a.aviso.startsWith("nenhuma tag foi reconhecida"))).toBe(true);
+  });
+
+  it("a completude conta o que o cruzamento lê, não o que foi digitado", () => {
+    const comIds = completude({ nome: "M", possui: ["tecnologia"], procura: ["investidores"], idsPossui: ["tecnologia"], idsProcura: ["investidores"] });
+    const soTexto = completude({ nome: "M", possui: ["algo estranho"], procura: ["outro"], idsPossui: [], idsProcura: [] });
+    expect(comIds).toBeGreaterThan(soTexto);
+  });
+});
+
+// ══ 13. o modelo que o script imprime é lido certo por ele mesmo ═════════════
+// Achado da revisão: o exemplo tinha ';' dentro de campo num CSV de ';', sem
+// aspas — e o próprio script lia a demanda da Maria como o LinkedIn dela, em
+// silêncio, com completude de 100%. O teste antigo redigitava o cabeçalho num
+// literal em vez de importar a constante, então não pegava nada disso.
+describe("o MODELO de verdade, lido pelo próprio parser", () => {
+  it("cada campo do exemplo cai na coluna certa", async () => {
+    const { readFileSync } = await import("node:fs");
+    const fonte = readFileSync(pathResolve(AQUI_TESTE, "..", "scripts", "importar-participantes.mjs"), "utf8");
+    const inicio = fonte.indexOf("const MODELO = `") + "const MODELO = `".length;
+    const modelo = fonte.slice(inicio, fonte.indexOf("`;", inicio));
+
+    const r = prepararImportacao(modelo);
+    expect(r.erroFatal).toBeUndefined();
+    expect(r.recusadas).toEqual([]);
+    expect(r.participantes).toHaveLength(2);
+
+    const maria = r.participantes[0];
+    expect(maria.email).toBe("maria@exemplo.com.br");
+    expect(maria.empresa).toBe("Vinícola Serra");
+    expect(maria.cargo).toBe("Sócia-fundadora");
+    expect(maria.cidade).toBe("Bento Gonçalves");
+    expect(maria.possui).toEqual(["exportação de vinho", "rótulo próprio"]);
+    expect(maria.procura).toEqual(["distribuidor na Europa", "logística refrigerada"]);
+    expect(maria.linkedin).toBe("linkedin.com/in/exemplo");
+    expect(maria.bio).toContain("vinho fino");
+    expect(maria.idsPossui.length).toBeGreaterThan(0);
   });
 });

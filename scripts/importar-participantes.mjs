@@ -38,9 +38,13 @@ import crypto from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { prepararImportacao, resumo } from "./importacao/planilha.mjs";
 
+// As aspas NÃO são enfeite: os campos de possui/procura levam ';' dentro, que é
+// o mesmo separador das colunas. Sem elas, o próprio script lê este exemplo
+// torto — a demanda da Maria virava o LinkedIn dela, em silêncio e com
+// completude de 100%. Achado da revisão de 12/09.
 const MODELO = `nome;email;empresa;cargo;setor;pais;cidade;possui;procura;linkedin;bio
-Maria Silva;maria@exemplo.com.br;Vinícola Serra;Sócia-fundadora;Alimentação;Brasil;Bento Gonçalves;exportação de vinho; rótulo próprio;distribuidor na Europa; logística refrigerada;linkedin.com/in/exemplo;Produz vinho fino desde 2012.
-Ana Costa;ana@exemplo.pt;Costa Importações;Diretora;Logística;Portugal;Lisboa;importação de bebidas; armazém alfandegado;fornecedor brasileiro;;
+Maria Silva;maria@exemplo.com.br;Vinícola Serra;Sócia-fundadora;Alimentação;Brasil;Bento Gonçalves;"exportação de vinho; rótulo próprio";"distribuidor na Europa; logística refrigerada";linkedin.com/in/exemplo;Produz vinho fino desde 2012.
+Ana Costa;ana@exemplo.pt;Costa Importações;Diretora;Logística;Portugal;Lisboa;"importação de bebidas; armazém alfandegado";fornecedor brasileiro;;
 `;
 
 const args = process.argv.slice(2);
@@ -141,7 +145,7 @@ try {
   if (!aplicar) {
     console.log("\nENSAIO: nada foi gravado. As 5 primeiras contas que entrariam:");
     for (const p of novas.slice(0, 5)) {
-      console.log(`  ${p.email} | ${p.nome} | ${p.setor ?? "sem setor"} | ${p.pais ?? "sem país"} | possui ${p.possui.length} | procura ${p.procura.length}`);
+      console.log(`  ${p.email} | ${p.nome} | ${p.setor ?? "sem setor"} | ${p.pais ?? "sem país"} | possui ${JSON.stringify(p.idsPossui)} | procura ${JSON.stringify(p.idsProcura)}`);
     }
     console.log("\nPara gravar de verdade, repita com --aplicar.");
     process.exit(0);
@@ -165,15 +169,24 @@ try {
       // que a tela mostra. Os dois são gravados até o cartão de consolidar as
       // colunas duplicadas do cadastro entrar — escrever só um deixaria metade
       // do produto cego.
+      // whatIHave/whatINeed recebem os IDS do vocabulário fechado, nunca o texto
+      // livre: server/matching.ts cruza por id, e id desconhecido faz a
+      // complementaridade cair para 20 — pior que os 50 de um perfil vazio. O
+      // que a pessoa escreveu não se perde: vai inteiro para `currentResources`,
+      // que é campo de texto livre e aparece no perfil.
+      const textoLivre = [
+        p.possui.length ? `Possui: ${p.possui.join("; ")}` : "",
+        p.procura.length ? `Procura: ${p.procura.join("; ")}` : "",
+      ].filter(Boolean).join(" | ") || null;
       await conexao.execute(
-        "INSERT INTO `user_profiles` (`userId`, `displayName`, `bio`, `city`, `country`, `sectors`, `linkedinUrl`, `profileCompleteness`, `company`, `jobTitle`, `whatIHave`, `whatINeed`, `currentRole`, `currentCompany`, `sector`) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO `user_profiles` (`userId`, `displayName`, `bio`, `city`, `country`, `sectors`, `linkedinUrl`, `profileCompleteness`, `company`, `jobTitle`, `whatIHave`, `whatINeed`, `currentRole`, `currentCompany`, `sector`, `currentResources`) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           id, p.nome, p.bio, p.cidade, p.pais,
           JSON.stringify(p.setor ? [p.setor] : []),
           p.linkedin, p.completude, p.empresa, p.cargo,
-          JSON.stringify(p.possui), JSON.stringify(p.procura),
-          p.cargo, p.empresa, p.setor,
+          JSON.stringify(p.idsPossui), JSON.stringify(p.idsProcura),
+          p.cargo, p.empresa, p.setor, textoLivre,
         ],
       );
       await conexao.commit();

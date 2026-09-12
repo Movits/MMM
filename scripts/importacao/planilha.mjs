@@ -192,6 +192,76 @@ export function separarTags(bruto, limite = 30) {
   return tags;
 }
 
+
+/**
+ * O VOCABULÁRIO FECHADO do cruzamento entre perfis, e por que ele existe aqui.
+ *
+ * Achado da revisão adversarial de 12/09, confirmado por dois verificadores: o
+ * motor `server/matching.ts` NÃO cruza texto livre. Ele tem um mapa
+ * (HAVE_SATISFIES_NEED) com 11 ids de "possui" e 9 de "procura", os mesmos do
+ * onboarding, e id desconhecido não cobre nada.
+ *
+ * A consequência era pior que "não ajuda": com texto livre gravado, a
+ * complementaridade — 30% do score, a maior fatia — cai no ramo "tem dado, sem
+ * encaixe" e vale 20, contra os 50 do ramo "neutro" que a MESMA dupla teria com
+ * os campos VAZIOS. Ou seja, carregar a base com texto livre deixaria as
+ * participantes com score MENOR do que se ninguém tivesse preenchido nada, e o
+ * patamar mútuo (75-100) ficaria inalcançável para a base inteira. E a tela do
+ * perfil, que só desenha os ids conhecidos, mostraria a seção "o que possuo" em
+ * branco.
+ *
+ * Então a planilha continua aceitando o que a pessoa escreveu, e aqui o texto é
+ * TRADUZIDO para os ids. O que não casa não é jogado fora nem forçado: vai para
+ * `currentResources`, o campo de texto livre do perfil, e sai no relatório para
+ * quem montou a planilha decidir. Linha sem nenhum id reconhecido fica com os
+ * campos vazios — neutro, que é melhor que penalizado.
+ */
+export const VOCABULARIO_POSSUI = {
+  industria: ["industria", "fabrica", "manufatura", "producao industrial", "planta"],
+  fazenda: ["fazenda", "agro", "agronegocio", "agricultura", "pecuaria", "plantacao", "vinicola", "safra"],
+  laboratorio: ["laboratorio", "pesquisa", "p&d", "pd", "analise clinica"],
+  tecnologia: ["tecnologia", "software", "sistema", "plataforma", "aplicativo", "app", "ti", "dados"],
+  investidores: ["investidor", "rede de investidores", "capital", "fundo", "aporte"],
+  acesso_governamental: ["governo", "governamental", "setor publico", "licitacao", "prefeitura", "ministerio"],
+  commodities: ["commodities", "materia-prima", "materia prima", "insumo", "graos", "minerio", "vinho", "azeite", "cafe", "soja"],
+  licencas: ["licenca", "certificacao", "certificado", "registro sanitario", "anvisa", "selo"],
+  imoveis: ["imovel", "imoveis", "terreno", "galpao", "sala comercial"],
+  logistica: ["logistica", "transporte", "frete", "armazenagem", "armazem", "distribuicao propria", "frota", "alfandeg"],
+  canais_comerciais: ["canal comercial", "canais comerciais", "rede de lojas", "representante", "ponto de venda", "varejo", "carteira de clientes", "importacao", "exportacao"],
+};
+
+export const VOCABULARIO_PROCURA = {
+  fornecedores: ["fornecedor", "fornecedores", "insumo", "materia-prima", "materia prima"],
+  investidores: ["investidor", "investidores", "aporte", "capital de risco"],
+  compradores: ["comprador", "compradores", "cliente", "clientes", "mercado comprador"],
+  distribuidores: ["distribuidor", "distribuidores", "revenda", "revendedor", "importador", "exportador"],
+  parceiros: ["parceiro", "parceria", "socio", "joint venture"],
+  tecnologia: ["tecnologia", "software", "sistema", "automacao", "digitalizacao"],
+  financiamento: ["financiamento", "credito", "emprestimo", "linha de credito", "banco"],
+  licencas: ["licenca", "aprovacao", "autorizacao", "registro", "certificacao"],
+  consultoria: ["consultoria", "assessoria", "mentoria", "orientacao"],
+};
+
+/**
+ * Traduz as tags escritas à mão para os ids que o cruzamento entende.
+ * Casa por CONTÉM, sobre o texto achatado: "exportação de vinho" acha "vinho"
+ * (commodities) e "distribuidor na Europa" acha "distribuidor" (distribuidores).
+ */
+export function classificarTags(tags, vocabulario) {
+  const ids = [];
+  const naoReconhecidas = [];
+  for (const tag of tags) {
+    const chave = achatar(tag);
+    let achou = null;
+    for (const [id, termos] of Object.entries(vocabulario)) {
+      if (termos.some(termo => chave.includes(termo))) { achou = id; break; }
+    }
+    if (achou) { if (!ids.includes(achou)) ids.push(achou); }
+    else naoReconhecidas.push(tag);
+  }
+  return { ids, naoReconhecidas };
+}
+
 function cortar(valor, tamanho) {
   const texto = String(valor ?? "").trim().replace(/\s+/g, " ");
   return texto ? texto.slice(0, tamanho) : null;
@@ -225,6 +295,17 @@ export function validarLinha(linha, mapa, numero, emailsJaVistos) {
   const procura = separarTags(pegar("procura"));
   if (!possui.length && !procura.length) avisos.push("sem possui e sem procura: a conta entra, mas nunca gera conexão");
 
+  // O que o cruzamento entende, e o que sobrou como texto.
+  const classePossui = classificarTags(possui, VOCABULARIO_POSSUI);
+  const classeProcura = classificarTags(procura, VOCABULARIO_PROCURA);
+  const soltas = [...classePossui.naoReconhecidas, ...classeProcura.naoReconhecidas];
+  if (soltas.length) {
+    avisos.push(`sem equivalente no vocabulário do cruzamento (vai como texto livre no perfil): ${soltas.join(", ")}`);
+  }
+  if ((possui.length || procura.length) && !classePossui.ids.length && !classeProcura.ids.length) {
+    avisos.push("nenhuma tag foi reconhecida: o perfil entra NEUTRO no cruzamento, não penalizado");
+  }
+
   const setor = cortar(pegar("setor"), 100);
   if (!setor) avisos.push("sem setor: a dimensão de setor do cruzamento fica neutra");
 
@@ -238,7 +319,13 @@ export function validarLinha(linha, mapa, numero, emailsJaVistos) {
       empresa: cortar(pegar("empresa"), 200),
       cargo: cortar(pegar("cargo"), 200),
       setor,
+      // `possui`/`procura` guardam o que a pessoa escreveu (para o relatório e
+      // para o texto livre do perfil); `idsPossui`/`idsProcura` são o que o
+      // motor de cruzamento entende e o que vai para whatIHave/whatINeed.
       possui, procura,
+      idsPossui: classePossui.ids,
+      idsProcura: classeProcura.ids,
+      tagsSoltas: soltas,
       telefone: cortar(pegar("telefone"), 40),
       linkedin: cortar(pegar("linkedin"), 512),
       bio: cortar(pegar("bio"), 2000),
@@ -255,7 +342,9 @@ export function completude(p) {
   const pesos = [
     [Boolean(p.nome), 15], [Boolean(p.empresa), 10], [Boolean(p.cargo), 10],
     [Boolean(p.setor), 15], [Boolean(p.pais), 10], [Boolean(p.cidade), 5],
-    [p.possui.length > 0, 15], [p.procura.length > 0, 15], [Boolean(p.bio), 5],
+    // Conta o que o cruzamento entende, não o que foi digitado: perfil cheio de
+    // texto que o motor não lê não está completo para o que importa.
+    [(p.idsPossui ?? p.possui).length > 0, 15], [(p.idsProcura ?? p.procura).length > 0, 15], [Boolean(p.bio), 5],
   ];
   return pesos.reduce((soma, [tem, peso]) => soma + (tem ? peso : 0), 0);
 }
@@ -307,5 +396,7 @@ export function resumo({ participantes, recusadas, avisos, novas = null, existen
   if (existentes !== null) partes.push(`${existentes} já existia(m)`);
   const semCruzamento = avisos.filter(a => a.aviso.startsWith("sem possui")).length;
   if (semCruzamento) partes.push(`${semCruzamento} sem possui/procura (não geram conexão)`);
+  const semVocabulario = avisos.filter(a => a.aviso.startsWith("nenhuma tag foi reconhecida")).length;
+  if (semVocabulario) partes.push(`${semVocabulario} com tags fora do vocabulário do cruzamento`);
   return partes.join(" | ");
 }
