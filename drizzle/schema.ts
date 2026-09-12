@@ -694,10 +694,11 @@ export const sivcDocuments = mysqlTable("sivc_documents", {
 }, (table) => ({
   verIdx: index("sivc_doc_ver_idx").on(table.verificationId),
   // Nenhuma TELA filtra por usuária (o painel entra por verificationId, que já
-  // tem o índice acima). Quem lê este é a EXCLUSÃO DE CONTA, que apaga
-  // sivc_documents por userId: sem ele, apagar uma conta varre a tabela de
-  // documentos de identidade inteira. É índice de escrita rara e exclusão
-  // confiável, não de consulta.
+  // tem o índice acima). Quem lê este HOJE é `scripts/exame/limpeza.mjs`, que
+  // apaga sivc_documents por userId ao limpar as contas do exame de produção —
+  // e amanhã a exclusão de conta, que faz o mesmo. Sem ele, apagar uma conta
+  // varre a tabela de documentos de identidade inteira. É índice de escrita
+  // rara e exclusão confiável, não de consulta: não tire achando que é morto.
   userIdx: index("sivc_doc_user_idx").on(table.userId),
 }));
 
