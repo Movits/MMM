@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { BrainCircuit, CheckCircle } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
-import { formatCnpj, isValidCnpj } from "@shared/business-registration";
+import { exigeCnpj, formatCnpj, isValidCnpj } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
 
 
@@ -56,7 +56,7 @@ interface FormData {
   incomeRange: string; investmentCapacity: string; lookingForInvestment: boolean;
   workStyle: string; values: string[]; languages: string[];
   gender: "" | "male" | "female" | "prefer_not_to_say";
-  personType: "" | "individual" | "legal_entity" | "mei";
+  personType: "" | "individual" | "legal_entity" | "mei" | "nonprofit";
   companySize: "" | "mei" | "micro" | "small" | "medium" | "large";
   companyCnpj: string;
   customSector: string;
@@ -65,6 +65,8 @@ interface FormData {
   company: string; jobTitle: string; activityArea: string;
   institutionalNetwork: string; interestSectors: string[];
   whatIHave: string[]; whatINeed: string[];
+  // Contrato e termos
+  agreedToTerms: boolean;
 }
 
 const INITIAL: FormData = {
@@ -84,6 +86,7 @@ const INITIAL: FormData = {
   company: "", jobTitle: "", activityArea: "",
   institutionalNetwork: "", interestSectors: [],
   whatIHave: [], whatINeed: [],
+  agreedToTerms: false,
 };
 
 // ─── Componentes reutilizáveis ────────────────────────────────────────────────
@@ -347,12 +350,38 @@ export default function Onboarding() {
     { id: 6, title: t("onboarding.steps.s8_title"), subtitle: t("onboarding.steps.s8_sub"), icon: "✦" },
     { id: 7, title: t("onboarding.steps.s9_title"), subtitle: t("onboarding.steps.s9_sub"), icon: "◈" },
     { id: 8, title: t("onboarding.steps.s6_title"), subtitle: t("onboarding.steps.s6_sub"), icon: "🚀" },
+    { id: 9, title: t("onboarding.steps.s10_title"), subtitle: t("onboarding.steps.s10_sub"), icon: "📋" },
   ];
+
+  // O aceite dos Termos precisa deixar RASTRO no servidor. A caixinha marcada
+  // só no navegador não prova nada: numa discussão sobre comissão, o que vale é
+  // saber quem aceitou, quando, de qual endereço e QUAL texto estava no ar.
+  // Reusamos a trilha que já existe (consents + document_versions), a mesma do
+  // termo do Smart Match, que grava IP, user-agent e o hash do texto vigente.
+  const registrarAceiteDosTermos = trpc.consent.accept.useMutation();
+
+  const concluir = () => {
+    toast.success(t("onboarding.successMsg"));
+    navigate("/dashboard");
+  };
 
   const saveOnboarding = trpc.profile.completeOnboarding.useMutation({
     onSuccess: () => {
-      toast.success(t("onboarding.successMsg"));
-      navigate("/dashboard");
+      // Enquanto o contrato_comissao não tiver versão publicada, o servidor
+      // responde NOT_FOUND: não há texto vigente para consentir. Isso NÃO pode
+      // travar o cadastro de quem acabou de preencher tudo — o perfil já foi
+      // salvo. Segue para o Dashboard nos dois casos; a falha vai para o
+      // console e o cartão do termo provisório cuida da publicação.
+      registrarAceiteDosTermos.mutate(
+        { type: "contrato_comissao" },
+        {
+          onSuccess: concluir,
+          onError: (erro: { message: string }) => {
+            console.error("[Onboarding] Não foi possível registrar o aceite dos Termos:", erro.message);
+            concluir();
+          },
+        },
+      );
     },
     onError: (err: { message: string }) => {
       toast.error(t("onboarding.errorMsg") + " " + (err.message || ""));
@@ -377,13 +406,13 @@ export default function Onboarding() {
     if (step === 1) return form.displayName.trim().length >= 2 && form.city.trim().length >= 2;
     if (step === 2) {
       const temEspecialidade = form.primarySpecialties.length > 0 || form.customSpecialty.trim().length > 0;
-      // Quem se declara MEI ou pessoa juridica tem CNPJ por definicao (A7).
-      const precisaCnpj = form.personType === "mei" || form.personType === "legal_entity";
-      const cnpjOk = !precisaCnpj || isValidCnpj(form.companyCnpj);
+      // Quem se declara MEI, pessoa juridica ou sem fins lucrativos tem CNPJ por definicao (A7).
+      const cnpjOk = !exigeCnpj(form.personType) || isValidCnpj(form.companyCnpj);
       return temEspecialidade && cnpjOk;
     }
     if (step === 3) return form.seekingTypes.length > 0 && form.incomeRange.length > 0 && form.workStyle.length > 0;
     if (step === 4) return form.sector.length > 0;
+    if (step === 9) return form.agreedToTerms;
     // Etapas profissionais e de ativos são opcionais — sempre pode avançar
     return true;
   };
@@ -493,7 +522,8 @@ export default function Onboarding() {
                   const labels = [t("onboarding.fields.displayName"), t("onboarding.fields.city"), t("profile.gender.label"), t("onboarding.fields.age"), t("onboarding.fields.bio")];
                   return <>
                     <div>
-                      <TextInput label={t("onboarding.fields.age")} value={form.age ?? ""} type="number" min={16} max={120}
+                      {/* Sem limite máximo de idade: usuárias podem ter qualquer idade acima de 16 (validação de testes) */}
+                      <TextInput label={t("onboarding.fields.age")} value={form.age ?? ""} type="number" min={16}
                         onChange={v => set("age", v ? parseInt(v) : null)}
                         placeholder={t("onboarding.fields.agePlaceholder")} hint={t("onboarding.fields.ageHint")}/>
                     </div>
@@ -544,7 +574,13 @@ export default function Onboarding() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {sortOptionsAlphabetically(SPECIALTIES, i18n.language).map(s => (
                       <CardOption key={s.key} selected={form.primarySpecialties.includes(s.key)}
-                        onClick={() => set("primarySpecialties", togglePrimarySpecialty(form.primarySpecialties, s.key))}
+                        onClick={() => {
+                          if (form.primarySpecialties.includes(s.key) || form.primarySpecialties.length < 5) {
+                            set("primarySpecialties", togglePrimarySpecialty(form.primarySpecialties, s.key));
+                          } else {
+                            toast.error(t("onboarding.maxSpecialties"));
+                          }
+                        }}
                         icon={s.icon} label={s.label}/>
                     ))}
                   </div>
@@ -560,11 +596,12 @@ export default function Onboarding() {
                     <h2 className="text-white font-semibold text-base">{t("profile.business.personType")}</h2>
                     <p className="text-xs text-white/45 mt-1">{t("profile.business.cnpjHint")}</p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {sortOptionsAlphabetically([
                       { value: "individual", label: t("profile.business.individual"), icon: "👤" },
                       { value: "legal_entity", label: t("profile.business.legalEntity"), icon: "🏢" },
                       { value: "mei", label: t("profile.business.mei"), icon: "🌱" },
+                      { value: "nonprofit", label: t("profile.business.nonprofit"), icon: "🤝" },
                     ], i18n.language).map(option => (
                       <CardOption key={option.value} selected={form.personType === option.value}
                         onClick={() => {
@@ -574,7 +611,7 @@ export default function Onboarding() {
                         }} icon={option.icon} label={option.label}/>
                     ))}
                   </div>
-                  {(form.personType === "legal_entity" || form.personType === "mei") && (
+                  {exigeCnpj(form.personType) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                       <SelectInput label={t("profile.business.companySize")} value={form.companySize}
                         onChange={value => set("companySize", value as FormData["companySize"])}
@@ -706,8 +743,9 @@ export default function Onboarding() {
             {step === 4 && (
               <div className="flex flex-col gap-6">
                 <div>
+                  {/* Opção "outro" sempre no final, não alfabética: consistência com demais dropdowns (validação de testes) */}
                   <SelectInput label={t("onboarding.fields.sector")} value={form.sector} onChange={v => set("sector", v)}
-                    options={sortOptionsAlphabetically(SECTORS.map(s => ({ value: s.label, label: s.label })), i18n.language)} placeholder={t("onboarding.fields.selectPlaceholder")}/>
+                    options={[...sortOptionsAlphabetically(SECTORS.filter(s => s.key !== "other").map(s => ({ value: s.label, label: s.label })), i18n.language), { value: OTHER_SECTOR_LABEL, label: t("onboarding.sectors.other") }]} placeholder={t("onboarding.fields.selectPlaceholder")}/>
                   {form.sector === OTHER_SECTOR_LABEL && (
                     <div className="mt-3">
                       <TextInput label={t("onboarding.fields.customSector")} value={form.customSector}
@@ -873,6 +911,47 @@ export default function Onboarding() {
                   </div>
                 </div>
                 <p className="text-xs text-white/30 text-center">🔒 {t("onboarding.dataPrivacy")}</p>
+              </div>
+            )}
+
+            {step === 9 && (
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-[#f5a623]/25 bg-[#f5a623]/5 p-6 space-y-4 max-h-[600px] overflow-y-auto">
+                  <h2 className="text-white font-semibold text-lg mb-4">{t("onboarding.terms.title")}</h2>
+
+                  <div className="space-y-4 text-sm text-white/70 leading-relaxed">
+                    <div>
+                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause1_title")}</h3>
+                      <p>{t("onboarding.terms.clause1_text")}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause2_title")}</h3>
+                      <p>{t("onboarding.terms.clause2_text")}</p>
+                      <ul className="list-disc list-inside space-y-1 mt-2 text-xs">
+                        <li>{t("onboarding.terms.clause2_item1")}</li>
+                        <li>{t("onboarding.terms.clause2_item2")}</li>
+                        <li>{t("onboarding.terms.clause2_item3")}</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause3_title")}</h3>
+                      <p>{t("onboarding.terms.clause3_text")}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200" style={{borderColor: form.agreedToTerms ? "#f5a623" : "rgba(255,255,255,0.1)", backgroundColor: form.agreedToTerms ? "rgba(245,166,35,0.1)" : "rgba(255,255,255,0.02)"}}>
+                    <input type="checkbox" checked={form.agreedToTerms} onChange={e => set("agreedToTerms", e.target.checked)} className="w-5 h-5 mt-0.5 cursor-pointer accent-[#f5a623]"/>
+                    <span className="text-sm text-white font-medium">{t("onboarding.terms.accept")}</span>
+                  </label>
+
+                  {!form.agreedToTerms && (
+                    <p className="text-xs text-red-400/70 text-center">{t("onboarding.terms.required")}</p>
+                  )}
+                </div>
               </div>
             )}
 

@@ -199,7 +199,9 @@
       "s8_title": "Lo que tengo",
       "s8_sub": "Activos y recursos disponibles",
       "s9_title": "Lo que necesito",
-      "s9_sub": "Demandas y necesidades"
+      "s9_sub": "Demandas y necesidades",
+      "s10_title": "Términos y Condiciones",
+      "s10_sub": "Lee y acepta nuestros términos"
     },
     "specialties": {
       "tech": "Tecnología & Software",
@@ -285,6 +287,7 @@
     "successMsg": "🎉 ¡Perfil creado! Redirigiendo a tu panel...",
     "errorMsg": "No se pudo guardar tu perfil.",
     "maxValues": "Máximo 4 valores seleccionados",
+    "maxSpecialties": "Máximo de 5 especialidades seleccionadas",
     "dataPrivacy": "Tus datos están cifrados y nunca se comparten sin tu autorización",
     "nav": {
       "back": "Atrás",
@@ -428,6 +431,20 @@
       "selectedPlural": "seleccionados",
       "selectedF": "seleccionada",
       "selectedFPlural": "seleccionadas"
+    },
+    "terms": {
+      "title": "Términos de Uso y Acuerdo de Comisión",
+      "accept": "Acepto los Términos de Uso",
+      "required": "Debe aceptar los términos",
+      "clause1_title": "1. Objeto",
+      "clause1_text": "MMM es una plataforma de relación entre sus miembros. Presenta a personas cuyos intereses se complementan y registra los negocios que nacen de esas presentaciones. La plataforma no es parte del negocio: quienes contratan son las miembros entre sí.",
+      "clause2_title": "2. Comisión",
+      "clause2_text": "Un negocio originado en una presentación hecha por la plataforma genera una comisión para MMM, en las siguientes condiciones:",
+      "clause2_item1": "el porcentaje se define caso por caso, según el tipo y el tamaño del negocio;",
+      "clause2_item2": "el límite es del 50% de la ganancia declarada en el negocio;",
+      "clause2_item3": "en esta versión el pago ocurre fuera de la plataforma; el sitio solo registra el negocio y la comisión debida.",
+      "clause3_title": "3. Vigencia y cambios",
+      "clause3_text": "Este texto es provisional y está en revisión jurídica. Cuando se publique la versión final se te avisará y deberás aceptarla nuevamente. La fecha y el texto exacto de esta aceptación quedan registrados."
     }
   },
   "dashboard": {
@@ -703,6 +720,7 @@
       "individual": "Persona física",
       "legalEntity": "Persona jurídica",
       "mei": "Microemprendedora individual (MEI)",
+      "nonprofit": "Sin fines de lucro",
       "companySize": "Tamaño de la empresa",
       "companySizePlaceholder": "Selecciona el tamaño",
       "sizeMei": "MEI",

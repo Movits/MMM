@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { BrandMark } from "@/components/BrandLogo";
 import { toast } from "sonner";
-import { formatCnpj, isValidCnpj, maskCnpj } from "@shared/business-registration";
+import { exigeCnpj, formatCnpj, isValidCnpj, maskCnpj } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
 import {
   ArrowLeft, User, Briefcase, Globe, Link2, Edit2, Save,
@@ -142,7 +142,7 @@ export default function Profile() {
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("BR");
   const [gender, setGender] = useState<"" | "male" | "female" | "prefer_not_to_say">("");
-  const [personType, setPersonType] = useState<"" | "individual" | "legal_entity" | "mei">("");
+  const [personType, setPersonType] = useState<"" | "individual" | "legal_entity" | "mei" | "nonprofit">("");
   const [companySize, setCompanySize] = useState<"" | "mei" | "micro" | "small" | "medium" | "large">("");
   const [companyCnpj, setCompanyCnpj] = useState("");
   const [activityArea, setActivityArea] = useState("");
@@ -169,7 +169,7 @@ export default function Profile() {
     const savedGender = (profile as any)?.gender;
     setGender(savedGender === "male" || savedGender === "female" || savedGender === "prefer_not_to_say" ? savedGender : "");
     const savedPersonType = (profile as any)?.personType;
-    setPersonType(savedPersonType === "individual" || savedPersonType === "legal_entity" || savedPersonType === "mei" ? savedPersonType : "");
+    setPersonType(savedPersonType === "individual" || savedPersonType === "legal_entity" || savedPersonType === "mei" || savedPersonType === "nonprofit" ? savedPersonType : "");
     const savedCompanySize = (profile as any)?.companySize;
     setCompanySize(savedCompanySize === "mei" || savedCompanySize === "micro" || savedCompanySize === "small" || savedCompanySize === "medium" || savedCompanySize === "large" ? savedCompanySize : "");
     setCompanyCnpj((profile as any)?.companyCnpj || "");
@@ -376,6 +376,7 @@ export default function Profile() {
                         { value: "individual", label: t("profile.business.individual") },
                         { value: "legal_entity", label: t("profile.business.legalEntity") },
                         { value: "mei", label: t("profile.business.mei") },
+                        { value: "nonprofit", label: t("profile.business.nonprofit") },
                       ], i18n.language).map(option => (
                         <SelectItem key={option.value} value={option.value} className="text-white">{option.label}</SelectItem>
                       ))}
@@ -432,7 +433,7 @@ export default function Profile() {
                 </div>
               </div>
 
-              {(personType === "legal_entity" || personType === "mei") && (
+              {exigeCnpj(personType) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.business.companySize")}</label>

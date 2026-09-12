@@ -199,7 +199,9 @@
       "s8_title": "我拥有什么",
       "s8_sub": "可用资产与资源",
       "s9_title": "我需要什么",
-      "s9_sub": "需求与诉求"
+      "s9_sub": "需求与诉求",
+      "s10_title": "条款和条件",
+      "s10_sub": "阅读并接受我们的条款"
     },
     "specialties": {
       "tech": "技术与软件",
@@ -285,6 +287,7 @@
     "successMsg": "🎉 档案创建成功！正在跳转到您的仪表板...",
     "errorMsg": "无法保存您的档案。",
     "maxValues": "最多选择4个价值观",
+    "maxSpecialties": "最多选择5个专业",
     "dataPrivacy": "您的数据已加密，未经授权绝不共享",
     "nav": {
       "back": "返回",
@@ -428,6 +431,20 @@
       "selectedPlural": "已选择",
       "selectedF": "已选择",
       "selectedFPlural": "已选择"
+    },
+    "terms": {
+      "title": "使用条款和佣金协议",
+      "accept": "我同意使用条款",
+      "required": "您必须同意条款",
+      "clause1_title": "1. 目的",
+      "clause1_text": "MMM 是会员之间的对接平台。它把兴趣互补的人介绍给彼此，并记录由这些介绍产生的交易。平台不是交易的当事方：签约的是会员彼此之间。",
+      "clause2_title": "2. 佣金",
+      "clause2_text": "经平台介绍而产生的交易，需按以下条件向 MMM 支付佣金：",
+      "clause2_item1": "佣金比例根据交易的类型和规模逐笔确定；",
+      "clause2_item2": "上限为该笔交易申报利润的 50%；",
+      "clause2_item3": "在此版本中，付款在平台之外完成；网站仅记录交易和应付佣金。",
+      "clause3_title": "3. 有效期与变更",
+      "clause3_text": "本文本为临时版本，正在法务审核中。最终版本发布时将通知您，并需要您重新接受。本次接受的日期和确切文本将被记录。"
     }
   },
   "dashboard": {
@@ -703,6 +720,7 @@
       "individual": "自然人",
       "legalEntity": "法人实体",
       "mei": "个体微型创业者（MEI）",
+      "nonprofit": "非营利组织",
       "companySize": "企业规模",
       "companySizePlaceholder": "请选择规模",
       "sizeMei": "MEI",

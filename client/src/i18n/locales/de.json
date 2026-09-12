@@ -199,7 +199,9 @@
       "s8_title": "Was ich habe",
       "s8_sub": "Verfügbare Ressourcen und Vermögenswerte",
       "s9_title": "Was ich brauche",
-      "s9_sub": "Anforderungen und Bedürfnisse"
+      "s9_sub": "Anforderungen und Bedürfnisse",
+      "s10_title": "Geschäftsbedingungen",
+      "s10_sub": "Lesen und akzeptieren Sie unsere Bedingungen"
     },
     "specialties": {
       "tech": "Technologie & Software",
@@ -285,6 +287,7 @@
     "successMsg": "🎉 Profil erstellt! Weiterleitung zum Dashboard...",
     "errorMsg": "Profil konnte nicht gespeichert werden.",
     "maxValues": "Maximal 4 Werte ausgewählt",
+    "maxSpecialties": "Maximal 5 Fachrichtungen ausgewählt",
     "dataPrivacy": "Ihre Daten sind verschlüsselt und werden ohne Ihre Genehmigung niemals geteilt",
     "nav": {
       "back": "Zurück",
@@ -428,6 +431,20 @@
       "selectedPlural": "ausgewählt",
       "selectedF": "ausgewählt",
       "selectedFPlural": "ausgewählt"
+    },
+    "terms": {
+      "title": "Nutzungsbedingungen und Provisionsvereinbarung",
+      "accept": "Ich akzeptiere die Nutzungsbedingungen",
+      "required": "Sie müssen den Bedingungen zustimmen",
+      "clause1_title": "1. Gegenstand",
+      "clause1_text": "MMM ist eine Plattform für die Vernetzung ihrer Mitglieder. Sie stellt Personen vor, deren Interessen sich ergänzen, und erfasst die Geschäfte, die aus diesen Vorstellungen entstehen. Die Plattform ist nicht Vertragspartei: Die Mitglieder schließen die Verträge untereinander.",
+      "clause2_title": "2. Provision",
+      "clause2_text": "Ein Geschäft, das aus einer Vorstellung über die Plattform entsteht, begründet eine Provision für MMM, und zwar unter folgenden Bedingungen:",
+      "clause2_item1": "der Prozentsatz wird im Einzelfall festgelegt, je nach Art und Umfang des Geschäfts;",
+      "clause2_item2": "die Obergrenze liegt bei 50 % des für das Geschäft erklärten Gewinns;",
+      "clause2_item3": "in dieser Version erfolgt die Zahlung außerhalb der Plattform; die Website erfasst nur das Geschäft und die fällige Provision.",
+      "clause3_title": "3. Laufzeit und Änderungen",
+      "clause3_text": "Dieser Text ist vorläufig und wird rechtlich geprüft. Sobald die endgültige Fassung veröffentlicht ist, werden Sie benachrichtigt und müssen erneut zustimmen. Datum und genauer Wortlaut dieser Zustimmung werden gespeichert."
     }
   },
   "dashboard": {
@@ -703,6 +720,7 @@
       "individual": "Natürliche Person",
       "legalEntity": "Juristische Person",
       "mei": "Einzelne Kleinstunternehmerin (MEI)",
+      "nonprofit": "Gemeinnützige Organisation",
       "companySize": "Unternehmensgröße",
       "companySizePlaceholder": "Größe auswählen",
       "sizeMei": "MEI",
