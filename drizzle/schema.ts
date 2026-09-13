@@ -1229,10 +1229,24 @@ export const dealClosures = mysqlTable("deal_closures", {
   roomId:            int("roomId").notNull(),
   opportunityId:     int("opportunityId").notNull(),
   // Quem registrou o encerramento; as duas partes podem.
+  //
+  // A Dra. Glenda respondeu em 12/09/2026 que quem declara é o CONSULTOR DE
+  // NEGÓCIOS, não as partes. O papel de consultor ainda não existe no sistema
+  // (é a etapa 12, desenhada pelo Rosber no mesmo dia), então por ora quem
+  // registra continua sendo uma das partes e esta coluna guarda quem foi. Quando
+  // o consultor existir, a trava de quem pode registrar muda aqui.
   closedByUserId:    int("closedByUserId").notNull(),
   currency:          varchar("currency", { length: 3 }).default("BRL").notNull(),
   dealValue:         decimal("dealValue", { precision: 14, scale: 2 }).notNull(),
-  declaredProfit:    decimal("declaredProfit", { precision: 14, scale: 2 }).notNull(),
+  // OS HONORÁRIOS DA INTERMEDIAÇÃO, e não o lucro do negócio.
+  //
+  // A primeira versão desta tabela tinha `declaredProfit` e calculava a comissão
+  // sobre o lucro declarado — leitura da decisão D1 de 31/08. Em 12/09/2026 a
+  // Dra. Glenda respondeu à pergunta direta ("o teto de 50% incide sobre o lucro
+  // ou sobre o valor do negócio?"): "Incide sobre o valor dos honorários da
+  // intermediação do negócio". Não é o lucro, não é o valor do negócio: é o que
+  // a plataforma cobra para intermediar.
+  intermediationFee: decimal("intermediationFee", { precision: 14, scale: 2 }).notNull(),
   commissionPercent: decimal("commissionPercent", { precision: 5, scale: 2 }).notNull(),
   // Guardado, não recalculado na leitura: o percentual combinado pode mudar de
   // regra no futuro e o que foi acordado naquele dia precisa continuar de pé.

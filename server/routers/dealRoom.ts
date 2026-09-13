@@ -378,14 +378,28 @@ export const dealRoomRouter = router({
    * A11 / etapa 12 — encerrar a negociação registrando o negócio e a comissão.
    *
    * A decisão D2 da cliente é que o dinheiro NÃO passa pela plataforma nesta
-   * versão. Então o que o site faz é registrar: valor do negócio, lucro
-   * declarado, percentual combinado e a comissão que isso dá. Sem esse registro,
-   * cobrar depois é palavra contra palavra — e era isso que faltava para a A11
-   * deixar de ser meio cartão.
+   * versão. Então o que o site faz é registrar: valor do negócio, honorários da
+   * intermediação, percentual combinado e a comissão que isso dá. Sem esse
+   * registro, cobrar depois é palavra contra palavra — e era isso que faltava
+   * para a A11 deixar de ser meio cartão.
    *
-   * Teto de 50% sobre o LUCRO declarado, e não sobre o valor do negócio: é o que
-   * a Dra. Glenda fixou em 31/08 (D1). O percentual em si é caso a caso, também
-   * por decisão dela, então o servidor não o calcula — só recusa acima do teto.
+   * O TETO DE 50% INCIDE SOBRE OS HONORÁRIOS DA INTERMEDIAÇÃO.
+   *
+   * A primeira versão deste procedimento calculava a comissão sobre o LUCRO
+   * declarado, lendo assim a decisão D1 de 31/08. Em 12/09/2026 a pergunta foi
+   * feita direto — "o teto de 50% incide sobre o lucro ou sobre o valor do
+   * negócio?" — e a Dra. Glenda respondeu: "Incide sobre o valor dos honorários
+   * da intermediação do negócio". Não é nenhum dos dois que a pergunta ofereceu:
+   * é o que a plataforma cobra para intermediar.
+   *
+   * O percentual em si é caso a caso e, pela mesma resposta, quem o define é a
+   * Diretoria Comercial, "por critérios que serão definidos em outra ocasião".
+   * Ou seja: o servidor NÃO tem como calcular o percentual, só recusar acima do
+   * teto. Quando os critérios existirem, é aqui que eles entram.
+   *
+   * Quem declara, pela mesma resposta, é o CONSULTOR DE NEGÓCIOS — papel que
+   * ainda não existe no sistema (etapa 12). Enquanto não existir, quem registra
+   * é uma das partes, e `closedByUserId` guarda quem foi.
    *
    * Encerrar é evento único: `deal_closure_room_unique` garante uma linha por
    * sala, e encerrar de novo devolve o registro que já existe em vez de criar
@@ -396,7 +410,7 @@ export const dealRoomRouter = router({
       roomId: z.number().int(),
       currency: z.enum(["BRL", "USD", "EUR"]).default("BRL"),
       dealValue: z.number().positive().max(99_999_999_999.99),
-      declaredProfit: z.number().nonnegative().max(99_999_999_999.99),
+      intermediationFee: z.number().nonnegative().max(99_999_999_999.99),
       commissionPercent: z.number().min(0).max(50),
       notes: z.string().max(1000).optional(),
     }))
@@ -413,10 +427,10 @@ export const dealRoomRouter = router({
       if (room.status === "awaiting_nda") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "A sala ainda aguarda o aceite do acordo pelas duas partes." });
       }
-      // O lucro não pode ser maior que o negócio: erro de digitação comum, e
-      // inflaria a comissão devida.
-      if (input.declaredProfit > input.dealValue) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "O lucro declarado não pode ser maior que o valor do negócio." });
+      // Os honorários não podem ser maiores que o próprio negócio: é erro de
+      // digitação comum, e inflaria a comissão devida.
+      if (input.intermediationFee > input.dealValue) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Os honorários da intermediação não podem ser maiores que o valor do negócio." });
       }
 
       const [jaFechado] = await db.select().from(dealClosures).where(eq(dealClosures.roomId, input.roomId)).limit(1);
@@ -424,7 +438,7 @@ export const dealRoomRouter = router({
 
       // Duas casas, arredondadas uma vez só: o valor gravado é o que a fatura vai
       // cobrar, então não pode depender de quem recalcula depois.
-      const comissao = Math.round(input.declaredProfit * input.commissionPercent) / 100;
+      const comissao = Math.round(input.intermediationFee * input.commissionPercent) / 100;
 
       try {
         await db.insert(dealClosures).values({
@@ -433,7 +447,7 @@ export const dealRoomRouter = router({
           closedByUserId: ctx.user.id,
           currency: input.currency,
           dealValue: input.dealValue.toFixed(2),
-          declaredProfit: input.declaredProfit.toFixed(2),
+          intermediationFee: input.intermediationFee.toFixed(2),
           commissionPercent: input.commissionPercent.toFixed(2),
           commissionAmount: comissao.toFixed(2),
           notes: input.notes ?? null,
@@ -455,7 +469,7 @@ export const dealRoomRouter = router({
         userId: outraParte,
         type: "deal_closed",
         title: "Negociação encerrada e registrada",
-        body: `Valor ${input.currency} ${input.dealValue.toFixed(2)}, lucro declarado ${input.declaredProfit.toFixed(2)}, comissão de ${input.commissionPercent.toFixed(2)}% = ${input.currency} ${comissao.toFixed(2)}.`,
+        body: `Valor ${input.currency} ${input.dealValue.toFixed(2)}, honorários da intermediação ${input.intermediationFee.toFixed(2)}, comissão de ${input.commissionPercent.toFixed(2)}% sobre eles = ${input.currency} ${comissao.toFixed(2)}.`,
         actionUrl: `/deal-room/${input.roomId}`,
       });
 

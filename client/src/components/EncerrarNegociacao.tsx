@@ -18,7 +18,7 @@ export function EncerrarNegociacao({ roomId, onEncerrada }: { roomId: number; on
   const { t } = useTranslation();
   const [aberto, setAberto] = useState(false);
   const [valor, setValor] = useState("");
-  const [lucro, setLucro] = useState("");
+  const [honorarios, setHonorarios] = useState("");
   const [percentual, setPercentual] = useState("");
   const [moeda, setMoeda] = useState<"BRL" | "USD" | "EUR">("BRL");
   const [observacoes, setObservacoes] = useState("");
@@ -41,17 +41,17 @@ export function EncerrarNegociacao({ roomId, onEncerrada }: { roomId: number; on
     return Number.isFinite(n) ? n : NaN;
   };
   const nValor = numero(valor);
-  const nLucro = numero(lucro);
+  const nHonorarios = numero(honorarios);
   const nPercentual = numero(percentual);
 
   const comissao =
-    Number.isFinite(nLucro) && Number.isFinite(nPercentual) && nLucro >= 0 && nPercentual >= 0
-      ? Math.round(nLucro * nPercentual) / 100
+    Number.isFinite(nHonorarios) && Number.isFinite(nPercentual) && nHonorarios >= 0 && nPercentual >= 0
+      ? Math.round(nHonorarios * nPercentual) / 100
       : null;
 
   const podeEnviar =
     Number.isFinite(nValor) && nValor > 0 &&
-    Number.isFinite(nLucro) && nLucro >= 0 && nLucro <= nValor &&
+    Number.isFinite(nHonorarios) && nHonorarios >= 0 && nHonorarios <= nValor &&
     Number.isFinite(nPercentual) && nPercentual >= 0 && nPercentual <= 50;
 
   // Já registrado: a sala mostra o que foi combinado, para as duas partes conferirem.
@@ -65,8 +65,8 @@ export function EncerrarNegociacao({ roomId, onEncerrada }: { roomId: number; on
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
           <dt className="text-white/45">{t("dealRoom.campoValor")}</dt>
           <dd className="text-right font-medium text-white tabular-nums">{registro.currency} {registro.dealValue}</dd>
-          <dt className="text-white/45">{t("dealRoom.campoLucro")}</dt>
-          <dd className="text-right font-medium text-white tabular-nums">{registro.currency} {registro.declaredProfit}</dd>
+          <dt className="text-white/45">{t("dealRoom.campoHonorarios")}</dt>
+          <dd className="text-right font-medium text-white tabular-nums">{registro.currency} {registro.intermediationFee}</dd>
           <dt className="text-white/45">{t("dealRoom.campoPercentual")}</dt>
           <dd className="text-right font-medium text-white tabular-nums">{registro.commissionPercent}%</dd>
           <dt className="font-semibold text-amber-300">{t("dealRoom.campoComissao")}</dt>
@@ -116,9 +116,9 @@ export function EncerrarNegociacao({ roomId, onEncerrada }: { roomId: number; on
           />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-xs uppercase tracking-wider text-white/45">{t("dealRoom.campoLucro")}</span>
+          <span className="mb-1 block text-xs uppercase tracking-wider text-white/45">{t("dealRoom.campoHonorarios")}</span>
           <input
-            inputMode="decimal" value={lucro} onChange={e => setLucro(e.target.value)} placeholder="0,00"
+            inputMode="decimal" value={honorarios} onChange={e => setHonorarios(e.target.value)} placeholder="0,00"
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white tabular-nums placeholder:text-white/25"
           />
         </label>
@@ -150,8 +150,8 @@ export function EncerrarNegociacao({ roomId, onEncerrada }: { roomId: number; on
         <p className="mt-1 text-xs text-white/45">{t("dealRoom.avisoComissaoDetalhe")}</p>
       </div>
 
-      {Number.isFinite(nLucro) && Number.isFinite(nValor) && nLucro > nValor && (
-        <p className="mt-2 text-xs text-red-300/80">{t("dealRoom.erroLucroMaior")}</p>
+      {Number.isFinite(nHonorarios) && Number.isFinite(nValor) && nHonorarios > nValor && (
+        <p className="mt-2 text-xs text-red-300/80">{t("dealRoom.erroHonorariosMaior")}</p>
       )}
       {Number.isFinite(nPercentual) && nPercentual > 50 && (
         <p className="mt-2 text-xs text-red-300/80">{t("dealRoom.erroTetoComissao")}</p>
@@ -164,7 +164,7 @@ export function EncerrarNegociacao({ roomId, onEncerrada }: { roomId: number; on
           onClick={() =>
             encerrar.mutate({
               roomId, currency: moeda,
-              dealValue: nValor, declaredProfit: nLucro, commissionPercent: nPercentual,
+              dealValue: nValor, intermediationFee: nHonorarios, commissionPercent: nPercentual,
               notes: observacoes.trim() || undefined,
             })
           }

@@ -71,6 +71,13 @@
       "when": 1789241994725,
       "tag": "0009_indices-da-rede-particular",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1789261958052,
+      "tag": "0010_registro-de-negocio-fechado",
+      "breakpoints": true
     }
   ]
 }

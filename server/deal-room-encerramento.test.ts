@@ -12,7 +12,7 @@ vi.hoisted(() => {
  *
  * - O teto de 50% é sobre o LUCRO declarado, não sobre o valor do negócio (D1,
  *   Dra. Glenda, 31/08). São duas colunas separadas de propósito, e a comissão
- *   sai do lucro.
+ *   sai dos honorários da intermediação.
  * - Quem encerra é quem negociou. Ouro entra em sala alheia para acompanhar,
  *   mas registrar negócio dos outros não é leitura, é ato de parte.
  * - Encerrar é evento único: a segunda chamada devolve o registro que já existe
@@ -82,7 +82,7 @@ const SALA_ATIVA = { id: 10, opportunityId: 99, ownerId: 1, interestedId: 2, sta
 
 const encerrar = (userId: number, entrada: Record<string, unknown>, role = "silver") =>
   appRouter.createCaller(contexto(userId, role)).dealRoom.closeRoom({
-    roomId: 10, currency: "BRL", dealValue: 100_000, declaredProfit: 20_000, commissionPercent: 10,
+    roomId: 10, currency: "BRL", dealValue: 100_000, intermediationFee: 20_000, commissionPercent: 10,
     ...entrada,
   } as never);
 
@@ -95,14 +95,16 @@ describe("Deal Room — encerrar registrando o negócio e a comissão", () => {
     criarNotificacaoMock.mockClear();
   });
 
-  it("grava valor, lucro, percentual e a comissão que isso dá", async () => {
+  it("grava valor, honorários, percentual e a comissão que isso dá", async () => {
     const r = await encerrar(1, {});
     expect(r.success).toBe(true);
     const gravado = estado.fechamentos[0];
     expect(gravado.dealValue).toBe("100000.00");
-    expect(gravado.declaredProfit).toBe("20000.00");
+    expect(gravado.intermediationFee).toBe("20000.00");
     expect(gravado.commissionPercent).toBe("10.00");
-    // 10% de 20.000 de lucro — e não de 100.000 de negócio.
+    // 10% dos 20.000 de honorários da intermediação — e não dos 100.000 do
+    // negócio. A Dra. Glenda respondeu em 12/09 que o teto incide sobre os
+    // honorários, não sobre o lucro nem sobre o valor do negócio.
     expect(gravado.commissionAmount).toBe("2000.00");
     expect(gravado.closedByUserId).toBe(1);
   });
@@ -123,8 +125,32 @@ describe("Deal Room — encerrar registrando o negócio e a comissão", () => {
     await expect(encerrar(1, { commissionPercent: 50 })).resolves.toMatchObject({ success: true });
   });
 
-  it("recusa lucro maior que o valor do negócio", async () => {
-    await expect(encerrar(1, { dealValue: 1000, declaredProfit: 5000 })).rejects.toThrow(/lucro declarado/i);
+  it("recusa honorários maiores que o valor do negócio", async () => {
+    await expect(encerrar(1, { dealValue: 1000, intermediationFee: 5000 })).rejects.toThrow(/honorários da intermediação/i);
+  });
+
+  // ── A MUDANÇA DE 12/09, e a razão de ela estar num teste ────────────────────
+  // A primeira versão deste procedimento pedia `declaredProfit` e calculava a
+  // comissão sobre o lucro. A pergunta foi feita direto à Dra. Glenda em 12/09
+  // ("o teto de 50% incide sobre o lucro ou sobre o valor do negócio?") e a
+  // resposta não foi nenhuma das duas: "Incide sobre o valor dos honorários da
+  // intermediação do negócio". Trocar só o nome da variável não prova nada —
+  // o que prova é o contrato recusar o campo antigo e a conta sair da base certa.
+  it("o campo antigo declaredProfit é recusado: o contrato mudou, não só o nome", async () => {
+    await expect(
+      encerrar(1, { declaredProfit: 20_000, intermediationFee: undefined } as never),
+    ).rejects.toThrow();
+  });
+
+  it("a comissão sai dos honorários, e não do valor do negócio nem de um lucro", async () => {
+    // Três números propositalmente diferentes: negócio 500.000, honorários
+    // 40.000, percentual 25%. A conta certa é 25% de 40.000 = 10.000. Se
+    // alguém religar a conta no valor do negócio, dá 125.000 e o teste cai.
+    await encerrar(1, { dealValue: 500_000, intermediationFee: 40_000, commissionPercent: 25 });
+    const gravado = estado.fechamentos[0];
+    expect(gravado.dealValue).toBe("500000.00");
+    expect(gravado.intermediationFee).toBe("40000.00");
+    expect(gravado.commissionAmount).toBe("10000.00");
   });
 
   it("quem não participa da negociação não encerra, nem sendo Ouro", async () => {
@@ -140,7 +166,7 @@ describe("Deal Room — encerrar registrando o negócio e a comissão", () => {
   it("encerrar de novo devolve o registro que já existe, sem criar outro", async () => {
     await encerrar(1, {});
     expect(estado.fechamentos).toHaveLength(1);
-    const segunda = await encerrar(2, { dealValue: 999, declaredProfit: 100 });
+    const segunda = await encerrar(2, { dealValue: 999, intermediationFee: 100 });
     expect(segunda.jaEstavaFechado).toBe(true);
     expect(estado.fechamentos).toHaveLength(1);
     expect(estado.fechamentos[0].dealValue).toBe("100000.00");
