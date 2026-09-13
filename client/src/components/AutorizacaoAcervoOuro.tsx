@@ -82,7 +82,7 @@ export function AutorizacaoAcervoOuro() {
             type="button"
             onClick={() => autorizar.mutate({ type: "termo_acesso_ouro" })}
             disabled={autorizar.isPending}
-            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-[#060e1a] transition-colors hover:bg-amber-400 disabled:opacity-60"
+            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-[#151312] transition-colors hover:bg-amber-400 disabled:opacity-60"
           >
             {autorizar.isPending && <Loader2 className="animate-spin" size={13} />}
             {t("network.ouroAutorizarBotao")}

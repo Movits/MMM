@@ -129,7 +129,7 @@ function ContextForm({ initial, types, onSave, onClose, loading }: {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg bg-[#0a1628] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <h2 className="font-bold text-white">{initial?.id ? t("contexts.editarContextoTitulo") : t("contexts.novoContextoTitulo")}</h2>
           <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors"><X size={18} /></button>
@@ -146,8 +146,8 @@ function ContextForm({ initial, types, onSave, onClose, loading }: {
             <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">{t("contexts.labelTipoContexto")}</label>
             <select value={form.contextTypeId} onChange={e => set("contextTypeId", e.target.value)}
               className="w-full bg-white/5 border border-white/10 text-white rounded-md px-3 py-2 text-sm focus:border-amber-500/50 focus:outline-none">
-              <option className="bg-white text-[#2D3E50]" value="">{t("contexts.selecioneTipo")}</option>
-              {types.map(t2 => <option className="bg-white text-[#2D3E50]" key={t2.id} value={t2.id}>{t2.name}</option>)}
+              <option className="bg-white text-[#322C26]" value="">{t("contexts.selecioneTipo")}</option>
+              {types.map(t2 => <option className="bg-white text-[#322C26]" key={t2.id} value={t2.id}>{t2.name}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -180,7 +180,7 @@ function ContextForm({ initial, types, onSave, onClose, loading }: {
         <div className="flex items-center justify-between px-6 py-4 border-t border-white/10">
           <Button variant="ghost" onClick={onClose} className="text-white/50 hover:text-white/80">{t("contexts.botaoCancelar")}</Button>
           <Button onClick={() => onSave(form)} disabled={loading || !form.name.trim()}
-            className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold">
+            className="bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold">
             {loading ? t("contexts.salvando") : t("contexts.botaoSalvar")}
           </Button>
         </div>
@@ -240,7 +240,7 @@ function LinkContactModal({ contextId, contextName, linkedContactIds, onClose, o
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg bg-[#0a1628] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <h2 className="font-bold text-white">{t("contexts.vincularContatoTitulo")}</h2>
           <button onClick={onClose} className="text-white/40 hover:text-white/70"><X size={18} /></button>
@@ -301,7 +301,7 @@ function LinkContactModal({ contextId, contextName, linkedContactIds, onClose, o
                 <div className="flex gap-2">
                   {(["pessoal", "profissional", "ambos"] as const).map(r => (
                     <button key={r} onClick={() => setRelType(r)}
-                      className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${relType === r ? "bg-amber-500 border-amber-500 text-[#060e1a]" : "bg-white/5 border-white/15 text-white/60 hover:border-white/30"}`}>
+                      className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${relType === r ? "bg-amber-500 border-amber-500 text-[#151312]" : "bg-white/5 border-white/15 text-white/60 hover:border-white/30"}`}>
                       {relTypeLabels[r]}
                     </button>
                   ))}
@@ -324,7 +324,7 @@ function LinkContactModal({ contextId, contextName, linkedContactIds, onClose, o
               eventDate: eventDate || null, city: city || null,
               notes: notes || null, relationshipType: relType ?? undefined,
             })} disabled={linkMut.isPending}
-              className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold">
+              className="bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold">
               {linkMut.isPending ? t("contexts.vinculando") : t("contexts.botaoVincular")}
             </Button>
           )}
@@ -404,7 +404,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
   if (isError) return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg bg-[#0a1628] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-white/10">
           <button onClick={onClose} className="text-white/40 hover:text-white/70 flex items-center gap-1.5 text-sm">
             <ChevronLeft size={16} /> {t("contexts.voltarContextos")}
@@ -422,7 +422,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg bg-[#0a1628] border border-white/15 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <button onClick={onClose} className="text-white/40 hover:text-white/70 flex items-center gap-1.5 text-sm">
@@ -522,7 +522,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
               </div>
               <Button size="sm" onClick={() => addPartMut.mutate({ contextId, name: partName, company: partCompany || null, role: partRole || null })}
                 disabled={!partName.trim() || addPartMut.isPending}
-                className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold w-full">
+                className="bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold w-full">
                 {addPartMut.isPending ? t("contexts.adicionando") : t("contexts.botaoAdicionar")}
               </Button>
             </div>
@@ -659,17 +659,17 @@ export default function Contexts() {
   };
 
   if (authLoading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#060e1a]">
+    <div className="min-h-screen flex items-center justify-center bg-[#151312]">
       <div className="w-8 h-8 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin" />
     </div>
   );
 
   if (!isAuthenticated) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#060e1a] p-6">
+    <div className="min-h-screen flex items-center justify-center bg-[#151312] p-6">
       <div className="text-center">
         <Lock size={40} className="text-amber-500/60 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-white mb-2">{t("contexts.areaRestritaTitulo")}</h2>
-        <a href={getLoginUrl()} className="px-6 py-3 bg-amber-500 text-[#060e1a] font-bold rounded-xl hover:bg-amber-400 transition-colors inline-block mt-4">
+        <a href={getLoginUrl()} className="px-6 py-3 bg-amber-500 text-[#151312] font-bold rounded-xl hover:bg-amber-400 transition-colors inline-block mt-4">
           {t("contexts.botaoEntrar")}
         </a>
       </div>
@@ -684,9 +684,9 @@ export default function Contexts() {
   const typeList: CtxType[] = types ?? [];
 
   return (
-    <div className="min-h-screen bg-[#060e1a] text-white">
+    <div className="min-h-screen bg-[#151312] text-white">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#060e1a]/95 backdrop-blur-sm border-b border-white/8 px-4 sm:px-6 py-4">
+      <div className="sticky top-0 z-10 bg-[#151312]/95 backdrop-blur-sm border-b border-white/8 px-4 sm:px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="text-white/40 hover:text-white/70 transition-colors">
@@ -698,7 +698,7 @@ export default function Contexts() {
             </div>
           </div>
           <Button onClick={() => { setEditCtx(null); setShowForm(true); }}
-            className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold gap-1.5">
+            className="bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold gap-1.5">
             <Plus size={16} /> {t("contexts.botaoNovo")}
           </Button>
         </div>
@@ -722,13 +722,13 @@ export default function Contexts() {
         {/* Filtros por tipo */}
         <div className="flex gap-2 overflow-x-auto pb-1">
           <button onClick={() => { setFilterType(""); setPage(1); }}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${!filterType ? "bg-amber-500 border-amber-500 text-[#060e1a] font-bold" : "bg-white/5 border-white/20 text-white/60 hover:border-white/40"}`}>
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${!filterType ? "bg-amber-500 border-amber-500 text-[#151312] font-bold" : "bg-white/5 border-white/20 text-white/60 hover:border-white/40"}`}>
             {t("contexts.filtroTodos")}
           </button>
           {typeList.map(ct => (
             <button key={ct.id} onClick={() => { setFilterType(filterType === ct.slug ? "" : ct.slug); setPage(1); }}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${filterType === ct.slug ? "font-bold" : "bg-white/5 border-white/20 text-white/60 hover:border-white/40"}`}
-              style={filterType === ct.slug ? { background: (ct.colorToken ?? "#F59E0B") + "30", borderColor: (ct.colorToken ?? "#F59E0B") + "80", color: ct.colorToken ?? "#F59E0B" } : {}}>
+              style={filterType === ct.slug ? { background: (ct.colorToken ?? "#C98F70") + "30", borderColor: (ct.colorToken ?? "#C98F70") + "80", color: ct.colorToken ?? "#C98F70" } : {}}>
               {ct.name}
             </button>
           ))}
@@ -758,7 +758,7 @@ export default function Contexts() {
               {debouncedSearch || filterType ? t("contexts.tenteOutrosTermos") : t("contexts.registreOndeConheceu")}
             </p>
             {!debouncedSearch && !filterType && (
-              <Button onClick={() => setShowForm(true)} className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold gap-1.5">
+              <Button onClick={() => setShowForm(true)} className="bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold gap-1.5">
                 <Plus size={16} /> {t("contexts.botaoRegistrarPrimeiro")}
               </Button>
             )}

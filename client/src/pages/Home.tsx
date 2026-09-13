@@ -205,9 +205,9 @@ function useParallax<T extends HTMLElement>() {
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-center gap-3 mb-4">
-      <span className="h-px w-8 bg-[#f5a623]/40" />
-      <span className="text-[#f5a623] text-xs font-bold uppercase tracking-[0.25em]">{children}</span>
-      <span className="h-px w-8 bg-[#f5a623]/40" />
+      <span className="h-px w-8 bg-[#c98f70]/40" />
+      <span className="text-[#c98f70] text-xs font-bold uppercase tracking-[0.25em]">{children}</span>
+      <span className="h-px w-8 bg-[#c98f70]/40" />
     </div>
   );
 }
@@ -234,7 +234,7 @@ function LanguageSelector() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 z-50 bg-[#0a1424]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden min-w-[170px] p-1.5"
+          <div className="absolute right-0 top-full mt-2 z-50 bg-[#211e1b]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden min-w-[170px] p-1.5"
             style={{ animation: "fadeInDown 0.2s cubic-bezier(0.23,1,0.32,1) both" }}>
             {LANGUAGES.map(lang => (
               <button
@@ -242,7 +242,7 @@ function LanguageSelector() {
                 onClick={() => { i18n.changeLanguage(lang.code); setOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3.5 py-2 text-sm rounded-xl transition-colors duration-150 text-left
                   ${lang.code === idiomaAtual
-                    ? "bg-[#f5a623]/15 text-[#f5a623]"
+                    ? "bg-[#c98f70]/15 text-[#c98f70]"
                     : "text-white/60 hover:bg-white/[0.06] hover:text-white"
                   }`}
               >
@@ -316,7 +316,7 @@ function FAQSection() {
         <div className="text-center mb-14">
           <SectionLabel>FAQ</SectionLabel>
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
-            Tire suas <span className="text-[#f5a623]">dúvidas</span>
+            Tire suas <span className="text-[#c98f70]">dúvidas</span>
           </h2>
           <p className="text-white/40 text-lg">As respostas para as perguntas mais comuns. E se a sua não estiver aqui, pergunte à IA logo abaixo.</p>
         </div>
@@ -324,13 +324,13 @@ function FAQSection() {
         {/* Perguntas pré-definidas */}
         <div className="space-y-2.5 mb-8">
           {FAQ_ITEMS.map((item, idx) => (
-            <div key={idx} className="bg-[#0a1424]/90 border border-white/[0.06] rounded-2xl overflow-hidden transition-all duration-200 hover:border-white/15">
+            <div key={idx} className="bg-[#211e1b]/90 border border-white/[0.06] rounded-2xl overflow-hidden transition-all duration-200 hover:border-white/15">
               <button
                 onClick={() => handleToggle(idx)}
                 className="w-full flex items-center justify-between px-6 py-4 text-left"
               >
                 <span className="text-white/90 font-medium text-sm md:text-base">{item.q}</span>
-                <span className={`text-[#f5a623] text-xl font-bold transition-transform duration-200 flex-shrink-0 ml-4 ${openIdx === idx ? 'rotate-45' : ''}`}>+</span>
+                <span className={`text-[#c98f70] text-xl font-bold transition-transform duration-200 flex-shrink-0 ml-4 ${openIdx === idx ? 'rotate-45' : ''}`}>+</span>
               </button>
               {openIdx === idx && (
                 <div className="px-6 pb-5">
@@ -342,7 +342,7 @@ function FAQSection() {
         </div>
 
         {/* Campo de pergunta personalizada */}
-        <div className="bg-[#0a1424]/90 border border-white/[0.06] rounded-2xl p-6">
+        <div className="bg-[#211e1b]/90 border border-white/[0.06] rounded-2xl p-6">
           <p className="text-white/50 text-sm mb-3 font-medium">Tem outra dúvida? Pergunte à IA:</p>
           <div className="flex gap-3">
             <input
@@ -351,20 +351,20 @@ function FAQSection() {
               onChange={e => setCustomQ(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCustom()}
               placeholder="Ex: Como funciona a verificação de identidade?"
-              className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#f5a623]/50 transition-colors"
+              className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#c98f70]/50 transition-colors"
             />
             <button
               onClick={handleCustom}
               disabled={customLoading || !customQ.trim()}
-              className="bg-[#f5a623] hover:bg-[#e09520] disabled:opacity-40 text-[#060e1a] font-bold px-5 py-2.5 rounded-xl text-sm transition-all duration-200 active:scale-95 flex-shrink-0 flex items-center gap-2"
+              className="bg-[#c98f70] hover:bg-[#b07a5c] disabled:opacity-40 text-[#151312] font-bold px-5 py-2.5 rounded-xl text-sm transition-all duration-200 active:scale-95 flex-shrink-0 flex items-center gap-2"
             >
               {customLoading ? (
-                <div className="w-4 h-4 border-2 border-[#060e1a]/40 border-t-[#060e1a] rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-[#151312]/40 border-t-[#151312] rounded-full animate-spin" />
               ) : <><Send className="w-3.5 h-3.5" /> Perguntar</>}
             </button>
           </div>
           {customAnswer && (
-            <div className="mt-4 p-4 bg-[#f5a623]/[0.04] border border-[#f5a623]/15 rounded-xl">
+            <div className="mt-4 p-4 bg-[#c98f70]/[0.04] border border-[#c98f70]/15 rounded-xl">
               <p className="text-white/75 text-sm leading-relaxed whitespace-pre-line">{customAnswer}</p>
             </div>
           )}
@@ -420,11 +420,11 @@ function ChaveDoMovimento({ ativo, alternar }: { ativo: boolean; alternar: () =>
       type="button"
       onClick={alternar}
       aria-pressed={ativo}
-      className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-[#0a1424]/85 px-3.5 py-2 text-[11px] font-medium text-white/55 backdrop-blur-xl transition-colors duration-200 hover:border-white/25 hover:text-white/85"
+      className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-[#211e1b]/85 px-3.5 py-2 text-[11px] font-medium text-white/55 backdrop-blur-xl transition-colors duration-200 hover:border-white/25 hover:text-white/85"
       title={ativo ? t("hero.motionTurnOff") : t("hero.motionTurnOn")}
     >
       <span
-        className={`h-1.5 w-1.5 rounded-full ${ativo ? "bg-[#f5a623]" : "bg-white/30"}`}
+        className={`h-1.5 w-1.5 rounded-full ${ativo ? "bg-[#c98f70]" : "bg-white/30"}`}
         aria-hidden="true"
       />
       {ativo ? t("hero.motionOn") : t("hero.motionOff")}
@@ -525,19 +525,19 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#060b14] text-white overflow-x-hidden antialiased">
+    <div className="min-h-screen bg-[#151312] text-white overflow-x-hidden antialiased">
       <FundoDoPlaneta progresso={progressoDaPagina} animar={movimentoAtivo} pracas={pracas} ligacoes={ligacoes} />
       <ChaveDoMovimento ativo={movimentoAtivo} alternar={alternarMovimento} />
 
       {/* ─── NAVBAR ─── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.05] bg-[#060b14]/80 backdrop-blur-2xl">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.05] bg-[#151312]/80 backdrop-blur-2xl">
         <div className="flex items-center justify-between px-6 md:px-12 py-3.5">
           <div className="flex items-center gap-2.5">
             <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className="cursor-pointer" aria-label="Voltar ao topo">
               <BrandMark />
             </a>
-            <span className="text-[10px] uppercase tracking-wider bg-[#f5a623]/10 text-[#f5a623] border border-[#f5a623]/20 px-2 py-0.5 rounded-full font-semibold">{t("nav.beta")}</span>
+            <span className="text-[10px] uppercase tracking-wider bg-[#c98f70]/10 text-[#c98f70] border border-[#c98f70]/20 px-2 py-0.5 rounded-full font-semibold">{t("nav.beta")}</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/50">
             <button onClick={() => scrollTo('como-funciona')} className="hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.howItWorks")}</button>
@@ -558,7 +558,7 @@ export default function Home() {
             <LanguageSelector />
             {isAuthenticated ? (
               <Link href="/dashboard">
-                <button className="bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] font-bold px-5 py-2 rounded-xl text-sm transition-all duration-200 active:scale-95">
+                <button className="bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-5 py-2 rounded-xl text-sm transition-all duration-200 active:scale-95">
                   {t("nav.myDashboard")}
                 </button>
               </Link>
@@ -566,7 +566,7 @@ export default function Home() {
               <>
                 <Link href="/login" className="text-sm text-white/50 hover:text-white transition-colors duration-200">{t("nav.login")}</Link>
                 <Link href="/register">
-                  <button className="bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] font-bold px-5 py-2 rounded-xl text-sm transition-all duration-200 active:scale-95">
+                  <button className="bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-5 py-2 rounded-xl text-sm transition-all duration-200 active:scale-95">
                     {t("nav.startFree")}
                   </button>
                 </Link>
@@ -582,14 +582,14 @@ export default function Home() {
         style={{ background: 'rgba(6,11,20,0.97)', backdropFilter: 'blur(16px)' }}
       >
         <div className={`flex flex-col items-center justify-center h-full gap-8 transition-all duration-300 ${mobileMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'}`}>
-          <button onClick={() => scrollTo('como-funciona')} className="text-2xl font-bold text-white hover:text-[#f5a623] transition-colors duration-200 bg-transparent border-none cursor-pointer">{t("nav.howItWorks")}</button>
-          <button onClick={() => scrollTo('oportunidades')} className="text-2xl font-bold text-white hover:text-[#f5a623] transition-colors duration-200 bg-transparent border-none cursor-pointer">{t("nav.opportunities")}</button>
-          <button onClick={() => scrollTo('seguranca')} className="text-2xl font-bold text-white hover:text-[#f5a623] transition-colors duration-200 bg-transparent border-none cursor-pointer">{t("nav.security")}</button>
+          <button onClick={() => scrollTo('como-funciona')} className="text-2xl font-bold text-white hover:text-[#c98f70] transition-colors duration-200 bg-transparent border-none cursor-pointer">{t("nav.howItWorks")}</button>
+          <button onClick={() => scrollTo('oportunidades')} className="text-2xl font-bold text-white hover:text-[#c98f70] transition-colors duration-200 bg-transparent border-none cursor-pointer">{t("nav.opportunities")}</button>
+          <button onClick={() => scrollTo('seguranca')} className="text-2xl font-bold text-white hover:text-[#c98f70] transition-colors duration-200 bg-transparent border-none cursor-pointer">{t("nav.security")}</button>
           <LanguageSelector />
           <div className="w-16 h-px bg-white/15 my-2" />
           {isAuthenticated ? (
             <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-              <button className="bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] font-bold px-8 py-3 rounded-xl text-lg transition-all duration-200 active:scale-95">
+              <button className="bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-8 py-3 rounded-xl text-lg transition-all duration-200 active:scale-95">
                 {t("nav.myDashboard")}
               </button>
             </Link>
@@ -599,7 +599,7 @@ export default function Home() {
                 <span className="text-xl text-white/60 hover:text-white transition-colors duration-200">{t("nav.login")}</span>
               </Link>
               <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
-                <button className="bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] font-bold px-8 py-3 rounded-xl text-lg transition-all duration-200 active:scale-95">
+                <button className="bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-8 py-3 rounded-xl text-lg transition-all duration-200 active:scale-95">
                   {t("nav.startFree")}
                 </button>
               </Link>
@@ -628,7 +628,7 @@ export default function Home() {
         {/* glow sutil — plano de fundo, o que mais fica para trás */}
         <div className="absolute inset-0 pointer-events-none will-change-transform"
           style={{
-            background: "radial-gradient(ellipse 60% 45% at 75% 40%, rgba(245,166,35,0.07) 0%, transparent 70%)",
+            background: "radial-gradient(ellipse 60% 45% at 75% 40%, rgba(201,143,112,0.07) 0%, transparent 70%)",
             transform: "translate3d(0, calc(var(--p, 0) * var(--k, 1) * 64px), 0) scale(calc(1 + var(--p, 0) * var(--k, 1) * 0.18))",
           }} />
 
@@ -640,14 +640,14 @@ export default function Home() {
               style={{ transform: "translate3d(0, calc(var(--p, 0) * var(--k, 1) * 22px), 0)" }}>
               <div className="inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.08] rounded-full px-4 py-1.5 mb-8 text-xs text-white/60 font-medium"
                 style={{ animation: "fadeInDown 0.8s cubic-bezier(0.23,1,0.32,1) both" }}>
-                <span className="w-1.5 h-1.5 bg-[#f5a623] rounded-full animate-pulse" />
+                <span className="w-1.5 h-1.5 bg-[#c98f70] rounded-full animate-pulse" />
                 {t("hero.badge")}
               </div>
 
               <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.05] mb-6 tracking-tight"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.1s both" }}>
                 <span className="text-white">{t("hero.headline1")} </span>
-                <span className="text-[#f5a623]">{t("hero.headline2")}</span>
+                <span className="text-[#c98f70]">{t("hero.headline2")}</span>
                 <br />
                 <span className="text-white">{t("hero.headline3")} </span>
                 <span className="text-white/30">{t("hero.headline4")}</span>
@@ -661,7 +661,7 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-3 mb-14"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.3s both" }}>
                 <Link href={isAuthenticated ? "/dashboard" : "/register"}>
-                  <button className="group w-full sm:w-auto bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] font-bold px-7 py-3.5 rounded-2xl text-base transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-2">
+                  <button className="group w-full sm:w-auto bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-7 py-3.5 rounded-2xl text-base transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-2">
                     {t("hero.cta")}
                     <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </button>
@@ -694,7 +694,7 @@ export default function Home() {
             {/* Imagem */}
             {MOSTRAR_CARTAO_DO_HERO && (
             <div className="relative" style={{ animation: "fadeInUp 1s cubic-bezier(0.23,1,0.32,1) 0.25s both" }}>
-              <div className="absolute -inset-6 bg-[#f5a623]/[0.06] rounded-[2.5rem] blur-3xl pointer-events-none" />
+              <div className="absolute -inset-6 bg-[#c98f70]/[0.06] rounded-[2.5rem] blur-3xl pointer-events-none" />
               <div className="relative rounded-3xl overflow-hidden border border-white/[0.08] shadow-2xl shadow-black/50">
                 {/*
                   A moldura fica parada e a imagem deriva DENTRO dela — é o que
@@ -722,11 +722,11 @@ export default function Home() {
               </div>
               {/* badge flutuante — plano da frente: sobe MAIS que a página, e é
                   esse descolamento que faz a imagem parecer afundar atrás dele. */}
-              <div className="absolute -bottom-5 -left-5 bg-[#0a1424]/95 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-4 shadow-xl shadow-black/50 will-change-transform"
+              <div className="absolute -bottom-5 -left-5 bg-[#211e1b]/95 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-4 shadow-xl shadow-black/50 will-change-transform"
                 style={{ transform: "translate3d(0, calc(var(--p, 0) * var(--k, 1) * -42px), 0)" }}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#f5a623]/10 border border-[#f5a623]/25 flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-[#f5a623]" />
+                  <div className="w-10 h-10 rounded-xl bg-[#c98f70]/10 border border-[#c98f70]/25 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-[#c98f70]" />
                   </div>
                   <div>
                     <div className="text-white font-bold text-sm leading-none">Match por IA</div>
@@ -759,12 +759,12 @@ export default function Home() {
                   transition: `all 0.7s cubic-bezier(0.23,1,0.32,1) ${i * 0.15}s`,
                 }}>
                 <div className={`relative h-full p-8 rounded-3xl border transition-all duration-300 cursor-default ${activeStep === i
-                  ? "bg-[#f5a623]/[0.05] border-[#f5a623]/30"
-                  : "bg-[#0a1424]/90 border-white/[0.06] hover:border-white/15"
+                  ? "bg-[#c98f70]/[0.05] border-[#c98f70]/30"
+                  : "bg-[#211e1b]/90 border-white/[0.06] hover:border-white/15"
                   }`}>
                   <div className="flex items-center justify-between mb-6">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors duration-300 ${activeStep === i ? "bg-[#f5a623]/15 border-[#f5a623]/30" : "bg-white/[0.03] border-white/[0.07]"}`}>
-                      <step.Icon className={`w-5 h-5 transition-colors duration-300 ${activeStep === i ? "text-[#f5a623]" : "text-white/50"}`} />
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-colors duration-300 ${activeStep === i ? "bg-[#c98f70]/15 border-[#c98f70]/30" : "bg-white/[0.03] border-white/[0.07]"}`}>
+                      <step.Icon className={`w-5 h-5 transition-colors duration-300 ${activeStep === i ? "text-[#c98f70]" : "text-white/50"}`} />
                     </div>
                     <span className="text-white/15 font-extrabold text-sm tracking-widest">{step.num}</span>
                   </div>
@@ -783,16 +783,16 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-16 items-center max-w-5xl mx-auto">
             {/* Mock de match minimalista */}
             <div className="relative">
-              <div className="absolute -inset-4 bg-[#f5a623]/[0.05] rounded-[2rem] blur-2xl pointer-events-none" />
-              <div className="relative bg-[#0a1424]/90 border border-white/[0.07] rounded-3xl p-7">
+              <div className="absolute -inset-4 bg-[#c98f70]/[0.05] rounded-[2rem] blur-2xl pointer-events-none" />
+              <div className="relative bg-[#211e1b]/90 border border-white/[0.07] rounded-3xl p-7">
                 <div className="flex items-center justify-between mb-7">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#f5a623] to-[#ffd166] flex items-center justify-center text-[#060e1a] font-extrabold text-sm">AM</div>
-                    <div className="w-8 h-px bg-gradient-to-r from-[#f5a623]/60 to-transparent" />
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#c98f70] to-[#efcba8] flex items-center justify-center text-[#151312] font-extrabold text-sm">AM</div>
+                    <div className="w-8 h-px bg-gradient-to-r from-[#c98f70]/60 to-transparent" />
                     <div className="w-11 h-11 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/70 font-extrabold text-sm">CR</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[#f5a623] font-extrabold text-2xl leading-none">94%</div>
+                    <div className="text-[#c98f70] font-extrabold text-2xl leading-none">94%</div>
                     <div className="text-white/30 text-[10px] uppercase tracking-wider mt-1">{t("testimonials.match")}</div>
                   </div>
                 </div>
@@ -806,10 +806,10 @@ export default function Home() {
                   <div key={i} className="mb-4 last:mb-0">
                     <div className="flex justify-between text-xs mb-1.5">
                       <span className="text-white/50">{item.label}</span>
-                      <span className="text-[#f5a623] font-bold">{item.pct}%</span>
+                      <span className="text-[#c98f70] font-bold">{item.pct}%</span>
                     </div>
                     <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#f5a623] to-[#ffd166] rounded-full transition-all duration-1000"
+                      <div className="h-full bg-gradient-to-r from-[#c98f70] to-[#efcba8] rounded-full transition-all duration-1000"
                         style={{ width: `${item.pct}%` }} />
                     </div>
                   </div>
@@ -818,8 +818,8 @@ export default function Home() {
             </div>
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <span className="h-px w-8 bg-[#f5a623]/40" />
-                <span className="text-[#f5a623] text-xs font-bold uppercase tracking-[0.25em]">{t("aiEngine.label")}</span>
+                <span className="h-px w-8 bg-[#c98f70]/40" />
+                <span className="text-[#c98f70] text-xs font-bold uppercase tracking-[0.25em]">{t("aiEngine.label")}</span>
               </div>
               <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-5">
                 {t("aiEngine.title")}
@@ -845,14 +845,14 @@ export default function Home() {
           <div className="relative grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
             {opportunityTypes.map((opp, i) => (
               <div key={i}
-                className="group p-6 rounded-3xl bg-[#0a1424]/90 border border-white/[0.06] hover:border-[#f5a623]/30 hover:bg-[#f5a623]/[0.03] transition-all duration-300 cursor-default"
+                className="group p-6 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] hover:border-[#c98f70]/30 hover:bg-[#c98f70]/[0.03] transition-all duration-300 cursor-default"
                 style={{
                   opacity: oppsInView ? 1 : 0,
                   transform: oppsInView ? "scale(1)" : "scale(0.95)",
                   transition: `all 0.6s cubic-bezier(0.23,1,0.32,1) ${i * 0.08}s`,
                 }}>
-                <div className="w-11 h-11 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center mb-4 group-hover:border-[#f5a623]/30 transition-colors duration-300">
-                  <opp.Icon className="w-5 h-5 text-white/50 group-hover:text-[#f5a623] transition-colors duration-300" />
+                <div className="w-11 h-11 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center mb-4 group-hover:border-[#c98f70]/30 transition-colors duration-300">
+                  <opp.Icon className="w-5 h-5 text-white/50 group-hover:text-[#c98f70] transition-colors duration-300" />
                 </div>
                 <div className="font-bold text-white mb-1 text-sm">
                   {t(`opportunities.${opp.key}.label`)}
@@ -874,7 +874,7 @@ export default function Home() {
             <h2 className="text-4xl font-extrabold text-white mb-2">
               {t("security.title")}
             </h2>
-            <p className="text-[#f5a623] text-lg font-semibold mb-12">{t("security.subtitle")}</p>
+            <p className="text-[#c98f70] text-lg font-semibold mb-12">{t("security.subtitle")}</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { Icon: Lock, label: t("security.encryption.title"), desc: t("security.encryption.desc") },
@@ -882,9 +882,9 @@ export default function Home() {
                 { Icon: BadgeCheck, label: t("security.verification.title"), desc: t("security.verification.desc") },
                 { Icon: KeyRound, label: t("security.control.title"), desc: t("security.control.desc") },
               ].map((item, i) => (
-                <div key={i} className="p-6 rounded-3xl bg-[#0a1424]/90 border border-white/[0.06] text-center hover:border-white/15 transition-colors duration-300">
+                <div key={i} className="p-6 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] text-center hover:border-white/15 transition-colors duration-300">
                   <div className="w-10 h-10 mx-auto rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center mb-3">
-                    <item.Icon className="w-4.5 h-4.5 text-[#f5a623]" />
+                    <item.Icon className="w-4.5 h-4.5 text-[#c98f70]" />
                   </div>
                   <div className="font-bold text-white text-sm">{item.label}</div>
                   <div className="text-xs text-white/35 mt-1.5 leading-relaxed">{item.desc}</div>
@@ -902,14 +902,14 @@ export default function Home() {
             <SectionLabel>{t("governance.label")}</SectionLabel>
             <h2 className="text-4xl font-extrabold text-white mb-4">
               {t("governance.title1")}{" "}
-              <span className="text-[#f5a623]">{t("governance.title2")}</span>
+              <span className="text-[#c98f70]">{t("governance.title2")}</span>
             </h2>
             <p className="text-white/40 text-lg">
               {t("governance.subtitle")}
             </p>
             <div className="flex justify-center gap-10 mt-8">
               <div className="text-center">
-                <div className="text-2xl font-extrabold" style={{ color: "#cd7f32" }}>{stats?.bronze ?? 0}</div>
+                <div className="text-2xl font-extrabold" style={{ color: "#8e5a3f" }}>{stats?.bronze ?? 0}</div>
                 <div className="text-xs text-white/35 mt-1">Bronze</div>
               </div>
               <div className="text-center">
@@ -925,11 +925,11 @@ export default function Home() {
 
           <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
             {/* BRONZE */}
-            <div className="p-8 rounded-3xl bg-[#0a1424]/90 border border-white/[0.06] transition-all duration-300 hover:border-[#cd7f32]/30">
+            <div className="p-8 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] transition-all duration-300 hover:border-[#8e5a3f]/30">
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-5 border" style={{ background: "rgba(205,127,50,0.08)", borderColor: "rgba(205,127,50,0.25)" }}>
-                <BadgeCheck className="w-5 h-5" style={{ color: "#cd7f32" }} />
+                <BadgeCheck className="w-5 h-5" style={{ color: "#8e5a3f" }} />
               </div>
-              <h3 className="text-lg font-extrabold mb-3" style={{ color: "#cd7f32" }}>{t("governance.bronze.title")}</h3>
+              <h3 className="text-lg font-extrabold mb-3" style={{ color: "#8e5a3f" }}>{t("governance.bronze.title")}</h3>
               <p className="text-white/40 text-sm leading-relaxed mb-5">
                 {t("governance.bronze.desc")}
               </p>
@@ -939,7 +939,7 @@ export default function Home() {
             </div>
 
             {/* PRATA */}
-            <div className="p-8 rounded-3xl bg-[#0a1424]/90 border border-white/[0.06] hover:border-white/20 transition-all duration-300">
+            <div className="p-8 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] hover:border-white/20 transition-all duration-300">
               <div className="w-11 h-11 rounded-2xl bg-slate-500/10 border border-slate-400/25 flex items-center justify-center mb-5">
                 <ShieldCheck className="w-5 h-5 text-slate-300" />
               </div>
@@ -953,7 +953,7 @@ export default function Home() {
             </div>
 
             {/* OURO */}
-            <div className="p-8 rounded-3xl bg-[#f5a623]/[0.04] border border-[#f5a623]/25 hover:border-[#f5a623]/45 transition-all duration-300 relative">
+            <div className="p-8 rounded-3xl bg-[#c98f70]/[0.04] border border-[#c98f70]/25 hover:border-[#c98f70]/45 transition-all duration-300 relative">
               <div className="absolute top-5 right-5 text-[10px] uppercase tracking-wider font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/25">
                 {t("governance.gold.badge")}
               </div>
@@ -975,16 +975,16 @@ export default function Home() {
       {/* ─── CTA FINAL ─── */}
       <section className="py-28 relative border-t border-white/[0.04] overflow-hidden">
         <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 55% 60% at 50% 100%, rgba(245,166,35,0.08) 0%, transparent 70%)" }} />
+          style={{ background: "radial-gradient(ellipse 55% 60% at 50% 100%, rgba(201,143,112,0.08) 0%, transparent 70%)" }} />
         <div className="relative container mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-6xl font-extrabold text-white mb-3 tracking-tight">
             {t("cta.title")}
           </h2>
-          <p className="text-2xl md:text-3xl font-extrabold text-[#f5a623] mb-10">
+          <p className="text-2xl md:text-3xl font-extrabold text-[#c98f70] mb-10">
             {t("cta.subtitle")}
           </p>
           <Link href={isAuthenticated ? "/dashboard" : "/register"}>
-            <button className="group bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] font-bold px-9 py-4 rounded-2xl text-lg transition-all duration-200 active:scale-[0.97] inline-flex items-center gap-2.5">
+            <button className="group bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-9 py-4 rounded-2xl text-lg transition-all duration-200 active:scale-[0.97] inline-flex items-center gap-2.5">
               {t("cta.button")}
               <ArrowRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
             </button>

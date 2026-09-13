@@ -114,7 +114,7 @@ export default function AdminPanel() {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-[#C98F70] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-white">Verificando credenciais...</p>
         </div>
       </div>
@@ -135,7 +135,7 @@ export default function AdminPanel() {
           <p className="text-gray-400 mb-6">Este painel é restrito a Administradoras e membras Ouro da plataforma.</p>
           <button
             onClick={() => navigate("/dashboard")}
-            className="px-6 py-3 bg-[#D4AF37] text-[#0A1F3F] font-semibold rounded-lg hover:bg-[#C4A030] transition-colors"
+            className="px-6 py-3 bg-[#C98F70] text-[#1A120C] font-semibold rounded-lg hover:bg-[#B07A5C] transition-colors"
           >
             Voltar ao Dashboard
           </button>
@@ -165,7 +165,7 @@ export default function AdminPanel() {
 
   const getRoleBadge = (role: string) => {
     const colors: Record<string, string> = {
-      president: "bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/60",
+      president: "bg-[#C98F70]/20 text-[#C98F70] border border-[#C98F70]/60",
       admin: "bg-red-900/50 text-red-300 border border-red-700",
       gold: "bg-amber-900/40 text-amber-300 border border-amber-600",
       silver: "bg-slate-700/50 text-slate-300 border border-slate-500",
@@ -206,15 +206,15 @@ export default function AdminPanel() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
-      <header className="bg-[#0A1F3F] border-b border-[#D4AF37]/30 sticky top-0 z-50">
+      <header className="bg-[#1B1714] border-b border-[#C98F70]/30 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <Shield className="w-7 h-7 text-[#D4AF37]" />
+            <Shield className="w-7 h-7 text-[#C98F70]" />
             <div>
               <button
                 onClick={() => navigate("/dashboard")}
                 style={playfairStyle}
-                className="text-xl font-bold text-white hover:text-[#D4AF37] transition-colors"
+                className="text-xl font-bold text-white hover:text-[#C98F70] transition-colors"
               >
                 MMM
               </button>
@@ -229,7 +229,7 @@ export default function AdminPanel() {
             </div>
             <button
               onClick={() => navigate("/dashboard")}
-              className="px-4 py-2 text-sm border border-[#D4AF37]/50 text-[#D4AF37] rounded-lg hover:bg-[#D4AF37]/10 transition-colors"
+              className="px-4 py-2 text-sm border border-[#C98F70]/50 text-[#C98F70] rounded-lg hover:bg-[#C98F70]/10 transition-colors"
             >
               Dashboard
             </button>
@@ -246,14 +246,14 @@ export default function AdminPanel() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Tabs */}
-        <div className="flex gap-2 mb-8 bg-[#0A1F3F]/50 p-1 rounded-xl border border-[#D4AF37]/20 w-fit flex-wrap">
+        <div className="flex gap-2 mb-8 bg-[#1B1714]/50 p-1 rounded-xl border border-[#C98F70]/20 w-fit flex-wrap">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 activeTab === id
-                  ? "bg-[#D4AF37] text-[#0A1F3F]"
+                  ? "bg-[#C98F70] text-[#1A120C]"
                   : "text-gray-400 hover:text-white"
               }`}
             >
@@ -277,7 +277,7 @@ export default function AdminPanel() {
                 <span className="text-xs text-gray-400">Atualização automática a cada 30s</span>
                 <button
                   onClick={() => statsQuery.refetch()}
-                  className="p-1.5 text-[#D4AF37] hover:bg-[#D4AF37]/10 rounded transition-colors"
+                  className="p-1.5 text-[#C98F70] hover:bg-[#C98F70]/10 rounded transition-colors"
                 >
                   <RefreshCw className="w-4 h-4" />
                 </button>
@@ -292,7 +292,7 @@ export default function AdminPanel() {
                 { label: "Alertas Pendentes", value: stats?.unresolvedSecurityEvents ?? "-", icon: AlertTriangle, color: "text-orange-400", bg: "bg-orange-900/20" },
                 { label: "Logs Hoje", value: stats?.todayAuditLogs ?? "-", icon: FileText, color: "text-purple-400", bg: "bg-purple-900/20" },
               ].map((stat, idx) => (
-                <div key={idx} className={`bg-[#0A1F3F] border border-[#D4AF37]/20 rounded-xl p-5 relative overflow-hidden`}>
+                <div key={idx} className={`bg-[#1B1714] border border-[#C98F70]/20 rounded-xl p-5 relative overflow-hidden`}>
                   <div className={`absolute inset-0 ${stat.bg} opacity-30`}></div>
                   <div className="relative">
                     <div className="flex items-center justify-between mb-3">
@@ -308,8 +308,8 @@ export default function AdminPanel() {
 
             {/* Arquitetura de Segurança */}
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-[#0A1F3F] border border-[#D4AF37]/20 rounded-xl p-6">
-                <h3 style={playfairStyle} className="text-xl font-bold text-[#D4AF37] mb-4">Camadas de Proteção Ativas</h3>
+              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl p-6">
+                <h3 style={playfairStyle} className="text-xl font-bold text-[#C98F70] mb-4">Camadas de Proteção Ativas</h3>
                 <div className="space-y-3">
                   {[
                     { layer: "Criptografia AES-256-GCM (Cofre)", status: "Ativo" },
@@ -329,9 +329,9 @@ export default function AdminPanel() {
                     { layer: "Verificação de Integridade SHA-256", status: "Ativo" },
                     { layer: "Cookie SameSite=Lax + HttpOnly", status: "Ativo" },
                   ].map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-2 border-b border-[#D4AF37]/10">
+                    <div key={idx} className="flex items-center justify-between py-2 border-b border-[#C98F70]/10">
                       <div className="flex items-center gap-2">
-                        <Lock className="w-3 h-3 text-[#D4AF37] flex-shrink-0" />
+                        <Lock className="w-3 h-3 text-[#C98F70] flex-shrink-0" />
                         <span className="text-xs text-gray-300">{item.layer}</span>
                       </div>
                       <span className="text-xs font-semibold text-green-400 flex items-center gap-1">
@@ -344,13 +344,13 @@ export default function AdminPanel() {
               </div>
 
               <div className="space-y-6">
-                <div className="bg-[#0A1F3F] border border-[#D4AF37]/20 rounded-xl p-6">
-                  <h3 style={playfairStyle} className="text-xl font-bold text-[#D4AF37] mb-4">Governança Institucional</h3>
+                <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl p-6">
+                  <h3 style={playfairStyle} className="text-xl font-bold text-[#C98F70] mb-4">Governança Institucional</h3>
                   <div className="space-y-3">
                     {[
                       {
                         role: "Ouro",
-                        badge: "bg-[#D4AF37]/20 text-[#D4AF37] border-[#D4AF37]/60",
+                        badge: "bg-[#C98F70]/20 text-[#C98F70] border-[#C98F70]/60",
                         desc: "Guardiãs da governança. Aprovam/revogam o Status Ouro, homologam líderes, validam oportunidades estratégicas."
                       },
                       {
@@ -369,7 +369,7 @@ export default function AdminPanel() {
                         desc: "Membro participante do ecossistema. Cadastra oportunidades, demonstra interesse e utiliza a IA de compliance."
                       },
                     ].map((item, idx) => (
-                      <div key={idx} className="flex flex-col gap-1 py-3 border-b border-[#D4AF37]/10 last:border-0">
+                      <div key={idx} className="flex flex-col gap-1 py-3 border-b border-[#C98F70]/10 last:border-0">
                         <div className="flex items-center gap-2">
                           <span className={`text-xs px-2 py-0.5 rounded border ${item.badge} font-semibold`}>{item.role}</span>
                         </div>
@@ -377,13 +377,13 @@ export default function AdminPanel() {
                       </div>
                     ))}
                   </div>
-                  <p className="mt-4 text-xs text-[#D4AF37]/60 italic">
+                  <p className="mt-4 text-xs text-[#C98F70]/60 italic">
                     O Status Ouro não pode ser solicitado, comprado ou obtido por assinatura. É um reconhecimento institucional concedido exclusivamente pelas membras Ouro da plataforma.
                   </p>
                 </div>
 
                 {/* Ações Rápidas */}
-                <div className="bg-[#0A1F3F] border border-red-700/30 rounded-xl p-6">
+                <div className="bg-[#1B1714] border border-red-700/30 rounded-xl p-6">
                   <h3 style={playfairStyle} className="text-xl font-bold text-red-400 mb-4 flex items-center gap-2">
                     <AlertTriangle className="w-5 h-5" />
                     Ações de Emergência
@@ -427,7 +427,7 @@ export default function AdminPanel() {
                 </div>
                 <button
                   onClick={() => sessionsQuery.refetch()}
-                  className="flex items-center gap-2 px-4 py-2 text-sm border border-[#D4AF37]/50 text-[#D4AF37] rounded-lg hover:bg-[#D4AF37]/10 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 text-sm border border-[#C98F70]/50 text-[#C98F70] rounded-lg hover:bg-[#C98F70]/10 transition-colors"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Atualizar
@@ -437,17 +437,17 @@ export default function AdminPanel() {
 
             {/* Resumo */}
             <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-[#0A1F3F] border border-green-700/30 rounded-xl p-4">
+              <div className="bg-[#1B1714] border border-green-700/30 rounded-xl p-4">
                 <div className="text-2xl font-bold text-green-400">{sessionsQuery.data?.length ?? 0}</div>
                 <div className="text-xs text-gray-400 mt-1">Sessões Ativas Agora</div>
               </div>
-              <div className="bg-[#0A1F3F] border border-[#D4AF37]/20 rounded-xl p-4">
-                <div className="text-2xl font-bold text-[#D4AF37]">
+              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl p-4">
+                <div className="text-2xl font-bold text-[#C98F70]">
                   {new Set((sessionsQuery.data as Array<{ userId: number }> | undefined)?.map((s) => s.userId)).size ?? 0}
                 </div>
                 <div className="text-xs text-gray-400 mt-1">Usuários Únicos Online</div>
               </div>
-              <div className="bg-[#0A1F3F] border border-orange-700/30 rounded-xl p-4">
+              <div className="bg-[#1B1714] border border-orange-700/30 rounded-xl p-4">
                 <div className="text-2xl font-bold text-orange-400">
                   {(sessionsQuery.data as Array<{ userId: number }> | undefined)?.filter((s) => {
                     const userSessions = (sessionsQuery.data as Array<{ userId: number }> | undefined)?.filter((x) => x.userId === s.userId) ?? [];
@@ -461,17 +461,17 @@ export default function AdminPanel() {
             {sessionsQuery.isLoading ? (
               <div className="text-center py-12 text-gray-400">Carregando sessões...</div>
             ) : (
-              <div className="bg-[#0A1F3F] border border-[#D4AF37]/20 rounded-xl overflow-hidden">
+              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-hidden">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-[#D4AF37]/20">
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">ID Sessão</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Usuário</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">IP</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Dispositivo</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Última Atividade</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Expira em</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Ações</th>
+                    <tr className="border-b border-[#C98F70]/20">
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">ID Sessão</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Usuário</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">IP</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Dispositivo</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Última Atividade</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Expira em</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -484,7 +484,7 @@ export default function AdminPanel() {
                       return (
                         <tr
                           key={session.id}
-                          className={`border-b border-[#D4AF37]/10 hover:bg-[#D4AF37]/5 transition-colors ${hasMultiple ? "bg-orange-900/10" : ""}`}
+                          className={`border-b border-[#C98F70]/10 hover:bg-[#C98F70]/5 transition-colors ${hasMultiple ? "bg-orange-900/10" : ""}`}
                         >
                           <td className="px-6 py-4">
                             <span className="font-mono text-xs text-gray-400">#{session.id}</span>
@@ -561,7 +561,7 @@ export default function AdminPanel() {
               <h2 style={playfairStyle} className="text-3xl font-bold text-white">Gestão de Usuários</h2>
               <button
                 onClick={() => usersQuery.refetch()}
-                className="flex items-center gap-2 px-4 py-2 text-sm border border-[#D4AF37]/50 text-[#D4AF37] rounded-lg hover:bg-[#D4AF37]/10 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm border border-[#C98F70]/50 text-[#C98F70] rounded-lg hover:bg-[#C98F70]/10 transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
                 Atualizar
@@ -571,20 +571,20 @@ export default function AdminPanel() {
             {usersQuery.isLoading ? (
               <div className="text-center py-12 text-gray-400">Carregando usuários...</div>
             ) : (
-              <div className="bg-[#0A1F3F] border border-[#D4AF37]/20 rounded-xl overflow-hidden">
+              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-hidden">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-[#D4AF37]/20">
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Usuário</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Função</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Status</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Último Acesso</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Ações</th>
+                    <tr className="border-b border-[#C98F70]/20">
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Usuário</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Função</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Status</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Último Acesso</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {usersQuery.data?.map((u) => (
-                      <tr key={u.id} className="border-b border-[#D4AF37]/10 hover:bg-[#D4AF37]/5 transition-colors">
+                      <tr key={u.id} className="border-b border-[#C98F70]/10 hover:bg-[#C98F70]/5 transition-colors">
                         <td className="px-6 py-4">
                           <div>
                             <div className="font-medium text-white">{u.name || "-"}</div>
@@ -605,13 +605,13 @@ export default function AdminPanel() {
                                 }
                                 updateRoleMutation.mutate({ userId: u.id, role: newRole });
                               }}
-                              className={`text-xs px-2 py-1 rounded border bg-[#0A1F3F] cursor-pointer ${getRoleBadge(u.role)}`}
+                              className={`text-xs px-2 py-1 rounded border bg-[#1B1714] cursor-pointer ${getRoleBadge(u.role)}`}
                             >
-                              <option className="bg-white text-[#2D3E50]" value="bronze">Bronze (recém-chegada)</option>
-                              <option className="bg-white text-[#2D3E50]" value="silver">Prata (membro)</option>
-                              <option className="bg-white text-[#2D3E50]" value="gold">Ouro (reconhecimento institucional)</option>
-                              <option className="bg-white text-[#2D3E50]" value="admin">Admin (suporte técnico)</option>
-                              <option className="bg-white text-[#2D3E50]" value="president">Ouro (governança)</option>
+                              <option className="bg-white text-[#322C26]" value="bronze">Bronze (recém-chegada)</option>
+                              <option className="bg-white text-[#322C26]" value="silver">Prata (membro)</option>
+                              <option className="bg-white text-[#322C26]" value="gold">Ouro (reconhecimento institucional)</option>
+                              <option className="bg-white text-[#322C26]" value="admin">Admin (suporte técnico)</option>
+                              <option className="bg-white text-[#322C26]" value="president">Ouro (governança)</option>
                             </select>
                           </div>
                         </td>
@@ -659,7 +659,7 @@ export default function AdminPanel() {
                                   placeholder="Motivo..."
                                   value={lockReason[u.id] || ""}
                                   onChange={(e) => setLockReason(prev => ({ ...prev, [u.id]: e.target.value }))}
-                                  className="text-xs px-2 py-1.5 bg-[#060F1E] border border-gray-700 text-gray-300 rounded-lg w-28 focus:border-red-700 focus:outline-none"
+                                  className="text-xs px-2 py-1.5 bg-[#151312] border border-gray-700 text-gray-300 rounded-lg w-28 focus:border-red-700 focus:outline-none"
                                 />
                                 <button
                                   onClick={() => {
@@ -708,7 +708,7 @@ export default function AdminPanel() {
                 <span className="text-xs text-gray-400">Atualiza a cada 15s</span>
                 <button
                   onClick={() => auditQuery.refetch()}
-                  className="p-1.5 text-[#D4AF37] hover:bg-[#D4AF37]/10 rounded transition-colors"
+                  className="p-1.5 text-[#C98F70] hover:bg-[#C98F70]/10 rounded transition-colors"
                 >
                   <RefreshCw className="w-4 h-4" />
                 </button>
@@ -718,21 +718,21 @@ export default function AdminPanel() {
             {auditQuery.isLoading ? (
               <div className="text-center py-12 text-gray-400">Carregando logs...</div>
             ) : (
-              <div className="bg-[#0A1F3F] border border-[#D4AF37]/20 rounded-xl overflow-hidden">
+              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-hidden">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-[#D4AF37]/20">
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Ação</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Usuário</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Recurso</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Risco</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">IP</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#D4AF37] uppercase tracking-wider">Data</th>
+                    <tr className="border-b border-[#C98F70]/20">
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Ação</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Usuário</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Recurso</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Risco</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">IP</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Data</th>
                     </tr>
                   </thead>
                   <tbody>
                     {auditQuery.data?.map((log) => (
-                      <tr key={log.id} className="border-b border-[#D4AF37]/10 hover:bg-[#D4AF37]/5 transition-colors">
+                      <tr key={log.id} className="border-b border-[#C98F70]/10 hover:bg-[#C98F70]/5 transition-colors">
                         <td className="px-6 py-3">
                           <span className="font-mono text-xs text-green-400">{log.action}</span>
                         </td>
@@ -774,7 +774,7 @@ export default function AdminPanel() {
                 <span className="text-xs text-gray-400">Atualiza a cada 10s</span>
                 <button
                   onClick={() => securityQuery.refetch()}
-                  className="p-1.5 text-[#D4AF37] hover:bg-[#D4AF37]/10 rounded transition-colors"
+                  className="p-1.5 text-[#C98F70] hover:bg-[#C98F70]/10 rounded transition-colors"
                 >
                   <RefreshCw className="w-4 h-4" />
                 </button>
@@ -788,12 +788,12 @@ export default function AdminPanel() {
                 {securityQuery.data?.map((event) => (
                   <div
                     key={event.id}
-                    className={`bg-[#0A1F3F] border rounded-xl p-5 flex items-center justify-between ${
+                    className={`bg-[#1B1714] border rounded-xl p-5 flex items-center justify-between ${
                       event.severity === "critical"
                         ? "border-red-700/50 bg-red-900/10"
                         : event.severity === "warning"
                         ? "border-yellow-700/50"
-                        : "border-[#D4AF37]/20"
+                        : "border-[#C98F70]/20"
                     }`}
                   >
                     <div className="flex items-center gap-4">
@@ -859,7 +859,7 @@ export default function AdminPanel() {
               </h2>
               <button
                 onClick={() => pendingOppsQuery.refetch()}
-                className="p-1.5 text-[#D4AF37] hover:bg-[#D4AF37]/10 rounded transition-colors"
+                className="p-1.5 text-[#C98F70] hover:bg-[#C98F70]/10 rounded transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
               </button>
@@ -867,7 +867,7 @@ export default function AdminPanel() {
 
             {pendingOppsQuery.isLoading ? (
               <div className="text-center py-12">
-                <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <div className="w-8 h-8 border-2 border-[#C98F70] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                 <p className="text-gray-400 text-sm">Carregando oportunidades...</p>
               </div>
             ) : !pendingOppsQuery.data?.length ? (
@@ -888,11 +888,11 @@ export default function AdminPanel() {
                   };
                   const cc = complianceColors[opp.complianceLevel ?? "pending"];
                   return (
-                    <div key={opp.id} className="bg-[#0A1F3F] border border-[#D4AF37]/20 rounded-xl p-6">
+                    <div key={opp.id} className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl p-6">
                       <div className="flex items-start justify-between gap-4 mb-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="text-xs px-2 py-0.5 rounded bg-[#D4AF37]/20 text-[#D4AF37] font-medium">
+                            <span className="text-xs px-2 py-0.5 rounded bg-[#C98F70]/20 text-[#C98F70] font-medium">
                               {opp.type}
                             </span>
                             <span className={`text-xs px-2 py-0.5 rounded ${cc.bg} ${cc.text} font-medium`}>
@@ -921,7 +921,7 @@ export default function AdminPanel() {
                           placeholder="Nota de moderação (opcional)..."
                           value={moderationNotes[opp.id] ?? ""}
                           onChange={(e) => setModerationNotes({ ...moderationNotes, [opp.id]: e.target.value })}
-                          className="flex-1 bg-[#060F1E] border border-[#D4AF37]/20 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#D4AF37]/50"
+                          className="flex-1 bg-[#151312] border border-[#C98F70]/20 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#C98F70]/50"
                         />
                         <button
                           onClick={() => moderateOppMutation.mutate({ opportunityId: opp.id, action: "approve", note: moderationNotes[opp.id] })}

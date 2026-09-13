@@ -91,7 +91,7 @@ export function ExcluirMinhaConta() {
       </div>
 
       <Dialog open={aberto} onOpenChange={(estado) => (estado ? setAberto(true) : fechar())}>
-        <DialogContent className="border-red-400/30 bg-[#0d1b2a] text-white">
+        <DialogContent className="border-red-400/30 bg-[#211e1b] text-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-400">
               <AlertTriangle size={16} /> {t("conta.excluir.dialogoTitulo")}
