@@ -32,6 +32,7 @@ const Contexts = lazy(() => import("./pages/Contexts"));
 const Meetings = lazy(() => import("./pages/Meetings"));
 const Memory = lazy(() => import("./pages/Memory"));
 const IntelligentMatches = lazy(() => import("./pages/IntelligentMatches"));
+const MeuNetworkInteligente = lazy(() => import("./pages/MeuNetworkInteligente"));
 
 // Skeleton de loading global
 function PageLoader() {
@@ -199,6 +200,16 @@ function Router() {
           <ProtectedRoute>
             <InactivityGuard>
               <IntelligentMatches />
+            </InactivityGuard>
+          </ProtectedRoute>
+        </Route>
+
+        {/* Meu Network Inteligente — painel da rede particular: reuniões,
+            contatos, informações faltando e matches internos */}
+        <Route path="/meu-network-inteligente">
+          <ProtectedRoute>
+            <InactivityGuard>
+              <MeuNetworkInteligente />
             </InactivityGuard>
           </ProtectedRoute>
         </Route>

@@ -13,7 +13,7 @@ import Home from "./Home";
  *   ponta a ponta" (não existe no servidor);
  * - os textos novos aparecem como pedidos, com os 4 cards;
  * - o CTA leva quem não entrou ao cadastro de sempre (/register) e quem já
- *   entrou à Minha Rede (/network) — nenhuma rota nova;
+ *   entrou ao painel Meu Network Inteligente (/meu-network-inteligente);
  * - os dois itens de menu (desktop e celular) rolam até a seção nova.
  *
  * O globo 3D, as consultas de números e o FAQ viram dublês: o teste é da
@@ -104,11 +104,11 @@ describe("Home — Meu Network Inteligente no lugar de Segurança", () => {
     expect(cta.closest("a")).toHaveAttribute("href", "/register");
   });
 
-  it("com sessão, o CTA leva à Minha Rede (/network), sem rota nova", () => {
+  it("com sessão, o CTA leva ao painel Meu Network Inteligente", () => {
     comSessao(true);
     render(<Home />);
     const cta = within(secao()).getByRole("button", { name: /ATIVAR MEU NETWORK INTELIGENTE/ });
-    expect(cta.closest("a")).toHaveAttribute("href", "/network");
+    expect(cta.closest("a")).toHaveAttribute("href", "/meu-network-inteligente");
   });
 
   it("os itens de menu (desktop e celular) dizem Meu Network Inteligente e rolam até a seção nova", () => {

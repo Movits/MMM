@@ -874,9 +874,8 @@ export default function Home() {
           mecanismos reais (limite de requisições, bloqueio de login, CSP, SIVC)
           continuam no servidor, e o card "criptografia ponta a ponta" prometia o
           que não existe. A seção apresenta o recurso da área logada; o CTA leva
-          quem não tem conta ao cadastro de sempre e quem já entrou à Minha Rede
-          (/network), onde vivem os contatos, as reuniões e o match da rede
-          particular, até existir o painel próprio do Network Inteligente. */}
+          quem não tem conta ao cadastro de sempre e quem já entrou ao painel
+          Meu Network Inteligente (/meu-network-inteligente). */}
       <section id="network-inteligente" className="py-28 relative border-t border-white/[0.04]">
         <div className="relative container mx-auto px-6">
           <div className="max-w-5xl mx-auto text-center">
@@ -915,7 +914,7 @@ export default function Home() {
             <p className="text-base md:text-lg text-white/55 max-w-2xl mx-auto mb-10 leading-relaxed">
               {t("smartNetwork.closingLine")}
             </p>
-            <Link href={isAuthenticated ? "/network" : "/register"}>
+            <Link href={isAuthenticated ? "/meu-network-inteligente" : "/register"}>
               <button className="group bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-8 py-4 rounded-2xl text-base text-balance transition-all duration-200 active:scale-[0.97] inline-flex items-center justify-center gap-2.5">
                 {t("smartNetwork.cta")}
                 <ArrowRight className="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:translate-x-1" />
