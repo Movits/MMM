@@ -73,13 +73,18 @@ function usuaria(role: "silver" | "gold") {
   } as unknown as ReturnType<typeof useAuth>);
 }
 
+// O cartão de match é ANÔNIMO até o interesse mútuo: `matches.list` não traz
+// mais nome, foto, bio nem o id da outra usuária. O `displayName` só vem
+// preenchido quando `connectionStatus` é "accepted" — e é o servidor que decide,
+// pelo portão em db.ts.
 function match(matchId: number, userSeen: boolean, extra: Record<string, unknown> = {}) {
   return {
-    matchId, matchedUserId: 100 + matchId, overallScore: 85, userSeen,
+    matchId, overallScore: 85, userSeen,
     specialtyScore: 90, objectivesScore: 80, incomeScore: 70, locationScore: 60, valuesScore: 50,
-    aiInsight: null, displayName: `Membra ${matchId}`, city: "Lisboa", country: "PT", avatarUrl: null, bio: null,
-    primarySpecialty: "tech", currentRole: null, currentCompany: null,
+    aiInsight: null, city: "Lisboa", country: "PT",
+    primarySpecialty: "tech",
     seekingTypes: [], businessInterests: [], values: [], sector: null,
+    connectionId: null, connectionStatus: null, souDestinataria: null, displayName: null,
     ...extra,
   };
 }
@@ -98,7 +103,7 @@ const ESPERA = { timeout: 3000 };
 // fallback ("Usuária"; "Membro" é o que um tradutor apressado escreveria).
 // Com a tela em inglês nenhuma pode aparecer no texto do documento; o teste
 // em português prova que o regex reconhece o texto de verdade (não é vazio).
-const PORTUGUES = /oportunidades|Salas|Ver detalhes|novos|convite|Boas-vindas|Recomendadas|Usuário|Membro/i;
+const PORTUGUES = /oportunidades|Salas|Ver detalhes|novos|convite|Boas-vindas|Recomendadas|Usuário|Membro|Identidade|revelar/i;
 function semPortugues(onde: string) {
   expect(document.body.textContent, onde).not.toMatch(PORTUGUES);
 }
@@ -115,7 +120,9 @@ function cenarioPadrao() {
     ],
   };
   duble.respostas["connections.list"] = {
-    data: [{ id: 7, status: "pending", recipientId: EU, requesterId: 55, displayName: "Carla", primarySpecialty: "finance", city: "Porto", message: null }],
+    // Pendente dirigido a mim: o servidor manda `souDestinataria` no lugar dos
+    // ids reais, e `displayName` vem NULO enquanto não há aceite.
+    data: [{ id: 7, status: "pending", souDestinataria: true, outraParteId: null, displayName: null, primarySpecialty: "finance", city: "Porto", message: null }],
   };
   duble.respostas["consent.status"] = { data: { accepted: true, document: null } };
   duble.respostas["matching.getRecommendedOpportunities"] = {
@@ -337,7 +344,7 @@ describe("aba Perfil — estilo de trabalho, anos de experiência e setor no idi
 describe("estados vazios e rótulos de fallback no idioma da tela", () => {
   // Usuária Ouro sem recomendações, sem salas (nem as da plataforma), com um
   // único match de membra SEM nome e interesse "tech": os textos de vazio, o
-  // "Member"/"Usuário" do cartão, o toggle Ouro das salas e — na tela, não só
+  // o rótulo anônimo do cartão, o toggle Ouro das salas e — na tela, não só
   // na lib — o sinônimo resolvido ANTES de traduzir ("tech" é também chave de
   // especialidade do onboarding, "Technology & Software"; ver
   // lib/interesses.test.ts).
@@ -350,12 +357,14 @@ describe("estados vazios e rótulos de fallback no idioma da tela", () => {
     duble.respostas["dealRoom.listAllRooms"] = { data: [] };
   }
 
-  it("inglês: 'Member', 'Technology', 'No recommendations yet', 'My Rooms', 'No deal rooms yet' e 'No deal rooms on the platform' — e nada em português", async () => {
+  it("inglês: 'Network member', 'Technology', 'No recommendations yet', 'My Rooms', 'No deal rooms yet' e 'No deal rooms on the platform' — e nada em português", async () => {
     cenarioVazio();
     await i18n.changeLanguage("en");
     render(<Dashboard />);
 
-    expect(screen.getByRole("heading", { name: "Member" })).toBeInTheDocument();
+    // O cartão não mostra mais nome nem fallback de nome: até o interesse mútuo
+    // o cabeçalho é o rótulo anônimo, igual para todas.
+    expect(screen.getByRole("heading", { name: "Network member" })).toBeInTheDocument();
     expect(screen.getByText("Technology")).toBeInTheDocument();
     expect(screen.queryByText("Technology & Software")).not.toBeInTheDocument();
     expect(screen.getByText(/No recommendations yet/)).toBeInTheDocument();
@@ -376,11 +385,11 @@ describe("estados vazios e rótulos de fallback no idioma da tela", () => {
     semPortugues("todas as salas (Ouro), sem salas");
   });
 
-  it("português: 'Usuário', 'Tecnologia', 'Nenhuma recomendação por enquanto', 'Minhas Salas' e 'Nenhuma sala de negociação ainda'", async () => {
+  it("português: 'Membro da rede', 'Tecnologia', 'Nenhuma recomendação por enquanto', 'Minhas Salas' e 'Nenhuma sala de negociação ainda'", async () => {
     cenarioVazio();
     render(<Dashboard />);
 
-    expect(screen.getByRole("heading", { name: "Usuário" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Membro da rede" })).toBeInTheDocument();
     expect(screen.getByText("Tecnologia")).toBeInTheDocument();
     expect(screen.queryByText("Tecnologia & Software")).not.toBeInTheDocument();
     expect(screen.getByText(/Nenhuma recomendação por enquanto/)).toBeInTheDocument();
@@ -417,7 +426,7 @@ describe("Dashboard em inglês — varredura do texto inteiro, aba por aba", () 
     semPortugues("aba de matches, cartão expandido, banner Ouro");
 
     fireEvent.click(screen.getByRole("button", { name: "Connections (1)" }));
-    expect(await screen.findByRole("button", { name: "Accept" }, ESPERA)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Accept and reveal" }, ESPERA)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
     semPortugues("aba de conexões");
 

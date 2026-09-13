@@ -276,7 +276,8 @@ export default function Profile() {
         )}
       </nav>
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+      {/* Mesma largura padrão das outras telas de app — ver Network.tsx. */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-5">
 
         {/* Header do perfil */}
         <div className="flex items-center gap-4 mb-2">

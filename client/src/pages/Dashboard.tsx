@@ -25,7 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Briefcase, ShieldCheck, Users, MapPin, Mic, Brain, Sparkles, Crown,
+  Briefcase, ShieldCheck, Users, User, MapPin, Mic, Brain, Sparkles, Crown,
   Menu as MenuIcon, ChevronDown, LogOut,
 } from "lucide-react";
 
@@ -240,20 +240,28 @@ function GoldPromotionBanner({ userId }: { userId?: number }) {
   );
 }
 
+// O cartão não sabe nome: `matches.list` não traz mais `displayName`, `avatarUrl`,
+// `bio`, nome civil, empresa nem cargo — e nem o `matchedUserId`. A identidade
+// mora do outro lado, na lista de conexões, e só depois do interesse mútuo.
 type MatchData = {
-  matchId: number; matchedUserId: number | null; overallScore: number;
+  matchId: number; overallScore: number;
   specialtyScore: number | null; objectivesScore: number | null;
   incomeScore: number | null; locationScore: number | null; valuesScore: number | null;
-  aiInsight: string | null; displayName: string | null; city: string | null;
-  country: string | null; avatarUrl: string | null; bio: string | null;
-  primarySpecialty: string | null; currentRole: string | null;
-  currentCompany: string | null; seekingTypes: unknown; businessInterests: unknown; values: unknown;
-  sector: string | null;
+  aiInsight: string | null; city: string | null; country: string | null;
+  primarySpecialty: string | null; seekingTypes: unknown; businessInterests: unknown;
+  values: unknown; sector: string | null;
+  // O estado do interesse e o nome (quando há) chegam resolvidos do servidor.
+  connectionId: number | null;
+  connectionStatus: "pending" | "accepted" | "declined" | "blocked" | null;
+  souDestinataria: boolean | null;
+  displayName: string | null;
 };
 
-function MatchCard({ match, onInterest, onDismiss, index }: {
-  match: MatchData; onInterest: (uid: number) => void;
-  onDismiss: (mid: number) => void; index: number;
+function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, index }: {
+  match: MatchData; onInterest: (matchId: number) => void;
+  onDismiss: (mid: number) => void;
+  onResponder: (connectionId: number, accept: boolean) => void;
+  onVerConexoes: () => void; index: number;
 }) {
   const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -278,6 +286,19 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
 
   const isTopMatch = match.overallScore >= 80;
 
+  // Os cinco estados do cartão. `revelada` é o único em que existe nome, e ele
+  // vem do servidor pela lista de conexões — o cartão nunca teve o nome guardado
+  // esperando a hora de mostrar.
+  const revelada = match.connectionStatus === "accepted";
+  const aguardando = match.connectionStatus === "pending" && !match.souDestinataria;
+  const recebido = match.connectionStatus === "pending" && Boolean(match.souDestinataria);
+  const recusada = match.connectionStatus === "declined" || match.connectionStatus === "blocked";
+  const nome = revelada ? (match.displayName || t("dashboard.userFallback")) : null;
+  // Dispensar só faz sentido quando não há conversa em curso: some nos estados
+  // em que a outra parte está esperando algo, para ninguém sumir com um cartão
+  // do qual ainda depende.
+  const podeDispensar = !aguardando && !recebido && !revelada;
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -300,9 +321,12 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
       <div className="p-6">
         <div className="flex items-start gap-4 mb-4">
           {/* Avatar */}
-          <div className={`relative w-14 h-14 rounded-full flex-shrink-0 flex items-center justify-center text-black font-black text-xl transition-transform duration-200 ${hovered ? "scale-105" : ""}`}
+          <div aria-label={revelada ? undefined : t("dashboard.anonAvatarAlt")}
+            className={`relative w-14 h-14 rounded-full flex-shrink-0 flex items-center justify-center text-black font-black text-xl transition-transform duration-200 ${hovered ? "scale-105" : ""}`}
             style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }}>
-            {(match.displayName || "?")[0].toUpperCase()}
+            {/* Sem nome não há inicial: a letra sozinha já estreita demais quem
+                pode ser, numa rede em que as membras se conhecem. */}
+            {revelada ? nome![0].toUpperCase() : <User className="w-6 h-6 opacity-60" strokeWidth={2.5} />}
             {isTopMatch && (
               <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full flex items-center justify-center text-[9px] font-black text-black">★</div>
             )}
@@ -310,9 +334,15 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-0.5">
-              <h3 className="font-bold text-lg leading-tight">{match.displayName || t("dashboard.userFallback")}</h3>
+              <h3 className="font-bold text-lg leading-tight">{revelada ? nome : t("dashboard.anonTitle")}</h3>
               {isTopMatch && (
                 <Badge className="bg-emerald-400/15 text-emerald-400 border-emerald-400/25 text-xs px-2 py-0.5">{t("dashboard.topMatch")}</Badge>
+              )}
+              {revelada && (
+                <Badge className="bg-emerald-400/15 text-emerald-400 border-emerald-400/25 text-xs px-2 py-0.5">{t("dashboard.revealedBadge")}</Badge>
+              )}
+              {recebido && (
+                <Badge className="bg-[#c98f70]/15 text-[#c98f70] border-[#c98f70]/25 text-xs px-2 py-0.5">{t("dashboard.interestReceived")}</Badge>
               )}
             </div>
             <div className="text-xs text-white/40 mt-0.5 flex items-center gap-1">
@@ -362,19 +392,53 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
           </div>
         )}
 
+        {/* Aviso de reciprocidade: quem enviou não clicou em nada agora, então
+            precisa ser dita a razão de o nome ter aparecido — e que o dela
+            apareceu do outro lado também. */}
+        {revelada && (
+          <div className="mb-3 text-xs text-emerald-400/80">{t("dashboard.revealedNote")}</div>
+        )}
+
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => match.matchedUserId && onInterest(match.matchedUserId)}
-            className="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-md shadow-[#c98f70]/15">
-            {t("dashboard.connect")}
-          </button>
+          {recebido ? (
+            <>
+              <button onClick={() => onResponder(match.connectionId!,true)}
+                className="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm bg-emerald-400 hover:bg-emerald-500 text-black transition-all duration-200 active:scale-95">
+                {t("dashboard.acceptReveal")}
+              </button>
+              <button onClick={() => onResponder(match.connectionId!,false)}
+                className="px-3 py-2.5 rounded-xl text-xs font-medium border border-white/15 text-white/50 hover:border-white/30 hover:text-white transition-all duration-200">
+                {t("dashboard.decline")}
+              </button>
+            </>
+          ) : revelada ? (
+            <button onClick={onVerConexoes}
+              className="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-md shadow-[#c98f70]/15">
+              {t("dashboard.viewConnection")}
+            </button>
+          ) : aguardando || recusada ? (
+            // Desabilitado em vez de sumir: antes o botão continuava clicável e o
+            // segundo clique devolvia erro vermelho de conflito.
+            <button disabled
+              className="flex-1 py-2.5 px-4 rounded-xl font-medium text-sm border border-white/15 text-white/50 cursor-default">
+              {aguardando ? t("dashboard.interestWaiting") : t("dashboard.interestDeclined")}
+            </button>
+          ) : (
+            <button
+              onClick={() => onInterest(match.matchId)}
+              className="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-md shadow-[#c98f70]/15">
+              {t("dashboard.connect")}
+            </button>
+          )}
           <button onClick={() => setExpanded(e => !e)}
             className="px-3 py-2.5 rounded-xl text-xs font-medium border border-white/15 text-white/50 hover:border-white/30 hover:text-white transition-all duration-200">
             {expanded ? "▲" : t("opportunitiesPage.viewDetails")}
           </button>
-          <button onClick={() => onDismiss(match.matchId)}
-            className="px-3 py-2.5 rounded-xl text-white/25 hover:text-white/60 hover:bg-white/5 transition-all duration-200 text-sm">✕</button>
+          {podeDispensar && (
+            <button onClick={() => onDismiss(match.matchId)}
+              className="px-3 py-2.5 rounded-xl text-white/25 hover:text-white/60 hover:bg-white/5 transition-all duration-200 text-sm">✕</button>
+          )}
         </div>
       </div>
     </div>
@@ -790,7 +854,9 @@ export default function Dashboard() {
     onError: (err) => toast.error(err.message || t("dashboard.interestError")),
   });
   const respondMutation = trpc.connections.respond.useMutation({
-    onSuccess: (_, vars) => { toast.success(vars.accept ? t("dashboard.connectionAccepted") : t("dashboard.connectionDeclined")); connectionsQuery.refetch(); },
+    // `matchesQuery` também: o nome do cartão vem do servidor, e sem este refetch
+    // a pessoa aceita e o cartão continua anônimo até apertar F5.
+    onSuccess: (_, vars) => { toast.success(vars.accept ? t("dashboard.connectionAccepted") : t("dashboard.connectionDeclined")); connectionsQuery.refetch(); matchesQuery.refetch(); },
   });
   const regenerateMutation = trpc.matches.regenerate.useMutation({
     onSuccess: (data) => { toast.success(data.count > 0 ? t("dashboard.newMatches", { count: data.count }) : t("dashboard.analysisDone")); matchesQuery.refetch(); },
@@ -839,7 +905,7 @@ export default function Dashboard() {
   const connections = connectionsQuery.data || [];
   const profileData = profileQuery.data;
   const profile = profileData?.profile;
-  const pendingConnections = connections.filter((c) => c.status === "pending" && c.recipientId === user?.id);
+  const pendingConnections = connections.filter((c) => c.status === "pending" && c.souDestinataria);
 
   return (
     <div className="min-h-screen bg-transparent text-white">
@@ -989,13 +1055,21 @@ export default function Dashboard() {
                   </button>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 gap-4">
-                  {matches.map((match, i) => (
-                    <MatchCard key={match.matchId} match={match} index={i}
-                      onInterest={(uid) => interestMutation.mutate({ targetUserId: uid })}
-                      onDismiss={(mid) => dismissMutation.mutate({ matchId: mid })} />
-                  ))}
-                </div>
+                <>
+                  {/* Uma linha para a lista inteira, não uma por cartão: é assim
+                      que a vitrine coletiva já explica a ausência de dados
+                      pessoais, e repetir em 20 cartões seria ruído. */}
+                  <p className="text-xs text-white/40 mb-3">{t("dashboard.anonListNotice")}</p>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {matches.map((match, i) => (
+                      <MatchCard key={match.matchId} match={match} index={i}
+                        onInterest={(matchId) => interestMutation.mutate({ matchId })}
+                        onResponder={(connectionId, accept) => respondMutation.mutate({ connectionId, accept })}
+                        onVerConexoes={() => switchTab("connections")}
+                        onDismiss={(mid) => dismissMutation.mutate({ matchId: mid })} />
+                    ))}
+                  </div>
+                </>
               )}
 
               {/* ─── OPORTUNIDADES RECOMENDADAS ─── */}
@@ -1027,19 +1101,27 @@ export default function Dashboard() {
                   className="bg-[#1b1714] border border-white/8 rounded-2xl p-5 flex items-center gap-4 hover:border-white/15 transition-colors duration-200">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center text-[#151312] font-black flex-shrink-0"
                     style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }}>
-                    {(conn.displayName || "?")[0].toUpperCase()}
+                    {conn.displayName
+                      ? conn.displayName[0].toUpperCase()
+                      : <User className="w-5 h-5 opacity-60" strokeWidth={2.5} aria-label={t("dashboard.anonAvatarAlt")} />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold">{conn.displayName}</div>
+                    <div className="font-bold">{conn.displayName || t("dashboard.anonTitle")}</div>
                     <div className="text-sm text-white/40">{optionLabel(t, conn.primarySpecialty)} · {conn.city}</div>
                     {conn.message && <div className="text-xs text-white/25 mt-1 truncate">"{conn.message}"</div>}
+                    {conn.status === "pending" && conn.souDestinataria && (
+                      <div className="text-xs text-white/35 mt-1">{t("dashboard.acceptRevealHint")}</div>
+                    )}
+                    {conn.status === "accepted" && (
+                      <div className="text-xs text-emerald-400/70 mt-1">{t("dashboard.revealedNote")}</div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {conn.status === "pending" && conn.recipientId === user?.id ? (
+                    {conn.status === "pending" && conn.souDestinataria ? (
                       <>
                         <button onClick={() => respondMutation.mutate({ connectionId: conn.id, accept: true })}
                           className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-400 hover:bg-emerald-500 text-black transition-all duration-200 active:scale-95">
-                          {t("dashboard.accept")}
+                          {t("dashboard.acceptReveal")}
                         </button>
                         <button onClick={() => respondMutation.mutate({ connectionId: conn.id, accept: false })}
                           className="px-4 py-2 rounded-xl text-xs font-medium border border-white/15 text-white/50 hover:border-white/30 hover:text-white transition-all duration-200">

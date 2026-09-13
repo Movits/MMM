@@ -21,7 +21,6 @@ import {
 import { ENV } from './_core/env';
 import nodeCrypto from "node:crypto";
 import { slugifyMatchTag } from "./match-service";
-import { mascararContatosEmTexto } from "@shared/contato-em-texto";
 import { normalizar } from "@shared/direcao-do-termo";
 import { BancoIndisponivel } from "./banco-indisponivel";
 import { condicaoDeStatusNasListas } from "./oportunidade-acesso";
@@ -468,9 +467,35 @@ export async function getAuditLogs(filters: { userId?: number; action?: string; 
 }
 
 // ─── Matches (sistema original MMM) ────────────────────────────────────────────────
+/**
+ * A projeção ANÔNIMA do cruzamento de perfis.
+ *
+ * Regra da cliente (12/09/2026): o nome de uma membra não aparece para outra
+ * antes do interesse mútuo. Como privacidade aqui é regra de CONSULTA e não de
+ * tela (docs/arquitetura/privacidade.md), o que identifica não é escondido no
+ * componente — não é lido do banco. Ficaram de fora, de propósito:
+ * `displayName`, `avatarUrl`, `bio`, `users.name` (nome civil), `users.company`,
+ * `users.position`, `currentCompany`, `currentRole`, `sectors`,
+ * `profileCompleteness`, `experienceYears` e `workStyle`. Boa parte deles nunca
+ * foi desenhada em tela nenhuma: trafegavam na resposta tRPC para ninguém ver,
+ * legíveis por quem abrisse o devtools.
+ *
+ * A identidade entra pelo outro lado, em `getConnectionsForUser`, e só quando a
+ * conexão está `accepted` — que é onde o interesse mútuo fica registrado.
+ *
+ * `matchedUserId` CONTINUA aqui porque três travas do servidor dependem dele:
+ * o consentimento dos dois lados, o portão da demanda expressa e a contagem de
+ * `redeAguardando` (server/routers/profileMatches.ts). Ele é recortado no
+ * router, depois dos filtros, e não chega ao navegador — id real na mão de uma
+ * conta Ouro é deanonimização de um salto, porque toda conta Ouro tem o painel
+ * administrativo, que lista usuárias por nome.
+ *
+ * O `aiInsight` pode ficar: o prompt que o gera (server/matching.ts) monta os
+ * dois perfis só com especialidade, busca, setor e valores — nome nunca entra.
+ */
 export async function getMatchesForUser(userId: number, limit = 20) {
   const db = await exigirDb();
-  const linhas = await db.select({
+  return db.select({
     matchId: matches.id,
     matchedUserId: matches.matchedUserId,
     overallScore: matches.overallScore,
@@ -483,41 +508,41 @@ export async function getMatchesForUser(userId: number, limit = 20) {
     userSeen: matches.userSeen,
     userDismissed: matches.userDismissed,
     createdAt: matches.createdAt,
-    displayName: userProfiles.displayName,
-    avatarUrl: userProfiles.avatarUrl,
-    bio: userProfiles.bio,
     city: userProfiles.city,
     country: userProfiles.country,
-    sectors: userProfiles.sectors,
-    profileCompleteness: userProfiles.profileCompleteness,
-    userName: users.name,
-    userCompany: users.company,
-    userPosition: users.position,
     // Campos de matching
     primarySpecialty: userProfiles.primarySpecialty,
-    currentRole: userProfiles.currentRole,
-    currentCompany: userProfiles.currentCompany,
     seekingTypes: userProfiles.seekingTypes,
     businessInterests: userProfiles.businessInterests,
     values: userProfiles.values,
     sector: userProfiles.sector,
-    experienceYears: userProfiles.experienceYears,
-    workStyle: userProfiles.workStyle,
+    // O estado do interesse vem do SERVIDOR, resolvido aqui. A tela não tem como
+    // cruzar match e conexão por conta própria — e é bom que não tenha: para
+    // cruzar, precisaria do id da outra usuária, que é justamente o que não pode
+    // atravessar. `connectionId` é id de conexão, não de pessoa.
+    connectionId: connections.id,
+    connectionStatus: connections.status,
+    souDestinataria: sql<boolean>`${connections.recipientId} = ${userId}`,
+    // O MESMO predicado do portão de `getConnectionsForUser`: nome só com aceite.
+    displayName: sql<string | null>`CASE WHEN ${connections.status} = 'accepted' THEN ${userProfiles.displayName} ELSE NULL END`,
   })
     .from(matches)
     .innerJoin(userProfiles, eq(userProfiles.userId, matches.matchedUserId!))
+    // O join com `users` não traz mais coluna nenhuma: ele sobrevive só como
+    // garantia de que a conta existe — conta excluída (server/exclusao-de-conta.ts)
+    // não pode deixar match órfão apontando para linha que sumiu.
     .innerJoin(users, eq(users.id, matches.matchedUserId!))
+    .leftJoin(connections, or(
+      and(eq(connections.requesterId, userId), eq(connections.recipientId, matches.matchedUserId!)),
+      and(eq(connections.requesterId, matches.matchedUserId!), eq(connections.recipientId, userId)),
+    ))
     .where(and(eq(matches.userId, userId), eq(matches.userDismissed, false)))
     .orderBy(desc(matches.overallScore))
     .limit(limit);
-  // A13: a bio é texto livre da OUTRA usuária chegando a esta — quem escreveu
-  // telefone/e-mail na própria bio não pode usá-la como canal de contato nos
-  // matches. A dona segue vendo a própria bio inteira no perfil; aqui, a
-  // versão que circula sai mascarada.
-  return linhas.map(linha => ({
-    ...linha,
-    bio: linha.bio ? mascararContatosEmTexto(linha.bio) : linha.bio,
-  }));
+  // A13 (histórico): a `bio` era texto livre da OUTRA usuária chegando a esta, e
+  // saía daqui mascarada contra telefone/e-mail. Ela deixou de ser lida — proteção
+  // maior, não menor: o que não é selecionado não precisa ser mascarado. A máscara
+  // `mascararContatosEmTexto` segue viva e em uso no resto do produto.
 }
 
 export async function dismissMatch(userId: number, matchId: number) {
@@ -532,23 +557,74 @@ export async function regenerateMatches(userId: number): Promise<number> {
   return generateMatchesForUser(userId);
 }
 
+/**
+ * A alça do cartão anônimo: de `matchId` para a usuária do outro lado.
+ *
+ * Com o `matchedUserId` fora do payload, o navegador age pelo `matchId` — que ele
+ * já recebia para dispensar. Quem protege não é a opacidade do número e sim o
+ * predicado de posse: a linha tem de ser um match DESTA usuária. Enumerar id
+ * alheio devolve `null` e não escreve nada.
+ *
+ * Conserta de passagem um buraco antigo: `connections.send` aceitava qualquer
+ * `targetUserId`, match ou não. Somado ao `connections.list`, que devolvia nome e
+ * empresa de qualquer pendente, isso permitia varrer a base inteira de qualquer
+ * conta autenticada.
+ */
+export async function resolverAlvoDoMatch(userId: number, matchId: number): Promise<number | null> {
+  const db = await exigirDb();
+  const linha = await db.select({ matchedUserId: matches.matchedUserId })
+    .from(matches)
+    .where(and(
+      eq(matches.id, matchId),
+      eq(matches.userId, userId),
+      eq(matches.userDismissed, false),
+    ))
+    .limit(1);
+  return linha[0]?.matchedUserId ?? null;
+}
+
 // ─── Connections ────────────────────────────────────────────────────────────────
+/**
+ * O PORTÃO DA REVELAÇÃO MÚTUA.
+ *
+ * Esta é a única consulta do painel que devolve identidade de outra membra, e
+ * ela só devolve quando a conexão está `accepted` — o registro de que as duas
+ * quiseram. Enquanto está `pending`, as duas pontas recebem exatamente a mesma
+ * projeção anônima: quem pediu não se expõe sozinha, e quem recebeu decide pelo
+ * que o perfil diz, não por quem a pessoa é.
+ *
+ * A simetria não depende de disciplina de quem escreve o código: é UMA linha e
+ * UMA coluna `status`, lida pelo mesmo predicado pelos dois lados. Não existe
+ * estado "revelado para A e não para B".
+ *
+ * `requesterId` e `recipientId` NÃO saem enquanto está pendente — são o id real
+ * da outra parte. No lugar deles vai `souDestinataria`, que é o que a tela
+ * precisa para saber de que lado está. `outraParteId` só volta depois do aceite,
+ * porque a mensagem direta de Ouro precisa dele.
+ *
+ * O bilhete (`message`) também espera o aceite: o bloqueio A13 barra telefone e
+ * e-mail, não nome — "oi, aqui é a Ana da Vinícola X" atravessaria o portão
+ * inteiro numa linha de texto livre.
+ */
 export async function getConnectionsForUser(userId: number) {
   const db = await exigirDb();
+  const outraParte = sql`CASE WHEN ${connections.requesterId} = ${userId} THEN ${connections.recipientId} ELSE ${connections.requesterId} END`;
+  const aceita = sql`${connections.status} = 'accepted'`;
   return db.select({
     id: connections.id,
-    requesterId: connections.requesterId,
-    recipientId: connections.recipientId,
     status: connections.status,
-    message: connections.message,
     createdAt: connections.createdAt,
-    displayName: userProfiles.displayName,
-    avatarUrl: userProfiles.avatarUrl,
+    souDestinataria: sql<boolean>`${connections.recipientId} = ${userId}`,
+    // Anônimo dos dois lados, sempre: é com isto que se decide aceitar.
     city: userProfiles.city,
-    sectors: userProfiles.sectors,
-    userName: users.name,
-    userCompany: users.company,
     primarySpecialty: userProfiles.primarySpecialty,
+    // Só depois do aceite.
+    outraParteId: sql<number | null>`CASE WHEN ${aceita} THEN ${outraParte} ELSE NULL END`,
+    message: sql<string | null>`CASE WHEN ${aceita} THEN ${connections.message} ELSE NULL END`,
+    displayName: sql<string | null>`CASE WHEN ${aceita} THEN ${userProfiles.displayName} ELSE NULL END`,
+    avatarUrl: sql<string | null>`CASE WHEN ${aceita} THEN ${userProfiles.avatarUrl} ELSE NULL END`,
+    userName: sql<string | null>`CASE WHEN ${aceita} THEN ${users.name} ELSE NULL END`,
+    userCompany: sql<string | null>`CASE WHEN ${aceita} THEN ${users.company} ELSE NULL END`,
   })
     .from(connections)
     .innerJoin(userProfiles, sql`${userProfiles.userId} = CASE WHEN ${connections.requesterId} = ${userId} THEN ${connections.recipientId} ELSE ${connections.requesterId} END`)
@@ -558,22 +634,63 @@ export async function getConnectionsForUser(userId: number) {
     .limit(50);
 }
 
-export async function sendConnectionRequest(requesterId: number, recipientId: number, message?: string) {
+/**
+ * Demonstrar interesse — olhando os DOIS sentidos.
+ *
+ * A versão anterior só procurava `(requesterId = eu, recipientId = ela)`. Se as
+ * duas clicassem em "Demonstrar Interesse" no cartão uma da outra, nasciam DUAS
+ * linhas pendentes: as duas tinham demonstrado interesse e nenhuma via nenhuma —
+ * exatamente o que a regra do interesse mútuo promete que não acontece. Agora a
+ * linha invertida pendente é o próprio aceite.
+ *
+ * A resposta é DELIBERADAMENTE a mesma em todos os casos que não são erro. Antes,
+ * uma linha existente virava `CONFLICT` distinguível, o que transformava a rota
+ * num oráculo: dava para descobrir que alguém recusou ou bloqueou.
+ */
+export async function sendConnectionRequest(requesterId: number, recipientId: number) {
   const db = await exigirDb();
-  const existing = await db.select({ id: connections.id })
+  const par = await db.select({
+    id: connections.id,
+    requesterId: connections.requesterId,
+    status: connections.status,
+  })
     .from(connections)
-    .where(and(eq(connections.requesterId, requesterId), eq(connections.recipientId, recipientId)))
-    .limit(1);
-  if (existing.length > 0) return { alreadyExists: true };
-  await db.insert(connections).values({ requesterId, recipientId, message });
-  return { alreadyExists: false };
+    .where(or(
+      and(eq(connections.requesterId, requesterId), eq(connections.recipientId, recipientId)),
+      and(eq(connections.requesterId, recipientId), eq(connections.recipientId, requesterId)),
+    ))
+    .limit(2);
+
+  const invertidaPendente = par.find(l => l.requesterId === recipientId && l.status === "pending");
+  if (invertidaPendente) {
+    await db.update(connections)
+      .set({ status: "accepted" })
+      .where(eq(connections.id, invertidaPendente.id));
+    return { revelou: true, connectionId: invertidaPendente.id };
+  }
+  if (par.length > 0) return { revelou: false, connectionId: par[0].id };
+
+  await db.insert(connections).values({ requesterId, recipientId });
+  return { revelou: false, connectionId: null };
 }
 
+/** Devolve se o aceite realmente aconteceu, para a trilha de auditoria saber. */
 export async function respondToConnection(connectionId: number, userId: number, accept: boolean) {
   const db = await exigirDb();
+  const linha = await db.select({
+    id: connections.id,
+    requesterId: connections.requesterId,
+    status: connections.status,
+  })
+    .from(connections)
+    .where(and(eq(connections.id, connectionId), eq(connections.recipientId, userId)))
+    .limit(1);
+  if (linha.length === 0 || linha[0].status !== "pending") return { revelou: false, contraparte: null };
+
   await db.update(connections)
     .set({ status: accept ? "accepted" : "declined" })
     .where(and(eq(connections.id, connectionId), eq(connections.recipientId, userId)));
+  return { revelou: accept, contraparte: linha[0].requesterId };
 }
 
 // ─── Private Contacts (Minha Rede de Relacionamentos) ─────────────────────────

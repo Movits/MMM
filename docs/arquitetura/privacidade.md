@@ -283,6 +283,44 @@ conversa.
 
 ---
 
+## O portão da revelação mútua (match de perfis)
+
+Decisão da cliente, 12/09/2026: no cruzamento de perfis o nome de uma membra não
+aparece para outra antes do **interesse mútuo**. Vale para o nome e para a
+inicial do avatar — a letra sozinha já estreita demais quem pode ser.
+
+Como a regra é de consulta e não de tela, ela vive em dois lugares e em nenhum
+componente:
+
+- `getMatchesForUser` (`server/db.ts`) **não seleciona** `displayName`,
+  `avatarUrl`, `bio`, `users.name`, `users.company`, `users.position`,
+  `currentRole`, `currentCompany`. O nome só existe na consulta atrás de um
+  `CASE WHEN connections.status = 'accepted'`.
+- `getConnectionsForUser` usa o **mesmo predicado**. Enquanto está `pending`, as
+  duas pontas recebem a mesma projeção anônima — quem pede não se expõe sozinha,
+  e quem recebe decide pelo perfil, não por quem a pessoa é.
+
+A simetria não depende de disciplina de quem escreve o código: é uma linha e uma
+coluna `status`, lida pelo mesmo predicado dos dois lados. Não existe estado
+"revelado para A e não para B".
+
+O `matchedUserId` também não atravessa para o navegador. Ele serve às travas do
+servidor (consentimento, demanda expressa, contagem de rede aguardando) e é
+recortado no router. O motivo é concreto: **toda conta Ouro tem o painel
+administrativo**, que lista usuárias por nome — id real na mão de uma Ouro é
+deanonimização de um salto. A tela age pelo `matchId`, que é id de linha de
+match, não de pessoa.
+
+O bilhete de texto livre saiu do pedido de conexão: o detector A13 barra telefone
+e e-mail, não **nome**, e uma linha de texto atravessaria o portão inteiro.
+
+A revelação entra em `audit_logs` como `MATCH_IDENTITY_REVEALED`, duas linhas —
+uma por parte —, pelo mesmo motivo do `GOLD_ACERVO_READ`: "quem passou a saber
+quem eu sou?" precisa ter resposta.
+
+**Limite conhecido**: revelação não se revoga. Aceitou, viu. Vale a mesma
+ressalva da seção anterior sobre o que o aceite não desfaz.
+
 ## Checklist antes de qualquer publicação
 
 - [ ] A aplicação conecta com `mmm_app`, nunca com a dona das tabelas
@@ -292,6 +330,9 @@ conversa.
 - [ ] O Match não cruza dado de quem não consentiu
 - [ ] No nível público, nenhuma resposta do servidor contém nome, telefone, e-mail,
       WhatsApp, LinkedIn, Instagram, foto ou cartão de visita de contato
+- [ ] No cruzamento de PERFIS, nenhuma resposta do servidor traz nome, nome civil,
+      empresa, cargo, foto ou bio de uma membra antes do interesse mútuo
+- [ ] E nenhuma traz o `userId` real de uma contraparte ainda não revelada
 - [ ] Revogar autorização tira o acesso na consulta seguinte
 - [ ] Áudio de reunião e cartões de visita ficam em storage cifrado, com URL
       temporária, não em link público permanente
