@@ -97,7 +97,7 @@ describe("calculateCompatibilityScore — necessidade expressa libera o serviço
     );
     expect(r.bloqueio).toBeUndefined();
     expect(r.complementarity).toBe(60); // uma via
-    expect(r.overall).toBeGreaterThanOrEqual(40);
+    expect(r.overall).toBeGreaterThanOrEqual(50); // Limiar de dados suficientes (após mudança 40→50)
   });
 
   it("texto livre que nomeia o serviço também é demanda expressa", () => {
