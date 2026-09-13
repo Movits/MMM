@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 
 function LegalShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#060b14] text-white antialiased">
+    <div className="min-h-screen bg-[#151312] text-white antialiased">
       <nav className="border-b border-white/[0.05] px-6 py-4">
         <Link href="/">
           <span className="inline-flex items-center gap-2 text-white/50 hover:text-white transition-colors cursor-pointer text-sm">

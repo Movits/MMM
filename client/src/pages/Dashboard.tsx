@@ -35,7 +35,7 @@ function ScoreRing({ score, size = 64, animate = false }: { score: number; size?
   const r = (size - 8) / 2;
   const circ = 2 * Math.PI * r;
   const dash = (displayed / 100) * circ;
-  const color = displayed >= 80 ? "#10b981" : displayed >= 60 ? "#f59e0b" : "#3b82f6";
+  const color = displayed >= 80 ? "#10b981" : displayed >= 60 ? "#c98f70" : "#3b82f6";
 
   useEffect(() => {
     if (!animate) return;
@@ -67,7 +67,7 @@ function ScoreRing({ score, size = 64, animate = false }: { score: number; size?
 }
 
 // ─── Animated Score Bar ───────────────────────────────────────────────────────
-function ScoreBar({ label, value, color = "#f59e0b", delay = 0 }: { label: string; value: number; color?: string; delay?: number }) {
+function ScoreBar({ label, value, color = "#c98f70", delay = 0 }: { label: string; value: number; color?: string; delay?: number }) {
   const [width, setWidth] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -119,7 +119,7 @@ function DistributionChart({ data }: { data: number[] }) {
   const [animated, setAnimated] = useState(false);
   const max = Math.max(...data, 1);
   const labels = ["0–20", "20–40", "40–60", "60–80", "80+"];
-  const colors = ["#ef4444", "#f97316", "#f59e0b", "#3b82f6", "#10b981"];
+  const colors = ["#ef4444", "#f97316", "#c98f70", "#3b82f6", "#10b981"];
 
   useEffect(() => {
     const t = setTimeout(() => setAnimated(true), 200);
@@ -217,12 +217,12 @@ function GoldPromotionBanner({ userId }: { userId?: number }) {
 
   return (
     <div className="relative overflow-hidden" style={{
-      background: "linear-gradient(135deg, #92400e 0%, #78350f 40%, #451a03 100%)",
-      borderBottom: "1px solid rgba(245,166,35,0.3)",
+      background: "linear-gradient(135deg, #6e4530 0%, #4f3222 40%, #2f1d13 100%)",
+      borderBottom: "1px solid rgba(201,143,112,0.3)",
       animation: "slideDown 0.5s cubic-bezier(0.23,1,0.32,1)",
     }}>
       <div className="absolute inset-0 opacity-10" style={{
-        backgroundImage: "radial-gradient(circle at 20% 50%, #f5a623 0%, transparent 50%), radial-gradient(circle at 80% 50%, #ffd166 0%, transparent 50%)"
+        backgroundImage: "radial-gradient(circle at 20% 50%, #c98f70 0%, transparent 50%), radial-gradient(circle at 80% 50%, #efcba8 0%, transparent 50%)"
       }} />
       <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4 relative">
         <div className="text-3xl animate-bounce">⭐</div>
@@ -287,7 +287,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
         transform: entered ? "translateY(0) scale(1)" : "translateY(20px) scale(0.97)",
         transition: `opacity 0.4s cubic-bezier(0.23,1,0.32,1), transform 0.4s cubic-bezier(0.23,1,0.32,1)`,
       }}
-      className={`bg-[#0d1530] border rounded-2xl overflow-hidden transition-all duration-300 ${
+      className={`bg-[#1b1714] border rounded-2xl overflow-hidden transition-all duration-300 ${
         isTopMatch
           ? "border-emerald-500/30 shadow-lg shadow-emerald-500/5"
           : hovered ? "border-white/20" : "border-white/8"
@@ -301,7 +301,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
         <div className="flex items-start gap-4 mb-4">
           {/* Avatar */}
           <div className={`relative w-14 h-14 rounded-full flex-shrink-0 flex items-center justify-center text-black font-black text-xl transition-transform duration-200 ${hovered ? "scale-105" : ""}`}
-            style={{ background: "linear-gradient(135deg, #f5a623, #ffd166)" }}>
+            style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }}>
             {(match.displayName || "?")[0].toUpperCase()}
             {isTopMatch && (
               <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full flex items-center justify-center text-[9px] font-black text-black">★</div>
@@ -328,8 +328,8 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
 
         {/* AI Insight */}
         {match.aiInsight && (
-          <div className={`bg-[#f5a623]/8 border border-[#f5a623]/20 rounded-xl p-3 mb-4 text-sm text-white/65 leading-relaxed transition-all duration-300 ${hovered ? "border-[#f5a623]/35 bg-[#f5a623]/12" : ""}`}>
-            <span className="text-[#f5a623] font-semibold">✦ {t("dashboard.aiPrefix")} </span>{match.aiInsight}
+          <div className={`bg-[#c98f70]/8 border border-[#c98f70]/20 rounded-xl p-3 mb-4 text-sm text-white/65 leading-relaxed transition-all duration-300 ${hovered ? "border-[#c98f70]/35 bg-[#c98f70]/12" : ""}`}>
+            <span className="text-[#c98f70] font-semibold">✦ {t("dashboard.aiPrefix")} </span>{match.aiInsight}
           </div>
         )}
 
@@ -347,7 +347,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
         {/* Expanded scores */}
         {expanded && (
           <div className="space-y-2.5 mb-4 pt-4 border-t border-white/5">
-            <ScoreBar label={t("dashboard.scoreObjectives")} value={match.objectivesScore ?? 0} color="#f59e0b" delay={0} />
+            <ScoreBar label={t("dashboard.scoreObjectives")} value={match.objectivesScore ?? 0} color="#c98f70" delay={0} />
             <ScoreBar label={t("dashboard.scoreSpecialty")} value={match.specialtyScore ?? 0} color="#3b82f6" delay={80} />
             <ScoreBar label={t("dashboard.scoreValues")} value={match.valuesScore ?? 0} color="#10b981" delay={160} />
             <ScoreBar label={t("dashboard.scoreLocation")} value={match.locationScore ?? 0} color="#8b5cf6" delay={240} />
@@ -355,7 +355,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
             {values.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-2">
                 {values.map((v: string) => (
-                  <span key={v} className="px-2.5 py-0.5 rounded-full bg-[#f5a623]/10 border border-[#f5a623]/20 text-xs text-[#f5a623]">{optionLabel(t, v)}</span>
+                  <span key={v} className="px-2.5 py-0.5 rounded-full bg-[#c98f70]/10 border border-[#c98f70]/20 text-xs text-[#c98f70]">{optionLabel(t, v)}</span>
                 ))}
               </div>
             )}
@@ -366,7 +366,7 @@ function MatchCard({ match, onInterest, onDismiss, index }: {
         <div className="flex items-center gap-2">
           <button
             onClick={() => match.matchedUserId && onInterest(match.matchedUserId)}
-            className="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] transition-all duration-200 active:scale-95 shadow-md shadow-[#f5a623]/15">
+            className="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-md shadow-[#c98f70]/15">
             {t("dashboard.connect")}
           </button>
           <button onClick={() => setExpanded(e => !e)}
@@ -397,7 +397,7 @@ function StatCard({ label, value, color, icon, index }: {
       transform: entered ? "translateY(0)" : "translateY(16px)",
       transition: "opacity 0.4s cubic-bezier(0.23,1,0.32,1), transform 0.4s cubic-bezier(0.23,1,0.32,1)",
     }}
-      className="bg-[#0d1530] border border-white/8 rounded-xl p-4 hover:border-white/15 transition-colors duration-200 group">
+      className="bg-[#1b1714] border border-white/8 rounded-xl p-4 hover:border-white/15 transition-colors duration-200 group">
       <div className="flex items-center justify-between mb-2">
         <span className="text-lg">{icon}</span>
         <div className="w-1.5 h-1.5 rounded-full opacity-60" style={{ background: color }} />
@@ -413,7 +413,7 @@ function StatCard({ label, value, color, icon, index }: {
 // ─── Skeleton Card ────────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
-    <div className="bg-[#0d1530] border border-white/8 rounded-2xl p-6 animate-pulse">
+    <div className="bg-[#1b1714] border border-white/8 rounded-2xl p-6 animate-pulse">
       <div className="flex gap-4 mb-4">
         <div className="w-14 h-14 rounded-full shimmer-bg" />
         <div className="flex-1 space-y-2.5">
@@ -450,12 +450,12 @@ function LangSelectorMini() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 bg-[#0d1b2e] border border-white/20 rounded-xl shadow-2xl overflow-hidden min-w-[140px]">
+          <div className="absolute right-0 top-full mt-1 z-50 bg-[#211e1b] border border-white/20 rounded-xl shadow-2xl overflow-hidden min-w-[140px]">
             {LANGUAGES.map(lang => (
               <button key={lang.code}
                 onClick={() => { i18n.changeLanguage(lang.code); setOpen(false); }}
                 className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors text-left ${
-                  lang.code === idiomaAtual ? "bg-[#f5a623]/20 text-[#f5a623]" : "text-white/60 hover:bg-white/10 hover:text-white"
+                  lang.code === idiomaAtual ? "bg-[#c98f70]/20 text-[#c98f70]" : "text-white/60 hover:bg-white/10 hover:text-white"
                 }`}>
                 <span>{lang.flag}</span><span>{lang.label}</span>
               </button>
@@ -501,7 +501,7 @@ function RecommendedOpportunities() {
   };
 
   const getScoreColor = (score: number) =>
-    score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#3b82f6";
+    score >= 80 ? "#10b981" : score >= 60 ? "#c98f70" : "#3b82f6";
 
   return (
     <div className="mt-10" style={{
@@ -512,7 +512,7 @@ function RecommendedOpportunities() {
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <div className="flex items-center justify-center w-9 h-9 rounded-xl"
-          style={{ background: "linear-gradient(135deg, rgba(245,166,35,0.2), rgba(139,92,246,0.2))", border: "1px solid rgba(245,166,35,0.25)" }}>
+          style={{ background: "linear-gradient(135deg, rgba(201,143,112,0.2), rgba(139,92,246,0.2))", border: "1px solid rgba(201,143,112,0.25)" }}>
           <span className="text-lg">✦</span>
         </div>
         <div>
@@ -525,7 +525,7 @@ function RecommendedOpportunities() {
       {recommendedQuery.isLoading && (
         <div className="grid md:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="bg-[#0d1530] border border-white/8 rounded-2xl p-5 animate-pulse">
+            <div key={i} className="bg-[#1b1714] border border-white/8 rounded-2xl p-5 animate-pulse">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 space-y-2">
                   <div className="h-4 shimmer-bg rounded-lg w-3/4" />
@@ -548,11 +548,11 @@ function RecommendedOpportunities() {
 
       {/* Lista realmente vazia */}
       {!recommendedQuery.isLoading && !recommendedQuery.isError && (!recommendedQuery.data || recommendedQuery.data.length === 0) && (
-        <div className="bg-[#0d1530] border border-white/8 rounded-2xl p-8 text-center">
+        <div className="bg-[#1b1714] border border-white/8 rounded-2xl p-8 text-center">
           <div className="text-4xl mb-3">🔭</div>
           <p className="text-white/40 text-sm">{t("dashboard.recommendedEmpty")}</p>
           <Link href="/opportunities">
-            <button className="mt-4 px-5 py-2 rounded-xl text-xs font-semibold border border-[#f5a623]/30 text-[#f5a623] hover:bg-[#f5a623]/8 transition-colors">
+            <button className="mt-4 px-5 py-2 rounded-xl text-xs font-semibold border border-[#c98f70]/30 text-[#c98f70] hover:bg-[#c98f70]/8 transition-colors">
               {t("dashboard.exploreOpportunities")}
             </button>
           </Link>
@@ -574,7 +574,7 @@ function RecommendedOpportunities() {
                   transition: `opacity 0.4s cubic-bezier(0.23,1,0.32,1) ${i * 60}ms, transform 0.4s cubic-bezier(0.23,1,0.32,1) ${i * 60}ms`,
                   borderColor: compliance.border,
                 }}
-                className="bg-[#0d1530] border rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-black/30 transition-all duration-300 group">
+                className="bg-[#1b1714] border rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-black/30 transition-all duration-300 group">
 
                 {/* Compliance top stripe */}
                 <div className="h-0.5" style={{ background: `linear-gradient(90deg, transparent, ${compliance.border.replace("0.35", "0.8")}, transparent)` }} />
@@ -583,7 +583,7 @@ function RecommendedOpportunities() {
                   {/* Header row */}
                   <div className="flex items-start gap-3 mb-3">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-white text-base leading-tight truncate group-hover:text-[#f5a623] transition-colors">
+                      <h3 className="font-bold text-white text-base leading-tight truncate group-hover:text-[#c98f70] transition-colors">
                         {opp.title}
                       </h3>
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -619,13 +619,13 @@ function RecommendedOpportunities() {
                   </div>
 
                   {/* AI compatibility reason */}
-                  <div className="bg-[#f5a623]/6 border border-[#f5a623]/18 rounded-xl p-3 mb-3 text-xs text-white/60 leading-relaxed group-hover:border-[#f5a623]/30 group-hover:bg-[#f5a623]/10 transition-all duration-300">
-                    <span className="text-[#f5a623] font-semibold">✦ {t("dashboard.aiPrefix")} </span>{opp.compatibilityReason}
+                  <div className="bg-[#c98f70]/6 border border-[#c98f70]/18 rounded-xl p-3 mb-3 text-xs text-white/60 leading-relaxed group-hover:border-[#c98f70]/30 group-hover:bg-[#c98f70]/10 transition-all duration-300">
+                    <span className="text-[#c98f70] font-semibold">✦ {t("dashboard.aiPrefix")} </span>{opp.compatibilityReason}
                   </div>
 
                   {/* CTA */}
                   <Link href={`/opportunities/${opp.id}`}>
-                    <button className="w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-[#f5a623]/90 to-[#ffd166]/90 hover:from-[#f5a623] hover:to-[#ffd166] text-[#060e1a] transition-all duration-200 active:scale-95 shadow-md shadow-[#f5a623]/15">
+                    <button className="w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-[#c98f70]/90 to-[#efcba8]/90 hover:from-[#c98f70] hover:to-[#efcba8] text-[#151312] transition-all duration-200 active:scale-95 shadow-md shadow-[#c98f70]/15">
                       {t("dashboard.viewOpportunity")}
                     </button>
                   </Link>
@@ -666,7 +666,7 @@ function DealRoomsTab() {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map(i => (
-          <div key={i} className="bg-[#0d1530] border border-white/8 rounded-2xl p-5 animate-pulse">
+          <div key={i} className="bg-[#1b1714] border border-white/8 rounded-2xl p-5 animate-pulse">
             <div className="h-4 bg-white/10 rounded w-1/3 mb-2" />
             <div className="h-3 bg-white/5 rounded w-2/3" />
           </div>
@@ -710,7 +710,7 @@ function DealRoomsTab() {
           </p>
           {!viewAll && (
             <Link href="/opportunities">
-              <button className="px-6 py-2.5 rounded-xl text-sm font-bold bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] transition-all duration-200 active:scale-95">
+              <button className="px-6 py-2.5 rounded-xl text-sm font-bold bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95">
                 {t("dashboard.viewOpportunities")}
               </button>
             </Link>
@@ -727,7 +727,7 @@ function DealRoomsTab() {
             const statusLabel = room.status === "active" ? t("dealRoom.statusActive") : room.status === "awaiting_nda" ? t("dealRoom.statusAwaitingNda") : t("dealRoom.statusClosed");
             return (
               <Link key={room.id} href={`/deal-room/${room.id}`}>
-                <div className="bg-[#0d1530] border border-white/8 hover:border-amber-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-200 hover:bg-[#0d1530]/80">
+                <div className="bg-[#1b1714] border border-white/8 hover:border-amber-500/30 rounded-2xl p-5 cursor-pointer transition-all duration-200 hover:bg-[#1b1714]/80">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
@@ -813,7 +813,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="text-center">
-          <div className="w-14 h-14 border-2 border-[#f5a623]/20 border-t-[#f5a623] rounded-full animate-spin mx-auto mb-5" />
+          <div className="w-14 h-14 border-2 border-[#c98f70]/20 border-t-[#c98f70] rounded-full animate-spin mx-auto mb-5" />
           <div className="text-white/50 text-sm font-medium">{t("dashboard.loading")}</div>
           <div className="text-white/20 text-xs mt-1">{t("dashboard.loadingDesc")}</div>
         </div>
@@ -827,7 +827,7 @@ export default function Dashboard() {
         <div className="text-center">
           <div className="text-5xl mb-4">🔒</div>
           <h2 className="text-2xl font-bold mb-4 text-white">{t("dashboard.restricted")}</h2>
-          <a href={getLoginUrl()}><Button className="bg-[#f5a623] text-[#060e1a] font-bold hover:bg-[#e09520]">{t("auth.login")}</Button></a>
+          <a href={getLoginUrl()}><Button className="bg-[#c98f70] text-[#151312] font-bold hover:bg-[#b07a5c]">{t("auth.login")}</Button></a>
         </div>
       </div>
     );
@@ -845,7 +845,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-transparent text-white">
 
       {/* ─── NAVBAR ─── */}
-      <nav className="border-b border-white/[0.06] px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-40 bg-[#060e1a]/90 backdrop-blur-2xl">
+      <nav className="border-b border-white/[0.06] px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-40 bg-[#151312]/90 backdrop-blur-2xl">
         {/* O logo levava para a landing e tirava a usuária do app sem querer. */}
         <Link href="/dashboard">
           <BrandMark />
@@ -853,7 +853,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-2 sm:gap-3">
           {pendingConnections.length > 0 && (
             <button onClick={() => switchTab("connections")}
-              className="text-xs text-[#f5a623] border border-[#f5a623]/30 px-3 py-1.5 rounded-full bg-[#f5a623]/5 hover:bg-[#f5a623]/10 transition-colors animate-pulse">
+              className="text-xs text-[#c98f70] border border-[#c98f70]/30 px-3 py-1.5 rounded-full bg-[#c98f70]/5 hover:bg-[#c98f70]/10 transition-colors animate-pulse">
               {t("dashboard.pendingInvites", { count: pendingConnections.length })}
             </button>
           )}
@@ -863,8 +863,8 @@ export default function Dashboard() {
           <NotificationBell />
           <LangSelectorMini />
           <Link href="/profile">
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-[#060e1a] font-black text-sm cursor-pointer hover:scale-105 transition-transform ring-2 ring-transparent hover:ring-[#f5a623]/40"
-              style={{ background: "linear-gradient(135deg, #f5a623, #ffd166)" }} title={t("appHeader.myProfile")}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-[#151312] font-black text-sm cursor-pointer hover:scale-105 transition-transform ring-2 ring-transparent hover:ring-[#c98f70]/40"
+              style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }} title={t("appHeader.myProfile")}>
               {(user?.name || "U")[0].toUpperCase()}
             </div>
           </Link>
@@ -886,7 +886,7 @@ export default function Dashboard() {
               português. A parte destacada e o complemento são duas chaves. */}
           <p className="text-white/40">
             {stats?.unseen
-              ? <><span className="text-[#f5a623] font-semibold">{t("dashboard.greetingUnseen", { count: stats.unseen })}</span> {t("dashboard.greetingUnseenSuffix")}</>
+              ? <><span className="text-[#c98f70] font-semibold">{t("dashboard.greetingUnseen", { count: stats.unseen })}</span> {t("dashboard.greetingUnseenSuffix")}</>
               : stats?.total && stats.total > 0
                 ? t("dashboard.greetingTotal", { count: stats.total })
                 // Em erro, nada de convite a "gerar os primeiros matches": eles podem existir.
@@ -899,7 +899,7 @@ export default function Dashboard() {
           {[
             // Consulta falhou não é "0 matches": o traço diz que o número não veio
             // (o erro com "tentar de novo" está na aba de matches, logo abaixo).
-            { label: t("dashboard.matches"), value: statsQuery.isError ? "—" : stats?.total ?? 0, color: "#f5a623", icon: "🎯" },
+            { label: t("dashboard.matches"), value: statsQuery.isError ? "—" : stats?.total ?? 0, color: "#c98f70", icon: "🎯" },
             { label: t("dashboard.compatibility"), value: statsQuery.isError ? "—" : stats?.avgScore ?? 0, color: "#3b82f6", icon: "📊" },
             { label: t("dashboard.topMatches"), value: statsQuery.isError ? "—" : stats?.highScore ?? 0, color: "#10b981", icon: "⭐" },
             { label: t("dashboard.connections"), value: connectionsQuery.isError ? "—" : connections.filter(c => c.status === "accepted").length, color: "#8b5cf6", icon: "🤝" },
@@ -914,7 +914,7 @@ export default function Dashboard() {
             <button key={tab} onClick={() => switchTab(tab as any)}
               className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === tab
-                  ? "bg-[#f5a623] text-[#060e1a] font-bold shadow-md shadow-[#f5a623]/20"
+                  ? "bg-[#c98f70] text-[#151312] font-bold shadow-md shadow-[#c98f70]/20"
                   : "text-white/45 hover:text-white hover:bg-white/5"
               }`}>
               {tab === "matches"
@@ -939,7 +939,7 @@ export default function Dashboard() {
           {activeTab === "matches" && (
             <div>
               {stats && stats.total > 0 && (
-                <div className="bg-[#0d1530] border border-white/8 rounded-2xl p-6 mb-6 animate-fade-in-scale">
+                <div className="bg-[#1b1714] border border-white/8 rounded-2xl p-6 mb-6 animate-fade-in-scale">
                   <div className="flex items-center justify-between mb-5">
                     <div>
                       <h2 className="font-bold text-white">{t("dashboard.distribution")}</h2>
@@ -984,7 +984,7 @@ export default function Dashboard() {
                   <h3 className="text-2xl font-black mb-2">{t("dashboard.noMatches")}</h3>
                   <p className="text-white/40 mb-8 max-w-sm mx-auto">{t("dashboard.noMatchesDesc")}</p>
                   <button onClick={() => regenerateMutation.mutate()} disabled={regenerateMutation.isPending}
-                    className="px-8 py-3 rounded-xl font-bold bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] transition-all duration-200 active:scale-95 shadow-lg shadow-[#f5a623]/20 disabled:opacity-60">
+                    className="px-8 py-3 rounded-xl font-bold bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-lg shadow-[#c98f70]/20 disabled:opacity-60">
                     {regenerateMutation.isPending ? t("dashboard.analyzing") : t("dashboard.generateMatches")}
                   </button>
                 </div>
@@ -1014,7 +1014,7 @@ export default function Dashboard() {
                   <h3 className="text-2xl font-black mb-2">{t("dashboard.noMatches")}</h3>
                   <p className="text-white/40 mb-8 max-w-sm mx-auto">{t("dashboard.noMatchesDesc")}</p>
                   <button onClick={() => switchTab("matches")}
-                    className="px-8 py-3 rounded-xl font-bold bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] transition-all duration-200 active:scale-95">
+                    className="px-8 py-3 rounded-xl font-bold bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95">
                     {t("dashboard.matches")}
                   </button>
                 </div>
@@ -1024,9 +1024,9 @@ export default function Dashboard() {
                     opacity: 1,
                     animation: `fadeInScale 0.35s cubic-bezier(0.23,1,0.32,1) ${i * 0.06}s both`,
                   }}
-                  className="bg-[#0d1530] border border-white/8 rounded-2xl p-5 flex items-center gap-4 hover:border-white/15 transition-colors duration-200">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-[#060e1a] font-black flex-shrink-0"
-                    style={{ background: "linear-gradient(135deg, #f5a623, #ffd166)" }}>
+                  className="bg-[#1b1714] border border-white/8 rounded-2xl p-5 flex items-center gap-4 hover:border-white/15 transition-colors duration-200">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-[#151312] font-black flex-shrink-0"
+                    style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }}>
                     {(conn.displayName || "?")[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -1049,7 +1049,7 @@ export default function Dashboard() {
                     ) : (
                       <Badge className={
                         conn.status === "accepted" ? "bg-emerald-400/15 text-emerald-400 border-emerald-400/25"
-                          : conn.status === "pending" ? "bg-[#f5a623]/15 text-[#f5a623] border-[#f5a623]/25"
+                          : conn.status === "pending" ? "bg-[#c98f70]/15 text-[#c98f70] border-[#c98f70]/25"
                             : "bg-white/8 text-white/35 border-white/15"
                       }>
                         {conn.status === "accepted" ? t("dashboard.connected") : conn.status === "pending" ? t("dashboard.pending") : t("dashboard.declined")}
@@ -1075,10 +1075,10 @@ export default function Dashboard() {
                 <ErroDeConsulta erro={profileQuery.error} aoTentarDeNovo={() => profileQuery.refetch()} />
               ) : profile ? (
                 <>
-                  <div className="bg-[#0d1530] border border-white/8 rounded-2xl p-6 animate-fade-in-scale">
+                  <div className="bg-[#1b1714] border border-white/8 rounded-2xl p-6 animate-fade-in-scale">
                     <div className="flex items-center gap-4 mb-6">
-                      <div className="w-18 h-18 w-[72px] h-[72px] rounded-full flex items-center justify-center text-[#060e1a] font-black text-2xl flex-shrink-0"
-                        style={{ background: "linear-gradient(135deg, #f5a623, #ffd166)" }}>
+                      <div className="w-18 h-18 w-[72px] h-[72px] rounded-full flex items-center justify-center text-[#151312] font-black text-2xl flex-shrink-0"
+                        style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }}>
                         {(profile.displayName || "U")[0].toUpperCase()}
                       </div>
                       <div className="flex-1">
@@ -1087,7 +1087,7 @@ export default function Dashboard() {
                         <div className="text-xs text-white/25 mt-0.5">{optionLabel(t, profile.primarySpecialty)}</div>
                       </div>
                         <div className="text-right">
-                        <div className="text-3xl font-black text-[#f5a623]">{profile.profileCompleteness}%</div>
+                        <div className="text-3xl font-black text-[#c98f70]">{profile.profileCompleteness}%</div>
                         <div className="text-xs text-white/35">{t("dashboard.profileComplete")}</div>
                       </div>
                     </div>
@@ -1095,7 +1095,7 @@ export default function Dashboard() {
                     {/* Completeness bar */}
                     <div className="h-2 bg-white/8 rounded-full overflow-hidden mb-5">
                       <div className="h-full rounded-full relative overflow-hidden"
-                        style={{ width: `${profile.profileCompleteness}%`, background: "linear-gradient(90deg, #f5a623, #ffd166)", transition: "width 1.2s cubic-bezier(0.23,1,0.32,1)" }}>
+                        style={{ width: `${profile.profileCompleteness}%`, background: "linear-gradient(90deg, #c98f70, #efcba8)", transition: "width 1.2s cubic-bezier(0.23,1,0.32,1)" }}>
                         <div className="absolute inset-0 shimmer-bg opacity-40" />
                       </div>
                     </div>
@@ -1138,7 +1138,7 @@ export default function Dashboard() {
                       </button>
                     </Link>
                     <button onClick={() => regenerateMutation.mutate()} disabled={regenerateMutation.isPending}
-                      className="flex-1 py-3 px-4 rounded-xl font-bold text-sm bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] transition-all duration-200 active:scale-95 shadow-md shadow-[#f5a623]/15 disabled:opacity-60">
+                      className="flex-1 py-3 px-4 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-md shadow-[#c98f70]/15 disabled:opacity-60">
                       {regenerateMutation.isPending ? t("dashboard.analyzing") : t("dashboard.reanalyze")}
                     </button>
                   </div>
@@ -1149,7 +1149,7 @@ export default function Dashboard() {
                   <h3 className="text-2xl font-black mb-2">{t("dashboard.noProfile")}</h3>
                   <p className="text-white/40 mb-8">{t("dashboard.noProfileDesc")}</p>
                   <Link href="/onboarding">
-                    <button className="px-8 py-3 rounded-xl font-bold bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] transition-all duration-200 active:scale-95">
+                    <button className="px-8 py-3 rounded-xl font-bold bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95">
                       {t("dashboard.createProfile")}
                     </button>
                   </Link>

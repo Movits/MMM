@@ -21,7 +21,8 @@ import type { Ligacao, Praca } from "@/lib/pracas-do-globo";
  */
 
 const RAIO = 1;
-const OURO = new THREE.Color(0xf5a623);
+// Ouro rosé do selo WMMW (#C98F70), a mesma paleta do aplicativo.
+const OURO = new THREE.Color(0xc98f70);
 
 // Onde o MMM faz negócio, agora de verdade: as praças chegam por props, do
 // agregado por país das usuárias reais (stats.presencaPorPais, montado por
@@ -76,9 +77,9 @@ const FRAG_OCEANO = `
   varying vec3 vNormal;
   void main() {
     float frente = max(dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0);
-    vec3 base = mix(vec3(0.016, 0.035, 0.070), vec3(0.043, 0.086, 0.153), frente);
+    vec3 base = mix(vec3(0.050, 0.045, 0.040), vec3(0.129, 0.118, 0.106), frente);
     float borda = pow(1.0 - frente, 3.5);
-    gl_FragColor = vec4(base + borda * vec3(0.96, 0.65, 0.14) * 0.55, 1.0);
+    gl_FragColor = vec4(base + borda * vec3(0.79, 0.56, 0.44) * 0.55, 1.0);
   }
 `;
 
@@ -94,7 +95,7 @@ const FRAG_ATMOSFERA = `
   varying vec3 vNormal;
   void main() {
     float intensidade = pow(max(0.55 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0), 4.0);
-    gl_FragColor = vec4(0.96, 0.65, 0.14, 1.0) * min(intensidade, 1.0) * 0.26;
+    gl_FragColor = vec4(0.79, 0.56, 0.44, 1.0) * min(intensidade, 1.0) * 0.26;
   }
 `;
 
@@ -205,7 +206,7 @@ export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PR
     grupo.add(
       new THREE.LineSegments(
         geometriaDaGrade,
-        registrar(new THREE.LineBasicMaterial({ color: 0x2b4a6b, transparent: true, opacity: 0.16 })),
+        registrar(new THREE.LineBasicMaterial({ color: 0x4a3f36, transparent: true, opacity: 0.16 })),
       ),
     );
 
@@ -258,7 +259,7 @@ export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PR
 
     // ── Praças ────────────────────────────────────────────────────────────
     const geometriaDaPraca = registrar(new THREE.SphereGeometry(0.014, 12, 12));
-    const materialDaPraca = registrar(new THREE.MeshBasicMaterial({ color: 0xffe6b0 }));
+    const materialDaPraca = registrar(new THREE.MeshBasicMaterial({ color: 0xefcba8 }));
     const geometriaDoHalo = registrar(new THREE.SphereGeometry(0.032, 12, 12));
     const materialDoHalo = registrar(
       new THREE.MeshBasicMaterial({ color: OURO, transparent: true, opacity: 0.28, depthWrite: false }),
@@ -278,13 +279,13 @@ export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PR
     // é PRINCIPAL — linha mais acesa e pulso dobrado. As demais formam a malha
     // entre as outras praças, mais discretas para não virar novelo.
     const materialDaRotaPrincipal = registrar(
-      new THREE.LineBasicMaterial({ color: 0xffe2a6, transparent: true, opacity: 0.9 }),
+      new THREE.LineBasicMaterial({ color: 0xefcba8, transparent: true, opacity: 0.9 }),
     );
     const materialDaRota = registrar(
-      new THREE.LineBasicMaterial({ color: 0xffd489, transparent: true, opacity: 0.4 }),
+      new THREE.LineBasicMaterial({ color: 0xe3b18e, transparent: true, opacity: 0.4 }),
     );
     const geometriaDoPulso = registrar(new THREE.SphereGeometry(0.018, 10, 10));
-    const materialDoPulso = registrar(new THREE.MeshBasicMaterial({ color: 0xfff3d6 }));
+    const materialDoPulso = registrar(new THREE.MeshBasicMaterial({ color: 0xf6e4d6 }));
     const pulsos: Array<{ curva: THREE.QuadraticBezierCurve3; malha: THREE.Mesh; atraso: number }> = [];
 
     // Índice fora da lista (dado vindo de fora) não pode derrubar a cena:

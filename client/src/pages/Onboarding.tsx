@@ -96,17 +96,17 @@ function CardOption({ selected, onClick, icon, label, desc }: {
   return (
     <button type="button" onClick={onClick}
       className={`group relative p-4 rounded-xl border text-left transition-all duration-200 active:scale-95 ${selected
-        ? "bg-[#f5a623]/15 border-[#f5a623] shadow-lg shadow-[#f5a623]/10"
+        ? "bg-[#c98f70]/15 border-[#c98f70] shadow-lg shadow-[#c98f70]/10"
         : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/30"}`}>
       {selected && (
-        <div className="absolute top-2 right-2 w-5 h-5 bg-[#f5a623] rounded-full flex items-center justify-center">
+        <div className="absolute top-2 right-2 w-5 h-5 bg-[#c98f70] rounded-full flex items-center justify-center">
           <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-            <path d="M1 4L3.5 6.5L9 1" stroke="#060e1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M1 4L3.5 6.5L9 1" stroke="#151312" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
       )}
       <div className="text-2xl mb-2">{icon}</div>
-      <div className={`font-semibold text-sm ${selected ? "text-[#f5a623]" : "text-white"}`}>{label}</div>
+      <div className={`font-semibold text-sm ${selected ? "text-[#c98f70]" : "text-white"}`}>{label}</div>
       {desc && <div className="text-xs text-white/40 mt-0.5">{desc}</div>}
     </button>
   );
@@ -116,7 +116,7 @@ function TagOption({ selected, onClick, label }: { selected: boolean; onClick: (
   return (
     <button type="button" onClick={onClick}
       className={`px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200 active:scale-95 ${selected
-        ? "bg-[#f5a623] border-[#f5a623] text-[#060e1a] font-bold"
+        ? "bg-[#c98f70] border-[#c98f70] text-[#151312] font-bold"
         : "bg-white/5 border-white/20 text-white/70 hover:border-white/40 hover:text-white"}`}>
       {label}
     </button>
@@ -130,12 +130,12 @@ function TagButton({ icon, label, selected, onClick }: {
     <button type="button" onClick={onClick}
       className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm font-medium transition-all duration-200 active:scale-95 ${
         selected
-          ? "bg-[#f5a623]/15 border-[#f5a623]/60 text-[#f5a623] shadow-sm shadow-[#f5a623]/10"
+          ? "bg-[#c98f70]/15 border-[#c98f70]/60 text-[#c98f70] shadow-sm shadow-[#c98f70]/10"
           : "bg-white/3 border-white/10 text-white/50 hover:border-white/25 hover:text-white/75 hover:bg-white/6"
       }`}>
       <span className="text-base leading-none">{icon}</span>
       <span>{label}</span>
-      {selected && <CheckCircle size={13} className="text-[#f5a623] ml-auto" />}
+      {selected && <CheckCircle size={13} className="text-[#c98f70] ml-auto" />}
     </button>
   );
 }
@@ -146,11 +146,11 @@ function TextInput({ label, value, onChange, placeholder, type = "text", hint, m
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-white/70 mb-2">{label}{required && <span className="text-[#f5a623]"> *</span>}</label>
+      <label className="block text-sm font-medium text-white/70 mb-2">{label}{required && <span className="text-[#c98f70]"> *</span>}</label>
       <input type={type} value={value ?? ""} min={min} max={max} list={list}
         inputMode={type === "number" ? "numeric" : undefined}
         onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#f5a623]/60 focus:bg-white/8 transition-all duration-200 text-sm"/>
+        className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#c98f70]/60 focus:bg-white/8 transition-all duration-200 text-sm"/>
       {hint && <p className="text-xs text-white/30 mt-1">{hint}</p>}
     </div>
   );
@@ -163,7 +163,7 @@ function TextareaInput({ label, value, onChange, placeholder, hint }: {
     <div>
       <label className="block text-sm font-medium text-white/70 mb-2">{label}</label>
       <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={3}
-        className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#f5a623]/60 focus:bg-white/8 transition-all duration-200 text-sm resize-none"/>
+        className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#c98f70]/60 focus:bg-white/8 transition-all duration-200 text-sm resize-none"/>
       {hint && <p className="text-xs text-white/30 mt-1">{hint}</p>}
     </div>
   );
@@ -177,9 +177,9 @@ function SelectInput({ label, value, onChange, options, placeholder }: {
     <div>
       <label className="block text-sm font-medium text-white/70 mb-2">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full bg-[#0d1b2a] border border-white/15 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#f5a623]/60 transition-all duration-200 text-sm">
-        <option className="bg-white text-[#2D3E50]" value="">{placeholder || "..."}</option>
-        {options.map(o => <option className="bg-white text-[#2D3E50]" key={o.value} value={o.value}>{o.label}</option>)}
+        className="w-full bg-[#211e1b] border border-white/15 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#c98f70]/60 transition-all duration-200 text-sm">
+        <option className="bg-white text-[#322C26]" value="">{placeholder || "..."}</option>
+        {options.map(o => <option className="bg-white text-[#322C26]" key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>
   );
@@ -474,10 +474,10 @@ export default function Onboarding() {
   return (
     <div className="min-h-screen bg-transparent flex">
       {/* LEFT PANEL */}
-      <div className="hidden lg:flex flex-col w-80 xl:w-96 bg-[#0a1628] border-r border-white/5 p-8 relative overflow-hidden">
+      <div className="hidden lg:flex flex-col w-80 xl:w-96 bg-[#211e1b] border-r border-white/5 p-8 relative overflow-hidden">
         {/* Os assets do CloudFront do Manus expiraram (403); o painel usa um
             gradiente local no lugar da imagem de fundo. */}
-        <div className="absolute inset-0 opacity-40" style={{ background: "radial-gradient(ellipse at 20% 15%, rgba(245,166,35,0.18), transparent 55%), radial-gradient(ellipse at 85% 80%, rgba(59,130,246,0.14), transparent 50%)" }}/>
+        <div className="absolute inset-0 opacity-40" style={{ background: "radial-gradient(ellipse at 20% 15%, rgba(201,143,112,0.18), transparent 55%), radial-gradient(ellipse at 85% 80%, rgba(59,130,246,0.14), transparent 50%)" }}/>
         <div className="relative z-10 mb-12">
           <BrandLogo variante="lockup" className="w-40" />
         </div>
@@ -487,7 +487,7 @@ export default function Onboarding() {
             const isDone = s.id < step;
             return (
               <div key={s.id} className="flex items-start gap-4 mb-5">
-                <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${isDone ? "bg-[#f5a623] text-[#060e1a]" : isActive ? "bg-[#f5a623]/20 border-2 border-[#f5a623] text-[#f5a623]" : "bg-white/5 border border-white/15 text-white/30"}`}>
+                <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${isDone ? "bg-[#c98f70] text-[#151312]" : isActive ? "bg-[#c98f70]/20 border-2 border-[#c98f70] text-[#c98f70]" : "bg-white/5 border border-white/15 text-white/30"}`}>
                   {isDone ? "✓" : s.icon}
                 </div>
                 <div className={`transition-all duration-300 ${isActive ? "opacity-100" : isDone ? "opacity-70" : "opacity-30"}`}>
@@ -499,8 +499,8 @@ export default function Onboarding() {
           })}
         </div>
         <div className="relative z-10 mt-8 flex justify-center">
-          <BrainCircuit aria-hidden className="w-24 h-24 text-[#f5a623] opacity-60"
-            style={{ filter: "drop-shadow(0 0 20px rgba(245,166,35,0.3))", animation: "pulse-glow 3s ease-in-out infinite" }}/>
+          <BrainCircuit aria-hidden className="w-24 h-24 text-[#c98f70] opacity-60"
+            style={{ filter: "drop-shadow(0 0 20px rgba(201,143,112,0.3))", animation: "pulse-glow 3s ease-in-out infinite" }}/>
         </div>
         <p className="relative z-10 text-center text-xs text-white/30 mt-4">
           {t("onboarding.subtitle")}
@@ -510,7 +510,7 @@ export default function Onboarding() {
       {/* RIGHT PANEL */}
       <div className="flex-1 flex flex-col">
         <div className="h-1 bg-white/5">
-          <div className="h-full bg-gradient-to-r from-[#f5a623] to-[#ffd166] transition-all duration-500 ease-out" style={{ width: `${progress}%` }}/>
+          <div className="h-full bg-gradient-to-r from-[#c98f70] to-[#efcba8] transition-all duration-500 ease-out" style={{ width: `${progress}%` }}/>
         </div>
         <div className="lg:hidden flex items-center justify-between px-6 py-4 border-b border-white/5">
           <BrandMark />
@@ -607,7 +607,7 @@ export default function Onboarding() {
                     placeholder={t("onboarding.fields.customSpecialtyPlaceholder")}
                     hint={t("onboarding.fields.customSpecialtyHint")}/>
                 </div>
-                <div className="rounded-2xl border border-[#f5a623]/25 bg-[#f5a623]/5 p-5 space-y-4">
+                <div className="rounded-2xl border border-[#c98f70]/25 bg-[#c98f70]/5 p-5 space-y-4">
                   <div>
                     <h2 className="text-white font-semibold text-base">{t("profile.business.personType")}</h2>
                     <p className="text-xs text-white/45 mt-1">{t("profile.business.cnpjHint")}</p>
@@ -675,11 +675,11 @@ export default function Onboarding() {
                     ))}
                   </div>
                   <button type="button" onClick={() => toggleArray("seekingTypes", "be_mentor")}
-                    className={"mt-3 w-full p-4 rounded-xl border text-left transition-all duration-200 " + (form.seekingTypes.includes("be_mentor") ? "bg-[#f5a623]/15 border-[#f5a623]" : "bg-white/5 border-white/10")}>
+                    className={"mt-3 w-full p-4 rounded-xl border text-left transition-all duration-200 " + (form.seekingTypes.includes("be_mentor") ? "bg-[#c98f70]/15 border-[#c98f70]" : "bg-white/5 border-white/10")}>
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">🤲</span>
                       <div>
-                        <div className={"font-semibold text-sm " + (form.seekingTypes.includes("be_mentor") ? "text-[#f5a623]" : "text-white")}>{t("onboarding.seeking.be_mentor")}</div>
+                        <div className={"font-semibold text-sm " + (form.seekingTypes.includes("be_mentor") ? "text-[#c98f70]" : "text-white")}>{t("onboarding.seeking.be_mentor")}</div>
                         <div className="text-xs text-white/40">{t("onboarding.seeking.be_mentor_desc")}</div>
                       </div>
                     </div>
@@ -712,11 +712,11 @@ export default function Onboarding() {
                     onChange={v => set("investmentCapacity", v)} options={INVESTMENT_CAPACITIES}
                     placeholder={t("onboarding.fields.selectPlaceholder")}/>
                   <button type="button" onClick={() => set("lookingForInvestment", !form.lookingForInvestment)}
-                    className={`w-full p-4 rounded-xl border text-left transition-all duration-200 ${form.lookingForInvestment ? "bg-[#f5a623]/15 border-[#f5a623]" : "bg-white/5 border-white/10"}`}>
+                    className={`w-full p-4 rounded-xl border text-left transition-all duration-200 ${form.lookingForInvestment ? "bg-[#c98f70]/15 border-[#c98f70]" : "bg-white/5 border-white/10"}`}>
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">💰</span>
                       <div>
-                        <div className={`font-semibold text-sm ${form.lookingForInvestment ? "text-[#f5a623]" : "text-white"}`}>{t("onboarding.fields.lookingForInvestment")}</div>
+                        <div className={`font-semibold text-sm ${form.lookingForInvestment ? "text-[#c98f70]" : "text-white"}`}>{t("onboarding.fields.lookingForInvestment")}</div>
                         <div className="text-xs text-white/40">{t("onboarding.fields.lookingForInvestmentDesc")}</div>
                       </div>
                     </div>
@@ -793,13 +793,13 @@ export default function Onboarding() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <button type="button" onClick={() => set("openToRemote", !form.openToRemote)}
-                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.openToRemote ? "bg-[#f5a623]/15 border-[#f5a623] text-[#f5a623]" : "bg-white/5 border-white/10 text-white/60"}`}>
+                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.openToRemote ? "bg-[#c98f70]/15 border-[#c98f70] text-[#c98f70]" : "bg-white/5 border-white/10 text-white/60"}`}>
                     <div className="text-2xl mb-2">🌐</div>
                     <div className="font-semibold text-sm">{t("onboarding.fields.openToRemote")}</div>
                     <div className="text-xs opacity-60 mt-0.5">{t("onboarding.fields.openToRemoteDesc")}</div>
                   </button>
                   <button type="button" onClick={() => set("availableForTravel", !form.availableForTravel)}
-                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.availableForTravel ? "bg-[#f5a623]/15 border-[#f5a623] text-[#f5a623]" : "bg-white/5 border-white/10 text-white/60"}`}>
+                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.availableForTravel ? "bg-[#c98f70]/15 border-[#c98f70] text-[#c98f70]" : "bg-white/5 border-white/10 text-white/60"}`}>
                     <div className="text-2xl mb-2">✈️</div>
                     <div className="font-semibold text-sm">{t("onboarding.fields.availableForTravel")}</div>
                     <div className="text-xs opacity-60 mt-0.5">{t("onboarding.fields.availableForTravelDesc")}</div>
@@ -836,8 +836,8 @@ export default function Onboarding() {
                   ))}
                 </div>
                 {form.whatIHave.length > 0 && (
-                  <div className="mt-4 p-3 rounded-xl bg-[#f5a623]/8 border border-[#f5a623]/20">
-                    <p className="text-xs text-[#f5a623]/70 font-medium">
+                  <div className="mt-4 p-3 rounded-xl bg-[#c98f70]/8 border border-[#c98f70]/20">
+                    <p className="text-xs text-[#c98f70]/70 font-medium">
                       ✦ {form.whatIHave.length} {form.whatIHave.length === 1 ? t("onboarding.misc.assetSelected") : t("onboarding.misc.assetsSelected")}
                     </p>
                   </div>
@@ -901,8 +901,8 @@ export default function Onboarding() {
                 {(form.whatIHave.length > 0 || form.whatINeed.length > 0) && (
                   <div className="grid grid-cols-2 gap-3">
                     {form.whatIHave.length > 0 && (
-                      <div className="p-3 rounded-xl bg-[#f5a623]/8 border border-[#f5a623]/20">
-                        <p className="text-xs text-[#f5a623]/70 font-medium mb-1">✦ {t("onboarding.steps.s8_title")}</p>
+                      <div className="p-3 rounded-xl bg-[#c98f70]/8 border border-[#c98f70]/20">
+                        <p className="text-xs text-[#c98f70]/70 font-medium mb-1">✦ {t("onboarding.steps.s8_title")}</p>
                         <p className="text-xs text-white/50">{form.whatIHave.length} {form.whatIHave.length === 1 ? t("onboarding.misc.asset") : t("onboarding.misc.assets")} {form.whatIHave.length === 1 ? t("onboarding.misc.selected") : t("onboarding.misc.selectedPlural")}</p>
                       </div>
                     )}
@@ -915,14 +915,14 @@ export default function Onboarding() {
                   </div>
                 )}
 
-                <div className="p-5 rounded-xl bg-[#f5a623]/10 border border-[#f5a623]/30">
+                <div className="p-5 rounded-xl bg-[#c98f70]/10 border border-[#c98f70]/30">
                   <div className="flex items-center gap-3 mb-3">
-                    <BrainCircuit aria-hidden className="w-8 h-8 text-[#f5a623]"/>
-                    <span className="font-bold text-[#f5a623] text-sm">{t("onboarding.aiAnalysis.title")}</span>
+                    <BrainCircuit aria-hidden className="w-8 h-8 text-[#c98f70]"/>
+                    <span className="font-bold text-[#c98f70] text-sm">{t("onboarding.aiAnalysis.title")}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs text-white/60">
                     {AI_ANALYSIS_ITEMS.map(item => (
-                      <div key={item} className="flex items-center gap-2"><span className="text-[#f5a623]">✓</span> {item}</div>
+                      <div key={item} className="flex items-center gap-2"><span className="text-[#c98f70]">✓</span> {item}</div>
                     ))}
                   </div>
                 </div>
@@ -932,7 +932,7 @@ export default function Onboarding() {
 
             {step === 9 && (
               <div className="space-y-6">
-                <div className="rounded-2xl border border-[#f5a623]/25 bg-[#f5a623]/5 p-6 space-y-4 max-h-[600px] overflow-y-auto">
+                <div className="rounded-2xl border border-[#c98f70]/25 bg-[#c98f70]/5 p-6 space-y-4 max-h-[600px] overflow-y-auto">
                   <h2 className="text-white font-semibold text-lg mb-4">{t("onboarding.terms.title")}</h2>
 
                   <div className="space-y-4 text-sm text-white/70 leading-relaxed">
@@ -959,8 +959,8 @@ export default function Onboarding() {
                 </div>
 
                 <div className="space-y-3">
-                  <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200" style={{borderColor: form.agreedToTerms ? "#f5a623" : "rgba(255,255,255,0.1)", backgroundColor: form.agreedToTerms ? "rgba(245,166,35,0.1)" : "rgba(255,255,255,0.02)"}}>
-                    <input type="checkbox" checked={form.agreedToTerms} onChange={e => set("agreedToTerms", e.target.checked)} className="w-5 h-5 mt-0.5 cursor-pointer accent-[#f5a623]"/>
+                  <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200" style={{borderColor: form.agreedToTerms ? "#c98f70" : "rgba(255,255,255,0.1)", backgroundColor: form.agreedToTerms ? "rgba(201,143,112,0.1)" : "rgba(255,255,255,0.02)"}}>
+                    <input type="checkbox" checked={form.agreedToTerms} onChange={e => set("agreedToTerms", e.target.checked)} className="w-5 h-5 mt-0.5 cursor-pointer accent-[#c98f70]"/>
                     <span className="text-sm text-white font-medium">{t("onboarding.terms.accept")}</span>
                   </label>
 
@@ -979,17 +979,17 @@ export default function Onboarding() {
               </button>
               <div className="flex items-center gap-2">
                 {STEPS.map((_, i) => (
-                  <div key={i} className={`rounded-full transition-all duration-300 ${i + 1 === step ? "w-6 h-2 bg-[#f5a623]" : i + 1 < step ? "w-2 h-2 bg-[#f5a623]/60" : "w-2 h-2 bg-white/15"}`}/>
+                  <div key={i} className={`rounded-full transition-all duration-300 ${i + 1 === step ? "w-6 h-2 bg-[#c98f70]" : i + 1 < step ? "w-2 h-2 bg-[#c98f70]/60" : "w-2 h-2 bg-white/15"}`}/>
                 ))}
               </div>
               {step < STEPS.length ? (
                 <button type="button" onClick={() => canProceed() && goTo(step + 1)} disabled={!canProceed()}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${canProceed() ? "bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] shadow-lg shadow-[#f5a623]/20" : "bg-white/10 text-white/30 cursor-not-allowed"}`}>
+                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${canProceed() ? "bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] shadow-lg shadow-[#c98f70]/20" : "bg-white/10 text-white/30 cursor-not-allowed"}`}>
                   {t("onboarding.nav.continue")} →
                 </button>
               ) : (
                 <button type="button" onClick={handleSubmit} disabled={saveOnboarding.isPending}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] transition-all duration-200 active:scale-95 shadow-lg shadow-[#f5a623]/20 disabled:opacity-60">
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-lg shadow-[#c98f70]/20 disabled:opacity-60">
                   {saveOnboarding.isPending
                     ? <><span className="animate-spin">⏳</span> {t("onboarding.nav.analyzing")}</>
                     : <>🚀 {t("onboarding.nav.findMatches")}</>}
@@ -1002,8 +1002,8 @@ export default function Onboarding() {
 
       <style>{`
         @keyframes pulse-glow {
-          0%, 100% { filter: drop-shadow(0 0 20px rgba(245,166,35,0.3)); }
-          50% { filter: drop-shadow(0 0 40px rgba(245,166,35,0.6)); }
+          0%, 100% { filter: drop-shadow(0 0 20px rgba(201,143,112,0.3)); }
+          50% { filter: drop-shadow(0 0 40px rgba(201,143,112,0.6)); }
         }
       `}</style>
     </div>

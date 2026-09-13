@@ -56,12 +56,12 @@ function LangSelectorMini() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 bg-[#0d1b2e] border border-white/20 rounded-xl shadow-2xl overflow-hidden min-w-[140px]">
+          <div className="absolute right-0 top-full mt-1 z-50 bg-[#211e1b] border border-white/20 rounded-xl shadow-2xl overflow-hidden min-w-[140px]">
             {LANGUAGES.map(lang => (
               <button key={lang.code}
                 onClick={() => { i18n.changeLanguage(lang.code); setOpen(false); }}
                 className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors text-left ${
-                  lang.code === idiomaAtual ? "bg-[#f5a623]/20 text-[#f5a623]" : "text-white/60 hover:bg-white/10 hover:text-white"
+                  lang.code === idiomaAtual ? "bg-[#c98f70]/20 text-[#c98f70]" : "text-white/60 hover:bg-white/10 hover:text-white"
                 }`}>
                 <span>{lang.flag}</span><span>{lang.label}</span>
               </button>
@@ -86,14 +86,14 @@ export function GlobalMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="group flex items-center gap-2 text-sm font-medium text-white/80 border border-white/10 pl-3 pr-2.5 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] hover:border-[#f5a623]/40 hover:text-white transition-all duration-200 active:scale-[0.97] data-[state=open]:border-[#f5a623]/50 data-[state=open]:bg-white/[0.06] data-[state=open]:text-white">
-          <MenuIcon className="w-4 h-4 text-[#f5a623]" />
+          className="group flex items-center gap-2 text-sm font-medium text-white/80 border border-white/10 pl-3 pr-2.5 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] hover:border-[#c98f70]/40 hover:text-white transition-all duration-200 active:scale-[0.97] data-[state=open]:border-[#c98f70]/50 data-[state=open]:bg-white/[0.06] data-[state=open]:text-white">
+          <MenuIcon className="w-4 h-4 text-[#c98f70]" />
           <span className="hidden sm:inline">{t("appHeader.menuButton")}</span>
           <ChevronDown className="w-3.5 h-3.5 text-white/40 transition-transform duration-200 group-data-[state=open]:rotate-180" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={10}
-        className="w-72 rounded-2xl border-white/10 bg-[#0a1424]/95 backdrop-blur-2xl text-white shadow-2xl shadow-black/60 p-2">
+        className="w-72 rounded-2xl border-white/10 bg-[#211e1b]/95 backdrop-blur-2xl text-white shadow-2xl shadow-black/60 p-2">
         <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-widest text-white/35 px-3 pt-2 pb-1">
           {t("appHeader.navigation")}
         </DropdownMenuLabel>
@@ -120,7 +120,7 @@ export function GlobalMenu() {
               className="rounded-xl px-3 py-2.5 cursor-pointer focus:bg-amber-400/10 data-[highlighted]:bg-amber-400/10">
               <Link href="/president">
                 <span className="flex items-center gap-3 w-full">
-                  <span className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#f5a623]/25 to-[#ffd166]/10 border border-amber-400/25 flex items-center justify-center shrink-0">
+                  <span className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#c98f70]/25 to-[#efcba8]/10 border border-amber-400/25 flex items-center justify-center shrink-0">
                     <Crown className="w-4 h-4 text-amber-400" />
                   </span>
                   <span className="flex flex-col min-w-0">
@@ -160,7 +160,7 @@ export function AppHeader({ title, backTo, actions }: {
   const { t } = useTranslation();
 
   return (
-    <nav className="border-b border-white/[0.06] px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-40 bg-[#060e1a]/95 backdrop-blur-2xl">
+    <nav className="border-b border-white/[0.06] px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-40 bg-[#151312]/95 backdrop-blur-2xl">
       <div className="flex items-center gap-3 min-w-0">
         <Link href="/dashboard">
           <BrandMark />
@@ -180,8 +180,8 @@ export function AppHeader({ title, backTo, actions }: {
         <NotificationBell />
         <LangSelectorMini />
         <Link href="/profile">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center text-[#060e1a] font-black text-sm cursor-pointer hover:scale-105 transition-transform ring-2 ring-transparent hover:ring-[#f5a623]/40"
-            style={{ background: "linear-gradient(135deg, #f5a623, #ffd166)" }} title={t("appHeader.myProfile")}>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-[#151312] font-black text-sm cursor-pointer hover:scale-105 transition-transform ring-2 ring-transparent hover:ring-[#c98f70]/40"
+            style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }} title={t("appHeader.myProfile")}>
             {(user?.name || "U")[0].toUpperCase()}
           </div>
         </Link>
