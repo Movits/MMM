@@ -61,5 +61,9 @@ de rede e o texto exato desta autorização ficam registrados.
    não tem conta na plataforma e não assinou nada.
 2. Por quanto tempo a trilha de auditoria das leituras é mantida.
 3. O que acontece com o que uma membra Ouro já viu depois de você revogar.
-4. O nome jurídico que entra no termo: o texto do Smart Match usa
-   "WMW — Women Moving the World" e o aplicativo usa MMM.
+4. O nome jurídico que entra no termo. Em 12/09/2026 a Dra. Glenda informou que
+   **houve alteração de nome** e que encaminharia a nova identidade visual, então
+   nem "MMM — Mulheres que Movem o Mundo" (usado no aplicativo) nem "WMW — Women
+   Moving the World, Plataforma Internacional" (usado no termo do Smart Match
+   escrito pela Cris em 05/09) são definitivos. A versão 2 deste texto sai com o
+   nome novo.
