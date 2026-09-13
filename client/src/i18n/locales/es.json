@@ -2,7 +2,7 @@
   "nav": {
     "howItWorks": "Cómo Funciona",
     "opportunities": "Oportunidades",
-    "security": "Seguridad",
+    "smartNetwork": "Mi Network Inteligente",
     "login": "Iniciar Sesión",
     "startFree": "Crear cuenta",
     "myDashboard": "Mi Panel →",
@@ -90,25 +90,30 @@
     },
     "match": "compatibilidad"
   },
-  "security": {
-    "title": "Tu seguridad es nuestra prioridad",
-    "subtitle": "Garantizamos un entorno seguro y confiable para todos nuestros usuarios.",
-    "encryption": {
-      "title": "Cifrado avanzado",
-      "desc": "Tus datos están protegidos con la más alta tecnología de cifrado."
+  "smartNetwork": {
+    "label": "Mi Network Inteligente",
+    "title": "¿Recuerdas todas las oportunidades que existen en tu propia red?",
+    "subtitle": "Cada reunión puede esconder una oportunidad futura. Nuestra inteligencia registra, organiza y conecta el valor de las relaciones que has construido.",
+    "impact": "Conoces más oportunidades de las que puedes recordar.",
+    "record": {
+      "title": "GRABA Y NO OLVIDES",
+      "desc": "Graba y transcribe gratis reuniones de hasta 10 minutos y convierte conversaciones en memoria estratégica."
     },
-    "verification": {
-      "title": "Verificación rigurosa",
-      "desc": "Todos los perfiles son verificados para garantizar la autenticidad y calidad de la comunidad."
+    "organize": {
+      "title": "LA IA LO ORGANIZA POR TI",
+      "desc": "La inteligencia identifica Quién Soy, Qué Tengo y Qué Necesito a partir de la conversación — y muestra lo que aún falta descubrir."
     },
-    "control": {
-      "title": "Control total",
-      "desc": "Tienes control total sobre tu información y con quién te conectas."
+    "discover": {
+      "title": "DESCUBRE NEGOCIOS EN TU PROPIA RED",
+      "desc": "La inteligencia cruza necesidades y oportunidades entre las personas que ya conoces y revela conexiones que podrían pasar desapercibidas."
     },
-    "rateLimit": {
-      "title": "Límite de velocidad",
-      "desc": "Protección contra ataques"
-    }
+    "value": {
+      "title": "HAZ QUE TU RED GENERE VALOR",
+      "desc": "Pon contactos a disposición de forma anónima para oportunidades de la red y participa en las intermediaciones cuando tus conexiones contribuyan a nuevos negocios."
+    },
+    "closingQuestion": "¿Cuántos negocios están escondidos hoy entre las personas que ya conoces?",
+    "closingLine": "Convierte reuniones en memoria. Memoria en inteligencia. Inteligencia en conexiones. Y conexiones en negocios.",
+    "cta": "ACTIVAR MI NETWORK INTELIGENTE"
   },
   "cta": {
     "title": "¿Listo para transformar tu futuro?",

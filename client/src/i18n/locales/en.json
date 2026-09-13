@@ -2,7 +2,7 @@
   "nav": {
     "howItWorks": "How it works",
     "opportunities": "Opportunities",
-    "security": "Security",
+    "smartNetwork": "My Smart Network",
     "login": "Sign in",
     "startFree": "Create account",
     "myDashboard": "My Dashboard →",
@@ -90,25 +90,30 @@
     },
     "match": "match"
   },
-  "security": {
-    "title": "Security and privacy first",
-    "subtitle": "Your data is protected with the highest security standards",
-    "encryption": {
-      "title": "End-to-end encryption",
-      "desc": "All messages and sensitive data are encrypted"
+  "smartNetwork": {
+    "label": "My Smart Network",
+    "title": "Do you remember every opportunity that exists in your own network?",
+    "subtitle": "Every meeting may hide a future opportunity. Our intelligence records, organizes and connects the value of the relationships you have built.",
+    "impact": "You know more opportunities than you can remember.",
+    "record": {
+      "title": "RECORD IT, DON'T FORGET IT",
+      "desc": "Record and transcribe meetings of up to 10 minutes for free, and turn conversations into strategic memory."
     },
-    "verification": {
-      "title": "Identity verification",
-      "desc": "Verified profiles to ensure authentic connections"
+    "organize": {
+      "title": "AI ORGANIZES IT FOR YOU",
+      "desc": "The intelligence identifies Who I Am, What I Have and What I Need from the conversation — and shows what is still missing."
     },
-    "control": {
-      "title": "Full control",
-      "desc": "You decide who sees your profile and what information to share"
+    "discover": {
+      "title": "DISCOVER DEALS IN YOUR OWN NETWORK",
+      "desc": "The intelligence matches needs and opportunities among the people you already know and reveals connections that could go unnoticed."
     },
-    "rateLimit": {
-      "title": "Rate Limiting",
-      "desc": "Protection against attacks"
-    }
+    "value": {
+      "title": "MAKE YOUR NETWORK CREATE VALUE",
+      "desc": "Make contacts available anonymously for network opportunities and take part in intermediation when your connections contribute to new deals."
+    },
+    "closingQuestion": "How many deals are hidden today among the people you already know?",
+    "closingLine": "Turn meetings into memory. Memory into intelligence. Intelligence into connections. And connections into deals.",
+    "cta": "ACTIVATE MY SMART NETWORK"
   },
   "cta": {
     "title": "Ready to find your next connections?",

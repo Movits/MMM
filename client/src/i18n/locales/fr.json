@@ -2,7 +2,7 @@
   "nav": {
     "howItWorks": "Comment ça marche",
     "opportunities": "Opportunités",
-    "security": "Sécurité",
+    "smartNetwork": "Mon Réseau Intelligent",
     "login": "Connexion",
     "startFree": "Créer un compte",
     "myDashboard": "Mon tableau de bord",
@@ -90,25 +90,30 @@
     },
     "match": "compatibilité"
   },
-  "security": {
-    "title": "Votre sécurité, notre priorité",
-    "subtitle": "Nous protégeons vos données et votre vie privée avec les normes les plus élevées.",
-    "encryption": {
-      "title": "Cryptage de bout en bout",
-      "desc": "Vos informations sont sécurisées à chaque étape."
+  "smartNetwork": {
+    "label": "Mon Réseau Intelligent",
+    "title": "Vous souvenez-vous de toutes les opportunités qui existent dans votre propre réseau ?",
+    "subtitle": "Chaque réunion peut cacher une opportunité future. Notre intelligence enregistre, organise et connecte la valeur des relations que vous avez construites.",
+    "impact": "Vous connaissez plus d'opportunités que vous ne pouvez vous en souvenir.",
+    "record": {
+      "title": "ENREGISTREZ, N'OUBLIEZ RIEN",
+      "desc": "Enregistrez et transcrivez gratuitement des réunions de 10 minutes maximum et transformez vos conversations en mémoire stratégique."
     },
-    "verification": {
-      "title": "Vérification stricte des membres",
-      "desc": "Assurer une communauté authentique et fiable."
+    "organize": {
+      "title": "L'IA ORGANISE POUR VOUS",
+      "desc": "L'intelligence identifie Qui je suis, Ce que j'ai et Ce dont j'ai besoin à partir de la conversation — et montre ce qu'il reste à découvrir."
     },
-    "control": {
-      "title": "Contrôle total de votre profil",
-      "desc": "Vous décidez qui voit quoi et quand."
+    "discover": {
+      "title": "DÉCOUVREZ DES AFFAIRES DANS VOTRE PROPRE RÉSEAU",
+      "desc": "L'intelligence croise besoins et opportunités entre les personnes que vous connaissez déjà et révèle des connexions qui pourraient passer inaperçues."
     },
-    "rateLimit": {
-      "title": "Limitation de débit",
-      "desc": "Protection contre les attaques"
-    }
+    "value": {
+      "title": "FAITES FRUCTIFIER VOTRE RÉSEAU",
+      "desc": "Rendez des contacts disponibles de façon anonyme pour les opportunités du réseau et participez aux intermédiations lorsque vos connexions contribuent à de nouvelles affaires."
+    },
+    "closingQuestion": "Combien d'affaires se cachent aujourd'hui parmi les personnes que vous connaissez déjà ?",
+    "closingLine": "Transformez les réunions en mémoire. La mémoire en intelligence. L'intelligence en connexions. Et les connexions en affaires.",
+    "cta": "ACTIVER MON RÉSEAU INTELLIGENT"
   },
   "cta": {
     "title": "Prêt à transformer votre avenir?",
