@@ -638,10 +638,31 @@ export default function Home() {
                 o suficiente para as duas se descolarem durante a rolagem. */}
             <div className="will-change-transform"
               style={{ transform: "translate3d(0, calc(var(--p, 0) * var(--k, 1) * 22px), 0)" }}>
-              <div className="inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.08] rounded-full px-4 py-1.5 mb-8 text-xs text-white/60 font-medium"
+              <div className="inline-flex max-w-full lg:w-max lg:max-w-none items-center gap-2 bg-white/[0.03] border border-white/[0.08] rounded-full px-4 py-1.5 mb-8 text-xs text-white/60 font-medium"
                 style={{ animation: "fadeInDown 0.8s cubic-bezier(0.23,1,0.32,1) both" }}>
-                <span className="w-1.5 h-1.5 bg-[#c98f70] rounded-full animate-pulse" />
-                {t("hero.badge")}
+                <span className="w-1.5 h-1.5 shrink-0 bg-[#c98f70] rounded-full animate-pulse" />
+                {/* O selo vem em trechos separados por " • ". Quando a linha não
+                    comporta a frase inteira (celular), a quebra cai ENTRE trechos,
+                    e o separador que abriria a linha nova fica na margem negativa
+                    recortada pelo overflow-hidden: nenhuma linha começa com "•".
+                    Se um trecho sozinho não cabe (telas de ~320 px), o recuo deslocado
+                    (pl + -indent de 1em) faz a continuação começar fora do recorte;
+                    o marcador zera o indent, que é herdado e o empurraria 1em à esquerda.
+                    Leitor de tela recebe a frase inteira, sem os marcadores.
+                    No desktop (lg+) o selo mede a frase inteira (w-max): entre 1024
+                    e 1279 px a coluna de texto tem ~460 px e a frase pede ~483, que
+                    cabem na folga de 56 px até a coluna do globo, em uma linha só. */}
+                <span className="sr-only">{t("hero.badge")}</span>
+                <span aria-hidden="true" className="min-w-0 overflow-hidden">
+                  <span className="-ml-[1em] flex flex-wrap">
+                    {t("hero.badge").split(" • ").map((trecho, i) => (
+                      <span key={i} className="pl-[1em] -indent-[1em]">
+                        <span className="inline-block w-[1em] indent-0 text-center">•</span>
+                        {trecho}
+                      </span>
+                    ))}
+                  </span>
+                </span>
               </div>
 
               <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.05] mb-6 tracking-tight"
