@@ -199,7 +199,9 @@
       "s8_title": "O que tenho",
       "s8_sub": "Ativos e recursos disponíveis",
       "s9_title": "O que preciso",
-      "s9_sub": "Demandas e necessidades"
+      "s9_sub": "Demandas e necessidades",
+      "s10_title": "Termos e Condições",
+      "s10_sub": "Leia e aceite nossos termos"
     },
     "specialties": {
       "tech": "Tecnologia & Software",
@@ -285,6 +287,7 @@
     "successMsg": "🎉 Perfil criado com sucesso! Levando você para a sua página inicial...",
     "errorMsg": "Não conseguimos salvar seu perfil. Tente de novo em instantes.",
     "maxValues": "Máximo de 4 valores selecionados",
+    "maxSpecialties": "Máximo de 5 especialidades selecionadas",
     "dataPrivacy": "Seus dados ficam guardados em segurança e nunca são compartilhados sem a sua autorização",
     "nav": {
       "back": "Voltar",
@@ -428,6 +431,20 @@
       "selectedPlural": "selecionados",
       "selectedF": "selecionada",
       "selectedFPlural": "selecionadas"
+    },
+    "terms": {
+      "title": "Termos de Uso e Acordo de Comissionamento",
+      "accept": "Concordo com os Termos de Uso",
+      "required": "Você precisa aceitar os termos",
+      "clause1_title": "1. Objeto",
+      "clause1_text": "O MMM é uma plataforma de relacionamento entre membras. Ela apresenta pessoas cujos interesses se complementam e registra os negócios que nascem dessas apresentações. A plataforma não é parte do negócio: quem contrata são as membras entre si.",
+      "clause2_title": "2. Comissionamento",
+      "clause2_text": "Negócio originado de uma apresentação feita pela plataforma gera comissão ao MMM, nas seguintes condições:",
+      "clause2_item1": "o percentual é definido caso a caso, conforme o tipo e o tamanho do negócio;",
+      "clause2_item2": "o limite é de 50% do lucro declarado no negócio;",
+      "clause2_item3": "nesta versão o pagamento acontece fora da plataforma; o site apenas registra o negócio e a comissão devida.",
+      "clause3_title": "3. Vigência e alterações",
+      "clause3_text": "Este texto é provisório e está em revisão jurídica. Quando a versão final for publicada, você será avisada e precisará aceitá-la novamente. A data e o texto exato deste aceite ficam registrados."
     }
   },
   "dashboard": {
@@ -478,7 +495,7 @@
     "years_many": "{{count}} anos",
     "workStyle": "Estilo de trabalho",
     "logout": "Sair",
-    "topMatch": "Top Match",
+    "topMatch": "Melhor conexão",
     "loading": "Carregando seu painel",
     "loadingDesc": "Buscando suas oportunidades...",
     "restricted": "Acesso restrito",
@@ -703,6 +720,7 @@
       "individual": "Pessoa Física",
       "legalEntity": "Pessoa Jurídica",
       "mei": "Microempreendedora Individual (MEI)",
+      "nonprofit": "Sem fins lucrativos",
       "companySize": "Porte da empresa",
       "companySizePlaceholder": "Selecione o porte",
       "sizeMei": "MEI",
@@ -763,7 +781,7 @@
     "labelWhatsapp": "WhatsApp",
     "labelEmail": "E-mail",
     "placeholderEmail": "contato@empresa.com",
-    "labelLinkedin": "LinkedIn URL",
+    "labelLinkedin": "Endereço do LinkedIn",
     "placeholderLinkedin": "https://linkedin.com/in/nome",
     "labelInstagram": "Instagram",
     "placeholderInstagram": "@handle (sem @)",
@@ -855,7 +873,16 @@
     "altFotoContato": "Foto do contato",
     "enviarFoto": "Enviar foto",
     "enviarCartao": "Enviar cartão",
-    "enviandoImagem": "Enviando..."
+    "enviandoImagem": "Enviando...",
+    "ouroCarregando": "Carregando o termo…",
+    "ouroPrecisaAutorizar": "Falta a sua autorização",
+    "ouroPrecisaAutorizarDetalhe": "Marcar o contato como compartilhado não basta: sem esta autorização ele não aparece no acervo Ouro. Você pode revogar quando quiser, e o efeito é imediato.",
+    "ouroLerTermo": "Ler o termo",
+    "ouroEsconderTermo": "Esconder o termo",
+    "ouroAutorizarBotao": "Autorizar",
+    "ouroJaAutorizado": "Você já autorizou. Os contatos que marcar como compartilhados aparecem no acervo Ouro.",
+    "ouroAutorizadoToast": "Autorização registrada.",
+    "ouroFalhaToast": "Não foi possível registrar a autorização."
   },
   "contexts": {
     "editarContextoTitulo": "Editar Contexto",
@@ -877,6 +904,7 @@
     "botaoSalvar": "✓ Salvar",
     "vincularContatoTitulo": "Vincular Contato",
     "toastVinculadoSucesso": "{{name}} vinculada ao {{context}}!",
+    "toastVinculoAtualizado": "Vínculo de {{name}} com {{context}} atualizado.",
     "toastErroVincular": "Erro ao vincular: {{message}}",
     "relTipoPessoal": "Pessoal",
     "relTipoProfissional": "Profissional",
@@ -986,7 +1014,7 @@
     "emptyText": "Tente ajustar os filtros ou publique a sua",
     "publishOpportunityButton": "Publicar oportunidade",
     "vitrineTitle": "Vitrine do ecossistema",
-    "vitrineDescription": "Oportunidades de contatos que as membras tornaram públicos. Por privacidade, só o que possuem ou procuram — nunca os dados pessoais.",
+    "vitrineDescription": "Oportunidades que as membras tornaram públicas. Por privacidade, aparece só o que elas possuem ou procuram — nunca os dados pessoais.",
     "locationNotInformed": "Local não informado",
     "refSeparator": "· ref.",
     "hasLabel": "Possui",
@@ -1104,7 +1132,7 @@
     "selectPlaceholder": "Selecionar...",
     "countryFieldLabel": "País",
     "tagsLabel": "Palavras-chave (até 10)",
-    "tagInputPlaceholder": "Adicionar tag...",
+    "tagInputPlaceholder": "Adicionar palavra-chave…",
     "tagSuggestionsLabel": "Sugestões:",
     "confidentialLabel": "Oportunidade confidencial",
     "confidentialDescription": "Visível apenas para membros com Status Ouro",
@@ -1246,7 +1274,7 @@
     "ndaClause4Title": "4. Aceite Digital:",
     "ndaClause4Text": "O aceite nesta plataforma constitui aceite digital válido e juridicamente vinculante, com registro de data, hora e identidade das partes.",
     "ndaOpportunityLabel": "Oportunidade:",
-    "ndaRoomIdLabel": "Deal Room ID: #{{roomId}}",
+    "ndaRoomIdLabel": "Sala de Negociação nº {{roomId}}",
     "ndaCreatedLabel": "Data de criação:",
     "ndaSignedBoth": "NDA assinado por ambas as partes",
     "ndaSignedBothDesc": "A sala de negociação privada está ativa. Use as abas Chat e Documentos.",
@@ -1415,6 +1443,7 @@
     "avisoAutorizacaoExistente": "Sua autorização, se já existia, continua valendo. Tente de novo daqui a pouco.",
     "botaoTentarNovo": "Tentar de novo",
     "explicacao": "Anote o que cada contato tem a oferecer e o que está procurando. O MMM compara essas informações e sugere quem pode ajudar quem.",
+    "avisoServico": "Serviço (consultoria, assessoria, advocacia…) só gera conexão quando outro contato declarou precisar dele em “O que procura”. O MMM não presume necessidade por setor, porte ou atividade.",
     "abaPossui": "O que possui",
     "abaProcura": "O que procura",
     "registrandoPrefixo": "Registrando o que",
@@ -1503,6 +1532,29 @@
       "memoryDesc": "Pergunte ao seu histórico",
       "intelligentMatches": "Conexões Inteligentes",
       "intelligentMatchesDesc": "Sugestões entre os seus contatos"
+    }
+  },
+  "conta": {
+    "excluir": {
+      "titulo": "Excluir minha conta",
+      "descricao": "Sair da plataforma apaga do banco tudo o que é seu: perfil, contatos, reuniões, oportunidades e arquivos.",
+      "botao": "Excluir minha conta",
+      "ultimaAdministradora": "Você é a última administradora da plataforma. Promova outra membra a Ouro antes de excluir sua conta.",
+      "semSenha": "Esta conta não tem senha cadastrada. Use \"Esqueci minha senha\" para criar uma e depois volte aqui.",
+      "dialogoTitulo": "Excluir minha conta",
+      "dialogoTexto": "Ao confirmar, estes dados são apagados na hora:",
+      "item1": "Seu perfil, suas fotos e os termos que você aceitou.",
+      "item2": "Sua rede particular de contatos, com o que cada contato possui e procura.",
+      "item3": "Seus contextos, suas reuniões, as gravações e as transcrições.",
+      "item4": "Suas oportunidades, seus interesses e as salas de negociação em que você está.",
+      "item5": "Seus documentos de verificação e os arquivos que você enviou.",
+      "semVolta": "A exclusão é imediata e a plataforma não tem como desfazê-la.",
+      "labelConfirmacao": "Para confirmar, digite: {{valor}}",
+      "labelSenha": "Sua senha",
+      "cancelar": "Cancelar",
+      "confirmar": "Excluir definitivamente",
+      "excluindo": "Excluindo...",
+      "sucesso": "Sua conta e seus dados foram excluídos."
     }
   }
 }

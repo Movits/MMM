@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { formatCnpj, isValidCnpj, maskCnpj, normalizeCnpj } from "../shared/business-registration";
+import { exigeCnpj, formatCnpj, isValidCnpj, maskCnpj, normalizeCnpj } from "../shared/business-registration";
 
 describe("dados empresariais", () => {
   it("normaliza, formata e valida um CNPJ válido", () => {
@@ -16,6 +16,15 @@ describe("dados empresariais", () => {
     expect(maskCnpj("04.252.011/0001-10")).toBe("**.***.***/0001-10");
   });
 
+  it("exige CNPJ de todo tipo com personalidade jurídica, menos da pessoa física", () => {
+    expect(exigeCnpj("legal_entity")).toBe(true);
+    expect(exigeCnpj("mei")).toBe(true);
+    expect(exigeCnpj("nonprofit")).toBe(true);
+    expect(exigeCnpj("individual")).toBe(false);
+    expect(exigeCnpj("")).toBe(false);
+    expect(exigeCnpj(undefined)).toBe(false);
+  });
+
   it("mantém os rótulos empresariais nos 10 idiomas", () => {
     const localesDir = join(process.cwd(), "client", "src", "i18n", "locales");
     const localeFiles = readdirSync(localesDir).filter(file => file.endsWith(".json"));
@@ -24,6 +33,7 @@ describe("dados empresariais", () => {
     for (const filename of localeFiles) {
       const locale = JSON.parse(readFileSync(join(localesDir, filename), "utf8"));
       expect(locale.profile.business.personType, `${filename}: personType`).toBeTypeOf("string");
+      expect(locale.profile.business.nonprofit, `${filename}: nonprofit`).toBeTypeOf("string");
       expect(locale.profile.business.companySize, `${filename}: companySize`).toBeTypeOf("string");
       expect(locale.profile.business.cnpj, `${filename}: cnpj`).toBeTypeOf("string");
     }

@@ -199,7 +199,9 @@
       "s8_title": "What I have",
       "s8_sub": "Available assets and resources",
       "s9_title": "What I need",
-      "s9_sub": "Demands and needs"
+      "s9_sub": "Demands and needs",
+      "s10_title": "Terms and Conditions",
+      "s10_sub": "Read and accept our terms"
     },
     "specialties": {
       "tech": "Technology & Software",
@@ -285,6 +287,7 @@
     "successMsg": "🎉 Profile created! Redirecting to your dashboard...",
     "errorMsg": "Could not save your profile.",
     "maxValues": "Maximum 4 values selected",
+    "maxSpecialties": "Maximum of 5 specialties selected",
     "dataPrivacy": "Your data is encrypted and never shared without your authorization",
     "nav": {
       "back": "Back",
@@ -349,8 +352,8 @@
       "workStyle": "Preferred work style *",
       "values": "Your core values",
       "languages": "Languages you speak",
-      "customSector": "Seu setor não está na lista?",
-      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
+      "customSector": "Is your sector not on the list?",
+      "customSectorPlaceholder": "Type your sector here"
     },
     "companySize": {
       "micro": "Micro (1–9)",
@@ -428,6 +431,20 @@
       "selectedPlural": "selected",
       "selectedF": "selected",
       "selectedFPlural": "selected"
+    },
+    "terms": {
+      "title": "Terms of Use and Commission Agreement",
+      "accept": "I agree to the Terms of Use",
+      "required": "You must accept the terms",
+      "clause1_title": "1. Purpose",
+      "clause1_text": "MMM is a networking platform for its members. It introduces people whose interests complement each other and records the deals that come out of those introductions. The platform is not a party to the deal: the members contract with each other.",
+      "clause2_title": "2. Commission",
+      "clause2_text": "A deal originating from an introduction made by the platform owes a commission to MMM, under the following conditions:",
+      "clause2_item1": "the percentage is set case by case, according to the type and size of the deal;",
+      "clause2_item2": "the cap is 50% of the profit declared for the deal;",
+      "clause2_item3": "in this version payment happens outside the platform; the site only records the deal and the commission owed.",
+      "clause3_title": "3. Term and changes",
+      "clause3_text": "This text is provisional and under legal review. When the final version is published you will be notified and asked to accept it again. The date and the exact text of this acceptance are recorded."
     }
   },
   "dashboard": {
@@ -703,6 +720,7 @@
       "individual": "Individual",
       "legalEntity": "Legal entity",
       "mei": "Individual micro-entrepreneur (MEI)",
+      "nonprofit": "Nonprofit",
       "companySize": "Company size",
       "companySizePlaceholder": "Select the size",
       "sizeMei": "MEI",
@@ -855,7 +873,16 @@
     "altFotoContato": "Contact photo",
     "enviarFoto": "Upload photo",
     "enviarCartao": "Upload card",
-    "enviandoImagem": "Uploading..."
+    "enviandoImagem": "Uploading...",
+    "ouroCarregando": "Loading the terms…",
+    "ouroPrecisaAutorizar": "Your authorisation is missing",
+    "ouroPrecisaAutorizarDetalhe": "Marking the contact as shared is not enough: without this authorisation it will not show in the Gold archive. You can revoke it at any time, and it takes effect immediately.",
+    "ouroLerTermo": "Read the terms",
+    "ouroEsconderTermo": "Hide the terms",
+    "ouroAutorizarBotao": "Authorise",
+    "ouroJaAutorizado": "You have already authorised. Contacts you mark as shared will show in the Gold archive.",
+    "ouroAutorizadoToast": "Authorisation recorded.",
+    "ouroFalhaToast": "The authorisation could not be recorded."
   },
   "contexts": {
     "editarContextoTitulo": "Edit Context",
@@ -877,6 +904,7 @@
     "botaoSalvar": "✓ Save",
     "vincularContatoTitulo": "Link Contact",
     "toastVinculadoSucesso": "{{name}} linked to {{context}}!",
+    "toastVinculoAtualizado": "{{name}}'s link to {{context}} updated.",
     "toastErroVincular": "Error linking: {{message}}",
     "relTipoPessoal": "Personal",
     "relTipoProfissional": "Professional",
@@ -1246,7 +1274,7 @@
     "ndaClause4Title": "4. Digital Acceptance:",
     "ndaClause4Text": "Acceptance on this platform constitutes valid and legally binding digital acceptance, with a record of the date, time, and identity of the parties.",
     "ndaOpportunityLabel": "Opportunity:",
-    "ndaRoomIdLabel": "Deal Room ID: #{{roomId}}",
+    "ndaRoomIdLabel": "Deal room no. {{roomId}}",
     "ndaCreatedLabel": "Creation date:",
     "ndaSignedBoth": "NDA signed by both parties",
     "ndaSignedBothDesc": "The private negotiation room is active. Use the Chat and Documents tabs.",
@@ -1415,6 +1443,7 @@
     "avisoAutorizacaoExistente": "Your authorization, if it already existed, is still valid. Try again shortly.",
     "botaoTentarNovo": "Try again",
     "explicacao": "Note what each contact has to offer and what they're looking for. MMM compares this information and suggests who can help whom.",
+    "avisoServico": "A service (consulting, advisory, legal…) only creates a connection when another contact has stated they need it under “What you're looking for”. MMM doesn't assume needs from sector, size or activity.",
     "abaPossui": "What you have",
     "abaProcura": "What you're looking for",
     "registrandoPrefixo": "Recording what",
@@ -1503,6 +1532,29 @@
       "memoryDesc": "Ask your history",
       "intelligentMatches": "Smart Connections",
       "intelligentMatchesDesc": "Suggestions among your contacts"
+    }
+  },
+  "conta": {
+    "excluir": {
+      "titulo": "Delete my account",
+      "descricao": "Leaving the platform erases everything that is yours from the database: profile, contacts, meetings, opportunities and files.",
+      "botao": "Delete my account",
+      "ultimaAdministradora": "You are the platform's last administrator. Promote another member to Gold before deleting your account.",
+      "semSenha": "This account has no password set. Use \"Forgot my password\" to create one and then come back here.",
+      "dialogoTitulo": "Delete my account",
+      "dialogoTexto": "Once you confirm, this data is erased immediately:",
+      "item1": "Your profile, your photos and the terms you accepted.",
+      "item2": "Your private contact network, with what each contact has and needs.",
+      "item3": "Your contexts, your meetings, the recordings and the transcripts.",
+      "item4": "Your opportunities, your interests and the deal rooms you are in.",
+      "item5": "Your verification documents and the files you uploaded.",
+      "semVolta": "Deletion is immediate and the platform has no way to undo it.",
+      "labelConfirmacao": "To confirm, type: {{valor}}",
+      "labelSenha": "Your password",
+      "cancelar": "Cancel",
+      "confirmar": "Delete permanently",
+      "excluindo": "Deleting...",
+      "sucesso": "Your account and your data have been deleted."
     }
   }
 }

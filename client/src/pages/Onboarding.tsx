@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { BrainCircuit, CheckCircle } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
-import { formatCnpj, isValidCnpj } from "@shared/business-registration";
+import { exigeCnpj, formatCnpj, isValidCnpj } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
 
 
@@ -56,7 +56,7 @@ interface FormData {
   incomeRange: string; investmentCapacity: string; lookingForInvestment: boolean;
   workStyle: string; values: string[]; languages: string[];
   gender: "" | "male" | "female" | "prefer_not_to_say";
-  personType: "" | "individual" | "legal_entity" | "mei";
+  personType: "" | "individual" | "legal_entity" | "mei" | "nonprofit";
   companySize: "" | "mei" | "micro" | "small" | "medium" | "large";
   companyCnpj: string;
   customSector: string;
@@ -65,6 +65,8 @@ interface FormData {
   company: string; jobTitle: string; activityArea: string;
   institutionalNetwork: string; interestSectors: string[];
   whatIHave: string[]; whatINeed: string[];
+  // Contrato e termos
+  agreedToTerms: boolean;
 }
 
 const INITIAL: FormData = {
@@ -84,6 +86,7 @@ const INITIAL: FormData = {
   company: "", jobTitle: "", activityArea: "",
   institutionalNetwork: "", interestSectors: [],
   whatIHave: [], whatINeed: [],
+  agreedToTerms: false,
 };
 
 // ─── Componentes reutilizáveis ────────────────────────────────────────────────
@@ -93,17 +96,17 @@ function CardOption({ selected, onClick, icon, label, desc }: {
   return (
     <button type="button" onClick={onClick}
       className={`group relative p-4 rounded-xl border text-left transition-all duration-200 active:scale-95 ${selected
-        ? "bg-[#f5a623]/15 border-[#f5a623] shadow-lg shadow-[#f5a623]/10"
+        ? "bg-[#c98f70]/15 border-[#c98f70] shadow-lg shadow-[#c98f70]/10"
         : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/30"}`}>
       {selected && (
-        <div className="absolute top-2 right-2 w-5 h-5 bg-[#f5a623] rounded-full flex items-center justify-center">
+        <div className="absolute top-2 right-2 w-5 h-5 bg-[#c98f70] rounded-full flex items-center justify-center">
           <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-            <path d="M1 4L3.5 6.5L9 1" stroke="#060e1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M1 4L3.5 6.5L9 1" stroke="#151312" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
       )}
       <div className="text-2xl mb-2">{icon}</div>
-      <div className={`font-semibold text-sm ${selected ? "text-[#f5a623]" : "text-white"}`}>{label}</div>
+      <div className={`font-semibold text-sm ${selected ? "text-[#c98f70]" : "text-white"}`}>{label}</div>
       {desc && <div className="text-xs text-white/40 mt-0.5">{desc}</div>}
     </button>
   );
@@ -113,7 +116,7 @@ function TagOption({ selected, onClick, label }: { selected: boolean; onClick: (
   return (
     <button type="button" onClick={onClick}
       className={`px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200 active:scale-95 ${selected
-        ? "bg-[#f5a623] border-[#f5a623] text-[#060e1a] font-bold"
+        ? "bg-[#c98f70] border-[#c98f70] text-[#151312] font-bold"
         : "bg-white/5 border-white/20 text-white/70 hover:border-white/40 hover:text-white"}`}>
       {label}
     </button>
@@ -127,12 +130,12 @@ function TagButton({ icon, label, selected, onClick }: {
     <button type="button" onClick={onClick}
       className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm font-medium transition-all duration-200 active:scale-95 ${
         selected
-          ? "bg-[#f5a623]/15 border-[#f5a623]/60 text-[#f5a623] shadow-sm shadow-[#f5a623]/10"
+          ? "bg-[#c98f70]/15 border-[#c98f70]/60 text-[#c98f70] shadow-sm shadow-[#c98f70]/10"
           : "bg-white/3 border-white/10 text-white/50 hover:border-white/25 hover:text-white/75 hover:bg-white/6"
       }`}>
       <span className="text-base leading-none">{icon}</span>
       <span>{label}</span>
-      {selected && <CheckCircle size={13} className="text-[#f5a623] ml-auto" />}
+      {selected && <CheckCircle size={13} className="text-[#c98f70] ml-auto" />}
     </button>
   );
 }
@@ -143,11 +146,11 @@ function TextInput({ label, value, onChange, placeholder, type = "text", hint, m
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-white/70 mb-2">{label}{required && <span className="text-[#f5a623]"> *</span>}</label>
+      <label className="block text-sm font-medium text-white/70 mb-2">{label}{required && <span className="text-[#c98f70]"> *</span>}</label>
       <input type={type} value={value ?? ""} min={min} max={max} list={list}
         inputMode={type === "number" ? "numeric" : undefined}
         onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#f5a623]/60 focus:bg-white/8 transition-all duration-200 text-sm"/>
+        className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#c98f70]/60 focus:bg-white/8 transition-all duration-200 text-sm"/>
       {hint && <p className="text-xs text-white/30 mt-1">{hint}</p>}
     </div>
   );
@@ -160,7 +163,7 @@ function TextareaInput({ label, value, onChange, placeholder, hint }: {
     <div>
       <label className="block text-sm font-medium text-white/70 mb-2">{label}</label>
       <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={3}
-        className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#f5a623]/60 focus:bg-white/8 transition-all duration-200 text-sm resize-none"/>
+        className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#c98f70]/60 focus:bg-white/8 transition-all duration-200 text-sm resize-none"/>
       {hint && <p className="text-xs text-white/30 mt-1">{hint}</p>}
     </div>
   );
@@ -174,9 +177,9 @@ function SelectInput({ label, value, onChange, options, placeholder }: {
     <div>
       <label className="block text-sm font-medium text-white/70 mb-2">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full bg-[#0d1b2a] border border-white/15 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#f5a623]/60 transition-all duration-200 text-sm">
-        <option className="bg-white text-[#2D3E50]" value="">{placeholder || "..."}</option>
-        {options.map(o => <option className="bg-white text-[#2D3E50]" key={o.value} value={o.value}>{o.label}</option>)}
+        className="w-full bg-[#211e1b] border border-white/15 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#c98f70]/60 transition-all duration-200 text-sm">
+        <option className="bg-white text-[#322C26]" value="">{placeholder || "..."}</option>
+        {options.map(o => <option className="bg-white text-[#322C26]" key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>
   );
@@ -347,12 +350,38 @@ export default function Onboarding() {
     { id: 6, title: t("onboarding.steps.s8_title"), subtitle: t("onboarding.steps.s8_sub"), icon: "✦" },
     { id: 7, title: t("onboarding.steps.s9_title"), subtitle: t("onboarding.steps.s9_sub"), icon: "◈" },
     { id: 8, title: t("onboarding.steps.s6_title"), subtitle: t("onboarding.steps.s6_sub"), icon: "🚀" },
+    { id: 9, title: t("onboarding.steps.s10_title"), subtitle: t("onboarding.steps.s10_sub"), icon: "📋" },
   ];
+
+  // O aceite dos Termos precisa deixar RASTRO no servidor. A caixinha marcada
+  // só no navegador não prova nada: numa discussão sobre comissão, o que vale é
+  // saber quem aceitou, quando, de qual endereço e QUAL texto estava no ar.
+  // Reusamos a trilha que já existe (consents + document_versions), a mesma do
+  // termo do Smart Match, que grava IP, user-agent e o hash do texto vigente.
+  const registrarAceiteDosTermos = trpc.consent.accept.useMutation();
+
+  const concluir = () => {
+    toast.success(t("onboarding.successMsg"));
+    navigate("/dashboard");
+  };
 
   const saveOnboarding = trpc.profile.completeOnboarding.useMutation({
     onSuccess: () => {
-      toast.success(t("onboarding.successMsg"));
-      navigate("/dashboard");
+      // Enquanto o contrato_comissao não tiver versão publicada, o servidor
+      // responde NOT_FOUND: não há texto vigente para consentir. Isso NÃO pode
+      // travar o cadastro de quem acabou de preencher tudo — o perfil já foi
+      // salvo. Segue para o Dashboard nos dois casos; a falha vai para o
+      // console e o cartão do termo provisório cuida da publicação.
+      registrarAceiteDosTermos.mutate(
+        { type: "contrato_comissao" },
+        {
+          onSuccess: concluir,
+          onError: (erro: { message: string }) => {
+            console.error("[Onboarding] Não foi possível registrar o aceite dos Termos:", erro.message);
+            concluir();
+          },
+        },
+      );
     },
     onError: (err: { message: string }) => {
       toast.error(t("onboarding.errorMsg") + " " + (err.message || ""));
@@ -370,20 +399,36 @@ export default function Onboarding() {
     const dir = next > step ? "forward" : "back";
     setAnimDir(dir);
     setVisible(false);
-    setTimeout(() => { setStep(next); setVisible(true); }, 220);
+    setTimeout(() => {
+      setStep(next);
+      setVisible(true);
+      // O passo novo precisa começar do topo. Sem isto a página mantinha a
+      // rolagem do passo anterior e a pessoa caía no meio (ou no fim) do
+      // formulário novo, tendo que subir na mão para ler o título e o primeiro
+      // campo — relatado pelo Rosber em 09/09: "quando você muda de um fichário
+      // pro outro (...) a página não abre no topo".
+      // `scrollTo` no window cobre o caso normal; `scrollingElement` cobre o
+      // navegador que rola o documento em vez da janela. Em jsdom o método não
+      // existe, então a guarda também serve ao teste.
+      if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
+        window.scrollTo({ top: 0, behavior: "auto" });
+      }
+      const raiz = document.scrollingElement ?? document.documentElement;
+      if (raiz) raiz.scrollTop = 0;
+    }, 220);
   };
 
   const canProceed = () => {
     if (step === 1) return form.displayName.trim().length >= 2 && form.city.trim().length >= 2;
     if (step === 2) {
       const temEspecialidade = form.primarySpecialties.length > 0 || form.customSpecialty.trim().length > 0;
-      // Quem se declara MEI ou pessoa juridica tem CNPJ por definicao (A7).
-      const precisaCnpj = form.personType === "mei" || form.personType === "legal_entity";
-      const cnpjOk = !precisaCnpj || isValidCnpj(form.companyCnpj);
+      // Quem se declara MEI, pessoa juridica ou sem fins lucrativos tem CNPJ por definicao (A7).
+      const cnpjOk = !exigeCnpj(form.personType) || isValidCnpj(form.companyCnpj);
       return temEspecialidade && cnpjOk;
     }
     if (step === 3) return form.seekingTypes.length > 0 && form.incomeRange.length > 0 && form.workStyle.length > 0;
     if (step === 4) return form.sector.length > 0;
+    if (step === 9) return form.agreedToTerms;
     // Etapas profissionais e de ativos são opcionais — sempre pode avançar
     return true;
   };
@@ -429,10 +474,10 @@ export default function Onboarding() {
   return (
     <div className="min-h-screen bg-transparent flex">
       {/* LEFT PANEL */}
-      <div className="hidden lg:flex flex-col w-80 xl:w-96 bg-[#0a1628] border-r border-white/5 p-8 relative overflow-hidden">
+      <div className="hidden lg:flex flex-col w-80 xl:w-96 bg-[#211e1b] border-r border-white/5 p-8 relative overflow-hidden">
         {/* Os assets do CloudFront do Manus expiraram (403); o painel usa um
             gradiente local no lugar da imagem de fundo. */}
-        <div className="absolute inset-0 opacity-40" style={{ background: "radial-gradient(ellipse at 20% 15%, rgba(245,166,35,0.18), transparent 55%), radial-gradient(ellipse at 85% 80%, rgba(59,130,246,0.14), transparent 50%)" }}/>
+        <div className="absolute inset-0 opacity-40" style={{ background: "radial-gradient(ellipse at 20% 15%, rgba(201,143,112,0.18), transparent 55%), radial-gradient(ellipse at 85% 80%, rgba(59,130,246,0.14), transparent 50%)" }}/>
         <div className="relative z-10 mb-12">
           <BrandLogo variante="lockup" className="w-40" />
         </div>
@@ -442,7 +487,7 @@ export default function Onboarding() {
             const isDone = s.id < step;
             return (
               <div key={s.id} className="flex items-start gap-4 mb-5">
-                <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${isDone ? "bg-[#f5a623] text-[#060e1a]" : isActive ? "bg-[#f5a623]/20 border-2 border-[#f5a623] text-[#f5a623]" : "bg-white/5 border border-white/15 text-white/30"}`}>
+                <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${isDone ? "bg-[#c98f70] text-[#151312]" : isActive ? "bg-[#c98f70]/20 border-2 border-[#c98f70] text-[#c98f70]" : "bg-white/5 border border-white/15 text-white/30"}`}>
                   {isDone ? "✓" : s.icon}
                 </div>
                 <div className={`transition-all duration-300 ${isActive ? "opacity-100" : isDone ? "opacity-70" : "opacity-30"}`}>
@@ -454,8 +499,8 @@ export default function Onboarding() {
           })}
         </div>
         <div className="relative z-10 mt-8 flex justify-center">
-          <BrainCircuit aria-hidden className="w-24 h-24 text-[#f5a623] opacity-60"
-            style={{ filter: "drop-shadow(0 0 20px rgba(245,166,35,0.3))", animation: "pulse-glow 3s ease-in-out infinite" }}/>
+          <BrainCircuit aria-hidden className="w-24 h-24 text-[#c98f70] opacity-60"
+            style={{ filter: "drop-shadow(0 0 20px rgba(201,143,112,0.3))", animation: "pulse-glow 3s ease-in-out infinite" }}/>
         </div>
         <p className="relative z-10 text-center text-xs text-white/30 mt-4">
           {t("onboarding.subtitle")}
@@ -465,7 +510,7 @@ export default function Onboarding() {
       {/* RIGHT PANEL */}
       <div className="flex-1 flex flex-col">
         <div className="h-1 bg-white/5">
-          <div className="h-full bg-gradient-to-r from-[#f5a623] to-[#ffd166] transition-all duration-500 ease-out" style={{ width: `${progress}%` }}/>
+          <div className="h-full bg-gradient-to-r from-[#c98f70] to-[#efcba8] transition-all duration-500 ease-out" style={{ width: `${progress}%` }}/>
         </div>
         <div className="lg:hidden flex items-center justify-between px-6 py-4 border-b border-white/5">
           <BrandMark />
@@ -493,7 +538,8 @@ export default function Onboarding() {
                   const labels = [t("onboarding.fields.displayName"), t("onboarding.fields.city"), t("profile.gender.label"), t("onboarding.fields.age"), t("onboarding.fields.bio")];
                   return <>
                     <div>
-                      <TextInput label={t("onboarding.fields.age")} value={form.age ?? ""} type="number" min={16} max={120}
+                      {/* Sem limite máximo de idade: usuárias podem ter qualquer idade acima de 16 (validação de testes) */}
+                      <TextInput label={t("onboarding.fields.age")} value={form.age ?? ""} type="number" min={16}
                         onChange={v => set("age", v ? parseInt(v) : null)}
                         placeholder={t("onboarding.fields.agePlaceholder")} hint={t("onboarding.fields.ageHint")}/>
                     </div>
@@ -544,7 +590,13 @@ export default function Onboarding() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {sortOptionsAlphabetically(SPECIALTIES, i18n.language).map(s => (
                       <CardOption key={s.key} selected={form.primarySpecialties.includes(s.key)}
-                        onClick={() => set("primarySpecialties", togglePrimarySpecialty(form.primarySpecialties, s.key))}
+                        onClick={() => {
+                          if (form.primarySpecialties.includes(s.key) || form.primarySpecialties.length < 5) {
+                            set("primarySpecialties", togglePrimarySpecialty(form.primarySpecialties, s.key));
+                          } else {
+                            toast.error(t("onboarding.maxSpecialties"));
+                          }
+                        }}
                         icon={s.icon} label={s.label}/>
                     ))}
                   </div>
@@ -555,16 +607,17 @@ export default function Onboarding() {
                     placeholder={t("onboarding.fields.customSpecialtyPlaceholder")}
                     hint={t("onboarding.fields.customSpecialtyHint")}/>
                 </div>
-                <div className="rounded-2xl border border-[#f5a623]/25 bg-[#f5a623]/5 p-5 space-y-4">
+                <div className="rounded-2xl border border-[#c98f70]/25 bg-[#c98f70]/5 p-5 space-y-4">
                   <div>
                     <h2 className="text-white font-semibold text-base">{t("profile.business.personType")}</h2>
                     <p className="text-xs text-white/45 mt-1">{t("profile.business.cnpjHint")}</p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {sortOptionsAlphabetically([
                       { value: "individual", label: t("profile.business.individual"), icon: "👤" },
                       { value: "legal_entity", label: t("profile.business.legalEntity"), icon: "🏢" },
                       { value: "mei", label: t("profile.business.mei"), icon: "🌱" },
+                      { value: "nonprofit", label: t("profile.business.nonprofit"), icon: "🤝" },
                     ], i18n.language).map(option => (
                       <CardOption key={option.value} selected={form.personType === option.value}
                         onClick={() => {
@@ -574,7 +627,7 @@ export default function Onboarding() {
                         }} icon={option.icon} label={option.label}/>
                     ))}
                   </div>
-                  {(form.personType === "legal_entity" || form.personType === "mei") && (
+                  {exigeCnpj(form.personType) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                       <SelectInput label={t("profile.business.companySize")} value={form.companySize}
                         onChange={value => set("companySize", value as FormData["companySize"])}
@@ -622,11 +675,11 @@ export default function Onboarding() {
                     ))}
                   </div>
                   <button type="button" onClick={() => toggleArray("seekingTypes", "be_mentor")}
-                    className={"mt-3 w-full p-4 rounded-xl border text-left transition-all duration-200 " + (form.seekingTypes.includes("be_mentor") ? "bg-[#f5a623]/15 border-[#f5a623]" : "bg-white/5 border-white/10")}>
+                    className={"mt-3 w-full p-4 rounded-xl border text-left transition-all duration-200 " + (form.seekingTypes.includes("be_mentor") ? "bg-[#c98f70]/15 border-[#c98f70]" : "bg-white/5 border-white/10")}>
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">🤲</span>
                       <div>
-                        <div className={"font-semibold text-sm " + (form.seekingTypes.includes("be_mentor") ? "text-[#f5a623]" : "text-white")}>{t("onboarding.seeking.be_mentor")}</div>
+                        <div className={"font-semibold text-sm " + (form.seekingTypes.includes("be_mentor") ? "text-[#c98f70]" : "text-white")}>{t("onboarding.seeking.be_mentor")}</div>
                         <div className="text-xs text-white/40">{t("onboarding.seeking.be_mentor_desc")}</div>
                       </div>
                     </div>
@@ -659,11 +712,11 @@ export default function Onboarding() {
                     onChange={v => set("investmentCapacity", v)} options={INVESTMENT_CAPACITIES}
                     placeholder={t("onboarding.fields.selectPlaceholder")}/>
                   <button type="button" onClick={() => set("lookingForInvestment", !form.lookingForInvestment)}
-                    className={`w-full p-4 rounded-xl border text-left transition-all duration-200 ${form.lookingForInvestment ? "bg-[#f5a623]/15 border-[#f5a623]" : "bg-white/5 border-white/10"}`}>
+                    className={`w-full p-4 rounded-xl border text-left transition-all duration-200 ${form.lookingForInvestment ? "bg-[#c98f70]/15 border-[#c98f70]" : "bg-white/5 border-white/10"}`}>
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">💰</span>
                       <div>
-                        <div className={`font-semibold text-sm ${form.lookingForInvestment ? "text-[#f5a623]" : "text-white"}`}>{t("onboarding.fields.lookingForInvestment")}</div>
+                        <div className={`font-semibold text-sm ${form.lookingForInvestment ? "text-[#c98f70]" : "text-white"}`}>{t("onboarding.fields.lookingForInvestment")}</div>
                         <div className="text-xs text-white/40">{t("onboarding.fields.lookingForInvestmentDesc")}</div>
                       </div>
                     </div>
@@ -706,8 +759,9 @@ export default function Onboarding() {
             {step === 4 && (
               <div className="flex flex-col gap-6">
                 <div>
+                  {/* Opção "outro" sempre no final, não alfabética: consistência com demais dropdowns (validação de testes) */}
                   <SelectInput label={t("onboarding.fields.sector")} value={form.sector} onChange={v => set("sector", v)}
-                    options={sortOptionsAlphabetically(SECTORS.map(s => ({ value: s.label, label: s.label })), i18n.language)} placeholder={t("onboarding.fields.selectPlaceholder")}/>
+                    options={[...sortOptionsAlphabetically(SECTORS.filter(s => s.key !== "other").map(s => ({ value: s.label, label: s.label })), i18n.language), { value: OTHER_SECTOR_LABEL, label: t("onboarding.sectors.other") }]} placeholder={t("onboarding.fields.selectPlaceholder")}/>
                   {form.sector === OTHER_SECTOR_LABEL && (
                     <div className="mt-3">
                       <TextInput label={t("onboarding.fields.customSector")} value={form.customSector}
@@ -739,13 +793,13 @@ export default function Onboarding() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <button type="button" onClick={() => set("openToRemote", !form.openToRemote)}
-                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.openToRemote ? "bg-[#f5a623]/15 border-[#f5a623] text-[#f5a623]" : "bg-white/5 border-white/10 text-white/60"}`}>
+                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.openToRemote ? "bg-[#c98f70]/15 border-[#c98f70] text-[#c98f70]" : "bg-white/5 border-white/10 text-white/60"}`}>
                     <div className="text-2xl mb-2">🌐</div>
                     <div className="font-semibold text-sm">{t("onboarding.fields.openToRemote")}</div>
                     <div className="text-xs opacity-60 mt-0.5">{t("onboarding.fields.openToRemoteDesc")}</div>
                   </button>
                   <button type="button" onClick={() => set("availableForTravel", !form.availableForTravel)}
-                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.availableForTravel ? "bg-[#f5a623]/15 border-[#f5a623] text-[#f5a623]" : "bg-white/5 border-white/10 text-white/60"}`}>
+                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.availableForTravel ? "bg-[#c98f70]/15 border-[#c98f70] text-[#c98f70]" : "bg-white/5 border-white/10 text-white/60"}`}>
                     <div className="text-2xl mb-2">✈️</div>
                     <div className="font-semibold text-sm">{t("onboarding.fields.availableForTravel")}</div>
                     <div className="text-xs opacity-60 mt-0.5">{t("onboarding.fields.availableForTravelDesc")}</div>
@@ -782,8 +836,8 @@ export default function Onboarding() {
                   ))}
                 </div>
                 {form.whatIHave.length > 0 && (
-                  <div className="mt-4 p-3 rounded-xl bg-[#f5a623]/8 border border-[#f5a623]/20">
-                    <p className="text-xs text-[#f5a623]/70 font-medium">
+                  <div className="mt-4 p-3 rounded-xl bg-[#c98f70]/8 border border-[#c98f70]/20">
+                    <p className="text-xs text-[#c98f70]/70 font-medium">
                       ✦ {form.whatIHave.length} {form.whatIHave.length === 1 ? t("onboarding.misc.assetSelected") : t("onboarding.misc.assetsSelected")}
                     </p>
                   </div>
@@ -847,8 +901,8 @@ export default function Onboarding() {
                 {(form.whatIHave.length > 0 || form.whatINeed.length > 0) && (
                   <div className="grid grid-cols-2 gap-3">
                     {form.whatIHave.length > 0 && (
-                      <div className="p-3 rounded-xl bg-[#f5a623]/8 border border-[#f5a623]/20">
-                        <p className="text-xs text-[#f5a623]/70 font-medium mb-1">✦ {t("onboarding.steps.s8_title")}</p>
+                      <div className="p-3 rounded-xl bg-[#c98f70]/8 border border-[#c98f70]/20">
+                        <p className="text-xs text-[#c98f70]/70 font-medium mb-1">✦ {t("onboarding.steps.s8_title")}</p>
                         <p className="text-xs text-white/50">{form.whatIHave.length} {form.whatIHave.length === 1 ? t("onboarding.misc.asset") : t("onboarding.misc.assets")} {form.whatIHave.length === 1 ? t("onboarding.misc.selected") : t("onboarding.misc.selectedPlural")}</p>
                       </div>
                     )}
@@ -861,18 +915,59 @@ export default function Onboarding() {
                   </div>
                 )}
 
-                <div className="p-5 rounded-xl bg-[#f5a623]/10 border border-[#f5a623]/30">
+                <div className="p-5 rounded-xl bg-[#c98f70]/10 border border-[#c98f70]/30">
                   <div className="flex items-center gap-3 mb-3">
-                    <BrainCircuit aria-hidden className="w-8 h-8 text-[#f5a623]"/>
-                    <span className="font-bold text-[#f5a623] text-sm">{t("onboarding.aiAnalysis.title")}</span>
+                    <BrainCircuit aria-hidden className="w-8 h-8 text-[#c98f70]"/>
+                    <span className="font-bold text-[#c98f70] text-sm">{t("onboarding.aiAnalysis.title")}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs text-white/60">
                     {AI_ANALYSIS_ITEMS.map(item => (
-                      <div key={item} className="flex items-center gap-2"><span className="text-[#f5a623]">✓</span> {item}</div>
+                      <div key={item} className="flex items-center gap-2"><span className="text-[#c98f70]">✓</span> {item}</div>
                     ))}
                   </div>
                 </div>
                 <p className="text-xs text-white/30 text-center">🔒 {t("onboarding.dataPrivacy")}</p>
+              </div>
+            )}
+
+            {step === 9 && (
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-[#c98f70]/25 bg-[#c98f70]/5 p-6 space-y-4 max-h-[600px] overflow-y-auto">
+                  <h2 className="text-white font-semibold text-lg mb-4">{t("onboarding.terms.title")}</h2>
+
+                  <div className="space-y-4 text-sm text-white/70 leading-relaxed">
+                    <div>
+                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause1_title")}</h3>
+                      <p>{t("onboarding.terms.clause1_text")}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause2_title")}</h3>
+                      <p>{t("onboarding.terms.clause2_text")}</p>
+                      <ul className="list-disc list-inside space-y-1 mt-2 text-xs">
+                        <li>{t("onboarding.terms.clause2_item1")}</li>
+                        <li>{t("onboarding.terms.clause2_item2")}</li>
+                        <li>{t("onboarding.terms.clause2_item3")}</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause3_title")}</h3>
+                      <p>{t("onboarding.terms.clause3_text")}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200" style={{borderColor: form.agreedToTerms ? "#c98f70" : "rgba(255,255,255,0.1)", backgroundColor: form.agreedToTerms ? "rgba(201,143,112,0.1)" : "rgba(255,255,255,0.02)"}}>
+                    <input type="checkbox" checked={form.agreedToTerms} onChange={e => set("agreedToTerms", e.target.checked)} className="w-5 h-5 mt-0.5 cursor-pointer accent-[#c98f70]"/>
+                    <span className="text-sm text-white font-medium">{t("onboarding.terms.accept")}</span>
+                  </label>
+
+                  {!form.agreedToTerms && (
+                    <p className="text-xs text-red-400/70 text-center">{t("onboarding.terms.required")}</p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -884,17 +979,17 @@ export default function Onboarding() {
               </button>
               <div className="flex items-center gap-2">
                 {STEPS.map((_, i) => (
-                  <div key={i} className={`rounded-full transition-all duration-300 ${i + 1 === step ? "w-6 h-2 bg-[#f5a623]" : i + 1 < step ? "w-2 h-2 bg-[#f5a623]/60" : "w-2 h-2 bg-white/15"}`}/>
+                  <div key={i} className={`rounded-full transition-all duration-300 ${i + 1 === step ? "w-6 h-2 bg-[#c98f70]" : i + 1 < step ? "w-2 h-2 bg-[#c98f70]/60" : "w-2 h-2 bg-white/15"}`}/>
                 ))}
               </div>
               {step < STEPS.length ? (
                 <button type="button" onClick={() => canProceed() && goTo(step + 1)} disabled={!canProceed()}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${canProceed() ? "bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] shadow-lg shadow-[#f5a623]/20" : "bg-white/10 text-white/30 cursor-not-allowed"}`}>
+                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${canProceed() ? "bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] shadow-lg shadow-[#c98f70]/20" : "bg-white/10 text-white/30 cursor-not-allowed"}`}>
                   {t("onboarding.nav.continue")} →
                 </button>
               ) : (
                 <button type="button" onClick={handleSubmit} disabled={saveOnboarding.isPending}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] transition-all duration-200 active:scale-95 shadow-lg shadow-[#f5a623]/20 disabled:opacity-60">
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-lg shadow-[#c98f70]/20 disabled:opacity-60">
                   {saveOnboarding.isPending
                     ? <><span className="animate-spin">⏳</span> {t("onboarding.nav.analyzing")}</>
                     : <>🚀 {t("onboarding.nav.findMatches")}</>}
@@ -907,8 +1002,8 @@ export default function Onboarding() {
 
       <style>{`
         @keyframes pulse-glow {
-          0%, 100% { filter: drop-shadow(0 0 20px rgba(245,166,35,0.3)); }
-          50% { filter: drop-shadow(0 0 40px rgba(245,166,35,0.6)); }
+          0%, 100% { filter: drop-shadow(0 0 20px rgba(201,143,112,0.3)); }
+          50% { filter: drop-shadow(0 0 40px rgba(201,143,112,0.6)); }
         }
       `}</style>
     </div>

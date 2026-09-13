@@ -199,7 +199,9 @@
       "s8_title": "Ce que j'ai",
       "s8_sub": "Actifs et ressources disponibles",
       "s9_title": "Ce dont j'ai besoin",
-      "s9_sub": "Demandes et besoins"
+      "s9_sub": "Demandes et besoins",
+      "s10_title": "Conditions Générales",
+      "s10_sub": "Lisez et acceptez nos conditions"
     },
     "specialties": {
       "tech": "Technologie & Logiciel",
@@ -285,6 +287,7 @@
     "successMsg": "🎉 Profil créé ! Redirection vers votre tableau de bord...",
     "errorMsg": "Impossible de sauvegarder votre profil.",
     "maxValues": "Maximum 4 valeurs sélectionnées",
+    "maxSpecialties": "Maximum de 5 spécialités sélectionnées",
     "dataPrivacy": "Vos données sont chiffrées et jamais partagées sans votre autorisation",
     "nav": {
       "back": "Retour",
@@ -428,6 +431,20 @@
       "selectedPlural": "sélectionnés",
       "selectedF": "sélectionnée",
       "selectedFPlural": "sélectionnées"
+    },
+    "terms": {
+      "title": "Conditions d'Utilisation et Accord de Commission",
+      "accept": "J'accepte les Conditions d'Utilisation",
+      "required": "Vous devez accepter les conditions",
+      "clause1_title": "1. Objet",
+      "clause1_text": "MMM est une plateforme de mise en relation entre ses membres. Elle présente des personnes dont les intérêts se complètent et enregistre les affaires nées de ces présentations. La plateforme n’est pas partie à l’affaire : ce sont les membres qui contractent entre elles.",
+      "clause2_title": "2. Commission",
+      "clause2_text": "Une affaire issue d’une présentation faite par la plateforme donne lieu à une commission pour MMM, aux conditions suivantes :",
+      "clause2_item1": "le pourcentage est fixé au cas par cas, selon le type et la taille de l’affaire ;",
+      "clause2_item2": "le plafond est de 50 % du bénéfice déclaré pour l’affaire ;",
+      "clause2_item3": "dans cette version, le paiement a lieu hors de la plateforme ; le site enregistre seulement l’affaire et la commission due.",
+      "clause3_title": "3. Durée et modifications",
+      "clause3_text": "Ce texte est provisoire et en cours de révision juridique. Lors de la publication de la version finale, vous serez prévenue et devrez l’accepter à nouveau. La date et le texte exact de cette acceptation sont enregistrés."
     }
   },
   "dashboard": {
@@ -703,6 +720,7 @@
       "individual": "Personne physique",
       "legalEntity": "Personne morale",
       "mei": "Micro-entrepreneuse individuelle (MEI)",
+      "nonprofit": "Organisation à but non lucratif",
       "companySize": "Taille de l'entreprise",
       "companySizePlaceholder": "Sélectionnez la taille",
       "sizeMei": "MEI",
@@ -855,7 +873,16 @@
     "altFotoContato": "Photo du contact",
     "enviarFoto": "Envoyer la photo",
     "enviarCartao": "Envoyer la carte",
-    "enviandoImagem": "Envoi en cours..."
+    "enviandoImagem": "Envoi en cours...",
+    "ouroCarregando": "Chargement des conditions…",
+    "ouroPrecisaAutorizar": "Votre autorisation manque",
+    "ouroPrecisaAutorizarDetalhe": "Marquer le contact comme partagé ne suffit pas : sans cette autorisation, il n’apparaît pas dans le fonds Or. Vous pouvez la révoquer à tout moment, avec effet immédiat.",
+    "ouroLerTermo": "Lire les conditions",
+    "ouroEsconderTermo": "Masquer les conditions",
+    "ouroAutorizarBotao": "Autoriser",
+    "ouroJaAutorizado": "Vous avez déjà autorisé. Les contacts marqués comme partagés apparaissent dans le fonds Or.",
+    "ouroAutorizadoToast": "Autorisation enregistrée.",
+    "ouroFalhaToast": "Impossible d’enregistrer l’autorisation."
   },
   "contexts": {
     "editarContextoTitulo": "Modifier le contexte",
@@ -877,6 +904,7 @@
     "botaoSalvar": "✓ Enregistrer",
     "vincularContatoTitulo": "Lier un contact",
     "toastVinculadoSucesso": "{{name}} liée à {{context}} !",
+    "toastVinculoAtualizado": "Lien de {{name}} avec {{context}} mis à jour.",
     "toastErroVincular": "Erreur lors de la liaison : {{message}}",
     "relTipoPessoal": "Personnel",
     "relTipoProfissional": "Professionnel",
@@ -1246,7 +1274,7 @@
     "ndaClause4Title": "4. Acceptation numérique :",
     "ndaClause4Text": "L'acceptation sur cette plateforme constitue une acceptation numérique valide et juridiquement contraignante, avec enregistrement de la date, de l'heure et de l'identité des parties.",
     "ndaOpportunityLabel": "Opportunité :",
-    "ndaRoomIdLabel": "ID du Deal Room : #{{roomId}}",
+    "ndaRoomIdLabel": "Salle de négociation n° {{roomId}}",
     "ndaCreatedLabel": "Date de création :",
     "ndaSignedBoth": "NDA signé par les deux parties",
     "ndaSignedBothDesc": "La salle de négociation privée est active. Utilisez les onglets Chat et Documents.",
@@ -1415,6 +1443,7 @@
     "avisoAutorizacaoExistente": "Votre autorisation, si elle existait déjà, reste valable. Réessayez dans un instant.",
     "botaoTentarNovo": "Réessayer",
     "explicacao": "Notez ce que chaque contact a à offrir et ce qu'il recherche. MMM compare ces informations et suggère qui peut aider qui.",
+    "avisoServico": "Un service (conseil, accompagnement, juridique…) ne crée une connexion que si un autre contact a déclaré en avoir besoin dans « Ce qu'elle recherche ». MMM ne présume aucun besoin d'après le secteur, la taille ou l'activité.",
     "abaPossui": "Ce qu'elle possède",
     "abaProcura": "Ce qu'elle recherche",
     "registrandoPrefixo": "Enregistrement de ce que",
@@ -1503,6 +1532,29 @@
       "memoryDesc": "Interrogez votre historique",
       "intelligentMatches": "Connexions intelligentes",
       "intelligentMatchesDesc": "Suggestions entre vos contacts"
+    }
+  },
+  "conta": {
+    "excluir": {
+      "titulo": "Supprimer mon compte",
+      "descricao": "Quitter la plateforme efface de la base tout ce qui vous appartient : profil, contacts, réunions, opportunités et fichiers.",
+      "botao": "Supprimer mon compte",
+      "ultimaAdministradora": "Vous êtes la dernière administratrice de la plateforme. Promouvez une autre membre au niveau Or avant de supprimer votre compte.",
+      "semSenha": "Ce compte n'a pas de mot de passe. Utilisez « Mot de passe oublié » pour en créer un, puis revenez ici.",
+      "dialogoTitulo": "Supprimer mon compte",
+      "dialogoTexto": "Dès la confirmation, ces données sont effacées :",
+      "item1": "Votre profil, vos photos et les conditions que vous avez acceptées.",
+      "item2": "Votre réseau privé de contacts, avec ce que chaque contact possède et recherche.",
+      "item3": "Vos contextes, vos réunions, les enregistrements et les transcriptions.",
+      "item4": "Vos opportunités, vos marques d'intérêt et les salles de négociation dont vous faites partie.",
+      "item5": "Vos documents de vérification et les fichiers que vous avez envoyés.",
+      "semVolta": "La suppression est immédiate et la plateforme ne peut pas l'annuler.",
+      "labelConfirmacao": "Pour confirmer, saisissez : {{valor}}",
+      "labelSenha": "Votre mot de passe",
+      "cancelar": "Annuler",
+      "confirmar": "Supprimer définitivement",
+      "excluindo": "Suppression...",
+      "sucesso": "Votre compte et vos données ont été supprimés."
     }
   }
 }

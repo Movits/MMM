@@ -240,7 +240,7 @@ function GoldTab() {
               </div>
               <Button
                 size="sm"
-                className="bg-amber-400 hover:bg-amber-500 text-[#060e1a] text-xs font-bold"
+                className="bg-amber-400 hover:bg-amber-500 text-[#151312] text-xs font-bold"
                 onClick={() => { setGrantDialog({ userId: u.id, name: u.name || "Membra" }); setReason(""); }}
               >
                 <Star size={12} className="mr-1" /> Conceder Ouro
@@ -252,7 +252,7 @@ function GoldTab() {
 
       {/* Dialog: Conceder — ação direta, sem campo de justificativa */}
       <Dialog open={!!grantDialog} onOpenChange={() => setGrantDialog(null)}>
-        <DialogContent className="bg-[#0d1b2a] border-amber-400/30 text-white">
+        <DialogContent className="bg-[#211e1b] border-amber-400/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-amber-400 flex items-center gap-2">
               <Star size={16} /> Conceder Selo Ouro
@@ -273,7 +273,7 @@ function GoldTab() {
           <DialogFooter className="mt-2">
             <Button variant="outline" onClick={() => setGrantDialog(null)} className="bg-transparent border-white/20 text-white/60">Cancelar</Button>
             <Button
-              className="bg-amber-400 hover:bg-amber-500 text-[#060e1a] font-bold"
+              className="bg-amber-400 hover:bg-amber-500 text-[#151312] font-bold"
               disabled={grantMutation.isPending}
               onClick={() => grantDialog && grantMutation.mutate({ userId: grantDialog.userId })}
             >
@@ -285,7 +285,7 @@ function GoldTab() {
 
       {/* Dialog: Revogar */}
       <Dialog open={!!revokeDialog} onOpenChange={() => setRevokeDialog(null)}>
-        <DialogContent className="bg-[#0d1b2a] border-red-400/30 text-white">
+        <DialogContent className="bg-[#211e1b] border-red-400/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-red-400 flex items-center gap-2">
               <XCircle size={16} /> Revogar Selo Ouro
@@ -472,7 +472,7 @@ function LeadersTab() {
 
       {/* Dialog: Nomear Líder */}
       <Dialog open={!!nominateDialog} onOpenChange={() => setNominateDialog(null)}>
-        <DialogContent className="bg-[#0d1b2a] border-purple-400/30 text-white">
+        <DialogContent className="bg-[#211e1b] border-purple-400/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-purple-400 flex items-center gap-2">
               <Award size={16} /> Nomear Líder Nacional
@@ -508,7 +508,7 @@ function LeadersTab() {
 
       {/* Dialog: Revogar Líder */}
       <Dialog open={!!revokeDialog} onOpenChange={() => setRevokeDialog(null)}>
-        <DialogContent className="bg-[#0d1b2a] border-red-400/30 text-white">
+        <DialogContent className="bg-[#211e1b] border-red-400/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-red-400 flex items-center gap-2">
               <XCircle size={16} /> Revogar Líder
@@ -538,7 +538,7 @@ function LeadersTab() {
 
       {/* Dialog: Oportunidades do Líder */}
       <Dialog open={!!oppDialog} onOpenChange={() => setOppDialog(null)}>
-        <DialogContent className="bg-[#0d1b2a] border-blue-400/30 text-white max-w-2xl">
+        <DialogContent className="bg-[#211e1b] border-blue-400/30 text-white max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-blue-400 flex items-center gap-2">
               <Search size={16} /> Oportunidades de {oppDialog?.name}
@@ -687,7 +687,7 @@ function OpportunitiesTab() {
 
       {/* Modal: Solicitar Informações */}
       <Dialog open={!!requestInfoDialog} onOpenChange={() => setRequestInfoDialog(null)}>
-        <DialogContent className="bg-[#0d1b2a] border-amber-400/30 text-white">
+        <DialogContent className="bg-[#211e1b] border-amber-400/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-amber-400 flex items-center gap-2">
               <Clock size={16} /> Solicitar Informações Adicionais
@@ -718,7 +718,7 @@ function OpportunitiesTab() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setRequestInfoDialog(null)} className="bg-transparent border-white/20 text-white/60">Cancelar</Button>
             <Button
-              className="bg-amber-500 hover:bg-amber-600 text-[#060e1a] font-bold"
+              className="bg-amber-500 hover:bg-amber-600 text-[#151312] font-bold"
               disabled={infoNeeded.length < 5 || requestInfoMutation.isPending}
               onClick={() => requestInfoDialog && requestInfoMutation.mutate({ opportunityId: requestInfoDialog.id, infoNeeded })}
             >
@@ -851,7 +851,7 @@ export default function PresidentPanel() {
           <Lock size={40} className="text-red-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Acesso Restrito</h2>
           <p className="text-white/50 text-sm mb-6">Este painel é exclusivo para membras com Status Ouro.</p>
-          <Button onClick={() => navigate("/dashboard")} className="bg-amber-400 hover:bg-amber-500 text-[#060e1a] font-bold">
+          <Button onClick={() => navigate("/dashboard")} className="bg-amber-400 hover:bg-amber-500 text-[#151312] font-bold">
             Voltar ao Dashboard
           </Button>
         </div>
@@ -870,7 +870,7 @@ export default function PresidentPanel() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
-      <div className="border-b border-white/8 bg-[#0a1628]">
+      <div className="border-b border-white/8 bg-[#211e1b]">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate("/dashboard")} className="text-white/40 hover:text-white transition-colors text-sm">

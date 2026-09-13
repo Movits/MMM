@@ -22,6 +22,7 @@ import { ENV } from './_core/env';
 import nodeCrypto from "node:crypto";
 import { slugifyMatchTag } from "./match-service";
 import { mascararContatosEmTexto } from "@shared/contato-em-texto";
+import { normalizar } from "@shared/direcao-do-termo";
 import { BancoIndisponivel } from "./banco-indisponivel";
 import { condicaoDeStatusNasListas } from "./oportunidade-acesso";
 
@@ -1095,7 +1096,7 @@ export async function listContextMediaByContext(ownerId: string, contextId: stri
 export async function linkContactToContext(
   ownerId: string,
   data: { contactId: number; contextId: string; eventDate?: string; city?: string; country?: string; notes?: string; relationshipType?: string }
-): Promise<string> {
+): Promise<{ id: string; created: boolean }> {
   const db = await exigirDb();
   // Vincular duas vezes não duplica: o vínculo existente é atualizado com o
   // que veio preenchido e devolvido. Jogar fora o que a usuária digitou (data,
@@ -1118,7 +1119,7 @@ export async function linkContactToContext(
       await db.update(contactContexts).set({ ...atualiza, updatedAt: Date.now() })
         .where(and(eq(contactContexts.id, jaExiste.id), eq(contactContexts.ownerId, ownerId)));
     }
-    return jaExiste.id;
+    return { id: jaExiste.id, created: false };
   }
   const id = crypto.randomUUID();
   const now = Date.now();
@@ -1135,7 +1136,7 @@ export async function linkContactToContext(
     createdAt: now,
     updatedAt: now,
   });
-  return id;
+  return { id, created: true };
 }
 
 export async function unlinkContactFromContext(ownerId: string, linkId: string): Promise<boolean> {
@@ -1405,7 +1406,11 @@ export async function applyEnrichmentSuggestion(id: string, ownerId: string, edi
 export type UndoSnapshot =
   | { kind: "campo"; coluna: string; anterior: string | null; aplicado: string }
   | { kind: "tag"; tabela: "contact_assets" | "contact_needs"; inseriu: boolean; linhaId: number | null; slug: string; rotulo: string }
-  | { kind: "how_met"; linhaDeNota: string | null; contextoId: string; contextoCriado: boolean; vinculoId: string | null }
+  // contextoId é null quando a resposta não correspondeu a contexto nenhum e
+  // ficou só na nota. Os retratos gravados antes disso trazem o id e o
+  // contextoCriado true; o desfazer lê os dois formatos (só usa linhaDeNota e
+  // vinculoId), então nada precisa ser migrado.
+  | { kind: "how_met"; linhaDeNota: string | null; contextoId: string | null; contextoCriado: boolean; vinculoId: string | null }
   | { kind: "nota"; linhaDeNota: string | null };
 
 // Colunas simples do perfil que o chat preenche. A chave é o field_type da
@@ -1418,6 +1423,47 @@ const COLUNAS_SIMPLES = {
   instagram: privateContacts.instagram,
 } as const;
 type ColunaSimples = keyof typeof COLUNAS_SIMPLES;
+
+/**
+ * A chave de comparação de nome de contexto. Mínima de propósito: espaços das
+ * pontas fora, espaço interno repetido colapsado, e a normalização CENTRAL do
+ * projeto (`normalizar`, de shared/direcao-do-termo — a mesma que slugifyMatchTag
+ * usa) para caixa e acento. Nada além disso: "Feira de Milão" e "Feira de Bolonha"
+ * são contextos DIFERENTES, e aproximar frases parecidas seria reintroduzir o
+ * defeito por outro caminho.
+ *
+ * A comparação é feita em JS, não no WHERE, por dois motivos: a igualdade do
+ * MySQL depende da collation da coluna (que `contexts` não declara, então herda
+ * a do servidor, e produção e CI não rodam o mesmo motor), e a alternativa de
+ * empurrar a normalização para o SQL exigiria `sql.raw` (proibido) ou coluna
+ * nova (migração, fora do escopo).
+ */
+export function chaveDoNomeDeContexto(nome: string) {
+  return normalizar(nome.trim().replace(/\s+/g, " "));
+}
+
+/**
+ * O contexto que corresponde a este nome, ou undefined. Ponto único de busca de
+ * contexto POR NOME: quem precisar oferecer a criação explícita para a dona
+ * pergunta aqui primeiro, em vez de repetir a comparação.
+ *
+ * Enxerga o catálogo global (ownerId null) além dos contextos da própria dona —
+ * senão uma resposta como "CPHI" ignoraria o contexto global homônimo. Havendo
+ * os dois, o da dona vence, como antes.
+ */
+async function acharContextoPeloNome(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  ownerId: string,
+  nome: string,
+): Promise<string | undefined> {
+  const chave = chaveDoNomeDeContexto(nome);
+  if (!chave) return undefined;
+  const candidatos = await db.select({ id: contexts.id, name: contexts.name, ownerId: contexts.ownerId })
+    .from(contexts)
+    .where(drizzleOr(eq(contexts.ownerId, ownerId), isNull(contexts.ownerId)))
+    .orderBy(desc(contexts.ownerId));
+  return candidatos.find(c => chaveDoNomeDeContexto(c.name) === chave)?.id;
+}
 
 /**
  * O destino de cada resposta. Devolve true quando gravou e false quando não
@@ -1523,51 +1569,39 @@ ${linha}` : linha;
       gravouNota = true;
     }
 
-    // O critério da etapa 4 pede a resposta LIGADA ao contexto da etapa 5, não
-    // só anotada. A resposta vira (ou reusa) um contexto com esse nome e o
-    // contato entra em contact_contexts — que é de onde a tela de contextos e
-    // as buscas leem. Nota e vínculo têm dedução separada de propósito: as
-    // respostas antigas recuperadas só têm a nota, e reprocessá-las por aqui
-    // (scripts/recuperar-enriquecimento.ts) completa o vínculo que faltou.
-    const nomeContexto = valor.slice(0, 100);
-    // Reusa também os contextos do catálogo global (ownerId null) — senão uma
-    // resposta como "CPHI" criaria um contexto privado homônimo e a lista
-    // mostraria o nome duas vezes. Havendo os dois, o da própria dona vence.
-    const [ctxExistente] = await db.select({ id: contexts.id }).from(contexts)
-      .where(and(
-        drizzleOr(eq(contexts.ownerId, ownerId), isNull(contexts.ownerId)),
-        eq(contexts.name, nomeContexto),
-      ))
-      .orderBy(desc(contexts.ownerId))
-      .limit(1);
-    let idContexto = ctxExistente?.id;
-    let contextoCriado = false;
-    if (!idContexto) {
-      idContexto = crypto.randomUUID();
-      await db.insert(contexts).values({
-        id: idContexto, ownerId, contextTypeId: null, name: nomeContexto,
-        isCustom: true, visibility: "private", createdAt: now, updatedAt: now,
-      });
-      contextoCriado = true;
-    }
-    const [vinculoExistente] = await db.select({ id: contactContexts.id }).from(contactContexts)
-      .where(and(
-        eq(contactContexts.ownerId, ownerId),
-        eq(contactContexts.contactId, contactId),
-        eq(contactContexts.contextId, idContexto),
-      ))
-      .limit(1);
+    // A resposta LIGA o contato a um contexto que JÁ EXISTE; ela nunca inventa
+    // um. O PR #29 usava `valor.slice(0, 100)` como nome de contexto novo, e
+    // com isso "Fomos apresentadas por uma amiga em comum" virava um item na
+    // tela de Contextos como se a dona o tivesse criado — cada variação da
+    // mesma frase gerando outro. Sem correspondência a resposta fica só na
+    // nota acima; propor um contexto novo é decisão da dona, pelo fluxo
+    // explícito de criação (contexts.create), nunca efeito colateral do chat.
+    // Vale igual para o reprocessamento em lote
+    // (scripts/recuperar-enriquecimento.ts), que passa por aqui: ele completa
+    // vínculo com contexto existente e não cria nenhum.
+    const idContexto = await acharContextoPeloNome(db, ownerId, valor);
     let vinculoId: string | null = null;
-    if (!vinculoExistente) {
-      vinculoId = crypto.randomUUID();
-      await db.insert(contactContexts).values({
-        id: vinculoId, ownerId, contactId, contextId: idContexto,
-        relationshipType: "profissional", visibility: "private", createdAt: now, updatedAt: now,
-      });
+    if (idContexto) {
+      const [vinculoExistente] = await db.select({ id: contactContexts.id }).from(contactContexts)
+        .where(and(
+          eq(contactContexts.ownerId, ownerId),
+          eq(contactContexts.contactId, contactId),
+          eq(contactContexts.contextId, idContexto),
+        ))
+        .limit(1);
+      if (!vinculoExistente) {
+        vinculoId = crypto.randomUUID();
+        await db.insert(contactContexts).values({
+          id: vinculoId, ownerId, contactId, contextId: idContexto,
+          relationshipType: "profissional", visibility: "private", createdAt: now, updatedAt: now,
+        });
+      }
     }
-    // O contexto em si fica mesmo ao desfazer (pode ter ganhado outros
-    // contatos e anexos); o snapshot só registra que ele nasceu aqui.
-    registrarSnapshot?.({ kind: "how_met", linhaDeNota: gravouNota ? linha : null, contextoId: idContexto, contextoCriado, vinculoId });
+    // `contextoCriado` continua no retrato por compatibilidade: os snapshots
+    // gravados antes desta mudança têm o campo, e undoEnrichmentSuggestion lê
+    // os antigos e os novos pelo mesmo caminho. Daqui para a frente é sempre
+    // false — este ponto não cria mais contexto.
+    registrarSnapshot?.({ kind: "how_met", linhaDeNota: gravouNota ? linha : null, contextoId: idContexto ?? null, contextoCriado: false, vinculoId });
     return gravouNota || vinculoId !== null;
   }
 

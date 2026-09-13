@@ -53,6 +53,12 @@ vi.mock("./routers/consent", () => ({
   hasValidConsent: (...args: unknown[]) => hasValidConsent(...(args as [])),
   usersComConsentimento: (...args: unknown[]) => usersComConsentimento(...(args as [number[]])),
 }));
+// A leitura dos matches passa pelo portão da demanda expressa (matching.ts),
+// que lê perfis no banco; este arquivo testa a trava de consentimento, e o
+// portão tem teste próprio (profile-matches-portao.test.ts).
+vi.mock("./matching", () => ({
+  matchesBloqueadosPelaDemandaExpressa: async () => new Set<number>(),
+}));
 vi.mock("./match-service", () => ({
   recalculatePrivateMatches: async () => ({ created: 0, updated: 0, removed: 0, total: 0 }),
   slugifyMatchTag: (v: string) => v.toLowerCase(),

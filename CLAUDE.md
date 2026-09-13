@@ -104,11 +104,12 @@ conclui: outra pessoa do time valida no link de teste e só ela marca "Concluíd
 O CI (`.github/workflows/testes.yml`, toda PR e push na `main`) roda, nesta ordem:
 `conferir-locales.mjs` (10 idiomas com as mesmas chaves) → `pnpm db:generate` (falha
 se criar arquivo em `drizzle/`) → banco do zero em MariaDB 11.4 com `criar-banco.mjs`
-→ `nivelar-banco.mjs` exigindo "Nada a nivelar" → `pnpm check` → `pnpm test` →
+→ `nivelar-banco.mjs` exigindo "Nada a nivelar" → `pnpm check` → `node --check` nos
+scripts (`scripts/*.mjs`, `scripts/exame/*.mjs`, `.claude/hooks/*.mjs`) → `pnpm test` →
 `pnpm build`. Rode o mesmo antes da PR.
 
 **Servidor.** Lógica nova em `server/` ganha ou atualiza um `*.test.ts` ao lado
-(66 em 05/09/2026, fora os dois `*.integracao.test.ts`). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
+(fora os dois `*.integracao.test.ts`). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
 `skipIf`; a suíte NUNCA lê `DATABASE_URL` (`server/test/setup-banco.ts` a troca por
 `DATABASE_URL_TESTES`, um banco descartável; sem ela o `*.integracao.test.ts` se pula),
 porque o `.env` de trabalho já apontou para produção e `pnpm test` chegou a promover
@@ -138,26 +139,34 @@ verifiquei" na PR listando as telas. Função pura do client pode ser testada em
 Aplicação full-stack TypeScript num único pacote: React 19 + Vite no client,
 tRPC 11 sobre Express 4 no servidor, MySQL via Drizzle.
 
-**Entrada e boot.** A entrada real é `server/_core/index.ts` (`server/index.ts` é um
-resto morto). Ordem: migrações no boot (só em produção, ver "Banco"), helmet,
+**Entrada e boot.** A entrada real é `server/_core/index.ts`. Ordem: migrações no
+boot (só em produção, ver "Banco"), helmet,
 compression, cabeçalhos de segurança, bloqueio de scanners, rate limit global, body
 parsers (15 MB só em `meetings.submitRecording` e `contexts.uploadMedia`, 5 MB no
 resto), proxy de storage, tRPC em `/api/trpc`, e por fim Vite em middleware (dev) ou
 estático de `dist/public` (prod). Não há proxy de dev: front e API na mesma origem.
 
 **Fluxo de tipos ponta a ponta (tRPC).** Cada área de negócio tem um router em
-`server/routers/` (auth, network, matches, opportunities, dealRoom, meetings, sivc,
-president, consent…), agregados em `server/routers.ts`. O client consome tudo tipado
-via `client/src/lib/trpc.ts` + React Query. **Há duas camadas de procedures base**:
-`server/_core/trpc.ts` tem `publicProcedure`, `protectedProcedure` e um
-`adminProcedure` estrito (só `role === "admin"`); `server/routers/_procedures.ts` tem
+`server/routers/`, agregados em `server/routers.ts` (atenção aos apelidos: `matches`
+no appRouter é o `profileMatchesRouter`; `routers/matches.ts` entra como
+`intelligentMatches`). O client consome tudo tipado via `client/src/lib/trpc.ts` +
+React Query. As procedures base ficam em `server/routers/_procedures.ts`:
 `adminProcedure`, `presidentProcedure` e `goldProcedure`, e **as três aceitam o mesmo
-conjunto {admin, president, gold}**: é a regra "Ouro = Presidente = administradora",
-pedida pela cliente e confirmada pelo Roberto em 02/09/2026: toda conta Ouro tem o
-painel administrativo. Consequência: contas Ouro criadas só para teste (inclusive a do
-Roberto) precisam voltar a Prata antes da entrega. Checagens "Ouro ou acima" ainda
-estão repetidas inline em `dealRoom.ts`, `matching.ts`, `opportunities.ts`,
-`storageProxy.ts` e no client.
+conjunto {admin, president, gold}**. `server/_core/trpc.ts` exporta só `router`,
+`publicProcedure` e `protectedProcedure` (o `adminProcedure` estrito saiu na limpeza
+do Manus, commit 5bce2aa). É a regra "Ouro = Presidente = administradora", pedida pela
+cliente e confirmada pelo Roberto em 02/09/2026: toda conta Ouro tem o painel
+administrativo. Consequência: contas Ouro criadas só para teste (inclusive a do
+Roberto) precisam voltar a Prata antes da entrega.
+
+**Mas Ouro NÃO é staff em tudo.** A única assimetria de papel no servidor é `isStaff`
+em `oportunidade-acesso.ts`, que aceita só admin e president: uma conta Ouro APROVA
+uma oportunidade pendente e leva 403 ao tentar ABRI-LA. Some-se outra armadilha:
+`grantGoldAccess` grava `role = "gold"` por cima do que havia, e `revokeGoldAccess`
+grava `"silver"` — conceder Ouro a uma presidente a REBAIXA, e revogar a joga em Prata. Checagens "Ouro ou acima" ainda
+estão repetidas inline em `routers/dealRoom.ts`, `routers/matching.ts`,
+`routers/opportunities.ts`, `_core/storageProxy.ts` e no client (`ProtectedRoute`,
+`AppHeader`, `Connections`).
 
 **Acesso a dados.** `server/db.ts` é a camada única (usuárias, oportunidades, Ouro,
 segurança, matches, rede privada, contextos, enriquecimento). Banco fora do ar é ERRO,
@@ -179,11 +188,21 @@ Exceções deliberadas: `system.health` (responde `ok:false` com HTTP 503) e
 
 **Três motores de match convivem.** `server/match-service.ts` cruza contatos da mesma
 dona: `scoreMatch` aplica, nesta ordem, concorrentes → 0, slug exato → 100, mesmo
-objeto do termo → 100, mesmo núcleo → 100, mesma categoria → 60; o critério semântico
+objeto do termo → 100, mesmo núcleo → 100, necessidade genérica que nomeia a família do
+serviço → 100 (só para serviço), mesma categoria → 60 (não vale para serviço); o critério semântico
 vale 45, abaixo do limiar 50, logo está desligado por construção e o texto não sai
 para embeddings. `server/matching.ts` cruza perfis de usuárias em 6 dimensões
 ponderadas, com LLM só no insight. `routers/profileMatches.ts` expõe esses matches no
-Dashboard com trava de consentimento dos dois lados.
+Dashboard com trava de consentimento dos dois lados. **Regra da demanda expressa
+(12/09/2026), nos três motores e nos prompts:** item de "o que tenho" classificado como
+SERVIÇO (`shared/tipo-da-oferta.ts`) só casa com necessidade DECLARADA em "o que
+preciso" — no motor privado a categoria em comum não vale para serviço; no de perfis o
+par sustentado só por serviço sem demanda expressa dá zero, não é gravado e a leitura da
+lista esconde a linha antiga (sem apagá-la, para a dispensa da dona sobreviver); nos dois
+prompts de `routers/matching.ts` o modelo classifica o item,
+cita o trecho da oportunidade que declara a necessidade e
+`server/portao-da-demanda-expressa.ts` confere a citação antes de exibir. Produtos,
+ativos, investimento, conexões, tecnologia e imóveis não mudam.
 
 **`server/_core/` é a infraestrutura herdada do Manus** (o projeto nasceu na
 plataforma Manus e foi extraído: ver `docs/recuperacao-do-manus.md`): entrada, auth
@@ -206,11 +225,10 @@ em `client/src/pages/` roteadas com wouter em `App.tsx`; shadcn/ui em
 `components/ui/`; Tailwind 4 configurado no próprio CSS (`client/src/index.css`, não
 há `tailwind.config`); o tema escuro está desligado. i18n: 10 JSONs em
 `client/src/i18n/locales/` com o mesmo conjunto de chaves (`conferir-locales.mjs`
-garante); 20 das 24 páginas usam `useTranslation` (em 05/09/2026); `AdminPanel`,
-`PresidentPanel` e `LegalPage` continuam em pt-BR fixo, e só 2 dos 10 componentes
-compartilhados traduzem.
-Código morto conhecido (não construa sobre ele): `ComponentShowcase`, `AuthModal`,
-`Map`, `ManusDialog`, `AIChatBox`, `server/index.ts`.
+garante); `AdminPanel`, `PresidentPanel` e `LegalPage` continuam em pt-BR fixo, e a
+maioria dos componentes compartilhados não traduz.
+Código morto conhecido (não construa sobre ele): `ComponentShowcase` e `AIChatBox`
+(importado só por ele).
 
 **`shared/`** tem constantes e tipos usados por client e servidor, inclusive
 `direcao-do-termo.ts` (direção oferta/demanda de um termo) e `types.ts`, que
@@ -229,7 +247,7 @@ por etapa vindas do Manus.
 ## Banco e migrações
 
 Schema e migrações em `drizzle/` (`schema.ts` + SQL versionado, com baseline
-`0000_fundacao`). Todas as 50 tabelas, incluindo as `sivc_*`, estão no schema.
+`0000_fundacao`). Todas as tabelas, incluindo as `sivc_*`, estão no schema.
 
 - **Mudança de schema SÓ via `pnpm db:generate` + `pnpm db:migrate`.** Editar o
   `schema.ts` sem gerar a migração já quebrou produção uma vez (coluna existia
@@ -273,6 +291,14 @@ vitrine no GitHub Pages. Depois de todo deploy:
   opostas (`shared/direcao-do-termo.ts`: exportar × importar) ou mesma
   categoria: a spec da cliente veta match por palavra parecida
   ("exportar vinho" × "importar vinho" casam; "exportar" × "exportar" nunca).
+- **Serviço só casa com necessidade declarada.** Setor, porte, localização, cargo,
+  atividade econômica, problemas típicos do segmento, obrigações legais ou "poderia se
+  beneficiar" não são necessidade (pedido do Nicolas, 12/09/2026: "não fazemos match
+  porque alguém poderia precisar; fazemos match porque alguém declarou que precisa").
+  A IA não pode inferir o que ninguém declarou; essas informações só sobem a nota de um
+  match que já passou pelo portão. A restrição é específica do tipo SERVIÇO — os outros
+  tipos seguem as regras de sempre. Ver `shared/tipo-da-oferta.ts` e
+  `server/portao-da-demanda-expressa.ts`.
 - **Nada extraído por IA entra sozinho**: toda extração carrega origem e confiança
   e exige confirmação da usuária antes de virar dado. No enriquecimento, só
   sugestões com `confidence >= 0.7` viram pendência (`routers/enrichment.ts`);

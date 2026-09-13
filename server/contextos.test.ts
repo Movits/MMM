@@ -109,19 +109,19 @@ describe("Contextos — listagens dizem tudo o que a tela precisa", () => {
 
   it("vincular o mesmo contato duas vezes devolve o vínculo existente, sem duplicar", async () => {
     estado.respostas = [[["vinc-1"]]]; // já existe
-    const id = await linkContactToContext("dona-1", { contactId: 42, contextId: "ctx-1" });
+    const r = await linkContactToContext("dona-1", { contactId: 42, contextId: "ctx-1" });
 
-    expect(id).toBe("vinc-1");
+    expect(r).toEqual({ id: "vinc-1", created: false });
     expect(estado.consultas.some(c => c.sql.startsWith("insert"))).toBe(false);
   });
 
   it("re-vincular com dados novos atualiza o encontro existente em vez de descartá-los", async () => {
     estado.respostas = [[["vinc-1"]], []]; // já existe; update
-    const id = await linkContactToContext("dona-1", {
+    const r = await linkContactToContext("dona-1", {
       contactId: 42, contextId: "ctx-1", notes: "sentamos na mesma mesa", city: "Lisboa",
     });
 
-    expect(id).toBe("vinc-1");
+    expect(r).toEqual({ id: "vinc-1", created: false });
     const update = sqlDe("update `contact_contexts`");
     expect(update).toBeDefined();
     expect(update!.params).toEqual(expect.arrayContaining(["sentamos na mesma mesa", "Lisboa"]));
@@ -130,12 +130,71 @@ describe("Contextos — listagens dizem tudo o que a tela precisa", () => {
 
   it("vínculo novo é criado com dono, contato e contexto certos", async () => {
     estado.respostas = [[], []]; // não existe; insert
-    const id = await linkContactToContext("dona-1", { contactId: 42, contextId: "ctx-1" });
+    const r = await linkContactToContext("dona-1", { contactId: 42, contextId: "ctx-1" });
 
-    expect(id).not.toBe("vinc-1");
+    expect(r.id).not.toBe("vinc-1");
+    expect(r.created).toBe(true);
     const insert = sqlDe("insert into `contact_contexts`");
     expect(insert).toBeDefined();
     expect(insert!.params).toEqual(expect.arrayContaining(["dona-1", 42, "ctx-1"]));
+  });
+
+  // ── Revisão da PR #29: o tipo do vínculo ────────────────────────────────
+  // O db.ts só grava por cima o que veio PREENCHIDO. Com o
+  // `.default("profissional")` que existia na entrada do router, "preenchido"
+  // era sempre — e a escolha antiga da dona morria a cada re-vinculação.
+
+  it("re-vincular SEM tipo preserva o tipo já gravado: relationship_type não entra no update", async () => {
+    estado.respostas = [[["vinc-1"]], []]; // já existe; update
+    const r = await linkContactToContext("dona-1", {
+      contactId: 42, contextId: "ctx-1", notes: "reencontro",
+    });
+
+    expect(r).toEqual({ id: "vinc-1", created: false });
+    const update = sqlDe("update `contact_contexts`");
+    expect(update).toBeDefined();
+    expect(update!.sql).not.toContain("relationship_type");
+    expect(update!.params).not.toContain("profissional");
+  });
+
+  it("re-vincular COM tipo novo troca o tipo — a escolha explícita da dona vale", async () => {
+    estado.respostas = [[["vinc-1"]], []]; // já existe; update
+    const r = await linkContactToContext("dona-1", {
+      contactId: 42, contextId: "ctx-1", relationshipType: "ambos",
+    });
+
+    expect(r).toEqual({ id: "vinc-1", created: false });
+    const update = sqlDe("update `contact_contexts`");
+    expect(update!.sql).toContain("relationship_type");
+    expect(update!.params).toEqual(expect.arrayContaining(["ambos"]));
+  });
+
+  it("re-vincular sem NENHUM dado novo não dispara update algum", async () => {
+    estado.respostas = [[["vinc-1"]]]; // já existe, e nada a atualizar
+    const r = await linkContactToContext("dona-1", { contactId: 42, contextId: "ctx-1" });
+
+    expect(r).toEqual({ id: "vinc-1", created: false });
+    expect(sqlDe("update `contact_contexts`")).toBeUndefined();
+  });
+
+  it("vínculo NOVO sem tipo nasce 'profissional' — o default vive só na criação", async () => {
+    estado.respostas = [[], []]; // não existe; insert
+    const r = await linkContactToContext("dona-1", { contactId: 42, contextId: "ctx-1" });
+
+    expect(r.created).toBe(true);
+    const insert = sqlDe("insert into `contact_contexts`");
+    expect(insert!.params).toEqual(expect.arrayContaining(["profissional"]));
+  });
+
+  it("vínculo NOVO com tipo informado nasce com o tipo da dona, não com o default", async () => {
+    estado.respostas = [[], []]; // não existe; insert
+    await linkContactToContext("dona-1", {
+      contactId: 42, contextId: "ctx-1", relationshipType: "pessoal",
+    });
+
+    const insert = sqlDe("insert into `contact_contexts`");
+    expect(insert!.params).toEqual(expect.arrayContaining(["pessoal"]));
+    expect(insert!.params).not.toContain("profissional");
   });
 });
 

@@ -19,7 +19,7 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
 
 const contextIsVisible = vi.fn(async () => true);
 const getPrivateContactById = vi.fn(async (): Promise<{ id: number } | null> => ({ id: 7 }));
-const linkContactToContext = vi.fn(async () => "vinculo-1");
+const linkContactToContext = vi.fn(async () => ({ id: "vinculo-1", created: true }));
 const addContextParticipant = vi.fn(async () => "participante-1");
 
 // Sem banco: exigirDb lança, como o db.ts real faz sem DATABASE_URL. Um caminho
@@ -83,7 +83,7 @@ describe("contexts.linkContact — posse dos dois lados antes de gravar", () => 
     await expect(caller.linkContact({
       contextId: "ctx-1", contactId: 7, city: "Lagos", country: "Nigéria",
       notes: "conheci no jantar da embaixada", relationshipType: "profissional",
-    })).resolves.toEqual({ id: "vinculo-1" });
+    })).resolves.toEqual({ id: "vinculo-1", created: true });
     expect(linkContactToContext).toHaveBeenCalledTimes(1);
     const [dona, dados] = linkContactToContext.mock.calls[0] as unknown as [string, Record<string, unknown>];
     expect(dona).toBe("dona-1");
@@ -93,7 +93,7 @@ describe("contexts.linkContact — posse dos dois lados antes de gravar", () => 
   it("contexto do catálogo (sem dona) continua aceito — contextIsVisible decide, não o router", async () => {
     // O fake diz "visível" para o catálogo, como o db.ts real (ownerId IS NULL).
     await expect(caller.linkContact({ contextId: "catalogo-feira", contactId: 7 }))
-      .resolves.toEqual({ id: "vinculo-1" });
+      .resolves.toEqual({ id: "vinculo-1", created: true });
   });
 
   it("cidade ou país acima de 100 caracteres é recusado na entrada, antes de qualquer consulta", async () => {
@@ -105,7 +105,50 @@ describe("contexts.linkContact — posse dos dois lados antes de gravar", () => 
     expect(linkContactToContext).not.toHaveBeenCalled();
     // e 100 exatos passam pela entrada (a coluna é varchar(100))
     await expect(caller.linkContact({ contextId: "ctx-1", contactId: 7, city: "x".repeat(100), country: "y".repeat(100) }))
-      .resolves.toEqual({ id: "vinculo-1" });
+      .resolves.toEqual({ id: "vinculo-1", created: true });
+  });
+});
+
+/**
+ * Revisão da PR #29 — o tipo do vínculo.
+ *
+ * A entrada tinha `.default("profissional")`: mesmo quando ninguém tocava nos
+ * botões do modal, o router entregava "profissional" ao db.ts, e o db.ts
+ * grava todo campo preenchido por cima do vínculo existente. Uma Ana marcada
+ * como "pessoal" meses atrás virava "profissional" numa re-vinculação em que
+ * a dona não escolheu nada — e a tela ainda dizia "vinculada!".
+ *
+ * A regra agora: ausente é ausente até o db.ts, e o router conta se CRIOU.
+ */
+describe("contexts.linkContact — o tipo do vínculo e o que a tela é avisada", () => {
+  it("sem tipo informado, o router NÃO inventa 'profissional' — o campo chega ausente ao db.ts", async () => {
+    await caller.linkContact({ contextId: "ctx-1", contactId: 7 });
+
+    const [, dados] = linkContactToContext.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(dados.relationshipType).toBeUndefined();
+    // e explicitamente: a chave não vai preenchida de nenhuma outra forma
+    expect(dados).not.toMatchObject({ relationshipType: "profissional" });
+  });
+
+  it("null vindo do formulário também chega ausente, não como null gravável", async () => {
+    await caller.linkContact({ contextId: "ctx-1", contactId: 7, relationshipType: null });
+
+    const [, dados] = linkContactToContext.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(dados.relationshipType).toBeUndefined();
+  });
+
+  it("tipo escolhido pela dona é repassado intacto", async () => {
+    await caller.linkContact({ contextId: "ctx-1", contactId: 7, relationshipType: "pessoal" });
+
+    const [, dados] = linkContactToContext.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(dados.relationshipType).toBe("pessoal");
+  });
+
+  it("vínculo que já existia volta com created=false — a tela precisa disso para dizer 'atualizado'", async () => {
+    linkContactToContext.mockResolvedValueOnce({ id: "vinculo-1", created: false });
+
+    await expect(caller.linkContact({ contextId: "ctx-1", contactId: 7 }))
+      .resolves.toEqual({ id: "vinculo-1", created: false });
   });
 });
 

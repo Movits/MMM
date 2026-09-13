@@ -144,7 +144,7 @@ export default function DealRoom() {
   return (
     <div className="min-h-screen bg-transparent">
       {/* Header */}
-      <div className="border-b border-white/10 bg-[#0d0d1a]/90 backdrop-blur-sm sticky top-0 z-20">
+      <div className="border-b border-white/10 bg-[#151312]/90 backdrop-blur-sm sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/dashboard">

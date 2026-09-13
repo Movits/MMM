@@ -199,7 +199,9 @@
       "s8_title": "Lo que tengo",
       "s8_sub": "Activos y recursos disponibles",
       "s9_title": "Lo que necesito",
-      "s9_sub": "Demandas y necesidades"
+      "s9_sub": "Demandas y necesidades",
+      "s10_title": "Términos y Condiciones",
+      "s10_sub": "Lee y acepta nuestros términos"
     },
     "specialties": {
       "tech": "Tecnología & Software",
@@ -285,6 +287,7 @@
     "successMsg": "🎉 ¡Perfil creado! Redirigiendo a tu panel...",
     "errorMsg": "No se pudo guardar tu perfil.",
     "maxValues": "Máximo 4 valores seleccionados",
+    "maxSpecialties": "Máximo de 5 especialidades seleccionadas",
     "dataPrivacy": "Tus datos están cifrados y nunca se comparten sin tu autorización",
     "nav": {
       "back": "Atrás",
@@ -428,6 +431,20 @@
       "selectedPlural": "seleccionados",
       "selectedF": "seleccionada",
       "selectedFPlural": "seleccionadas"
+    },
+    "terms": {
+      "title": "Términos de Uso y Acuerdo de Comisión",
+      "accept": "Acepto los Términos de Uso",
+      "required": "Debe aceptar los términos",
+      "clause1_title": "1. Objeto",
+      "clause1_text": "MMM es una plataforma de relación entre sus miembros. Presenta a personas cuyos intereses se complementan y registra los negocios que nacen de esas presentaciones. La plataforma no es parte del negocio: quienes contratan son las miembros entre sí.",
+      "clause2_title": "2. Comisión",
+      "clause2_text": "Un negocio originado en una presentación hecha por la plataforma genera una comisión para MMM, en las siguientes condiciones:",
+      "clause2_item1": "el porcentaje se define caso por caso, según el tipo y el tamaño del negocio;",
+      "clause2_item2": "el límite es del 50% de la ganancia declarada en el negocio;",
+      "clause2_item3": "en esta versión el pago ocurre fuera de la plataforma; el sitio solo registra el negocio y la comisión debida.",
+      "clause3_title": "3. Vigencia y cambios",
+      "clause3_text": "Este texto es provisional y está en revisión jurídica. Cuando se publique la versión final se te avisará y deberás aceptarla nuevamente. La fecha y el texto exacto de esta aceptación quedan registrados."
     }
   },
   "dashboard": {
@@ -703,6 +720,7 @@
       "individual": "Persona física",
       "legalEntity": "Persona jurídica",
       "mei": "Microemprendedora individual (MEI)",
+      "nonprofit": "Sin fines de lucro",
       "companySize": "Tamaño de la empresa",
       "companySizePlaceholder": "Selecciona el tamaño",
       "sizeMei": "MEI",
@@ -855,7 +873,16 @@
     "altFotoContato": "Foto del contacto",
     "enviarFoto": "Subir foto",
     "enviarCartao": "Subir tarjeta",
-    "enviandoImagem": "Subiendo..."
+    "enviandoImagem": "Subiendo...",
+    "ouroCarregando": "Cargando el término…",
+    "ouroPrecisaAutorizar": "Falta tu autorización",
+    "ouroPrecisaAutorizarDetalhe": "Marcar el contacto como compartido no basta: sin esta autorización no aparece en el acervo Oro. Puedes revocarla cuando quieras, con efecto inmediato.",
+    "ouroLerTermo": "Leer el término",
+    "ouroEsconderTermo": "Ocultar el término",
+    "ouroAutorizarBotao": "Autorizar",
+    "ouroJaAutorizado": "Ya autorizaste. Los contactos que marques como compartidos aparecen en el acervo Oro.",
+    "ouroAutorizadoToast": "Autorización registrada.",
+    "ouroFalhaToast": "No se pudo registrar la autorización."
   },
   "contexts": {
     "editarContextoTitulo": "Editar Contexto",
@@ -877,6 +904,7 @@
     "botaoSalvar": "✓ Guardar",
     "vincularContatoTitulo": "Vincular Contacto",
     "toastVinculadoSucesso": "¡{{name}} vinculada a {{context}}!",
+    "toastVinculoAtualizado": "Vínculo de {{name}} con {{context}} actualizado.",
     "toastErroVincular": "Error al vincular: {{message}}",
     "relTipoPessoal": "Personal",
     "relTipoProfissional": "Profesional",
@@ -1246,7 +1274,7 @@
     "ndaClause4Title": "4. Aceptación Digital:",
     "ndaClause4Text": "La aceptación en esta plataforma constituye una aceptación digital válida y jurídicamente vinculante, con registro de fecha, hora e identidad de las partes.",
     "ndaOpportunityLabel": "Oportunidad:",
-    "ndaRoomIdLabel": "ID del Deal Room: #{{roomId}}",
+    "ndaRoomIdLabel": "Sala de Negociación n.º {{roomId}}",
     "ndaCreatedLabel": "Fecha de creación:",
     "ndaSignedBoth": "NDA firmado por ambas partes",
     "ndaSignedBothDesc": "La sala de negociación privada está activa. Usa las pestañas Chat y Documentos.",
@@ -1415,6 +1443,7 @@
     "avisoAutorizacaoExistente": "Tu autorización, si ya existía, sigue siendo válida. Inténtalo de nuevo en un momento.",
     "botaoTentarNovo": "Intentar de nuevo",
     "explicacao": "Anota lo que cada contacto tiene para ofrecer y lo que está buscando. MMM compara esta información y sugiere quién puede ayudar a quién.",
+    "avisoServico": "Un servicio (consultoría, asesoría, abogacía…) solo genera conexión cuando otro contacto declaró necesitarlo en “Lo que busca”. MMM no presume necesidades por sector, tamaño o actividad.",
     "abaPossui": "Lo que posee",
     "abaProcura": "Lo que busca",
     "registrandoPrefixo": "Registrando lo que",
@@ -1503,6 +1532,29 @@
       "memoryDesc": "Pregunta a tu historial",
       "intelligentMatches": "Conexiones Inteligentes",
       "intelligentMatchesDesc": "Sugerencias entre tus contactos"
+    }
+  },
+  "conta": {
+    "excluir": {
+      "titulo": "Eliminar mi cuenta",
+      "descricao": "Salir de la plataforma borra de la base de datos todo lo que es tuyo: perfil, contactos, reuniones, oportunidades y archivos.",
+      "botao": "Eliminar mi cuenta",
+      "ultimaAdministradora": "Eres la última administradora de la plataforma. Promueve a otra miembra a Oro antes de eliminar tu cuenta.",
+      "semSenha": "Esta cuenta no tiene contraseña. Usa \"Olvidé mi contraseña\" para crear una y luego vuelve aquí.",
+      "dialogoTitulo": "Eliminar mi cuenta",
+      "dialogoTexto": "Al confirmar, estos datos se borran de inmediato:",
+      "item1": "Tu perfil, tus fotos y los términos que aceptaste.",
+      "item2": "Tu red privada de contactos, con lo que cada contacto tiene y busca.",
+      "item3": "Tus contextos, tus reuniones, las grabaciones y las transcripciones.",
+      "item4": "Tus oportunidades, tus intereses y las salas de negociación en las que estás.",
+      "item5": "Tus documentos de verificación y los archivos que enviaste.",
+      "semVolta": "La eliminación es inmediata y la plataforma no puede deshacerla.",
+      "labelConfirmacao": "Para confirmar, escribe: {{valor}}",
+      "labelSenha": "Tu contraseña",
+      "cancelar": "Cancelar",
+      "confirmar": "Eliminar definitivamente",
+      "excluindo": "Eliminando...",
+      "sucesso": "Tu cuenta y tus datos fueron eliminados."
     }
   }
 }

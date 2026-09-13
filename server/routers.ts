@@ -1,6 +1,7 @@
 import { systemRouter } from "./_core/systemRouter";
 import { router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
+import { contaRouter } from "./routers/conta";
 import { profileRouter } from "./routers/profile";
 import { opportunitiesRouter } from "./routers/opportunities";
 import { notificationsRouter } from "./routers/notifications";
@@ -30,6 +31,7 @@ export const appRouter = router({
   dealRoom: dealRoomRouter,
   sivc: sivcRouter,
   auth: authRouter,
+  conta: contaRouter,
   profile: profileRouter,
   opportunities: opportunitiesRouter,
   notifications: notificationsRouter,

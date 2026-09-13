@@ -199,7 +199,9 @@
       "s8_title": "Was ich habe",
       "s8_sub": "Verfügbare Ressourcen und Vermögenswerte",
       "s9_title": "Was ich brauche",
-      "s9_sub": "Anforderungen und Bedürfnisse"
+      "s9_sub": "Anforderungen und Bedürfnisse",
+      "s10_title": "Geschäftsbedingungen",
+      "s10_sub": "Lesen und akzeptieren Sie unsere Bedingungen"
     },
     "specialties": {
       "tech": "Technologie & Software",
@@ -285,6 +287,7 @@
     "successMsg": "🎉 Profil erstellt! Weiterleitung zum Dashboard...",
     "errorMsg": "Profil konnte nicht gespeichert werden.",
     "maxValues": "Maximal 4 Werte ausgewählt",
+    "maxSpecialties": "Maximal 5 Fachrichtungen ausgewählt",
     "dataPrivacy": "Ihre Daten sind verschlüsselt und werden ohne Ihre Genehmigung niemals geteilt",
     "nav": {
       "back": "Zurück",
@@ -428,6 +431,20 @@
       "selectedPlural": "ausgewählt",
       "selectedF": "ausgewählt",
       "selectedFPlural": "ausgewählt"
+    },
+    "terms": {
+      "title": "Nutzungsbedingungen und Provisionsvereinbarung",
+      "accept": "Ich akzeptiere die Nutzungsbedingungen",
+      "required": "Sie müssen den Bedingungen zustimmen",
+      "clause1_title": "1. Gegenstand",
+      "clause1_text": "MMM ist eine Plattform für die Vernetzung ihrer Mitglieder. Sie stellt Personen vor, deren Interessen sich ergänzen, und erfasst die Geschäfte, die aus diesen Vorstellungen entstehen. Die Plattform ist nicht Vertragspartei: Die Mitglieder schließen die Verträge untereinander.",
+      "clause2_title": "2. Provision",
+      "clause2_text": "Ein Geschäft, das aus einer Vorstellung über die Plattform entsteht, begründet eine Provision für MMM, und zwar unter folgenden Bedingungen:",
+      "clause2_item1": "der Prozentsatz wird im Einzelfall festgelegt, je nach Art und Umfang des Geschäfts;",
+      "clause2_item2": "die Obergrenze liegt bei 50 % des für das Geschäft erklärten Gewinns;",
+      "clause2_item3": "in dieser Version erfolgt die Zahlung außerhalb der Plattform; die Website erfasst nur das Geschäft und die fällige Provision.",
+      "clause3_title": "3. Laufzeit und Änderungen",
+      "clause3_text": "Dieser Text ist vorläufig und wird rechtlich geprüft. Sobald die endgültige Fassung veröffentlicht ist, werden Sie benachrichtigt und müssen erneut zustimmen. Datum und genauer Wortlaut dieser Zustimmung werden gespeichert."
     }
   },
   "dashboard": {
@@ -703,6 +720,7 @@
       "individual": "Natürliche Person",
       "legalEntity": "Juristische Person",
       "mei": "Einzelne Kleinstunternehmerin (MEI)",
+      "nonprofit": "Gemeinnützige Organisation",
       "companySize": "Unternehmensgröße",
       "companySizePlaceholder": "Größe auswählen",
       "sizeMei": "MEI",
@@ -855,7 +873,16 @@
     "altFotoContato": "Kontaktfoto",
     "enviarFoto": "Foto hochladen",
     "enviarCartao": "Karte hochladen",
-    "enviandoImagem": "Wird hochgeladen..."
+    "enviandoImagem": "Wird hochgeladen...",
+    "ouroCarregando": "Bedingungen werden geladen…",
+    "ouroPrecisaAutorizar": "Ihre Zustimmung fehlt",
+    "ouroPrecisaAutorizarDetalhe": "Den Kontakt als geteilt zu markieren reicht nicht: ohne diese Zustimmung erscheint er nicht im Gold-Bestand. Sie können sie jederzeit widerrufen, mit sofortiger Wirkung.",
+    "ouroLerTermo": "Bedingungen lesen",
+    "ouroEsconderTermo": "Bedingungen ausblenden",
+    "ouroAutorizarBotao": "Zustimmen",
+    "ouroJaAutorizado": "Sie haben bereits zugestimmt. Als geteilt markierte Kontakte erscheinen im Gold-Bestand.",
+    "ouroAutorizadoToast": "Zustimmung gespeichert.",
+    "ouroFalhaToast": "Die Zustimmung konnte nicht gespeichert werden."
   },
   "contexts": {
     "editarContextoTitulo": "Kontext bearbeiten",
@@ -877,6 +904,7 @@
     "botaoSalvar": "✓ Speichern",
     "vincularContatoTitulo": "Kontakt verknüpfen",
     "toastVinculadoSucesso": "{{name}} mit {{context}} verknüpft!",
+    "toastVinculoAtualizado": "Verknüpfung von {{name}} mit {{context}} aktualisiert.",
     "toastErroVincular": "Fehler beim Verknüpfen: {{message}}",
     "relTipoPessoal": "Persönlich",
     "relTipoProfissional": "Beruflich",
@@ -1246,7 +1274,7 @@
     "ndaClause4Title": "4. Digitale Zustimmung:",
     "ndaClause4Text": "Die Zustimmung auf dieser Plattform stellt eine gültige und rechtsverbindliche digitale Zustimmung dar, mit Erfassung von Datum, Uhrzeit und Identität der Parteien.",
     "ndaOpportunityLabel": "Möglichkeit:",
-    "ndaRoomIdLabel": "Deal Room ID: #{{roomId}}",
+    "ndaRoomIdLabel": "Verhandlungsraum Nr. {{roomId}}",
     "ndaCreatedLabel": "Erstellungsdatum:",
     "ndaSignedBoth": "NDA von beiden Parteien unterzeichnet",
     "ndaSignedBothDesc": "Der private Verhandlungsraum ist aktiv. Nutzen Sie die Tabs Chat und Dokumente.",
@@ -1415,6 +1443,7 @@
     "avisoAutorizacaoExistente": "Ihre Autorisierung, falls bereits vorhanden, bleibt weiterhin gültig. Versuchen Sie es in Kürze erneut.",
     "botaoTentarNovo": "Erneut versuchen",
     "explicacao": "Notieren Sie, was jeder Kontakt anzubieten hat und wonach er sucht. MMM vergleicht diese Informationen und schlägt vor, wer wem helfen kann.",
+    "avisoServico": "Eine Dienstleistung (Beratung, Rechtsberatung…) erzeugt nur dann eine Verbindung, wenn ein anderer Kontakt unter „Was gesucht wird“ angegeben hat, sie zu brauchen. MMM leitet keinen Bedarf aus Branche, Größe oder Tätigkeit ab.",
     "abaPossui": "Was vorhanden ist",
     "abaProcura": "Was gesucht wird",
     "registrandoPrefixo": "Erfassen, was",
@@ -1503,6 +1532,29 @@
       "memoryDesc": "Fragen Sie Ihren Verlauf",
       "intelligentMatches": "Intelligente Verbindungen",
       "intelligentMatchesDesc": "Vorschläge zwischen Ihren Kontakten"
+    }
+  },
+  "conta": {
+    "excluir": {
+      "titulo": "Mein Konto löschen",
+      "descricao": "Wenn Sie die Plattform verlassen, wird alles Ihre aus der Datenbank gelöscht: Profil, Kontakte, Meetings, Chancen und Dateien.",
+      "botao": "Mein Konto löschen",
+      "ultimaAdministradora": "Sie sind die letzte Administratorin der Plattform. Befördern Sie ein anderes Mitglied zu Gold, bevor Sie Ihr Konto löschen.",
+      "semSenha": "Für dieses Konto ist kein Passwort festgelegt. Nutzen Sie „Passwort vergessen“, um eines zu erstellen, und kommen Sie dann zurück.",
+      "dialogoTitulo": "Mein Konto löschen",
+      "dialogoTexto": "Mit der Bestätigung werden diese Daten sofort gelöscht:",
+      "item1": "Ihr Profil, Ihre Fotos und die von Ihnen akzeptierten Bedingungen.",
+      "item2": "Ihr privates Kontaktnetz, mit dem, was jeder Kontakt hat und sucht.",
+      "item3": "Ihre Kontexte, Ihre Meetings, die Aufnahmen und die Transkripte.",
+      "item4": "Ihre Chancen, Ihre Interessensbekundungen und die Verhandlungsräume, in denen Sie sind.",
+      "item5": "Ihre Verifizierungsdokumente und die von Ihnen hochgeladenen Dateien.",
+      "semVolta": "Die Löschung erfolgt sofort und die Plattform kann sie nicht zurücknehmen.",
+      "labelConfirmacao": "Zur Bestätigung eingeben: {{valor}}",
+      "labelSenha": "Ihr Passwort",
+      "cancelar": "Abbrechen",
+      "confirmar": "Endgültig löschen",
+      "excluindo": "Wird gelöscht...",
+      "sucesso": "Ihr Konto und Ihre Daten wurden gelöscht."
     }
   }
 }

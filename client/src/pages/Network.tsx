@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
+import { AutorizacaoAcervoOuro } from "@/components/AutorizacaoAcervoOuro";
 
 // ─── Tags de perfil predefinidas ─────────────────────────────────────────────
 // Os valores em si permanecem em português: é o que fica salvo no contato
@@ -111,7 +112,7 @@ function TagChip({ label, selected, onClick }: { label: string; selected: boolea
     <button type="button" onClick={onClick}
       className={`px-3 py-1 rounded-full text-xs font-medium border transition-all duration-150 active:scale-95 ${
         selected
-          ? "bg-amber-500 border-amber-500 text-[#060e1a] font-bold"
+          ? "bg-amber-500 border-amber-500 text-[#151312] font-bold"
           : "bg-white/5 border-white/20 text-white/60 hover:border-white/40 hover:text-white"
       }`}>
       {label}
@@ -172,7 +173,7 @@ function ContactCard({ contact, onView, onEdit, onDelete }: {
       </div>
       {/* Menu contextual */}
       {menuOpen && (
-        <div className="absolute right-4 top-12 z-20 bg-[#0d1b2e] border border-white/15 rounded-xl shadow-2xl py-1 min-w-[140px]"
+        <div className="absolute right-4 top-12 z-20 bg-[#211e1b] border border-white/15 rounded-xl shadow-2xl py-1 min-w-[140px]"
           onClick={e => e.stopPropagation()}>
           <button className="w-full px-4 py-2 text-sm text-white/70 hover:bg-white/8 text-left flex items-center gap-2"
             onClick={() => { setMenuOpen(false); onView(); }}>
@@ -278,7 +279,7 @@ function ContactForm({ initial, onSave, onClose, loading }: {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg bg-[#0a1628] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <div>
@@ -449,6 +450,11 @@ function ContactForm({ initial, onSave, onClose, loading }: {
                     </button>
                   ))}
                 </div>
+                {/* A autorização do acervo Ouro só faz sentido no instante em que
+                    ela escolhe compartilhar: sem o termo aceito o contato some do
+                    acervo sem explicação, porque o servidor reavalia o consentimento
+                    a cada leitura. */}
+                {form.nivelVisibilidade === "ouro" && <AutorizacaoAcervoOuro />}
               </div>
             </>
           )}
@@ -463,12 +469,12 @@ function ContactForm({ initial, onSave, onClose, loading }: {
           {step < STEPS.length ? (
             <Button onClick={() => setStep(s => s + 1)}
               disabled={step === 1 && !form.fullName.trim()}
-              className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold">
+              className="bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold">
               {t("network.proximo")}
             </Button>
           ) : (
             <Button onClick={() => onSave(form)} disabled={loading || !form.fullName.trim()}
-              className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold">
+              className="bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold">
               {loading ? t("network.salvando") : t("network.salvar")}
             </Button>
           )}
@@ -561,7 +567,7 @@ function ContactDetail({ contact: contatoDaLista, onEdit, onClose }: {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg bg-[#0a1628] border border-white/15 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors flex items-center gap-1.5 text-sm">
@@ -984,18 +990,18 @@ export default function Network() {
   };
 
   if (authLoading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#060e1a]">
+    <div className="min-h-screen flex items-center justify-center bg-[#151312]">
       <div className="w-8 h-8 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin" />
     </div>
   );
 
   if (!isAuthenticated) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#060e1a] p-6">
+    <div className="min-h-screen flex items-center justify-center bg-[#151312] p-6">
       <div className="text-center">
         <Lock size={40} className="text-amber-500/60 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-white mb-2">{t("network.areaRestrita")}</h2>
         <p className="text-white/50 mb-6">{t("network.mensagemLogin")}</p>
-        <a href={getLoginUrl()} className="px-6 py-3 bg-amber-500 text-[#060e1a] font-bold rounded-xl hover:bg-amber-400 transition-colors">
+        <a href={getLoginUrl()} className="px-6 py-3 bg-amber-500 text-[#151312] font-bold rounded-xl hover:bg-amber-400 transition-colors">
           {t("network.botaoEntrar")}
         </a>
       </div>
@@ -1010,9 +1016,9 @@ export default function Network() {
   const totalDePaginas = Math.max(page, Math.ceil(total / 20));
 
   return (
-    <div className="min-h-screen bg-[#060e1a] text-white">
+    <div className="min-h-screen bg-[#151312] text-white">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#060e1a]/95 backdrop-blur-sm border-b border-white/8 px-4 sm:px-6 py-4">
+      <div className="sticky top-0 z-10 bg-[#151312]/95 backdrop-blur-sm border-b border-white/8 px-4 sm:px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="text-white/40 hover:text-white/70 transition-colors">
@@ -1026,7 +1032,7 @@ export default function Network() {
             </div>
           </div>
           <Button onClick={() => { setEditContact(null); setShowForm(true); }}
-            className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold gap-1.5">
+            className="bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold gap-1.5">
             <Plus size={16} /> {t("network.botaoNovo")}
           </Button>
         </div>
@@ -1051,14 +1057,14 @@ export default function Network() {
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           <button onClick={() => { setFilterTag(""); setPage(1); }}
             className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-              !filterTag ? "bg-amber-500 border-amber-500 text-[#060e1a] font-bold" : "bg-white/5 border-white/20 text-white/60 hover:border-white/40"
+              !filterTag ? "bg-amber-500 border-amber-500 text-[#151312] font-bold" : "bg-white/5 border-white/20 text-white/60 hover:border-white/40"
             }`}>
             {t("network.filtroTodos")}
           </button>
           {PROFILE_TAGS.map(tag => (
             <button key={tag} onClick={() => { setFilterTag(tag === filterTag ? "" : tag); setPage(1); }}
               className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                filterTag === tag ? "bg-amber-500 border-amber-500 text-[#060e1a] font-bold" : "bg-white/5 border-white/20 text-white/60 hover:border-white/40"
+                filterTag === tag ? "bg-amber-500 border-amber-500 text-[#151312] font-bold" : "bg-white/5 border-white/20 text-white/60 hover:border-white/40"
               }`}>
               {tagLabel(t, tag)}
             </button>
@@ -1104,7 +1110,7 @@ export default function Network() {
             </p>
             {!debouncedSearch && !filterTag && (
               <Button onClick={() => setShowForm(true)}
-                className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold gap-1.5">
+                className="bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold gap-1.5">
                 <Plus size={16} /> {t("network.botaoAdicionarContato")}
               </Button>
             )}
@@ -1172,7 +1178,7 @@ export default function Network() {
       {/* Confirmação de exclusão */}
       {deleteId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-[#0a1628] border border-white/15 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+          <div className="bg-[#211e1b] border border-white/15 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="font-bold text-white mb-2">{t("network.confirmarExclusaoTitulo")}</h3>
             <p className="text-sm text-white/50 mb-6">{t("network.confirmarExclusaoTexto")}</p>
             <div className="flex gap-3">

@@ -199,7 +199,9 @@
       "s8_title": "私が持つもの",
       "s8_sub": "利用可能な資産とリソース",
       "s9_title": "私が必要なもの",
-      "s9_sub": "要求とニーズ"
+      "s9_sub": "要求とニーズ",
+      "s10_title": "利用規約",
+      "s10_sub": "利用規約を読んで同意してください"
     },
     "specialties": {
       "tech": "テクノロジー＆ソフトウェア",
@@ -285,6 +287,7 @@
     "successMsg": "🎉 プロフィール作成完了！ダッシュボードに移動します...",
     "errorMsg": "プロフィールを保存できませんでした。",
     "maxValues": "最大4つの価値観を選択",
+    "maxSpecialties": "最大5つの専門分野を選択できます",
     "dataPrivacy": "データは暗号化され、許可なく共有されることはありません",
     "nav": {
       "back": "戻る",
@@ -428,6 +431,20 @@
       "selectedPlural": "選択済み",
       "selectedF": "選択済み",
       "selectedFPlural": "選択済み"
+    },
+    "terms": {
+      "title": "利用規約と手数料契約",
+      "accept": "利用規約に同意します",
+      "required": "利用規約に同意する必要があります",
+      "clause1_title": "1. 目的",
+      "clause1_text": "MMM は会員同士をつなぐプラットフォームです。関心が補い合う人どうしを引き合わせ、その紹介から生まれた取引を記録します。プラットフォームは取引の当事者ではありません。契約は会員どうしで結ばれます。",
+      "clause2_title": "2. 手数料",
+      "clause2_text": "プラットフォームによる紹介から生まれた取引には、次の条件で MMM への手数料が発生します。",
+      "clause2_item1": "料率は取引の種類と規模に応じて個別に決定されます。",
+      "clause2_item2": "上限は当該取引で申告された利益の 50% です。",
+      "clause2_item3": "本バージョンでは支払いはプラットフォーム外で行われ、サイトは取引と発生した手数料を記録するのみです。",
+      "clause3_title": "3. 有効期間および変更",
+      "clause3_text": "本文は暫定版であり、法務確認中です。最終版が公開された際にはお知らせし、改めて同意していただきます。本同意の日時と正確な本文は記録されます。"
     }
   },
   "dashboard": {
@@ -703,6 +720,7 @@
       "individual": "個人",
       "legalEntity": "法人",
       "mei": "個人零細事業者（MEI）",
+      "nonprofit": "非営利団体",
       "companySize": "会社規模",
       "companySizePlaceholder": "規模を選択",
       "sizeMei": "MEI",
@@ -855,7 +873,16 @@
     "altFotoContato": "連絡先の写真",
     "enviarFoto": "写真をアップロード",
     "enviarCartao": "名刺をアップロード",
-    "enviandoImagem": "アップロード中..."
+    "enviandoImagem": "アップロード中...",
+    "ouroCarregando": "規約を読み込んでいます…",
+    "ouroPrecisaAutorizar": "許可がまだありません",
+    "ouroPrecisaAutorizarDetalhe": "連絡先を共有に設定するだけでは足りません。この許可がないとゴールドのアーカイブに表示されません。いつでも取り消すことができ、すぐに反映されます。",
+    "ouroLerTermo": "規約を読む",
+    "ouroEsconderTermo": "規約を隠す",
+    "ouroAutorizarBotao": "許可する",
+    "ouroJaAutorizado": "すでに許可済みです。共有に設定した連絡先はゴールドのアーカイブに表示されます。",
+    "ouroAutorizadoToast": "許可を記録しました。",
+    "ouroFalhaToast": "許可を記録できませんでした。"
   },
   "contexts": {
     "editarContextoTitulo": "コンテキストを編集",
@@ -877,6 +904,7 @@
     "botaoSalvar": "✓ 保存",
     "vincularContatoTitulo": "連絡先を紐付け",
     "toastVinculadoSucesso": "{{name}}を{{context}}に紐付けました！",
+    "toastVinculoAtualizado": "{{name}}と{{context}}の紐付けを更新しました。",
     "toastErroVincular": "紐付けエラー：{{message}}",
     "relTipoPessoal": "個人的",
     "relTipoProfissional": "職業的",
@@ -1415,6 +1443,7 @@
     "avisoAutorizacaoExistente": "既存の許可がある場合はそのまま有効です。しばらくしてからもう一度お試しください。",
     "botaoTentarNovo": "もう一度試す",
     "explicacao": "各連絡先が提供できるものと探しているものを記録してください。MMMがこの情報を照合し、誰が誰を助けられるかを提案します。",
+    "avisoServico": "サービス（コンサルティング、法務など）は、別の連絡先が「探しているもの」でその必要を明示した場合にのみつながりを生みます。MMMは業種、規模、事業内容から必要性を推測しません。",
     "abaPossui": "保有しているもの",
     "abaProcura": "探しているもの",
     "registrandoPrefixo": "記録中：",
@@ -1503,6 +1532,29 @@
       "memoryDesc": "あなたの履歴に質問する",
       "intelligentMatches": "スマートコネクション",
       "intelligentMatchesDesc": "連絡先どうしのマッチング提案"
+    }
+  },
+  "conta": {
+    "excluir": {
+      "titulo": "アカウントを削除",
+      "descricao": "プラットフォームを離れると、プロフィール、連絡先、ミーティング、機会、ファイルなど、あなたのデータはすべてデータベースから削除されます。",
+      "botao": "アカウントを削除",
+      "ultimaAdministradora": "あなたはプラットフォーム最後の管理者です。アカウントを削除する前に、別のメンバーをゴールドに昇格してください。",
+      "semSenha": "このアカウントにはパスワードが設定されていません。「パスワードをお忘れですか」で作成してから、こちらに戻ってください。",
+      "dialogoTitulo": "アカウントを削除",
+      "dialogoTexto": "確定すると、次のデータがすぐに削除されます:",
+      "item1": "プロフィール、写真、および同意した規約。",
+      "item2": "各連絡先が持っているものと求めているものを含む、あなたの非公開連絡先ネットワーク。",
+      "item3": "コンテキスト、ミーティング、録音、文字起こし。",
+      "item4": "あなたの機会、関心の表明、参加している商談ルーム。",
+      "item5": "本人確認書類と、アップロードしたファイル。",
+      "semVolta": "削除はすぐに反映され、プラットフォーム側では取り消せません。",
+      "labelConfirmacao": "確認のため次を入力してください: {{valor}}",
+      "labelSenha": "パスワード",
+      "cancelar": "キャンセル",
+      "confirmar": "完全に削除",
+      "excluindo": "削除中...",
+      "sucesso": "アカウントとデータを削除しました。"
     }
   }
 }

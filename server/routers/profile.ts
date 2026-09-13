@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
-import { isValidCnpj, normalizeCnpj } from "../../shared/business-registration";
+import { exigeCnpj, isValidCnpj, normalizeCnpj } from "../../shared/business-registration";
 import { exigirDb, getUserProfile, upsertUserProfile } from "../db";
 import { users, userProfiles } from "../../drizzle/schema";
 import { toPublicUser } from "../auth";
@@ -38,7 +38,7 @@ export const profileRouter = router({
      avatarUrl: z.string().optional(),
      company: z.string().max(200).optional(),
      position: z.string().max(200).optional(),
-     personType: z.enum(["individual", "legal_entity", "mei"]).optional(),
+     personType: z.enum(["individual", "legal_entity", "mei", "nonprofit"]).optional(),
      companySize: z.enum(["mei", "micro", "small", "medium", "large"]).optional(),
      companyCnpj: z.string().max(18).optional(),
      gender: z.enum(["male", "female", "prefer_not_to_say"]).optional(),
@@ -55,9 +55,10 @@ export const profileRouter = router({
       if (input.companyCnpj && !isValidCnpj(input.companyCnpj)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Informe um CNPJ válido." });
       }
-      // Quem se declara MEI ou pessoa jurídica tem CNPJ por definição (A7).
-      if ((input.personType === "mei" || input.personType === "legal_entity") && !input.companyCnpj) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o CNPJ: ele é obrigatório para MEI e pessoa jurídica." });
+      // Quem se declara MEI, pessoa jurídica ou organização sem fins lucrativos
+      // tem CNPJ por definição (A7).
+      if (exigeCnpj(input.personType) && !input.companyCnpj) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o CNPJ: ele é obrigatório para MEI, pessoa jurídica e organização sem fins lucrativos." });
       }
       // `position` é coluna de users, não de user_profiles — mandá-la ao
       // upsert derrubava o UPDATE inteiro com "Unknown column".
@@ -89,7 +90,7 @@ export const profileRouter = router({
      linkedinUrl: z.string().optional(),
      company: z.string().max(200).optional(),
      position: z.string().max(200).optional(),
-     personType: z.enum(["individual", "legal_entity", "mei"]).optional(),
+     personType: z.enum(["individual", "legal_entity", "mei", "nonprofit"]).optional(),
      companySize: z.enum(["mei", "micro", "small", "medium", "large"]).optional(),
      companyCnpj: z.string().max(18).optional(),
      gender: z.enum(["male", "female", "prefer_not_to_say"]).optional(),
@@ -125,8 +126,8 @@ export const profileRouter = router({
       if (input.companyCnpj && !isValidCnpj(input.companyCnpj)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Informe um CNPJ válido." });
       }
-      if ((input.personType === "mei" || input.personType === "legal_entity") && !input.companyCnpj) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o CNPJ: ele é obrigatório para MEI e pessoa jurídica." });
+      if (exigeCnpj(input.personType) && !input.companyCnpj) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o CNPJ: ele é obrigatório para MEI, pessoa jurídica e organização sem fins lucrativos." });
       }
       const { company, position, jobTitle, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed, personType, companySize, companyCnpj, ...profileData } = input;
       await upsertUserProfile(ctx.user.id, profileData);

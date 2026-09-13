@@ -75,9 +75,9 @@ export default function ProtectedRoute({
   // Mostrar spinner enquanto verifica autenticação
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0A1F3F]">
+      <div className="min-h-screen flex items-center justify-center bg-[#1B1714]">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#C98F70] animate-spin" />
           <p className="text-sm text-gray-400">Verificando acesso...</p>
         </div>
       </div>
@@ -95,15 +95,15 @@ export default function ProtectedRoute({
       }
     };
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0A1F3F] p-4">
+      <div className="min-h-screen flex items-center justify-center bg-[#1B1714] p-4">
         <div role="alert" className="w-full max-w-md rounded-lg bg-white p-6 text-center shadow-lg">
-          <h1 className="text-lg font-semibold text-[#0A1F3F]">Não foi possível verificar seu acesso</h1>
+          <h1 className="text-lg font-semibold text-[#1A120C]">Não foi possível verificar seu acesso</h1>
           <p className="mt-2 text-sm text-gray-600">{error.message}</p>
           <button
             type="button"
             onClick={tentarDeNovo}
             disabled={tentandoDeNovo}
-            className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#D4AF37] px-4 py-2 text-sm font-medium text-[#0A1F3F] hover:bg-[#c9a430] disabled:opacity-60"
+            className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#C98F70] px-4 py-2 text-sm font-medium text-[#1A120C] hover:bg-[#b07a5c] disabled:opacity-60"
           >
             {tentandoDeNovo && <Loader2 className="w-4 h-4 animate-spin" />}
             Tentar de novo

@@ -1,0 +1,1 @@
+ALTER TABLE `user_profiles` MODIFY COLUMN `personType` enum('individual','legal_entity','mei','nonprofit');

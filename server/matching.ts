@@ -5,9 +5,11 @@ import {
   userProfiles, users, matches,
   type UserProfile,
 } from "../drizzle/schema";
-import { eq, ne, and, desc } from "drizzle-orm";
+import { eq, ne, and, desc, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import { hasValidConsent, usersComConsentimento } from "./routers/consent";
+import { nomeiamAMesmaCoisa, slugDoTermo } from "@shared/direcao-do-termo";
+import { ehServico, ehServicoDeAssessoria, necessidadeGenericaNomeiaOServico } from "@shared/tipo-da-oferta";
 
 // ─── Encryption helpers (for sensitive data) ─────────────────
 const VAULT_KEY = process.env.VAULT_ENCRYPTION_KEY || requireSecret("JWT_SECRET");
@@ -211,9 +213,35 @@ const HAVE_SATISFIES_NEED: Record<string, string[]> = {
   canais_comerciais: ["distribuidores", "compradores"],
 };
 
+/**
+ * Um item de "o que tenho" atende um item de "o que preciso"?
+ *
+ * Os dois campos nasceram como listas fixas (os ids acima), mas o zod de
+ * profile.update aceita texto livre e "falar sobre o negócio" grava tags
+ * curtas ditas pela pessoa. Para texto livre vale a MESMA equivalência do
+ * motor privado (shared/direcao-do-termo.ts): mesmo slug, mesmo objeto ou
+ * mesmo núcleo — nunca palavra parecida.
+ *
+ * Regra da demanda expressa (12/09/2026): um SERVIÇO só atende o que o outro
+ * lado DECLAROU. Não há entrada de serviço em HAVE_SATISFIES_NEED de
+ * propósito, e a única opção fixa de "O que preciso" que declara precisar de
+ * um serviço profissional é "Consultoria" — atendida pelos serviços de
+ * assessoria (consultoria, jurídico, contábil, auditoria, mentoria), não por
+ * marketing ou tradução.
+ */
+function satisfaz(have: string, need: string): boolean {
+  if (have === need) return true;
+  if (HAVE_SATISFIES_NEED[have]?.includes(need)) return true;
+  if (slugDoTermo(have) === slugDoTermo(need) || nomeiamAMesmaCoisa(have, need)) return true;
+  // A necessidade genérica que nomeia a família do serviço ("Consultoria"
+  // ou "Advogado" em texto livre) é demanda expressa, como no motor privado.
+  if (necessidadeGenericaNomeiaOServico(have, null, need)) return true;
+  return slugDoTermo(need) === "consultoria" && ehServicoDeAssessoria(have);
+}
+
 /** Quantas necessidades de `need` algum ativo de `have` satisfaz. */
 function coversNeeds(have: string[], need: string[]): number {
-  return need.filter(n => have.some(h => h === n || HAVE_SATISFIES_NEED[h]?.includes(n))).length;
+  return need.filter(n => have.some(h => satisfaz(h, n))).length;
 }
 
 // ─── Calculate compatibility score between two profiles ──────
@@ -229,6 +257,8 @@ export function calculateCompatibilityScore(
   investment: number;
   location: number;
   values: number;
+  /** Regra da demanda expressa: o par não pode virar match, seja qual for o resto. */
+  bloqueio?: "servico-sem-demanda-expressa";
 } {
   // Specialty score — complementary specialties score higher than identical
   let specialtyScore = 0;
@@ -314,6 +344,16 @@ export function calculateCompatibilityScore(
   } else if (a.lookingForInvestment && b.lookingForInvestment) {
     investmentScore = 20; // Both seeking investment — low compatibility
   }
+  // Uma DECLAROU buscar investimento e a outra DECLAROU capacidade: é base
+  // expressa (a categoria "investimento" do pedido), não presunção. A nota 90
+  // sozinha não prova declaração: capacidade em branco cai no rank 2 pelo
+  // `?? 2` acima, e um perfil só de serviço que marcasse "busco investimento"
+  // casaria com qualquer perfil sem capacidade preenchida (revisão
+  // adversarial de 12/09). Só conta quem preencheu a capacidade, e não "none".
+  const capacidadeDeclarada = (perfil: UserProfile) => !!perfil.investmentCapacity && perfil.investmentCapacity !== "none";
+  const investimentoExpresso =
+    (!!a.lookingForInvestment && !b.lookingForInvestment && capacidadeDeclarada(b) && bCapacity >= aSeeking) ||
+    (!a.lookingForInvestment && !!b.lookingForInvestment && capacidadeDeclarada(a) && aCapacity >= bSeeking);
 
   // Location score
   let locationScore = 50;
@@ -333,6 +373,23 @@ export function calculateCompatibilityScore(
     ? Math.min(100, (valuesOverlap / Math.max(aValues.length, bValues.length)) * 100 + 20)
     : 50;
 
+  // ─── Regra da demanda expressa (pedido do Nicolas, 12/09/2026) ───────────
+  //
+  // Quem só tem SERVIÇO a oferecer, e ninguém declarou precisar dele, não pode
+  // virar match por setor, valores, localização ou "poderia se beneficiar":
+  // para serviço, necessidade presumida não é match. O par ainda passa quando
+  // existe base EXPRESSA por outro caminho — a outra tem o que esta declarou
+  // precisar (produto, ativo, capital...), ou uma busca investimento e a outra
+  // declarou capacidade. Perfil sem nada em "o que tenho" não oferece serviço
+  // nenhum e segue como sempre: a regra é específica de serviço, e produtos,
+  // ativos, conexões etc. continuam casando pelas seis dimensões.
+  const soOfereceServicoPresumido = (have: string[], cobre: number) =>
+    have.length > 0 && cobre === 0 && have.every(item => ehServico(item));
+  const semBaseExpressa = aCoversB === 0 && bCoversA === 0 && !investimentoExpresso;
+  const bloqueio = semBaseExpressa && (soOfereceServicoPresumido(aHave, aCoversB) || soOfereceServicoPresumido(bHave, bCoversA))
+    ? ("servico-sem-demanda-expressa" as const)
+    : undefined;
+
   // Weighted overall score
   // complementaridade (30%) + sector (20%) + investment (20%) + specialty (15%)
   //   + values (10%) + location (5%). Os 30% eram de `objectives`, que media
@@ -348,14 +405,18 @@ export function calculateCompatibilityScore(
   );
 
   return {
-    overall,
+    // Bloqueado é zero, não "nota baixa": o corte de 40 lá embaixo é o que
+    // impede a gravação, e zero é a única nota que nenhum ajuste de limiar
+    // reaprova por engano.
+    overall: bloqueio ? 0 : overall,
     specialty: Math.round(specialtyScore),
     objectives: Math.round(objectivesScore),
-    complementarity: Math.round(complementarityScore),
+    complementarity: bloqueio ? 0 : Math.round(complementarityScore),
     sector: Math.round(sectorScore),
     investment: Math.round(investmentScore),
     location: Math.round(locationScore),
     values: Math.round(valuesScore),
+    ...(bloqueio ? { bloqueio } : {}),
   };
 }
 
@@ -374,6 +435,22 @@ const ROTULO_DE_VALOR: Record<string, string> = {
   transparency: "Transparência", sustainability: "Sustentabilidade",
   technical_excellence: "Excelência técnica",
 };
+// As opções fixas de "O que tenho" e de "O que preciso" do onboarding, pelo
+// rótulo humano (WHAT_I_HAVE_OPTIONS / WHAT_I_NEED_OPTIONS em Onboarding.tsx).
+// Dois mapas porque "investidores" e "licencas" existem nas duas listas com
+// rótulos diferentes. Texto livre (gravado por "falar sobre o negócio") passa
+// como veio.
+const ROTULO_DO_QUE_TENHO: Record<string, string> = {
+  industria: "Indústria", fazenda: "Fazenda / Agro", laboratorio: "Laboratório", tecnologia: "Tecnologia",
+  investidores: "Rede de Investidores", acesso_governamental: "Acesso Governamental",
+  commodities: "Matérias-primas (commodities)", licencas: "Licenças & Certificações", imoveis: "Imóveis",
+  logistica: "Logística", canais_comerciais: "Canais Comerciais",
+};
+const ROTULO_DO_QUE_PRECISO: Record<string, string> = {
+  fornecedores: "Fornecedores", investidores: "Investidores", compradores: "Compradores",
+  distribuidores: "Distribuidores", parceiros: "Parceiros Estratégicos", tecnologia: "Tecnologia",
+  financiamento: "Financiamento", licencas: "Licenças & Aprovações", consultoria: "Consultoria",
+};
 const rotular = (valores: unknown, mapa: Record<string, string>) =>
   ((valores as string[]) || []).map(valor => mapa[valor] ?? valor).join(", ");
 
@@ -384,7 +461,7 @@ export async function generateMatchInsight(
   scores: ReturnType<typeof calculateCompatibilityScore>
 ): Promise<string | null> {
   try {
-    const prompt = `Você é um assistente de matchmaking profissional. Analise a compatibilidade entre dois perfis e escreva um insight conciso (2-3 frases) explicando POR QUE eles são compatíveis e QUAL oportunidade específica podem criar juntos.
+    const prompt = `Você é um assistente de matchmaking profissional. Analise a compatibilidade entre dois perfis e escreva um insight conciso (2-3 frases) explicando POR QUE eles são compatíveis e QUAL oportunidade específica podem criar juntos. Cite apenas necessidades que os perfis DECLARARAM em "O que precisa": nunca presuma que alguém precisa de um serviço por causa do setor, do porte, do cargo ou da atividade da empresa.
 
 Perfil A:
 - Especialidade: ${profileA.primarySpecialty}
@@ -404,6 +481,11 @@ Score de compatibilidade: ${scores.overall}%
 - Objetivos: ${scores.objectives}%
 - Especialidade: ${scores.specialty}%
 - Valores: ${scores.values}%
+
+O que A tem: ${rotular(profileA.whatIHave, ROTULO_DO_QUE_TENHO) || "não informado"}
+O que A precisa: ${rotular(profileA.whatINeed, ROTULO_DO_QUE_PRECISO) || "não informado"}
+O que B tem: ${rotular(profileB.whatIHave, ROTULO_DO_QUE_TENHO) || "não informado"}
+O que B precisa: ${rotular(profileB.whatINeed, ROTULO_DO_QUE_PRECISO) || "não informado"}
 
 Escreva o insight em português, de forma direta e motivadora. Máximo 150 palavras.`;
 
@@ -513,6 +595,15 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
     if (!autorizadas.has(candidate.userId as number)) continue;
     const scores = calculateCompatibilityScore(myProfile as UserProfile, candidate as UserProfile);
 
+    // Regra da demanda expressa: o par bloqueado não é gravado nem atualizado.
+    // A linha que ele pode ter deixado no banco (gerada antes da regra, ou
+    // antes de o perfil mudar) NÃO é apagada: a leitura (routers/
+    // profileMatches.ts) já a esconde pelo mesmo portão, e apagá-la levaria
+    // junto a dispensa da dona — quando o bloqueio cessasse (o outro lado
+    // passa a declarar a necessidade), o upsert reinseriria o par como novo e
+    // um match dispensado voltaria à tela (revisão adversarial de 12/09).
+    if (scores.bloqueio) continue;
+
     // Only create matches with score >= 40
     if (scores.overall < 40) continue;
 
@@ -560,6 +651,37 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
 // routers/profileMatches.ts, o caminho que o Dashboard chama de verdade. Uma
 // versão dela existiu aqui, com a trava — e nenhum router a chamava; a
 // auditoria da etapa 8 aposentou a duplicata para o desvio não renascer.
+
+/**
+ * Entre os matches já gravados de uma usuária, quais o portão da demanda
+ * expressa bloqueia HOJE. A linha em `matches` pode ter nascido antes da regra
+ * (ou o perfil mudou desde então), e "não exibir recomendação" vale na
+ * LEITURA, como a trava de consentimento de routers/profileMatches.ts: a tela
+ * não espera ninguém clicar em "Reanalisar" para parar de mostrar um serviço
+ * casado por presunção. Só o que o portão lê sai do banco (tenho/preciso e o
+ * trio de investimento); o resto do perfil não participa da decisão.
+ */
+export async function matchesBloqueadosPelaDemandaExpressa(userId: number, matchedUserIds: number[]): Promise<Set<number>> {
+  const bloqueados = new Set<number>();
+  if (matchedUserIds.length === 0) return bloqueados;
+  const minha = await getUserProfile(userId);
+  if (!minha) return bloqueados;
+  const db = await exigirDb();
+  const outras = await db.select({
+    userId: userProfiles.userId,
+    whatIHave: userProfiles.whatIHave,
+    whatINeed: userProfiles.whatINeed,
+    investmentCapacity: userProfiles.investmentCapacity,
+    lookingForInvestment: userProfiles.lookingForInvestment,
+    investmentAmountSeeking: userProfiles.investmentAmountSeeking,
+  })
+    .from(userProfiles)
+    .where(inArray(userProfiles.userId, matchedUserIds));
+  for (const outra of outras) {
+    if (calculateCompatibilityScore(minha as UserProfile, outra as UserProfile).bloqueio) bloqueados.add(outra.userId);
+  }
+  return bloqueados;
+}
 
 // ─── Dismiss a match ─────────────────────────────────────────
 export async function dismissMatch(userId: number, matchId: number) {

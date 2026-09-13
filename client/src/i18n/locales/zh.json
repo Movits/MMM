@@ -199,7 +199,9 @@
       "s8_title": "我拥有什么",
       "s8_sub": "可用资产与资源",
       "s9_title": "我需要什么",
-      "s9_sub": "需求与诉求"
+      "s9_sub": "需求与诉求",
+      "s10_title": "条款和条件",
+      "s10_sub": "阅读并接受我们的条款"
     },
     "specialties": {
       "tech": "技术与软件",
@@ -285,6 +287,7 @@
     "successMsg": "🎉 档案创建成功！正在跳转到您的仪表板...",
     "errorMsg": "无法保存您的档案。",
     "maxValues": "最多选择4个价值观",
+    "maxSpecialties": "最多选择5个专业",
     "dataPrivacy": "您的数据已加密，未经授权绝不共享",
     "nav": {
       "back": "返回",
@@ -428,6 +431,20 @@
       "selectedPlural": "已选择",
       "selectedF": "已选择",
       "selectedFPlural": "已选择"
+    },
+    "terms": {
+      "title": "使用条款和佣金协议",
+      "accept": "我同意使用条款",
+      "required": "您必须同意条款",
+      "clause1_title": "1. 目的",
+      "clause1_text": "MMM 是会员之间的对接平台。它把兴趣互补的人介绍给彼此，并记录由这些介绍产生的交易。平台不是交易的当事方：签约的是会员彼此之间。",
+      "clause2_title": "2. 佣金",
+      "clause2_text": "经平台介绍而产生的交易，需按以下条件向 MMM 支付佣金：",
+      "clause2_item1": "佣金比例根据交易的类型和规模逐笔确定；",
+      "clause2_item2": "上限为该笔交易申报利润的 50%；",
+      "clause2_item3": "在此版本中，付款在平台之外完成；网站仅记录交易和应付佣金。",
+      "clause3_title": "3. 有效期与变更",
+      "clause3_text": "本文本为临时版本，正在法务审核中。最终版本发布时将通知您，并需要您重新接受。本次接受的日期和确切文本将被记录。"
     }
   },
   "dashboard": {
@@ -703,6 +720,7 @@
       "individual": "自然人",
       "legalEntity": "法人实体",
       "mei": "个体微型创业者（MEI）",
+      "nonprofit": "非营利组织",
       "companySize": "企业规模",
       "companySizePlaceholder": "请选择规模",
       "sizeMei": "MEI",
@@ -855,7 +873,16 @@
     "altFotoContato": "联系人照片",
     "enviarFoto": "上传照片",
     "enviarCartao": "上传名片",
-    "enviandoImagem": "上传中..."
+    "enviandoImagem": "上传中...",
+    "ouroCarregando": "正在加载条款…",
+    "ouroPrecisaAutorizar": "还缺少您的授权",
+    "ouroPrecisaAutorizarDetalhe": "仅把联系人标记为共享还不够：没有此授权，它不会出现在金卡藏库中。您可以随时撤销，立即生效。",
+    "ouroLerTermo": "阅读条款",
+    "ouroEsconderTermo": "隐藏条款",
+    "ouroAutorizarBotao": "授权",
+    "ouroJaAutorizado": "您已授权。标记为共享的联系人会出现在金卡藏库中。",
+    "ouroAutorizadoToast": "授权已记录。",
+    "ouroFalhaToast": "无法记录授权。"
   },
   "contexts": {
     "editarContextoTitulo": "编辑背景",
@@ -877,6 +904,7 @@
     "botaoSalvar": "✓ 保存",
     "vincularContatoTitulo": "关联联系人",
     "toastVinculadoSucesso": "{{name}} 已关联到 {{context}}！",
+    "toastVinculoAtualizado": "{{name}} 与 {{context}} 的关联已更新。",
     "toastErroVincular": "关联失败：{{message}}",
     "relTipoPessoal": "私人",
     "relTipoProfissional": "职业",
@@ -1415,6 +1443,7 @@
     "avisoAutorizacaoExistente": "如果您之前已授权，该授权仍然有效。请稍后再试。",
     "botaoTentarNovo": "重试",
     "explicacao": "记录每位联系人能提供什么、正在寻找什么。MMM会比对这些信息，建议谁可以帮助谁。",
+    "avisoServico": "服务（咨询、法律等）只有在另一位联系人在“寻找什么”中明确表示需要时才会生成连接。MMM不会根据行业、规模或业务推断需求。",
     "abaPossui": "拥有什么",
     "abaProcura": "寻找什么",
     "registrandoPrefixo": "正在记录",
@@ -1503,6 +1532,29 @@
       "memoryDesc": "向您的历史记录提问",
       "intelligentMatches": "智能连接",
       "intelligentMatchesDesc": "联系人之间的匹配建议"
+    }
+  },
+  "conta": {
+    "excluir": {
+      "titulo": "删除我的账户",
+      "descricao": "离开平台会从数据库中删除属于你的一切：档案、联系人、会议、商机和文件。",
+      "botao": "删除我的账户",
+      "ultimaAdministradora": "你是平台最后一位管理员。请先将另一位会员提升为黄金级，再删除你的账户。",
+      "semSenha": "此账户尚未设置密码。请使用“忘记密码”创建密码后再回到这里。",
+      "dialogoTitulo": "删除我的账户",
+      "dialogoTexto": "确认后，以下数据会立即删除：",
+      "item1": "你的档案、照片以及你已接受的条款。",
+      "item2": "你的私人联系人网络，以及每位联系人拥有和需要的内容。",
+      "item3": "你的情境、会议、录音和转录文本。",
+      "item4": "你的商机、你的意向，以及你参与的洽谈室。",
+      "item5": "你的验证文件和你上传的文件。",
+      "semVolta": "删除立即生效，平台无法撤销。",
+      "labelConfirmacao": "请输入以下内容以确认：{{valor}}",
+      "labelSenha": "你的密码",
+      "cancelar": "取消",
+      "confirmar": "永久删除",
+      "excluindo": "正在删除...",
+      "sucesso": "你的账户和数据已删除。"
     }
   }
 }

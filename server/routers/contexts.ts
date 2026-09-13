@@ -118,7 +118,11 @@ export const contextsRouter = router({
       city:             z.string().max(100).optional().nullable(),
       country:          z.string().max(100).optional().nullable(),
       notes:            z.string().max(1000).optional().nullable(),
-      relationshipType: z.enum(["pessoal", "profissional", "ambos"]).default("profissional"),
+      // SEM .default(): o default aqui chegava preenchido em TODA chamada e
+      // sobrescrevia o tipo que a dona já tinha escolhido no vínculo antigo.
+      // Ausente quer dizer "não mexa no que já está lá"; quem escolhe o
+      // "profissional" de um vínculo NOVO é o db.ts, na hora do insert.
+      relationshipType: z.enum(["pessoal", "profissional", "ambos"]).optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
       // Posse ANTES de gravar, nos dois lados do vínculo — a mesma regra do
@@ -132,16 +136,18 @@ export const contextsRouter = router({
       if (!(await getPrivateContactById(ctx.user.openId, input.contactId))) {
         throw new Error("NOT_FOUND");
       }
-      const id = await linkContactToContext(ctx.user.openId, {
+      const { id, created } = await linkContactToContext(ctx.user.openId, {
         contactId: input.contactId,
         contextId: input.contextId,
         eventDate: input.eventDate ?? undefined,
         city: input.city ?? undefined,
         country: input.country ?? undefined,
         notes: input.notes ?? undefined,
-        relationshipType: input.relationshipType,
+        relationshipType: input.relationshipType ?? undefined,
       });
-      return { id };
+      // `created` sobe até a tela: um vínculo que já existia foi ATUALIZADO, e
+      // dizer "vinculada!" nesse caso é avisar de algo que não aconteceu.
+      return { id, created };
     }),
 
   // Contextos em que um contato apareceu (exibido no perfil do contato)
