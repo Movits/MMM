@@ -687,7 +687,7 @@ export default function Contexts() {
     <div className="min-h-screen bg-[#151312] text-white">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-[#151312]/95 backdrop-blur-sm border-b border-white/8 px-4 sm:px-6 py-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="text-white/40 hover:text-white/70 transition-colors">
               <ChevronLeft size={20} />
@@ -704,7 +704,8 @@ export default function Contexts() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 space-y-4">
+      {/* Mesma largura padrão das outras telas de app — ver Network.tsx. */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 space-y-4">
         {/* Busca */}
         <div className="relative">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />

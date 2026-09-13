@@ -142,7 +142,17 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: "Manrope", "Inter", sans-serif;
     letter-spacing: -0.025em;
-    @apply font-bold text-foreground;
+    /* `color: inherit` em vez de `text-foreground`: o título toma a cor da
+       superfície em que está, em vez de forçar a cor do tema CLARO. O app
+       inteiro é escuro (.abstract-bg pinta #151312 em todas as páginas), mas
+       roda nos tokens de :root, onde --foreground é #1A120C — marrom quase
+       preto. Um <h1> sem classe de cor saía nessa cor sobre fundo quase preto
+       e ficava ilegível (relatado pela cliente em 13/09/2026: "Conexões
+       Inteligentes", "Minha Rede" e os títulos de estado vazio sumiam).
+       Herdando, o título acerta sozinho nos dois casos: escuro num cartão
+       claro, claro na superfície escura. */
+    color: inherit;
+    @apply font-bold;
   }
   h1 {
     @apply text-5xl md:text-6xl tracking-tight;
@@ -545,6 +555,13 @@
   .abstract-bg {
     position: relative;
     background-color: #151312;
+    /* A superfície escura declara a própria cor de texto. Sem isto, o padrão
+       vinha de `body` (--foreground de :root, o tema CLARO) e era #1A120C —
+       quase a mesma cor do fundo. Quem tem classe explícita (text-white,
+       text-white/40...) continua mandando; o que não tem passa a ser legível
+       em vez de invisível. #E9E4DF é o neutro quente do próprio selo WMMW,
+       o mesmo que o tema escuro já usa como --foreground. */
+    color: #E9E4DF;
   }
   .abstract-bg::before {
     content: "";
