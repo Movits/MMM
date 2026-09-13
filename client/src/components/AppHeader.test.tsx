@@ -21,7 +21,7 @@ vi.mock("@/lib/trpc", () => ({
 class ResizeObserverFalso { observe() {} unobserve() {} disconnect() {} }
 
 const PORTUGUES = [
-  "Oportunidades", "Verificação", "Minha Rede", "Contextos", "Reuniões", "Memória IA", "Conexões Inteligentes",
+  "Oportunidades", "Verificação", "Minha Rede", "Linha do Tempo", "Reuniões", "Memória IA", "Conexões Inteligentes",
   "Propostas e negócios", "Identidade e selo", "Sua base particular", "Onde e como conheceu", "Gravações e transcrições",
   "Pergunte ao seu", "Sugestões entre os seus",
 ];
@@ -46,7 +46,7 @@ describe("AppHeader — o menu global fala o idioma da usuária", () => {
       "/opportunities", "/verification", "/network", "/contexts", "/meetings", "/memory", "/intelligent-matches",
     ]);
     expect(itens.map(i => i.label)).toEqual([
-      "Opportunities", "Verification", "My Network", "Contexts", "Meetings", "AI Memory", "Smart Connections",
+      "Opportunities", "Verification", "My Network", "Timeline", "Meetings", "AI Memory", "Smart Connections",
     ]);
     for (const item of itens) {
       for (const pt of PORTUGUES) {

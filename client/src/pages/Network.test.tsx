@@ -311,12 +311,12 @@ describe("Minha Rede — detalhe do contato: consulta em erro não é 'nada aind
     expect(recarregar).toHaveBeenCalledTimes(1);
   });
 
-  it("contextos em erro: a seção 'Contextos' aparece com o alerta em vez de sumir", () => {
+  it("contextos em erro: a seção 'Linha do Tempo' aparece com o alerta em vez de sumir", () => {
     const recarregar = vi.fn();
     duble.listByContact.mockReturnValue({ ...consultaSa, isError: true, error: erroDoServidor, refetch: recarregar });
     abrirDetalhe();
 
-    expect(screen.getByText("Contextos")).toBeInTheDocument();
+    expect(screen.getByText("Linha do Tempo")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent(MENSAGEM);
     fireEvent.click(screen.getByRole("button", { name: "↻ Tentar novamente" }));
     expect(recarregar).toHaveBeenCalledTimes(1);
@@ -324,7 +324,7 @@ describe("Minha Rede — detalhe do contato: consulta em erro não é 'nada aind
 
   it("sem erro e sem contextos, a seção não aparece — e o histórico vazio continua dizendo que está vazio", () => {
     abrirDetalhe();
-    expect(screen.queryByText("Contextos")).not.toBeInTheDocument();
+    expect(screen.queryByText("Linha do Tempo")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Histórico IA/ }));
     expect(screen.getByText("Nenhum enriquecimento via IA ainda.")).toBeInTheDocument();
