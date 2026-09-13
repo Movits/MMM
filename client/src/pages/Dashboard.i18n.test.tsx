@@ -98,7 +98,7 @@ const ESPERA = { timeout: 3000 };
 // fallback ("Usuária"; "Membro" é o que um tradutor apressado escreveria).
 // Com a tela em inglês nenhuma pode aparecer no texto do documento; o teste
 // em português prova que o regex reconhece o texto de verdade (não é vazio).
-const PORTUGUES = /oportunidades|Salas|Ver detalhes|novos|convite|Bem-vinda|Recomendadas|Usuária|Membro/i;
+const PORTUGUES = /oportunidades|Salas|Ver detalhes|novos|convite|Boas-vindas|Recomendadas|Usuário|Membro/i;
 function semPortugues(onde: string) {
   expect(document.body.textContent, onde).not.toMatch(PORTUGUES);
 }
@@ -246,7 +246,7 @@ describe("Dashboard em português — o que a usuária lia continua igual", () =
     expect(screen.getByRole("button", { name: "1 convite para responder" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "🔐 Salas de Negociação" })).toBeInTheDocument();
     expect(screen.getByText("Alimentos & Bebidas")).toBeInTheDocument();
-    expect(screen.getByText("Investidora")).toBeInTheDocument();
+    expect(screen.getByText("Investidor")).toBeInTheDocument();
     // O regex da varredura em inglês reconhece o português de verdade: se
     // parasse de casar aqui, a varredura passaria à toa.
     expect(document.body.textContent).toMatch(PORTUGUES);
@@ -337,7 +337,7 @@ describe("aba Perfil — estilo de trabalho, anos de experiência e setor no idi
 describe("estados vazios e rótulos de fallback no idioma da tela", () => {
   // Usuária Ouro sem recomendações, sem salas (nem as da plataforma), com um
   // único match de membra SEM nome e interesse "tech": os textos de vazio, o
-  // "Member"/"Usuária" do cartão, o toggle Ouro das salas e — na tela, não só
+  // "Member"/"Usuário" do cartão, o toggle Ouro das salas e — na tela, não só
   // na lib — o sinônimo resolvido ANTES de traduzir ("tech" é também chave de
   // especialidade do onboarding, "Technology & Software"; ver
   // lib/interesses.test.ts).
@@ -376,11 +376,11 @@ describe("estados vazios e rótulos de fallback no idioma da tela", () => {
     semPortugues("todas as salas (Ouro), sem salas");
   });
 
-  it("português: 'Usuária', 'Tecnologia', 'Nenhuma recomendação por enquanto', 'Minhas Salas' e 'Nenhuma sala de negociação ainda'", async () => {
+  it("português: 'Usuário', 'Tecnologia', 'Nenhuma recomendação por enquanto', 'Minhas Salas' e 'Nenhuma sala de negociação ainda'", async () => {
     cenarioVazio();
     render(<Dashboard />);
 
-    expect(screen.getByRole("heading", { name: "Usuária" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Usuário" })).toBeInTheDocument();
     expect(screen.getByText("Tecnologia")).toBeInTheDocument();
     expect(screen.queryByText("Tecnologia & Software")).not.toBeInTheDocument();
     expect(screen.getByText(/Nenhuma recomendação por enquanto/)).toBeInTheDocument();

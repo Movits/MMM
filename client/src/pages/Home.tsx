@@ -272,15 +272,15 @@ const FAQ_ITEMS = [
   },
   {
     q: "Como funciona a Deal Room, a sala privada de negociação?",
-    a: "Você demonstra interesse em uma oportunidade e, quando a outra parte aceita, a plataforma cria uma sala privada para vocês duas. Lá dentro ficam o chat e os documentos do negócio, tudo condicionado ao NDA assinado. A ideia é sair da conversa solta e ir para um espaço com regra clara.",
+    a: "Você demonstra interesse em uma oportunidade e, quando a outra parte aceita, a plataforma cria uma sala privada para vocês. Lá dentro ficam o chat e os documentos do negócio, tudo condicionado ao NDA assinado. A ideia é sair da conversa solta e ir para um espaço com regra clara.",
   },
   {
     q: "O que é o nível Ouro e como consigo?",
-    a: "O Ouro identifica as usuárias de maior confiança da rede. Quem tem o selo enxerga também as oportunidades confidenciais e vê quem demonstrou interesse nas suas publicações. A concessão passa pela governança da plataforma, que considera a verificação de identidade e a participação na comunidade.",
+    a: "O Ouro identifica os membros de maior confiança da rede. Quem tem o selo enxerga também as oportunidades confidenciais e vê quem demonstrou interesse nas suas publicações. A concessão passa pela governança da plataforma, que considera a verificação de identidade e a participação na comunidade.",
   },
   {
     q: "Quais oportunidades posso encontrar na plataforma?",
-    a: "De vários tipos: ofertas de produtos e serviços, demandas de quem procura fornecedor, busca de investimento, parcerias comerciais e canais de distribuição. Antes de aparecer para as outras membras, toda oportunidade passa por uma checagem automática das regras da plataforma e pela aprovação da nossa equipe.",
+    a: "De vários tipos: ofertas de produtos e serviços, demandas de quem procura fornecedor, busca de investimento, parcerias comerciais e canais de distribuição. Antes de aparecer para os outros membros, toda oportunidade passa por uma checagem automática das regras da plataforma e pela aprovação da nossa equipe.",
   },
   {
     q: "Como a IA encontra as combinações entre perfis e oportunidades?",

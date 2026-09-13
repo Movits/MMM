@@ -33,8 +33,8 @@ export function PrivacyPage() {
       </p>
       <p>
         Enquanto isso, valem os princípios que orientam o produto desde o
-        desenho: a sua base de contatos é privada e nunca é exposta a outras
-        usuárias; dados sensíveis ficam guardados de forma cifrada; e nenhuma
+        desenho: a sua base de contatos é privada e nunca é exposta a outros
+        usuários; dados sensíveis ficam guardados de forma cifrada; e nenhuma
         informação sua é vendida ou compartilhada com terceiros.
       </p>
       <p>
@@ -54,7 +54,7 @@ export function TermsPage() {
       </p>
       <p>
         Em resumo do que já vale hoje: a plataforma destina-se a conexões de
-        negócio entre mulheres empreendedoras; oportunidades publicadas passam
+        negócio entre pessoas empreendedoras; oportunidades publicadas passam
         por análise e validação; e acordos fechados a partir das conexões devem
         respeitar as regras de intermediação da comunidade.
       </p>

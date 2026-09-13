@@ -156,7 +156,7 @@ export const contaRouter = router({
         if (Number(outras?.total ?? 0) === 0) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
-            message: "Você é a última administradora da plataforma. Promova outra membra a Ouro antes de excluir sua conta.",
+            message: "Você é o último administrador da plataforma. Promova outro membro a Ouro antes de excluir sua conta.",
           });
         }
       }

@@ -132,7 +132,7 @@ export default function AdminPanel() {
         <div className="text-center">
           <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h1 style={playfairStyle} className="text-2xl font-bold text-white mb-2">Acesso Negado</h1>
-          <p className="text-gray-400 mb-6">Este painel é restrito a Administradoras e membras Ouro da plataforma.</p>
+          <p className="text-gray-400 mb-6">Este painel é restrito a Administradores e membros Ouro da plataforma.</p>
           <button
             onClick={() => navigate("/dashboard")}
             className="px-6 py-3 bg-[#C98F70] text-[#1A120C] font-semibold rounded-lg hover:bg-[#B07A5C] transition-colors"
@@ -351,7 +351,7 @@ export default function AdminPanel() {
                       {
                         role: "Ouro",
                         badge: "bg-[#C98F70]/20 text-[#C98F70] border-[#C98F70]/60",
-                        desc: "Guardiãs da governança. Aprovam/revogam o Status Ouro, homologam líderes, validam oportunidades estratégicas."
+                        desc: "Guardiões da governança. Aprovam/revogam o Status Ouro, homologam líderes, validam oportunidades estratégicas."
                       },
                       {
                         role: "Admin",
@@ -378,7 +378,7 @@ export default function AdminPanel() {
                     ))}
                   </div>
                   <p className="mt-4 text-xs text-[#C98F70]/60 italic">
-                    O Status Ouro não pode ser solicitado, comprado ou obtido por assinatura. É um reconhecimento institucional concedido exclusivamente pelas membras Ouro da plataforma.
+                    O Status Ouro não pode ser solicitado, comprado ou obtido por assinatura. É um reconhecimento institucional concedido exclusivamente pelos membros Ouro da plataforma.
                   </p>
                 </div>
 
@@ -607,7 +607,7 @@ export default function AdminPanel() {
                               }}
                               className={`text-xs px-2 py-1 rounded border bg-[#1B1714] cursor-pointer ${getRoleBadge(u.role)}`}
                             >
-                              <option className="bg-white text-[#322C26]" value="bronze">Bronze (recém-chegada)</option>
+                              <option className="bg-white text-[#322C26]" value="bronze">Bronze (recém-chegado)</option>
                               <option className="bg-white text-[#322C26]" value="silver">Prata (membro)</option>
                               <option className="bg-white text-[#322C26]" value="gold">Ouro (reconhecimento institucional)</option>
                               <option className="bg-white text-[#322C26]" value="admin">Admin (suporte técnico)</option>

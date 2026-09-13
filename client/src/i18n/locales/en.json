@@ -23,7 +23,7 @@
     "motionTurnOff": "Turn off background motion"
   },
   "stats": {
-    "users": "Women registered",
+    "users": "People registered",
     "opportunities": "Active opportunities",
     "satisfaction": "Satisfaction",
     "connections": "Connections made"
@@ -37,16 +37,16 @@
     },
     "step2": {
       "title": "AI analyzes everything",
-      "desc": "Our artificial intelligence engine processes your profile across 6 dimensions and compares it with all other women on the platform."
+      "desc": "Our artificial intelligence engine processes your profile across 6 dimensions and compares it with all other members on the platform."
     },
     "step3": {
       "title": "Connect",
-      "desc": "Receive a personalized feed with the most compatible women and opportunities, with a score from 0 to 100 and an explanatory insight."
+      "desc": "Receive a personalized feed with the most compatible profiles and opportunities, with a score from 0 to 100 and an explanatory insight."
     }
   },
   "opportunities": {
     "title": "What kind of opportunity are you looking for?",
-    "subtitle": "The platform connects women at different stages and goals",
+    "subtitle": "The platform connects people at different stages and goals",
     "society": {
       "label": "Partnership",
       "desc": "Find co-founders with a complementary profile"
@@ -73,7 +73,7 @@
     }
   },
   "testimonials": {
-    "title": "What women are saying",
+    "title": "What people are saying",
     "subtitle": "Real stories of connections that transformed careers",
     "score": "Compatibility score",
     "t1": {
@@ -112,7 +112,7 @@
   },
   "cta": {
     "title": "Ready to find your next connections?",
-    "subtitle": "Join thousands of women already building the future",
+    "subtitle": "Join thousands of people already building the future",
     "button": "Create account"
   },
   "footer": {
@@ -124,7 +124,7 @@
   },
   "onboarding": {
     "title": "Complete your profile",
-    "subtitle": "AI that connects extraordinary women",
+    "subtitle": "AI that connects extraordinary people",
     "step": "Step {{current}} of {{total}}",
     "next": "Next",
     "back": "Back",
@@ -453,7 +453,7 @@
     "connections": "Connections",
     "profile": "My Profile",
     "noMatches": "Ready for your next great connection?",
-    "noMatchesDesc": "Our AI will analyze your profile in 6 dimensions and find women with the highest real compatibility with you.",
+    "noMatchesDesc": "Our AI will analyze your profile in 6 dimensions and find the profiles with the highest real compatibility with you.",
     "redeAutorizandoTitulo": "Your connections are on their way",
     "redeAutorizandoDesc": "There are profiles compatible with yours, but a match only appears once both sides authorize the matching — and those members have not yet. It is not a lack of compatibility: it just takes a little patience.",
     "compatibility": "Average Score",
@@ -462,7 +462,7 @@
     "regenerate": "New matches",
     "logout": "Sign out",
     "topMatches": "Top Matches (80%+)",
-    "interestSent": "🎉 Interest sent! She will be notified and can accept your connection.",
+    "interestSent": "🎉 Interest sent! They will be notified and can accept your connection.",
     "interestError": "Could not send interest. Please try again.",
     "connectionAccepted": "🤝 Connection accepted! You are now connected.",
     "connectionDeclined": "Request declined.",
@@ -653,7 +653,7 @@
     "label": "AI Engine",
     "title": "Connections that make real sense",
     "desc": "Our AI analyzes 5 dimensions of your profile: specialty, goals, income, location and values: and generates a compatibility score from 0 to 100 for each pair. You also receive a personalized insight explaining why that connection makes sense for you.",
-    "variables": "Over 50 variables analyzed per pair of women",
+    "variables": "Over 50 variables analyzed per pair of profiles",
     "dim1": "Your main specialty",
     "dim2": "What you are seeking",
     "dim3": "Values and purpose",
@@ -675,7 +675,7 @@
     "subtitle": "Access to MMM is not bought. It is earned.",
     "silver": {
       "title": "Silver Member",
-      "desc": "All women who register on the platform join as Silver Members. Full access to the matching system, public opportunities and connections with other women in the network.",
+      "desc": "Everyone who registers on the platform joins as a Silver Member. Full access to the matching system, public opportunities and connections with other members in the network.",
       "access": "Access by registration: no cost, no selection"
     },
     "gold": {
@@ -1022,7 +1022,7 @@
     "vitrineNoItems": "No items recorded yet.",
     "acervoTitle": "Gold Collection",
     "acervoDescription": "Contacts that members have shared with Gold Members. The owner controls the level and can revoke it at any time — the effect is immediate.",
-    "acervoEmpty": "No contacts shared yet. When a member marks a contact as \"Authorized (Gold)\" in her Network, it will appear here.",
+    "acervoEmpty": "No contacts shared yet. When a member marks a contact as \"Authorized (Gold)\" in their Network, it will appear here.",
     "noJobCompany": "No role/company provided",
     "sharedByPrefix": "· {{name}}'s network"
   },

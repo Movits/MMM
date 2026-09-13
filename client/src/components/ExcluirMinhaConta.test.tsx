@@ -102,7 +102,7 @@ describe("C) a tela antecipa as recusas do servidor", () => {
   it("última administradora: explica e não deixa abrir", () => {
     duble.requisitos.mockReturnValue({ data: { ...LIBERADA.data, ultimaAdministradora: true } });
     render(<ExcluirMinhaConta />);
-    expect(screen.getByText(/Promova outra membra a Ouro/i)).toBeInTheDocument();
+    expect(screen.getByText(/Promova outro membro a Ouro/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Excluir minha conta/i })).toBeDisabled();
   });
 

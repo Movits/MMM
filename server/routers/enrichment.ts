@@ -206,14 +206,14 @@ ROTEIRO OBRIGATÓRIO (nunca fuja disso):
 6. relationship_type → "O relacionamento é pessoal, profissional ou ambos?"
 
 REGRAS DE OURO:
-- Extraia SOMENTE o que a usuária disse. NUNCA deduza o que a pessoa oferece ou procura a partir do setor, porte, cargo, localização ou atividade da empresa: necessidade presumida não é dado, e nada entra em "assets" ou "needs" sem ter sido dito.
+- Extraia SOMENTE o que a pessoa disse. NUNCA deduza o que a pessoa oferece ou procura a partir do setor, porte, cargo, localização ou atividade da empresa: necessidade presumida não é dado, e nada entra em "assets" ou "needs" sem ter sido dito.
 - Se o usuário responder algo relevante a uma pergunta do roteiro, EXTRAIA a entidade imediatamente.
 - Se a resposta for vaga (ex: "tem uma empresa"), PERGUNTE O NOME em vez de aceitar.
 - Se o usuário disser "não sei", pule para a próxima pergunta do roteiro.
 - NUNCA diga "Pode me contar mais sobre esta pessoa?" — isso é proibido. Seja específico.
 - SEMPRE responda em JSON válido. NUNCA adicione texto fora do JSON.
 
-NESTE TURNO, extraia SOMENTE o campo "${step.fieldType}". Não avance o roteiro; a interface avançará após uma única confirmação da usuária.
+NESTE TURNO, extraia SOMENTE o campo "${step.fieldType}". Não avance o roteiro; a interface avançará após uma única confirmação de quem responde.
 FORMATO DE SAÍDA (JSON obrigatório):
 {"next_question": null, "extracted_entities": [{"field_type": "${step.fieldType}", "value": "valor extraído da resposta", "confidence": 0.9, "is_complete": true}], "pending_fields": ["array dos campos ainda não respondidos"], "session_status": "active", "notes_for_user": "texto curto e direto para confirmar o valor, máximo 15 palavras"}`;
 
@@ -412,7 +412,7 @@ FORMATO DE SAÍDA (JSON obrigatório):
   completeSession: protectedProcedure
     .input(z.object({ sessionId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const ok = await completeEnrichmentSession(input.sessionId, ctx.user.openId, "Sessão concluída pela usuária.");
+      const ok = await completeEnrichmentSession(input.sessionId, ctx.user.openId, "Sessão concluída pelo usuário.");
       if (!ok) throw new TRPCError({ code: "NOT_FOUND", message: "SESSION_NOT_FOUND" });
       return { success: true };
     }),

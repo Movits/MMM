@@ -100,10 +100,10 @@ function OverviewTab() {
     <div className="space-y-6">
       <SectionHeader icon={BarChart3} title="Visão Geral da Plataforma" subtitle="Indicadores de governança em tempo real" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Users} label="Total de Membras" value={stats.totalUsers} color="blue" />
-        <StatCard icon={Shield} label="Membras Bronze" value={stats.bronzeUsers ?? 0} color="orange" />
-        <StatCard icon={Shield} label="Membras Prata" value={stats.silverUsers} color="blue" />
-        <StatCard icon={Star} label="Membras Ouro" value={stats.goldUsers} color="amber" />
+        <StatCard icon={Users} label="Total de Membros" value={stats.totalUsers} color="blue" />
+        <StatCard icon={Shield} label="Membros Bronze" value={stats.bronzeUsers ?? 0} color="orange" />
+        <StatCard icon={Shield} label="Membros Prata" value={stats.silverUsers} color="blue" />
+        <StatCard icon={Star} label="Membros Ouro" value={stats.goldUsers} color="amber" />
         <StatCard icon={Clock} label="Oportunidades Pendentes" value={stats.pendingOpportunities} color="amber" />
         <StatCard icon={CheckCircle} label="Oportunidades Ativas" value={stats.activeOpportunities} color="green" />
         <StatCard icon={AlertTriangle} label="Alertas Vermelhos" value={stats.redFlagOpportunities} color="red" />
@@ -162,7 +162,7 @@ function GoldTab() {
 
   const revokeMutation = trpc.president.revokeGold.useMutation({
     onSuccess: () => {
-      toast.success("✅ Selo Ouro revogado. A conta da membra continua ativa como Prata.");
+      toast.success("✅ Selo Ouro revogado. A conta do membro continua ativa como Prata.");
       setRevokeDialog(null);
       setReason("");
       refetchGrants();
@@ -184,10 +184,10 @@ function GoldTab() {
 
       {/* Membras Ouro Ativas */}
       <div>
-        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Membras com Selo Ouro Ativo</h3>
+        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Membros com Selo Ouro Ativo</h3>
         {!goldGrants || goldGrants.length === 0 ? (
           <div className="p-6 rounded-xl bg-white/3 border border-white/8 text-center text-white/30 text-sm">
-            Nenhuma membra com Selo Ouro ativo no momento.
+            Nenhum membro com Selo Ouro ativo no momento.
           </div>
         ) : (
           <div className="space-y-2">
@@ -206,7 +206,7 @@ function GoldTab() {
                   variant="outline"
                   size="sm"
                   className="text-red-400 border-red-400/30 hover:bg-red-400/10 bg-transparent text-xs"
-                  onClick={() => { setRevokeDialog({ userId: g.grant.grantedTo, name: g.userName || "Membra" }); setReason(""); }}
+                  onClick={() => { setRevokeDialog({ userId: g.grant.grantedTo, name: g.userName || "Membro" }); setReason(""); }}
                 >
                   Revogar
                 </Button>
@@ -218,7 +218,7 @@ function GoldTab() {
 
       {/* Conceder Ouro */}
       <div>
-        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Conceder Selo Ouro a Membras Prata</h3>
+        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Conceder Selo Ouro a Membros Prata</h3>
         <div className="relative mb-3">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
           <Input
@@ -231,7 +231,7 @@ function GoldTab() {
         <AvisoListaCortada mostrando={filteredSilver.length} total={silverUsers?.total ?? 0} />
         <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
           {filteredSilver.length === 0 ? (
-            <p className="text-center text-white/30 text-sm py-6">Nenhuma membra encontrada.</p>
+            <p className="text-center text-white/30 text-sm py-6">Nenhum membro encontrado.</p>
           ) : filteredSilver.map(u => (
             <div key={u.id} className="flex items-center justify-between p-3.5 rounded-xl bg-white/3 border border-white/8 hover:border-white/15 transition-colors">
               <div>
@@ -241,7 +241,7 @@ function GoldTab() {
               <Button
                 size="sm"
                 className="bg-amber-400 hover:bg-amber-500 text-[#151312] text-xs font-bold"
-                onClick={() => { setGrantDialog({ userId: u.id, name: u.name || "Membra" }); setReason(""); }}
+                onClick={() => { setGrantDialog({ userId: u.id, name: u.name || "Membro" }); setReason(""); }}
               >
                 <Star size={12} className="mr-1" /> Conceder Ouro
               </Button>
@@ -266,7 +266,7 @@ function GoldTab() {
             <div className="bg-amber-400/8 border border-amber-400/25 rounded-xl p-4">
               <p className="text-[11px] text-amber-400/70 uppercase tracking-wider font-semibold mb-2">Mensagem automática que será enviada:</p>
               <p className="text-sm text-white/80 leading-relaxed italic">
-                "Parabéns, você agora é nível OURO! Uma membra Ouro do MMM reconheceu o seu potencial e concedeu a você o Selo de Exclusividade Institucional Ouro. Bem-vinda(o) ao grupo mais seleto da plataforma!"
+                "Parabéns, você agora é nível OURO! Um membro Ouro do MMM reconheceu o seu potencial e concedeu a você o Selo de Exclusividade Institucional Ouro. Boas-vindas ao grupo mais seleto da plataforma!"
               </p>
             </div>
           </div>
@@ -298,7 +298,7 @@ function GoldTab() {
             <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-400/8 border border-blue-400/20">
               <CheckCircle size={14} className="text-blue-400 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-blue-300">
-                <strong>A conta não será excluída.</strong> A membra continuará ativa na plataforma com nível Prata e poderá receber o Selo Ouro novamente no futuro.
+                <strong>A conta não será excluída.</strong> O membro continuará ativo na plataforma com nível Prata e poderá receber o Selo Ouro novamente no futuro.
               </p>
             </div>
           </div>
@@ -350,7 +350,7 @@ function LeadersTab() {
 
   const nominateMutation = trpc.president.nominateLeader.useMutation({
     onSuccess: () => {
-      toast.success("Líder nacional nomeada com sucesso!");
+      toast.success("Líder nacional nomeado com sucesso!");
       setNominateDialog(null);
       setRegion("");
       setSpecialty("");
@@ -361,7 +361,7 @@ function LeadersTab() {
 
   const revokeMutation = trpc.president.revokeLeader.useMutation({
     onSuccess: () => {
-      toast.success("Líder revogada com sucesso.");
+      toast.success("Líder revogado com sucesso.");
       setRevokeDialog(null);
       setRevokeReason("");
       refetch();
@@ -385,11 +385,11 @@ function LeadersTab() {
       {/* Líderes ativas com botão Revogar e Ver Oportunidades */}
       <div>
         <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">
-          Líderes Ativas ({leaderList.length})
+          Líderes Ativos ({leaderList.length})
         </h3>
         {leaderList.length === 0 ? (
           <div className="p-6 rounded-xl bg-white/3 border border-white/8 text-center text-white/30 text-sm">
-            Nenhuma líder nacional nomeada ainda.
+            Nenhum líder nacional nomeado ainda.
           </div>
         ) : (
           <div className="space-y-2">
@@ -429,13 +429,13 @@ function LeadersTab() {
 
       {/* Nomear nova líder */}
       <div>
-        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Nomear Nova Líder</h3>
+        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Nomear Novo Líder</h3>
         <div className="relative mb-3">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar membra por nome ou e-mail..."
+            placeholder="Buscar membro por nome ou e-mail..."
             className="pl-9 bg-white/5 border-white/15 text-white placeholder-white/25 text-sm"
           />
         </div>
@@ -452,15 +452,15 @@ function LeadersTab() {
                   size="sm"
                   variant="outline"
                   className="bg-transparent border-blue-400/30 text-blue-300 hover:bg-blue-400/10 text-xs h-7 px-2"
-                  onClick={() => setOppDialog({ userId: u.id, name: u.name || "Membra" })}
-                  title="Ver oportunidades desta membra"
+                  onClick={() => setOppDialog({ userId: u.id, name: u.name || "Membro" })}
+                  title="Ver oportunidades deste membro"
                 >
                   <Search size={10} className="mr-1" /> Oportunidades
                 </Button>
                 <Button
                   size="sm"
                   className="bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold"
-                  onClick={() => { setNominateDialog({ userId: u.id, name: u.name || "Membra" }); setRegion(""); setSpecialty(""); }}
+                  onClick={() => { setNominateDialog({ userId: u.id, name: u.name || "Membro" }); setRegion(""); setSpecialty(""); }}
                 >
                   <Award size={12} className="mr-1" /> Nomear
                 </Button>
@@ -545,7 +545,7 @@ function LeadersTab() {
             </DialogTitle>
           </DialogHeader>
           {!leaderOpps || (leaderOpps as unknown[]).length === 0 ? (
-            <p className="text-white/40 text-sm text-center py-6">Nenhuma oportunidade cadastrada por esta líder.</p>
+            <p className="text-white/40 text-sm text-center py-6">Nenhuma oportunidade cadastrada por este líder.</p>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {(leaderOpps as Array<{ id: number; title: string; type: string; status: string; complianceLevel: string; country: string; createdAt: string }>).map(o => (
@@ -602,7 +602,7 @@ function OpportunitiesTab() {
 
   const requestInfoMutation = trpc.president.requestInfo.useMutation({
     onSuccess: () => {
-      toast.success("Solicitação enviada! Mensagem automática enviada para a publicadora.");
+      toast.success("Solicitação enviada! Mensagem automática enviada para quem publicou.");
       setRequestInfoDialog(null);
       setInfoNeeded("");
       refetch();
@@ -673,11 +673,11 @@ function OpportunitiesTab() {
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-lg px-3 py-2">
                   <p className="text-[10px] text-emerald-400/60 font-semibold uppercase tracking-wider mb-1">Msg ao Aprovar:</p>
-                  <p className="text-[11px] text-white/45 italic leading-relaxed line-clamp-2">{autoMessages.approved(item.publisherName || "Membra")}</p>
+                  <p className="text-[11px] text-white/45 italic leading-relaxed line-clamp-2">{autoMessages.approved(item.publisherName || "Membro")}</p>
                 </div>
                 <div className="bg-red-500/5 border border-red-500/15 rounded-lg px-3 py-2">
                   <p className="text-[10px] text-red-400/60 font-semibold uppercase tracking-wider mb-1">Msg ao Rejeitar:</p>
-                  <p className="text-[11px] text-white/45 italic leading-relaxed line-clamp-2">{autoMessages.rejected(item.publisherName || "Membra")}</p>
+                  <p className="text-[11px] text-white/45 italic leading-relaxed line-clamp-2">{autoMessages.rejected(item.publisherName || "Membro")}</p>
                 </div>
               </div>
             </div>
@@ -695,10 +695,10 @@ function OpportunitiesTab() {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-white/60">
-              Enviando solicitação para <strong className="text-white">{requestInfoDialog?.publisherName || "a publicadora"}</strong>.
+              Enviando solicitação para <strong className="text-white">{requestInfoDialog?.publisherName || "quem publicou"}</strong>.
             </p>
             <div>
-              <label className="text-xs text-white/50 mb-1.5 block">O que você precisa que ela envie?</label>
+              <label className="text-xs text-white/50 mb-1.5 block">O que você precisa que essa pessoa envie?</label>
               <Input
                 value={infoNeeded}
                 onChange={e => setInfoNeeded(e.target.value)}
@@ -710,7 +710,7 @@ function OpportunitiesTab() {
               <div className="bg-amber-400/8 border border-amber-400/25 rounded-xl p-4">
                 <p className="text-[11px] text-amber-400/70 uppercase tracking-wider font-semibold mb-2">Mensagem que será enviada:</p>
                 <p className="text-sm text-white/80 leading-relaxed italic">
-                  "Olá, {(requestInfoDialog?.publisherName || "Membra").split(" ")[0]}. Recebemos a sua proposta e temos interesse em avaliar melhor. Para seguirmos para a próxima etapa, você poderia nos enviar {infoNeeded}? Ficamos no aguardo."
+                  "Olá, {(requestInfoDialog?.publisherName || "Membro").split(" ")[0]}. Recebemos a sua proposta e temos interesse em avaliar melhor. Para seguirmos para a próxima etapa, você poderia nos enviar {infoNeeded}? Ficamos no aguardo."
                 </p>
               </div>
             )}
@@ -850,7 +850,7 @@ export default function PresidentPanel() {
         <div className="text-center max-w-sm">
           <Lock size={40} className="text-red-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Acesso Restrito</h2>
-          <p className="text-white/50 text-sm mb-6">Este painel é exclusivo para membras com Status Ouro.</p>
+          <p className="text-white/50 text-sm mb-6">Este painel é exclusivo para membros com Status Ouro.</p>
           <Button onClick={() => navigate("/dashboard")} className="bg-amber-400 hover:bg-amber-500 text-[#151312] font-bold">
             Voltar ao Dashboard
           </Button>

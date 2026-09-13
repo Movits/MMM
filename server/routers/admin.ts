@@ -64,7 +64,7 @@ export const adminRouter = router({
       if (input.role === "gold" && ctx.user.role !== "president" && ctx.user.role !== "gold" && ctx.user.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "O Status Ouro é um reconhecimento institucional. Apenas membras Ouro podem conceder ou revogar este status."
+          message: "O Status Ouro é um reconhecimento institucional. Apenas membros Ouro podem conceder ou revogar este status."
         });
       }
 
@@ -72,7 +72,7 @@ export const adminRouter = router({
       if (input.role === "president" && ctx.user.role !== "president" && ctx.user.role !== "gold" && ctx.user.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Apenas membras Ouro podem nomear outras para funções especiais."
+          message: "Apenas membros Ouro podem nomear outros para funções especiais."
         });
       }
 
@@ -81,7 +81,7 @@ export const adminRouter = router({
       if (targetUser?.role === "gold" && input.role !== "gold" && ctx.user.role !== "president" && ctx.user.role !== "gold" && ctx.user.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Apenas membras Ouro podem revogar o Status Ouro."
+          message: "Apenas membros Ouro podem revogar o Status Ouro."
         });
       }
 
