@@ -604,8 +604,11 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
     // um match dispensado voltaria à tela (revisão adversarial de 12/09).
     if (scores.bloqueio) continue;
 
-    // Only create matches with score >= 50 (pesos: complementaridade 30%, setor 20%,
-    // investimento 20%, especialidade 15%, valores 10%, localização 5%)
+    // Portão de dados suficientes: score >= 50 garante encaixe de qualidade.
+    // Pesos: complementaridade 30% (core), setor 20%, investimento 20%,
+    // especialidade 15%, valores 10%, localização 5%.
+    // Com 50: menos matches, mas com cara de encaixe real (decisão Dra. Glenda).
+    // Com 40: mulher vê pares fracos demais. Score < 50 = descarta o par.
     if (scores.overall < 50) continue;
 
     // Insight de IA só para os melhores, só quando ainda não existe um DE
