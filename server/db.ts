@@ -222,10 +222,10 @@ export async function definirDestaqueDaOportunidade(
   if (!alvo) return false;
 
   const ate = dias > 0 ? new Date(Date.now() + dias * 24 * 60 * 60 * 1000) : null;
-  await db.update(opportunities)
+  const result = await db.update(opportunities)
     .set({ destaqueAte: ate, destacadaPor: ate ? concedidoPor : null })
     .where(eq(opportunities.id, opportunityId));
-  return true;
+  return (result as any).rowCount > 0;
 }
 
 export async function createOpportunity(data: Omit<typeof opportunities.$inferInsert, "id">) {
