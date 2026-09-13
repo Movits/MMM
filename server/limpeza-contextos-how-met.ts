@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne, notExists } from "drizzle-orm";
 import { contactContexts, contextMedia, contextParticipants, contexts, enrichmentSuggestions, meetings } from "../drizzle/schema";
 import type { getDb, UndoSnapshot } from "./db";
 
@@ -20,6 +20,11 @@ import type { getDb, UndoSnapshot } from "./db";
  * legítimos podem ter nomes parecidos ("Feira de Milão" / "Feira de Bolonha",
  * ver enriquecimento-aplicacao.test.ts), e a identificação por texto os
  * confundiria.
+ *
+ * O nome também não é lido: é a frase livre que a dona respondeu no chat e
+ * pode citar terceiros ("apresentadas pela Maria da embaixada"). O relatório
+ * vai para o terminal de quem roda e para qualquer log em volta dele; os ids
+ * bastam para conferir no banco.
  */
 
 // Mesmo tipo usado em toda a base para funções que recebem a conexão já aberta
@@ -29,7 +34,6 @@ type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 export type CandidatoLimpeza = {
   contextId: string;
   ownerId: string;
-  nome: string;
   criadoEm: number;
   sugestaoId: string;
   vinculoId: string | null;
@@ -53,6 +57,50 @@ export type ResultadoLimpeza = {
   ignoradosNaExecucao: { contextId: string; motivo: string }[];
   erros: { contextId: string; erro: string }[];
 };
+
+/**
+ * O banco em que o script vai mexer, sem usuário nem senha: `host[:porta]/banco`.
+ * É o que o relatório mostra e o que `--confirmar-banco` precisa repetir.
+ * null quando a URL não diz host e banco.
+ */
+export function alvoDoBanco(databaseUrl: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(databaseUrl);
+  } catch {
+    return null;
+  }
+  const banco = decodeURIComponent(url.pathname.replace(/^\//, ""));
+  if (!url.hostname || !banco) return null;
+  return `${url.hostname}${url.port ? `:${url.port}` : ""}/${banco}`;
+}
+
+export type DecisaoDeModo =
+  | { modo: "dry_run" | "executar"; alvo: string }
+  | { recusa: string };
+
+/**
+ * A trava da execução real. Sem `--executar` é sempre dry-run. Com ele, só
+ * executa se `--confirmar-banco=<alvo>` repetir exatamente o banco de
+ * DATABASE_URL, como o dry-run o mostrou: quem apaga precisa ter lido para onde
+ * está apontando. Não substitui a autorização do Roberto para rodar contra
+ * produção (CLAUDE.md); impede o `--executar` com o .env apontado para o lugar
+ * errado. A recusa acontece antes de abrir conexão.
+ */
+export function decidirModo(argv: string[], databaseUrl: string | undefined): DecisaoDeModo {
+  if (!databaseUrl) return { recusa: "DATABASE_URL não definida." };
+  const alvo = alvoDoBanco(databaseUrl);
+  if (!alvo) {
+    return { recusa: "DATABASE_URL não diz host e banco (esperado mysql://usuario:senha@host:porta/banco)." };
+  }
+  if (!argv.includes("--executar")) return { modo: "dry_run", alvo };
+  const prefixo = "--confirmar-banco=";
+  const confirmacao = argv.find(a => a.startsWith(prefixo))?.slice(prefixo.length);
+  if (confirmacao !== alvo) {
+    return { recusa: `--executar exige --confirmar-banco=${alvo} (o banco de DATABASE_URL). Nada foi lido nem apagado.` };
+  }
+  return { modo: "executar", alvo };
+}
 
 /**
  * Lê enrichment_suggestions (field_type = how_met) e devolve, por contextId
@@ -101,8 +149,7 @@ export async function limparContextosHowMet(
 
   for (const [contextId, info] of Array.from(brutos.entries())) {
     const [ctx] = await db.select({
-      id: contexts.id, ownerId: contexts.ownerId, isCustom: contexts.isCustom,
-      name: contexts.name, createdAt: contexts.createdAt,
+      id: contexts.id, ownerId: contexts.ownerId, isCustom: contexts.isCustom, createdAt: contexts.createdAt,
     }).from(contexts).where(eq(contexts.id, contextId)).limit(1);
 
     if (!ctx) { jaAusentes++; continue; } // já removido (manualmente ou execução anterior) — idempotente
@@ -149,7 +196,7 @@ export async function limparContextosHowMet(
     }
 
     candidatos.push({
-      contextId, ownerId: info.ownerId, nome: ctx.name, criadoEm: ctx.createdAt,
+      contextId, ownerId: info.ownerId, criadoEm: ctx.createdAt,
       sugestaoId: info.sugestaoId, vinculoId: info.vinculoId,
       motivo: "undo_snapshot how_met com contextoCriado=true; sem vínculo extra, participante, mídia ou reunião — nenhum uso além do que o bug criou",
     });
@@ -162,20 +209,41 @@ export async function limparContextosHowMet(
   if (modo === "executar") {
     for (const cand of candidatos) {
       try {
-        if (cand.vinculoId) {
-          await db.delete(contactContexts).where(and(
-            eq(contactContexts.id, cand.vinculoId), eq(contactContexts.contextId, cand.contextId),
+        // A investigação acima pode estar velha quando a exclusão chega: a dona
+        // pode ter vinculado alguém, anexado uma foto ou marcado uma reunião no
+        // meio. Por isso a checagem de uso é repetida DENTRO do próprio DELETE
+        // (NOT EXISTS), na mesma instrução que apaga. O contexto sai primeiro
+        // porque é esse DELETE que decide; o vínculo do snapshot sai depois, na
+        // mesma transação: se ele falhar, o rollback devolve o contexto, e nunca
+        // sobra meio caminho.
+        const apagou = await db.transaction(async (tx) => {
+          const [r] = await tx.delete(contexts).where(and(
+            eq(contexts.id, cand.contextId), eq(contexts.ownerId, cand.ownerId), eq(contexts.isCustom, true),
+            notExists(tx.select({ id: contactContexts.id }).from(contactContexts).where(and(
+              eq(contactContexts.contextId, cand.contextId),
+              cand.vinculoId ? ne(contactContexts.id, cand.vinculoId) : undefined,
+            ))),
+            notExists(tx.select({ id: contextParticipants.id }).from(contextParticipants)
+              .where(eq(contextParticipants.contextId, cand.contextId))),
+            notExists(tx.select({ id: contextMedia.id }).from(contextMedia)
+              .where(eq(contextMedia.contextId, cand.contextId))),
+            notExists(tx.select({ id: meetings.id }).from(meetings)
+              .where(eq(meetings.contextId, cand.contextId))),
           ));
-        }
-        const [r] = await db.delete(contexts).where(and(
-          eq(contexts.id, cand.contextId), eq(contexts.ownerId, cand.ownerId), eq(contexts.isCustom, true),
-        ));
-        if (((r as any)?.affectedRows ?? 0) > 0) {
+          if (!(((r as any)?.affectedRows ?? 0) > 0)) return false;
+          if (cand.vinculoId) {
+            await tx.delete(contactContexts).where(and(
+              eq(contactContexts.id, cand.vinculoId), eq(contactContexts.contextId, cand.contextId),
+            ));
+          }
+          return true;
+        });
+        if (apagou) {
           removidos.push(cand.contextId);
         } else {
-          // Sumiu entre a investigação e a exclusão (outra execução concorrente,
-          // ou apagado manualmente no meio do processo) — não é erro.
-          ignoradosNaExecucao.push({ contextId: cand.contextId, motivo: "não encontrado no momento do DELETE (provável remoção concorrente)" });
+          // Sumiu (outra execução, remoção manual) ou passou a ter uso entre a
+          // investigação e a exclusão. Não é erro, e nada foi tocado.
+          ignoradosNaExecucao.push({ contextId: cand.contextId, motivo: "não apagado: sumiu ou passou a ter uso (vínculo, participante, mídia ou reunião) depois da investigação" });
         }
       } catch (e) {
         erros.push({ contextId: cand.contextId, erro: e instanceof Error ? e.message : String(e) });

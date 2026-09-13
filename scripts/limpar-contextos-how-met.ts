@@ -11,17 +11,32 @@
 // reunião ligada, dono divergente), ele NUNCA é apagado — vai para a lista de
 // revisão manual do relatório.
 //
-// Uso:
-//   DATABASE_URL='mysql://...' npx tsx scripts/limpar-contextos-how-met.ts               (só relata — dry-run)
-//   DATABASE_URL='mysql://...' npx tsx scripts/limpar-contextos-how-met.ts --executar     (apaga de verdade)
+// Uso (rode sempre o dry-run primeiro: ele mostra o banco alvo):
+//   DATABASE_URL='mysql://...' npx tsx scripts/limpar-contextos-how-met.ts
+//   DATABASE_URL='mysql://...' npx tsx scripts/limpar-contextos-how-met.ts --executar --confirmar-banco=host:porta/banco
+//
+// TRAVA: --executar só apaga se --confirmar-banco repetir o banco de
+// DATABASE_URL exatamente como o dry-run o mostrou; sem isso, recusa antes de
+// abrir conexão. Produção (Aiven), para ler ou apagar, só com autorização
+// explícita do Roberto (CLAUDE.md).
+//
+// O relatório não mostra o nome dos contextos (é a frase livre da resposta e
+// pode citar terceiros); ids bastam para conferir no banco.
 //
 // Idempotente: rodar de novo depois de uma execução não apaga nada a mais —
 // os contextos já removidos entram como "já ausentes", sem erro.
 
 import { getDb } from "../server/db";
-import { limparContextosHowMet } from "../server/limpeza-contextos-how-met";
+import { decidirModo, limparContextosHowMet } from "../server/limpeza-contextos-how-met";
 
-const executar = process.argv.includes("--executar");
+const decisao = decidirModo(process.argv.slice(2), process.env.DATABASE_URL);
+if ("recusa" in decisao) {
+  console.error(`Recusado: ${decisao.recusa}`);
+  process.exit(1);
+}
+
+console.log(`Banco alvo: ${decisao.alvo}`);
+console.log("Produção só com autorização explícita do Roberto (CLAUDE.md).");
 
 const db = await getDb();
 if (!db) {
@@ -29,7 +44,7 @@ if (!db) {
   process.exit(1);
 }
 
-const r = await limparContextosHowMet(db, executar ? "executar" : "dry_run");
+const r = await limparContextosHowMet(db, decisao.modo);
 
 console.log(`Modo: ${r.modo === "executar" ? "EXECUÇÃO REAL" : "DRY RUN (nada foi alterado)"}`);
 console.log(`Snapshots analisados (field_type = how_met): ${r.snapshotsAnalisados}`);
@@ -43,7 +58,6 @@ if (r.candidatos.length) {
   for (const c of r.candidatos) {
     const data = new Date(c.criadoEm).toISOString();
     console.log(`  contexto ${c.contextId}  dono ${c.ownerId}  criado em ${data}`);
-    console.log(`    nome: "${c.nome}"`);
     console.log(`    sugestão de origem: ${c.sugestaoId}   vínculo: ${c.vinculoId ?? "(nenhum)"}`);
     console.log(`    motivo: ${c.motivo}`);
   }
@@ -68,7 +82,7 @@ if (r.modo === "executar") {
     for (const e of r.erros) console.log(`  ERRO     contexto ${e.contextId} — ${e.erro}`);
   }
 } else {
-  console.log("\nRode de novo com --executar para apagar os candidatos aptos listados acima.");
+  console.log(`\nPara apagar os candidatos aptos listados acima: --executar --confirmar-banco=${decisao.alvo}`);
 }
 
 process.exit(r.erros.length ? 1 : 0);
