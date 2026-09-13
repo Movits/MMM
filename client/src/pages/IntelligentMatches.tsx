@@ -174,6 +174,14 @@ export default function IntelligentMatches() {
                 </strong>.</>}
         </p>
 
+        {/* Regra da demanda expressa (12/09/2026): quem registra um serviço
+            precisa saber que ele não casa "com quem poderia precisar" — só
+            com quem declarou precisar. Sem o aviso, a ausência de sugestão
+            pareceria defeito. */}
+        {kind === "asset" && (
+          <p className="mb-3 text-xs text-white/40">{t("intelligentMatches.avisoServico")}</p>
+        )}
+
         {/* Sem isto, a lista de contatos falhando virava um seletor vazio:
             parecia que a rede não tinha ninguém para registrar. */}
         {contatosFalharam && (

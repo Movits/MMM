@@ -1443,6 +1443,7 @@
     "avisoAutorizacaoExistente": "Votre autorisation, si elle existait déjà, reste valable. Réessayez dans un instant.",
     "botaoTentarNovo": "Réessayer",
     "explicacao": "Notez ce que chaque contact a à offrir et ce qu'il recherche. MMM compare ces informations et suggère qui peut aider qui.",
+    "avisoServico": "Un service (conseil, accompagnement, juridique…) ne crée une connexion que si un autre contact a déclaré en avoir besoin dans « Ce qu'elle recherche ». MMM ne présume aucun besoin d'après le secteur, la taille ou l'activité.",
     "abaPossui": "Ce qu'elle possède",
     "abaProcura": "Ce qu'elle recherche",
     "registrandoPrefixo": "Enregistrement de ce que",

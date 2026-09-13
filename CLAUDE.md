@@ -188,11 +188,21 @@ Exceções deliberadas: `system.health` (responde `ok:false` com HTTP 503) e
 
 **Três motores de match convivem.** `server/match-service.ts` cruza contatos da mesma
 dona: `scoreMatch` aplica, nesta ordem, concorrentes → 0, slug exato → 100, mesmo
-objeto do termo → 100, mesmo núcleo → 100, mesma categoria → 60; o critério semântico
+objeto do termo → 100, mesmo núcleo → 100, necessidade genérica que nomeia a família do
+serviço → 100 (só para serviço), mesma categoria → 60 (não vale para serviço); o critério semântico
 vale 45, abaixo do limiar 50, logo está desligado por construção e o texto não sai
 para embeddings. `server/matching.ts` cruza perfis de usuárias em 6 dimensões
 ponderadas, com LLM só no insight. `routers/profileMatches.ts` expõe esses matches no
-Dashboard com trava de consentimento dos dois lados.
+Dashboard com trava de consentimento dos dois lados. **Regra da demanda expressa
+(12/09/2026), nos três motores e nos prompts:** item de "o que tenho" classificado como
+SERVIÇO (`shared/tipo-da-oferta.ts`) só casa com necessidade DECLARADA em "o que
+preciso" — no motor privado a categoria em comum não vale para serviço; no de perfis o
+par sustentado só por serviço sem demanda expressa dá zero, não é gravado e a leitura da
+lista esconde a linha antiga (sem apagá-la, para a dispensa da dona sobreviver); nos dois
+prompts de `routers/matching.ts` o modelo classifica o item,
+cita o trecho da oportunidade que declara a necessidade e
+`server/portao-da-demanda-expressa.ts` confere a citação antes de exibir. Produtos,
+ativos, investimento, conexões, tecnologia e imóveis não mudam.
 
 **`server/_core/` é a infraestrutura herdada do Manus** (o projeto nasceu na
 plataforma Manus e foi extraído: ver `docs/recuperacao-do-manus.md`): entrada, auth
@@ -281,6 +291,14 @@ vitrine no GitHub Pages. Depois de todo deploy:
   opostas (`shared/direcao-do-termo.ts`: exportar × importar) ou mesma
   categoria: a spec da cliente veta match por palavra parecida
   ("exportar vinho" × "importar vinho" casam; "exportar" × "exportar" nunca).
+- **Serviço só casa com necessidade declarada.** Setor, porte, localização, cargo,
+  atividade econômica, problemas típicos do segmento, obrigações legais ou "poderia se
+  beneficiar" não são necessidade (pedido do Nicolas, 12/09/2026: "não fazemos match
+  porque alguém poderia precisar; fazemos match porque alguém declarou que precisa").
+  A IA não pode inferir o que ninguém declarou; essas informações só sobem a nota de um
+  match que já passou pelo portão. A restrição é específica do tipo SERVIÇO — os outros
+  tipos seguem as regras de sempre. Ver `shared/tipo-da-oferta.ts` e
+  `server/portao-da-demanda-expressa.ts`.
 - **Nada extraído por IA entra sozinho**: toda extração carrega origem e confiança
   e exige confirmação da usuária antes de virar dado. No enriquecimento, só
   sugestões com `confidence >= 0.7` viram pendência (`routers/enrichment.ts`);
