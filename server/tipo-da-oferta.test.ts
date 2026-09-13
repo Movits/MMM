@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classificarOferta, ehServico, ehServicoDeAssessoria, LISTAS_POR_TIPO, TIPOS_DA_OFERTA } from "@shared/tipo-da-oferta";
+import { classificarOferta, ehServico, ehServicoDeAssessoria, familiaDoServico, LISTAS_POR_TIPO, necessidadeGenericaNomeiaOServico, TIPOS_DA_OFERTA } from "@shared/tipo-da-oferta";
 
 /**
  * Regra da demanda expressa (12/09/2026) — a classificação que vem ANTES do
@@ -112,9 +112,45 @@ describe("Tipo da oferta — a ordem da decisão", () => {
     expect(classificarOferta("Rede de advogados")).toBe("conexao");
   });
 
-  it("cabeça neutra (empresa, escritório) deixa o resto do termo decidir", () => {
+  it("substantivo de serviço colado à cabeça decide: 'Logistics consulting', 'Logística e consultoria aduaneira'", () => {
+    expect(classificarOferta("Logistics consulting")).toBe("servico");
+    expect(classificarOferta("Transport consultancy")).toBe("servico");
+    expect(classificarOferta("Logística e consultoria aduaneira")).toBe("servico");
+    expect(classificarOferta("Real estate consulting")).toBe("servico");
+    expect(classificarOferta("Real estate in Lisbon")).toBe("imovel");
+  });
+
+  it("atrás de preposição, com cabeça de outra natureza, o serviço é só modificador (produto/ativo não mudam)", () => {
+    // Regressão apanhada pela revisão de 12/09: estes viravam serviço e
+    // perdiam o match por categoria que tinham na main.
+    expect(classificarOferta("Peças de manutenção", "Produto")).toBe("produto");
+    expect(classificarOferta("Peças de manutenção")).toBe("outros");
+    expect(classificarOferta("Material de treinamento", "Produto")).toBe("produto");
+    expect(classificarOferta("Centro de treinamento", "Infraestrutura")).toBe("imovel");
+    expect(classificarOferta("Ferramenta de marketing", "Tecnologia")).toBe("tecnologia");
+    expect(classificarOferta("Kit de marketing")).toBe("outros");
+    expect(classificarOferta("Relatório de auditoria")).toBe("outros");
+    for (const rotulo of ["Peças de manutenção", "Centro de treinamento", "Ferramenta de marketing", "Relatório de auditoria", "Memória de tradução"]) {
+      expect(ehServico(rotulo), rotulo).toBe(false);
+    }
+  });
+
+  it("adjetivo de serviço solto não decide: 'Pessoa jurídica', 'Estrutura jurídica em Portugal', 'Dados contábeis'", () => {
+    expect(classificarOferta("Pessoa jurídica no Brasil")).toBe("outros");
+    expect(classificarOferta("Estrutura jurídica em Portugal")).toBe("outros");
+    expect(classificarOferta("Dados contábeis")).toBe("tecnologia");
+    expect(ehServico("Cannabis legal")).toBe(false);
+  });
+
+  it("'instalação' é ambígua e não decide: 'Instalação portuária' não é serviço", () => {
+    expect(ehServico("Instalação portuária")).toBe(false);
+    expect(ehServico("Instalação industrial")).toBe(false);
+  });
+
+  it("cabeça neutra (empresa, escritório) deixa o resto do termo decidir — inclusive o adjetivo", () => {
     expect(classificarOferta("Escritório de advocacia")).toBe("servico");
     expect(classificarOferta("Empresa de contabilidade")).toBe("servico");
+    expect(classificarOferta("Escritório jurídico")).toBe("servico");
     expect(classificarOferta("Escritório comercial")).toBe("outros");
   });
 
@@ -134,6 +170,33 @@ describe("Tipo da oferta — a ordem da decisão", () => {
     expect(classificarOferta("Café", "Produto")).toBe("produto");
     expect(classificarOferta("Café", "Mineração")).toBe("outros");
     expect(classificarOferta("Software de gestão", "Serviços")).toBe("tecnologia");
+  });
+
+  it("na categoria, palavra de outro tipo vence 'serviços': 'Serviços financeiros' é capital", () => {
+    expect(classificarOferta("Linha de crédito", "Serviços financeiros")).toBe("investimento");
+    expect(classificarOferta("Linha de crédito", "Serviços de tecnologia")).toBe("tecnologia");
+    expect(classificarOferta("Linha de crédito", "Serviços jurídicos")).toBe("servico");
+    expect(ehServico("Linha de crédito", "Serviços financeiros")).toBe(false);
+  });
+});
+
+describe("Família do serviço e necessidade genérica", () => {
+  it("a família é o primeiro substantivo de serviço; 'serviços' sozinho não é família", () => {
+    expect(familiaDoServico("Consultoria jurídica")).toBe("consultoria");
+    expect(familiaDoServico("Empresa de consultoria")).toBe("consultoria");
+    expect(familiaDoServico("Serviços de tradução")).toBe("traducao");
+    expect(familiaDoServico("Serviços")).toBeNull();
+    expect(familiaDoServico("Mina de lítio")).toBeNull();
+  });
+
+  it("'Consultoria' procurado nomeia 'Consultoria jurídica' possuído; 'Consultoria em marketing' procurado não", () => {
+    expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consultoria")).toBe(true);
+    expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Procura consultoria")).toBe(true);
+    expect(necessidadeGenericaNomeiaOServico("Empresa de consultoria", null, "Consultoria")).toBe(true);
+    expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consultoria em marketing")).toBe(false);
+    expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Advocacia")).toBe(false);
+    expect(necessidadeGenericaNomeiaOServico("Serviços jurídicos", null, "Serviços")).toBe(false);
+    expect(necessidadeGenericaNomeiaOServico("Mina de lítio", null, "Consultoria")).toBe(false);
   });
 });
 
@@ -155,5 +218,11 @@ describe("Serviço de assessoria — o que atende a opção fixa 'Consultoria'",
   it("o que não é serviço nunca é assessoria — 'legal' fora da cabeça é adjetivo", () => {
     expect(ehServicoDeAssessoria("Cannabis legal")).toBe(false);
     expect(ehServicoDeAssessoria("Mina de lítio")).toBe(false);
+  });
+
+  it("a guarda de serviço vale: palavra de assessoria no meio de um item de outro tipo não conta", () => {
+    // Mata o mutante que remove `if (!ehServico(...)) return false`.
+    expect(ehServicoDeAssessoria("Rede de advogados")).toBe(false);
+    expect(ehServicoDeAssessoria("Software de consultoria")).toBe(false);
   });
 });

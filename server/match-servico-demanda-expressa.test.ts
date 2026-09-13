@@ -53,6 +53,14 @@ describe("Serviço × necessidade que o NOMEIA — casa em 100", () => {
     expect(scoreMatch(item("Prestação de serviços de contabilidade"), item("Contabilidade")).score).toBe(100);
   });
 
+  it("a necessidade genérica que nomeia a família do serviço é demanda expressa: 'Consultoria' × 'Consultoria jurídica'", () => {
+    expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Consultoria", "Serviços")).score).toBe(100);
+    expect(scoreMatch(item("Empresa de consultoria"), item("Procura consultoria")).score).toBe(100);
+    // Outra especialidade pedida é outra necessidade; outra família também.
+    expect(scoreMatch(item("Consultoria jurídica"), item("Consultoria em marketing")).score).toBe(0);
+    expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Advocacia", "Serviços")).score).toBe(0);
+  });
+
   it("o motor privado não adivinha paráfrase: exemplo 1 do pedido só casa nos motores por IA", () => {
     // "Serviços jurídicos tributários" × "assessoria tributária para revisar a
     // carga fiscal" é equivalência semântica de verdade — mas este motor decide
@@ -75,6 +83,11 @@ describe("Os outros tipos continuam casando por categoria", () => {
     expect(scoreMatch(item("Capital semente", "investimento"), item("Venture capital", "investimento"))).toEqual({ score: 60, type: "category" });
     expect(scoreMatch(item("Lavra", "Mineração"), item("Britagem", "mineracao"))).toEqual({ score: 60, type: "category" });
     expect(scoreMatch(item("Café especial", "Alimentos"), item("Fornecedor de cacau", "Alimentos"))).toEqual({ score: 60, type: "category" });
+  });
+
+  it("produto com palavra de serviço atrás de preposição segue nos 60 por categoria (não virou serviço)", () => {
+    expect(scoreMatch(item("Peças de manutenção", "Produto"), item("Peças automotivas", "Produto"))).toEqual({ score: 60, type: "category" });
+    expect(scoreMatch(item("Centro de treinamento", "Infraestrutura"), item("Galpão", "Infraestrutura"))).toEqual({ score: 60, type: "category" });
   });
 
   it("a necessidade pode ser serviço: quem TEM a categoria em comum é o ativo, não o pedido", () => {

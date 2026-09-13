@@ -7,9 +7,10 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  * gravada antes da regra some da lista sem esperar "Reanalisar" — o mesmo
  * lugar (routers/profileMatches.ts) em que a trava de consentimento mora.
  */
+const usersComConsentimento = vi.fn(async (ids: number[]) => new Set(ids));
 vi.mock("./routers/consent", () => ({
   hasValidConsent: async () => true,
-  usersComConsentimento: async (ids: number[]) => new Set(ids),
+  usersComConsentimento: (...args: unknown[]) => usersComConsentimento(...(args as [number[]])),
 }));
 const matchesBloqueados = vi.fn(async (_userId: number, _ids: number[]) => new Set<number>([3]));
 vi.mock("./matching", () => ({
@@ -32,5 +33,13 @@ describe("profileMatches.list — serviço casado por presunção não volta à 
     const lista = await profileMatchesRouter.createCaller(ctx).list({ limit: 20 });
     expect(lista.map(m => m.matchedUserId)).toEqual([2]);
     expect(matchesBloqueados).toHaveBeenCalledWith(1, [2, 3]);
+  });
+
+  it("só os ids COM termo chegam ao portão: o perfil de quem revogou não é cruzado nem para decidir", async () => {
+    matchesBloqueados.mockClear();
+    usersComConsentimento.mockResolvedValueOnce(new Set([2]));
+    const lista = await profileMatchesRouter.createCaller(ctx).list({ limit: 20 });
+    expect(lista.map(m => m.matchedUserId)).toEqual([2]);
+    expect(matchesBloqueados).toHaveBeenCalledWith(1, [2]);
   });
 });

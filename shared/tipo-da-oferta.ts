@@ -31,14 +31,25 @@
  * a mercadoria, e o núcleo do termo já os atravessa até ela.
  *
  * Ordem da decisão, e por quê:
- *   1. composto fixo de duas palavras ("real estate", "venture capital");
- *   2. a cabeça do termo, quando é palavra de um tipo ("Software de
+ *   1. substantivo de serviço COLADO à cabeça, sem preposição no meio ("Tax
+ *      consulting", "Logistics consulting", "Real estate consulting",
+ *      "Logística e consultoria aduaneira"): em inglês o substantivo do
+ *      serviço vem depois, e é ele a cabeça de fato;
+ *   2. composto fixo de duas palavras ("real estate", "venture capital");
+ *   3. a cabeça do termo, quando é palavra de um tipo ("Software de
  *      consultoria" é tecnologia: a cabeça manda);
- *   3. cabeça neutra (empresa, escritório, equipe...) ou desconhecida: um
- *      marcador de serviço em QUALQUER posição decide ("Escritório de
- *      advocacia", "Empresa de contabilidade");
- *   4. a categoria que a usuária digitou ("Jurídico", "Serviços", "Produto");
- *   5. "outros".
+ *   4. cabeça neutra (empresa, escritório, equipe...): um substantivo ou
+ *      adjetivo de serviço em qualquer posição decide ("Escritório de
+ *      advocacia", "Empresa de contabilidade", "Escritório jurídico");
+ *   5. a categoria que a usuária digitou ("Jurídico", "Serviços", "Produto";
+ *      uma categoria de outro tipo vence "serviços": "Serviços financeiros"
+ *      é capital);
+ *   6. "outros".
+ * Cabeça desconhecida seguida de preposição fica com o que ela é: "Peças DE
+ * manutenção" é produto, "Centro DE treinamento" é infraestrutura, "Relatório
+ * DE auditoria" não é serviço — o serviço ali é modificador, e tratá-lo como
+ * tipo apagava o match por categoria que esses itens tinham (revisão
+ * adversarial de 12/09).
  */
 import { ARTIGOS, GENITIVOS, MARCADORES_FRACOS, tokensDoTermo } from "./direcao-do-termo";
 
@@ -121,7 +132,8 @@ const OUTROS_SERVICOS = [
   "corretagem", "corretor", "corretora", "corretores", "corretoras",
   "recrutamento", "headhunting", "headhunter", "headhunters",
   "terceirizacao", "outsourcing",
-  "manutencao", "instalacao", "suporte", "assistencia", "atendimento",
+  // "instalacao" fica de fora: "Instalação portuária" é a instalação física.
+  "manutencao", "suporte", "assistencia", "atendimento",
   "agenciamento", "intermediacao",
   // en
   "service", "services",
@@ -133,7 +145,7 @@ const OUTROS_SERVICOS = [
   "interpreting", "interpreter", "interpreters",
   "brokerage", "broker", "brokers",
   "recruitment", "recruiting",
-  "maintenance", "installation", "support", "assistance",
+  "maintenance", "support", "assistance",
   // es
   "servicio", "servicios",
   "publicidad",
@@ -148,13 +160,26 @@ const OUTROS_SERVICOS = [
 ];
 
 /**
- * Marcadores de serviço que decidem em QUALQUER posição do termo, quando a
- * cabeça não decidiu: só os substantivos que nomeiam a prestação em si.
- * "design", "engenharia", "suporte" ficam de fora — "Móveis de design" é
- * produto, "Peças de engenharia" também.
+ * Adjetivos de serviço: só decidem atrás de cabeça NEUTRA ("Escritório
+ * jurídico"). Soltos no termo são adjetivo de qualquer coisa — "Pessoa
+ * jurídica", "Estrutura jurídica em Portugal", "Dados contábeis".
  */
-const SERVICO_EM_QUALQUER_POSICAO = new Set([
-  ...ASSESSORIA,
+const ADJETIVOS_DE_SERVICO = new Set([
+  "juridico", "juridica", "juridicos", "juridicas", "contabil", "contabeis", "contable", "contables",
+]);
+
+/**
+ * Substantivos que nomeiam a prestação em si. Decidem (a) colados à cabeça,
+ * sem preposição no meio — "Tax consulting", "Logistics consulting",
+ * "Logística e consultoria aduaneira" — e (b) em qualquer posição atrás de
+ * cabeça neutra ("Empresa de contabilidade"). Atrás de preposição, com cabeça
+ * de outra natureza, são só modificador: "Peças DE manutenção" é produto,
+ * "Centro DE treinamento" é infraestrutura, "Ferramenta DE marketing" é
+ * tecnologia. "design", "engenharia", "suporte" ficam de fora até da lista —
+ * "Móveis de design" e "Peças de engenharia" são produto.
+ */
+const SUBSTANTIVOS_DE_SERVICO = new Set([
+  ...ASSESSORIA.filter(palavra => !ADJETIVOS_DE_SERVICO.has(palavra)),
   "servico", "servicos", "service", "services", "servicio", "servicios",
   "marketing", "publicidade", "publicidad", "advertising",
   "treinamento", "treinamentos", "capacitacao", "capacitacion", "training",
@@ -163,6 +188,19 @@ const SERVICO_EM_QUALQUER_POSICAO = new Set([
   "recrutamento", "recruitment", "reclutamiento",
   "terceirizacao", "tercerizacion", "outsourcing",
   "manutencao", "mantenimiento", "maintenance",
+]);
+
+/**
+ * "Serviços" sozinho não nomeia serviço nenhum: como família (ver
+ * `familiaDoServico`) diria que "Serviços" procurado casa com qualquer
+ * prestação, e como necessidade genérica seria "preciso de serviços".
+ */
+const GENERICAS_DEMAIS = new Set(["servico", "servicos", "service", "services", "servicio", "servicios"]);
+
+/** Depois de uma destas, o que vem é complemento da cabeça, não a coisa oferecida. */
+const PREPOSICOES = new Set([
+  ...Array.from(GENITIVOS), "para", "em", "no", "na", "nos", "nas", "com", "por", "sobre", "ao", "aos", "a", "as",
+  "for", "to", "in", "on", "with", "from", "at", "en", "con", "al", "del", "desde", "hacia",
 ]);
 
 const PRODUTO = [
@@ -221,6 +259,7 @@ const CONEXAO = [
 
 const TECNOLOGIA = [
   "tecnologia", "tecnologias", "technology", "technologies", "tech",
+  "dados", "datos", "data",
   "software", "softwares", "plataforma", "plataformas", "platform", "platforms",
   "app", "apps", "aplicativo", "aplicativos", "aplicacion", "aplicaciones", "application", "applications",
   "sistema", "sistemas", "system", "systems", "saas", "api", "apis",
@@ -280,7 +319,8 @@ const TIPO_POR_PALAVRA_DA_CATEGORIA = new Map<string, TipoDaOferta>([
   ...["ativo", "ativos", "asset", "assets", "activo", "activos"].map(p => [p, "ativo"] as const),
   ...["oportunidade", "oportunidades", "opportunity", "opportunities"].map(p => [p, "oportunidade"] as const),
   ...["investimento", "investimentos", "investment", "investments", "inversion", "inversiones", "capital",
-    "financiamento", "financing"].map(p => [p, "investimento"] as const),
+    "financiamento", "financing", "financeiro", "financeiros", "financeira", "financeiras", "financial",
+    "credito", "creditos", "credit"].map(p => [p, "investimento"] as const),
   ...["conexao", "conexoes", "connection", "connections", "network", "networking", "rede", "contatos",
     "relacionamento"].map(p => [p, "conexao"] as const),
   ...["tecnologia", "technology", "tech", "software", "tecnologico", "tecnologica"].map(p => [p, "tecnologia"] as const),
@@ -307,11 +347,34 @@ const TIPO_POR_CABECA = new Map<string, TipoDaOferta>(
 const ASSESSORIA_SET = new Set(ASSESSORIA);
 const ASSESSORIA_SO_NA_CABECA_SET = new Set(ASSESSORIA_SO_NA_CABECA);
 
-/** A cabeça do termo: a primeira palavra que não é marcador fraco, artigo nem genitivo. */
+/** A cabeça do termo (a primeira palavra que não é marcador fraco, artigo nem genitivo) e onde ela está. */
 function cabecaDoTermo(palavras: string[]) {
   let i = 0;
   while (i < palavras.length - 1 && (MARCADORES_FRACOS.has(palavras[i]) || ARTIGOS.has(palavras[i]) || GENITIVOS.has(palavras[i]))) i += 1;
-  return { cabeca: palavras[i] as string | undefined, seguinte: palavras[i + 1] as string | undefined };
+  return { indice: i, cabeca: palavras[i] as string | undefined, seguinte: palavras[i + 1] as string | undefined };
+}
+
+/** As palavras coladas à cabeça, até a primeira preposição. */
+function juntoDaCabeca(palavras: string[], indice: number) {
+  const fim = palavras.findIndex((palavra, i) => i > indice && PREPOSICOES.has(palavra));
+  return palavras.slice(indice + 1, fim < 0 ? undefined : fim);
+}
+
+/**
+ * O que a categoria digitada diz. Uma palavra de OUTRO tipo vence "serviços":
+ * "Serviços financeiros" é capital, "Serviços de tecnologia" é tecnologia —
+ * a regra do serviço não pode vazar para investimento e tecnologia por causa
+ * da palavra "serviços" na categoria.
+ */
+function tipoPelaCategoria(categoria: string | null | undefined): TipoDaOferta | null {
+  let servico = false;
+  for (const palavra of tokensDoTermo(categoria ?? "")) {
+    const tipo = TIPO_POR_PALAVRA_DA_CATEGORIA.get(palavra);
+    if (!tipo) continue;
+    if (tipo === "servico") servico = true;
+    else return tipo;
+  }
+  return servico ? "servico" : null;
 }
 
 /**
@@ -321,7 +384,10 @@ function cabecaDoTermo(palavras: string[]) {
  */
 export function classificarOferta(rotulo: string, categoria?: string | null): TipoDaOferta {
   const palavras = tokensDoTermo(rotulo);
-  const { cabeca, seguinte } = cabecaDoTermo(palavras);
+  const { indice, cabeca, seguinte } = cabecaDoTermo(palavras);
+  // Antes do composto: "Real estate consulting" e "Supply chain consulting"
+  // são consultoria, não o imóvel nem a cadeia.
+  if (juntoDaCabeca(palavras, indice).some(palavra => SUBSTANTIVOS_DE_SERVICO.has(palavra))) return "servico";
   if (cabeca && seguinte) {
     const composto = COMPOSTOS.get(`${cabeca} ${seguinte}`);
     if (composto) return composto;
@@ -330,12 +396,38 @@ export function classificarOferta(rotulo: string, categoria?: string | null): Ti
     const pelaCabeca = TIPO_POR_CABECA.get(cabeca);
     if (pelaCabeca) return pelaCabeca;
   }
-  if (palavras.some(palavra => SERVICO_EM_QUALQUER_POSICAO.has(palavra))) return "servico";
-  for (const palavra of tokensDoTermo(categoria ?? "")) {
-    const pelaCategoria = TIPO_POR_PALAVRA_DA_CATEGORIA.get(palavra);
-    if (pelaCategoria) return pelaCategoria;
+  if (cabeca && CABECAS_NEUTRAS.has(cabeca) && palavras.some(palavra => SUBSTANTIVOS_DE_SERVICO.has(palavra) || ADJETIVOS_DE_SERVICO.has(palavra))) {
+    return "servico";
   }
-  return "outros";
+  return tipoPelaCategoria(categoria) ?? "outros";
+}
+
+/**
+ * A FAMÍLIA do serviço oferecido: o primeiro substantivo de serviço do termo
+ * ("consultoria" em "Consultoria jurídica" e em "Empresa de consultoria").
+ * null quando o item não é serviço ou quando o único substantivo é o genérico
+ * "serviços".
+ */
+export function familiaDoServico(rotulo: string, categoria?: string | null): string | null {
+  if (!ehServico(rotulo, categoria)) return null;
+  return tokensDoTermo(rotulo).find(palavra => SUBSTANTIVOS_DE_SERVICO.has(palavra) && !GENERICAS_DEMAIS.has(palavra)) ?? null;
+}
+
+/**
+ * A necessidade é GENÉRICA e nomeia a família do serviço? "Consultoria"
+ * procurado diante de "Consultoria jurídica" possuído: quem escreveu
+ * "consultoria" declarou precisar de consultoria, e a especialidade da oferta
+ * não desfaz a declaração. Só vale com a necessidade reduzida a UMA palavra de
+ * serviço (tirados marcadores e artigos): "Consultoria em marketing" procurado
+ * é outra necessidade e não casa com "Consultoria jurídica" (objeto
+ * diferente); "Serviços" procurado não nomeia família nenhuma.
+ */
+export function necessidadeGenericaNomeiaOServico(oferta: string, categoriaDaOferta: string | null | undefined, necessidade: string): boolean {
+  const palavras = tokensDoTermo(necessidade);
+  const { indice, cabeca } = cabecaDoTermo(palavras);
+  if (!cabeca || palavras.length - indice !== 1) return false;
+  if (!SUBSTANTIVOS_DE_SERVICO.has(cabeca) || GENERICAS_DEMAIS.has(cabeca)) return false;
+  return familiaDoServico(oferta, categoriaDaOferta) === cabeca;
 }
 
 /** O item é um SERVIÇO — o único tipo em que o portão da demanda expressa atua. */

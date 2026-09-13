@@ -38,8 +38,11 @@ function cadeiaDeSelect() {
     Promise.resolve(filas.shift() ?? []).then(resolve, reject);
   return cadeia;
 }
+// Conta as consultas: "não consulta o banco" só é prova se a contagem existir
+// (a fila vazia é verdadeira antes e depois, e não discrimina nada).
+let selects = 0;
 const fakeDb = {
-  select: () => cadeiaDeSelect(),
+  select: () => { selects += 1; return cadeiaDeSelect(); },
   insert: () => ({
     values: (values: Record<string, unknown>) => ({
       onDuplicateKeyUpdate: () => { upserts.push({ values }); return Promise.resolve(); },
@@ -54,7 +57,7 @@ const { calculateCompatibilityScore, generateMatchesForUser, matchesBloqueadosPe
 
 const perfil = (extra: Partial<UserProfile>) => ({ whatIHave: null, whatINeed: null, ...extra }) as unknown as UserProfile;
 
-beforeEach(() => { filas.length = 0; upserts.length = 0; deletes.length = 0; });
+beforeEach(() => { filas.length = 0; upserts.length = 0; deletes.length = 0; selects = 0; });
 
 describe("calculateCompatibilityScore — serviço sem demanda expressa dá zero", () => {
   it("advocacia tributária × quem procura distribuidores: bloqueado, nota zero", () => {
@@ -142,6 +145,36 @@ describe("calculateCompatibilityScore — a regra é específica de serviço", (
     expect(r.investment).toBe(90);
   });
 
+  it("'busco investimento' sem capacidade DECLARADA do outro lado não é base expressa (capacidade em branco ou 'none')", () => {
+    // A nota 90 sai mesmo com capacidade em branco (o `?? 2` do rank); a
+    // base expressa exige declaração — senão um perfil só de serviço que
+    // marcasse "busco investimento" casaria com qualquer perfil.
+    const emBranco = calculateCompatibilityScore(
+      perfil({ whatIHave: ["Advocacia tributária"], lookingForInvestment: true }),
+      perfil({ lookingForInvestment: false, investmentCapacity: null }),
+    );
+    expect(emBranco.investment).toBe(90);
+    expect(emBranco.bloqueio).toBe("servico-sem-demanda-expressa");
+    const none = calculateCompatibilityScore(
+      perfil({ whatIHave: ["Advocacia tributária"], lookingForInvestment: true }),
+      perfil({ lookingForInvestment: false, investmentCapacity: "none" }),
+    );
+    expect(none.bloqueio).toBe("servico-sem-demanda-expressa");
+  });
+
+  it("oferta mista SEM encaixe: o ativo continua pontuando como na main (every, não some)", () => {
+    // Mata o mutante `have.some(ehServico)`: com "industria" na lista, a oferta
+    // não é só de serviço, então nada bloqueia — e a nota é a de sempre para
+    // um ativo sem encaixe (complementaridade 20, overall 32 com o resto vazio).
+    const r = calculateCompatibilityScore(
+      perfil({ whatIHave: ["Advocacia tributária", "industria"] }),
+      perfil({ whatINeed: ["tecnologia"] }),
+    );
+    expect(r.bloqueio).toBeUndefined();
+    expect(r.complementarity).toBe(20);
+    expect(r.overall).toBe(32);
+  });
+
   it("perfil sem nada em 'o que tenho' segue como sempre: não oferece serviço nenhum", () => {
     const r = calculateCompatibilityScore(perfil({}), perfil({}));
     expect(r.bloqueio).toBeUndefined();
@@ -159,30 +192,33 @@ describe("calculateCompatibilityScore — a regra é específica de serviço", (
 const dona = { userId: 1, whatIHave: ["Advocacia tributária"], whatINeed: [], sector: "Jurídico", country: "BR", city: "Brasília", values: ["innovation"] };
 const candidata = (userId: number, extra: Record<string, unknown>) => ({ userId, sector: "Jurídico", country: "BR", city: "Brasília", values: ["innovation"], whatIHave: [], whatINeed: [], ...extra });
 
-describe("generateMatchesForUser — o par bloqueado não é gravado e a linha antiga sai", () => {
-  it("candidata sem demanda expressa: delete do par, nenhum upsert; candidata com 'consultoria': upsert", async () => {
+describe("generateMatchesForUser — o par bloqueado não é gravado nem apagado", () => {
+  it("candidata sem demanda expressa: nenhum upsert e NENHUM delete (a dispensa da dona sobrevive); candidata com 'consultoria': upsert", async () => {
     filas.push([dona], [candidata(2, { whatINeed: ["fornecedores"] }), candidata(3, { whatINeed: ["consultoria"] })], []);
 
     const criados = await generateMatchesForUser(1);
 
     expect(criados).toBe(1);
     expect(upserts.map(u => u.values.matchedUserId)).toEqual([3]);
-    expect(deletes).toHaveLength(1);
+    // Apagar levaria junto userDismissed: quando o bloqueio cessasse, o
+    // upsert reinseriria o par e o match dispensado voltaria à tela.
+    expect(deletes).toHaveLength(0);
   });
 });
 
 describe("matchesBloqueadosPelaDemandaExpressa — a leitura enxerga o portão", () => {
-  it("devolve só os ids cujo par está bloqueado hoje", async () => {
+  it("devolve só os ids cujo par está bloqueado hoje, em duas consultas (perfil próprio + inArray)", async () => {
     filas.push([dona], [
       { userId: 2, whatIHave: [], whatINeed: ["fornecedores"], investmentCapacity: null, lookingForInvestment: false, investmentAmountSeeking: null },
       { userId: 3, whatIHave: [], whatINeed: ["consultoria"], investmentCapacity: null, lookingForInvestment: false, investmentAmountSeeking: null },
     ]);
     const bloqueados = await matchesBloqueadosPelaDemandaExpressa(1, [2, 3]);
     expect([...bloqueados]).toEqual([2]);
+    expect(selects).toBe(2);
   });
 
   it("sem ids não consulta o banco", async () => {
     expect(await matchesBloqueadosPelaDemandaExpressa(1, [])).toEqual(new Set());
-    expect(filas).toHaveLength(0);
+    expect(selects).toBe(0);
   });
 });

@@ -96,9 +96,9 @@ semântica é permitida), mas precisa existir.
 
 | oferta | outro lado | resultado |
 |---|---|---|
-| serviços jurídicos tributários | procura "assessoria tributária para revisar a carga fiscal" | **match** — necessidade declarada e equivalente |
-| serviços jurídicos tributários | indústria farmacêutica que procura "distribuidor para a África" | **sem match** — toda indústria tem impostos, mas ninguém declarou precisar |
-| consultoria em internacionalização | empresa com operações internacionais que procura "investidor para a fábrica" | **sem match** — operar fora não é procurar consultoria |
+| serviços jurídicos tributários | procura "assessoria tributária para revisar a carga fiscal" | **match nos motores por IA** (`routers/matching.ts`), com a citação conferida; nos motores determinísticos (perfis e privado) só casa se a necessidade NOMEIA o serviço — mesmo slug/objeto/núcleo, a opção fixa "Consultoria" ou a necessidade genérica "Consultoria" diante de "Consultoria jurídica" |
+| serviços jurídicos tributários | indústria farmacêutica que procura "distribuidor para a África" | **sem match** em todos — toda indústria tem impostos, mas ninguém declarou precisar |
+| consultoria em internacionalização | empresa com operações internacionais que procura "investidor para a fábrica" | **sem match** em todos — operar fora não é procurar consultoria |
 
 Não contam como necessidade: setor ou atividade econômica, porte, localização, cargo,
 problemas típicos do segmento, obrigações legais, serviços "que seriam úteis",
@@ -109,11 +109,14 @@ produtos, ativos, investimento, conexões etc. continuam casando como antes.
 Onde ela mora: no motor privado (`scoreMatch`), a categoria em comum deixa de valer
 para serviço — sobra tag, objeto e núcleo, que são exatamente "alguém nomeou o
 serviço"; no motor de perfis (`server/matching.ts`), o par sustentado só por serviço
-sem demanda expressa dá zero, apaga a linha gravada antes da regra e some da leitura;
-nos dois prompts por LLM de `routers/matching.ts`, o modelo classifica o item, cita o
-trecho literal da oportunidade que declara a necessidade e
-`server/portao-da-demanda-expressa.ts` confere a citação no texto antes de exibir —
-prompt é pedido, a conferência é a garantia.
+sem demanda expressa dá zero, não é gravado, e a leitura da lista esconde a linha
+gravada antes da regra (sem apagá-la: a dispensa da dona sobrevive); nos dois prompts
+por LLM de `routers/matching.ts`, o modelo classifica o item, cita o trecho literal do
+título, das tags ou da descrição da oportunidade que declara a necessidade e
+`server/portao-da-demanda-expressa.ts` confere a citação nesse texto (no máximo uma
+palavra ausente) antes de exibir — e usa o classificador como piso: perfil que só tem
+serviço e nada em "preciso" exige citação seja qual for o tipo que o modelo escreveu.
+Prompt é pedido, a conferência é a garantia.
 
 ### 3. Nada que a IA extrair entra sozinho
 

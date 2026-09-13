@@ -196,8 +196,9 @@ Dashboard com trava de consentimento dos dois lados. **Regra da demanda expressa
 (12/09/2026), nos três motores e nos prompts:** item de "o que tenho" classificado como
 SERVIÇO (`shared/tipo-da-oferta.ts`) só casa com necessidade DECLARADA em "o que
 preciso" — no motor privado a categoria em comum não vale para serviço; no de perfis o
-par sustentado só por serviço sem demanda expressa dá zero, apaga a linha antiga e some
-também da leitura; nos dois prompts de `routers/matching.ts` o modelo classifica o item,
+par sustentado só por serviço sem demanda expressa dá zero, não é gravado e a leitura da
+lista esconde a linha antiga (sem apagá-la, para a dispensa da dona sobreviver); nos dois
+prompts de `routers/matching.ts` o modelo classifica o item,
 cita o trecho da oportunidade que declara a necessidade e
 `server/portao-da-demanda-expressa.ts` confere a citação antes de exibir. Produtos,
 ativos, investimento, conexões, tecnologia e imóveis não mudam.

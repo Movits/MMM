@@ -5,7 +5,10 @@ import { invokeLLM } from "../_core/llm";
 import { exigirDb, createNotification } from "../db";
 import { opportunities, userProfiles, users } from "../../drizzle/schema";
 import { usersComConsentimento } from "./consent";
-import { PROPRIEDADES_DO_PORTAO, REGRA_DA_DEMANDA_EXPRESSA, passaNoPortao } from "../portao-da-demanda-expressa";
+import {
+  DESCRICAO_NA_RECOMENDACAO, PROPRIEDADES_DO_PORTAO, REGRA_DA_DEMANDA_EXPRESSA,
+  cortarEmPalavra, passaNoPortao, textoEscritoPelaPessoa,
+} from "../portao-da-demanda-expressa";
 
 // ============================================================
 // MOTOR DE IA DE MATCHMAKING SEMÂNTICO
@@ -49,13 +52,24 @@ export const matchingRouter = router({
       profile.country ? `País: ${profile.country}` : "",
     ].filter(Boolean).join("\n");
 
-    // Uma linha por oportunidade, guardada em separado: é contra ESTE texto
-    // (o que o modelo recebeu) que a citação da necessidade expressa é
-    // conferida depois.
+    // Uma linha por oportunidade. A descrição vai cortada (o prompt carrega
+    // até 50 delas), mas em DESCRICAO_NA_RECOMENDACAO caracteres e em
+    // fronteira de palavra, não nos 200 de antes: com o portão, a necessidade
+    // declarada precisa CABER no que o modelo vê, senão o serviço legítimo
+    // nunca casa.
+    const descricaoCortada = activeOpps.map(opp => cortarEmPalavra(opp.description || "", DESCRICAO_NA_RECOMENDACAO));
     const contextoPorOportunidade = activeOpps.map((opp, i) =>
-      `[${i}] ID:${opp.id} Título:"${opp.title}" Setor:${opp.sector || "N/A"} Tipo:${opp.type} Tags:${JSON.stringify(opp.tags || [])} Descrição:"${(opp.description || "").substring(0, 200)}"`
+      `[${i}] ID:${opp.id} Título:"${opp.title}" Setor:${opp.sector || "N/A"} Tipo:${opp.type} Tags:${JSON.stringify(opp.tags || [])} Descrição:"${descricaoCortada[i]}"`
     );
+    // O que a PESSOA escreveu (título, tags, a mesma descrição cortada): é
+    // contra isto, e não contra a linha inteira com "Setor:" e "Tipo:", que a
+    // citação da necessidade expressa é conferida.
+    const textoDaOportunidade = activeOpps.map((opp, i) => textoEscritoPelaPessoa(opp.title, opp.tags, descricaoCortada[i]));
     const oppsContext = contextoPorOportunidade.join("\n");
+    const perfilNoPortao = {
+      whatIHave: profile.whatIHave, whatINeed: profile.whatINeed,
+      seekingTypes: profile.seekingTypes, lookingForInvestment: profile.lookingForInvestment,
+    };
 
     const aiResp = await invokeLLM({
       messages: [
@@ -72,7 +86,7 @@ ${REGRA_DA_DEMANDA_EXPRESSA}`,
         },
         {
           role: "user",
-          content: `PERFIL DA USUÁRIA:\n${userContext}\n\nOPORTUNIDADES DISPONÍVEIS:\n${oppsContext}\n\nRetorne JSON no formato: {"matches": [{"index": 0, "score": 95, "reason": "Explicação curta em português", "tipoDaOferta": "servico | produto | ativo | oportunidade | investimento | conexao | tecnologia | imovel | outros | nenhuma", "necessidadeExpressa": "trecho literal da oportunidade que declara a necessidade (só quando tipoDaOferta for servico; senão vazio)"}]}`,
+          content: `PERFIL DA USUÁRIA:\n${userContext}\n\nOPORTUNIDADES DISPONÍVEIS (descrições podem estar cortadas em ${DESCRICAO_NA_RECOMENDACAO} caracteres; não complete o texto):\n${oppsContext}\n\nRetorne JSON no formato: {"matches": [{"index": 0, "score": 95, "reason": "Explicação curta em português", "tipoDaOferta": "servico | produto | ativo | oportunidade | investimento | conexao | tecnologia | imovel | outros | nenhuma", "necessidadeExpressa": "trecho literal da oportunidade que declara a necessidade (só quando tipoDaOferta for servico; senão vazio)"}]}`,
         },
       ],
       response_format: {
@@ -116,7 +130,7 @@ ${REGRA_DA_DEMANDA_EXPRESSA}`,
       // citada e conferida no texto da própria oportunidade — a nota não
       // importa. Prompt é pedido; isto é a garantia.
       .filter((m) => {
-        const passa = passaNoPortao(m, contextoPorOportunidade[m.index]);
+        const passa = passaNoPortao(m, textoDaOportunidade[m.index], perfilNoPortao);
         if (!passa) console.info(`[Match] Oportunidade ${activeOpps[m.index].id} fora da recomendação: serviço sem necessidade expressa.`);
         return passa;
       })
@@ -155,6 +169,8 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
           seekingTypes: userProfiles.seekingTypes,
           interestSectors: userProfiles.interestSectors,
           activityArea: userProfiles.activityArea,
+          // Lido só pelo portão (base expressa fora do serviço); não vai ao prompt.
+          lookingForInvestment: userProfiles.lookingForInvestment,
         })
         .from(userProfiles)
         .innerJoin(users, eq(users.id, userProfiles.userId))
@@ -176,7 +192,12 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
       // vazia seria um no-op garantido queimando uma chamada da cota do dia.
       if (!profiles.length) return { notified: 0 };
 
-      const oppContext = `Título: "${opp.title}" | Setor: ${opp.sector || "N/A"} | Tipo: ${opp.type} | Tags: ${JSON.stringify(opp.tags || [])} | Descrição: "${(opp.description || "").substring(0, 300)}"`;
+      // A descrição vai INTEIRA (é uma oportunidade só): com o portão, a
+      // necessidade declarada precisa caber no que o modelo vê; os 300
+      // caracteres de antes escondiam o resto de uma descrição de até 5000.
+      const oppContext = `Título: "${opp.title}" | Setor: ${opp.sector || "N/A"} | Tipo: ${opp.type} | Tags: ${JSON.stringify(opp.tags || [])} | Descrição: "${opp.description || ""}"`;
+      // Só o que a pessoa escreveu vale como fonte da citação (setor e tipo não são necessidade).
+      const textoDaOportunidade = textoEscritoPelaPessoa(opp.title, opp.tags, opp.description);
       // "tenho" entra junto com "preciso": uma oportunidade que BUSCA algo casa
       // com quem OFERECE esse algo. Antes só "preciso" ia ao alerta, então quem
       // poderia suprir a oportunidade nunca era avisada — metade do cruzamento.
@@ -231,7 +252,7 @@ ${REGRA_DA_DEMANDA_EXPRESSA}`,
         if (alert.index < 0 || alert.index >= profiles.length || alert.score < 80) continue;
         // O portão no alerta: serviço só avisa com a necessidade expressa
         // citada e conferida no texto da oportunidade que o modelo recebeu.
-        if (!passaNoPortao(alert, oppContext)) {
+        if (!passaNoPortao(alert, textoDaOportunidade, profiles[alert.index])) {
           console.info(`[Match] Alerta da oportunidade ${opp.id} retido para o perfil ${profiles[alert.index].userId}: serviço sem necessidade expressa.`);
           continue;
         }

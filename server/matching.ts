@@ -342,8 +342,15 @@ export function calculateCompatibilityScore(
     investmentScore = 20; // Both seeking investment — low compatibility
   }
   // Uma DECLAROU buscar investimento e a outra DECLAROU capacidade: é base
-  // expressa (a categoria "investimento" do pedido), não presunção.
-  const investimentoExpresso = investmentScore === 90;
+  // expressa (a categoria "investimento" do pedido), não presunção. A nota 90
+  // sozinha não prova declaração: capacidade em branco cai no rank 2 pelo
+  // `?? 2` acima, e um perfil só de serviço que marcasse "busco investimento"
+  // casaria com qualquer perfil sem capacidade preenchida (revisão
+  // adversarial de 12/09). Só conta quem preencheu a capacidade, e não "none".
+  const capacidadeDeclarada = (perfil: UserProfile) => !!perfil.investmentCapacity && perfil.investmentCapacity !== "none";
+  const investimentoExpresso =
+    (!!a.lookingForInvestment && !b.lookingForInvestment && capacidadeDeclarada(b) && bCapacity >= aSeeking) ||
+    (!a.lookingForInvestment && !!b.lookingForInvestment && capacidadeDeclarada(a) && aCapacity >= bSeeking);
 
   // Location score
   let locationScore = 50;
@@ -425,6 +432,17 @@ const ROTULO_DE_VALOR: Record<string, string> = {
   transparency: "Transparência", sustainability: "Sustentabilidade",
   technical_excellence: "Excelência técnica",
 };
+// As opções fixas de "O que tenho" / "O que preciso" do onboarding, pelo rótulo
+// humano (WHAT_I_HAVE_OPTIONS / WHAT_I_NEED_OPTIONS em Onboarding.tsx). Texto
+// livre (gravado por "falar sobre o negócio") passa como veio.
+const ROTULO_DO_PERFIL_ESTRATEGICO: Record<string, string> = {
+  industria: "Indústria", fazenda: "Fazenda / Agro", laboratorio: "Laboratório", tecnologia: "Tecnologia",
+  investidores: "Investidores", acesso_governamental: "Acesso governamental",
+  commodities: "Matérias-primas (commodities)", licencas: "Licenças & Certificações", imoveis: "Imóveis",
+  logistica: "Logística", canais_comerciais: "Canais comerciais",
+  fornecedores: "Fornecedores", compradores: "Compradores", distribuidores: "Distribuidores",
+  parceiros: "Parceiros estratégicos", financiamento: "Financiamento", consultoria: "Consultoria",
+};
 const rotular = (valores: unknown, mapa: Record<string, string>) =>
   ((valores as string[]) || []).map(valor => mapa[valor] ?? valor).join(", ");
 
@@ -456,10 +474,10 @@ Score de compatibilidade: ${scores.overall}%
 - Especialidade: ${scores.specialty}%
 - Valores: ${scores.values}%
 
-O que A tem: ${rotular(profileA.whatIHave, {}) || "não informado"}
-O que A precisa: ${rotular(profileA.whatINeed, {}) || "não informado"}
-O que B tem: ${rotular(profileB.whatIHave, {}) || "não informado"}
-O que B precisa: ${rotular(profileB.whatINeed, {}) || "não informado"}
+O que A tem: ${rotular(profileA.whatIHave, ROTULO_DO_PERFIL_ESTRATEGICO) || "não informado"}
+O que A precisa: ${rotular(profileA.whatINeed, ROTULO_DO_PERFIL_ESTRATEGICO) || "não informado"}
+O que B tem: ${rotular(profileB.whatIHave, ROTULO_DO_PERFIL_ESTRATEGICO) || "não informado"}
+O que B precisa: ${rotular(profileB.whatINeed, ROTULO_DO_PERFIL_ESTRATEGICO) || "não informado"}
 
 Escreva o insight em português, de forma direta e motivadora. Máximo 150 palavras.`;
 
@@ -569,16 +587,14 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
     if (!autorizadas.has(candidate.userId as number)) continue;
     const scores = calculateCompatibilityScore(myProfile as UserProfile, candidate as UserProfile);
 
-    // Regra da demanda expressa: o par bloqueado não é só "abaixo do corte" —
-    // a linha que ele pode ter deixado no banco (gerada antes da regra, ou
-    // antes de o perfil mudar) sai daqui, senão "Reanalisar" deixaria a
-    // recomendação presumida na tela para sempre. Apagar é o que o pedido
-    // manda ("não exibir recomendação"); dispensa e "visto" da dona sobre um
-    // falso positivo não são história que valha guardar.
-    if (scores.bloqueio) {
-      await db.delete(matches).where(and(eq(matches.userId, userId), eq(matches.matchedUserId, candidate.userId as number)));
-      continue;
-    }
+    // Regra da demanda expressa: o par bloqueado não é gravado nem atualizado.
+    // A linha que ele pode ter deixado no banco (gerada antes da regra, ou
+    // antes de o perfil mudar) NÃO é apagada: a leitura (routers/
+    // profileMatches.ts) já a esconde pelo mesmo portão, e apagá-la levaria
+    // junto a dispensa da dona — quando o bloqueio cessasse (o outro lado
+    // passa a declarar a necessidade), o upsert reinseriria o par como novo e
+    // um match dispensado voltaria à tela (revisão adversarial de 12/09).
+    if (scores.bloqueio) continue;
 
     // Only create matches with score >= 40
     if (scores.overall < 40) continue;

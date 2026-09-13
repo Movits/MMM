@@ -12,7 +12,7 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  * serviço sem citação conferida não sai da tela nem vira alerta, seja qual
  * for a nota. Os outros tipos passam como antes.
  */
-const { citacaoConfere, normalizarTipo, passaNoPortao, REGRA_DA_DEMANDA_EXPRESSA, TIPOS_PARA_A_IA } = await import("./portao-da-demanda-expressa");
+const { citacaoConfere, cortarEmPalavra, exigeCitacao, normalizarTipo, passaNoPortao, reconhecerTipo, REGRA_DA_DEMANDA_EXPRESSA, textoEscritoPelaPessoa, TIPOS_PARA_A_IA } = await import("./portao-da-demanda-expressa");
 
 describe("normalizarTipo — a grafia do modelo vira o enum", () => {
   it("aceita variações e sinônimos", () => {
@@ -21,6 +21,12 @@ describe("normalizarTipo — a grafia do modelo vira o enum", () => {
     expect(normalizarTipo("Conexão/Network")).toBe("conexao");
     expect(normalizarTipo("nenhuma")).toBe("nenhuma");
     expect(normalizarTipo("none")).toBe("nenhuma");
+  });
+
+  it("num valor misto o serviço vence: 'produto/servico' não desliga o portão", () => {
+    expect(normalizarTipo("produto/servico")).toBe("servico");
+    expect(reconhecerTipo("produto ou serviço")).toBe("servico");
+    expect(reconhecerTipo("banana")).toBeNull();
   });
 
   it("o que não reconhece vira 'outros' (o modelo não disse que era serviço)", () => {
@@ -58,14 +64,35 @@ describe("citacaoConfere — a citação precisa estar no texto-fonte", () => {
     expect(citacaoConfere(null, fonte)).toBe(false);
   });
 
-  it("tolera UMA palavra trocada a partir de quatro; até três, nenhuma", () => {
+  it("tolera UMA palavra ausente a partir de quatro; até três, nenhuma — tolerância fixa, não proporção", () => {
     expect(citacaoConfere("revisar nossos tributos identificar bônus", fonte)).toBe(true); // 4 de 5
+    expect(citacaoConfere("precisamos revisar nossos impostos", fonte)).toBe(true); // 3 de 4 (fecha a janela do limiar por baixo)
     expect(citacaoConfere("revisar nossos impostos", fonte)).toBe(false); // 2 de 3
+    expect(citacaoConfere("revisar tributos bônus taxas", fonte)).toBe(false); // 2 de 4 (fecha por cima)
+    // "frase real + serviço presumido emendado no fim": com 70% proporcional
+    // passava (5 de 7); com tolerância fixa, duas inventadas derrubam.
+    expect(citacaoConfere("precisamos revisar nossos tributos identificar créditos fiscais advocacia empresarial", fonte)).toBe(false);
+  });
+});
+
+describe("textoEscritoPelaPessoa e cortarEmPalavra — a fonte da citação", () => {
+  it("é título, tags e descrição; setor, tipo e id ficam de fora", () => {
+    const texto = textoEscritoPelaPessoa("Revisão fiscal", ["tributos", 7], "Precisamos revisar nossos tributos");
+    expect(texto).toBe("Revisão fiscal | tributos | Precisamos revisar nossos tributos");
+    expect(textoEscritoPelaPessoa(null, null, undefined)).toBe(" | ");
+  });
+
+  it("corta em fronteira de palavra, com reticência, e não mexe no que cabe", () => {
+    expect(cortarEmPalavra("curto", 800)).toBe("curto");
+    const cortado = cortarEmPalavra("precisamos revisar nossos tributos e identificar créditos", 30);
+    expect(cortado.endsWith("…")).toBe(true);
+    expect(cortado.length).toBeLessThanOrEqual(31);
+    expect(cortado.slice(0, -1)).toBe("precisamos revisar nossos");
   });
 });
 
 describe("passaNoPortao — só serviço precisa de citação", () => {
-  const fonte = "Título: Distribuidor para a África | Descrição: Indústria farmacêutica busca distribuidor para expansão na África";
+  const fonte = "Distribuidor para a África | Indústria farmacêutica busca distribuidor para expansão na África";
 
   it("serviço sem citação conferida não passa, com qualquer nota", () => {
     expect(passaNoPortao({ tipoDaOferta: "servico", necessidadeExpressa: "" }, fonte)).toBe(false);
@@ -76,10 +103,38 @@ describe("passaNoPortao — só serviço precisa de citação", () => {
     expect(passaNoPortao({ tipoDaOferta: "servico", necessidadeExpressa: "busca distribuidor para expansão na África" }, fonte)).toBe(true);
   });
 
+  it("setor e tipo não são necessidade: a 'citação' do setor não confere na fonte escrita pela pessoa", () => {
+    const fonteEscrita = textoEscritoPelaPessoa("Distribuidor para a África", [], "Indústria farmacêutica busca distribuidor para expansão na África");
+    expect(passaNoPortao({ tipoDaOferta: "servico", necessidadeExpressa: "Setor: Farmacêutico Tipo: demand" }, fonteEscrita)).toBe(false);
+  });
+
   it("produto, ativo, investimento, conexão e 'nenhuma' passam sem citação", () => {
     for (const tipo of ["produto", "ativo", "investimento", "conexao", "tecnologia", "imovel", "outros", "nenhuma"]) {
       expect(passaNoPortao({ tipoDaOferta: tipo, necessidadeExpressa: "" }, fonte), tipo).toBe(true);
     }
+  });
+
+  it("o piso determinístico: perfil só de serviço e sem nada em 'preciso'/'busca' exige citação seja qual for o tipo que o modelo escreveu", () => {
+    const soServico = { whatIHave: ["Advocacia tributária"], whatINeed: [], seekingTypes: [], lookingForInvestment: false };
+    for (const tipo of ["produto", "nenhuma", "outros", "banana", undefined]) {
+      expect(exigeCitacao({ tipoDaOferta: tipo, necessidadeExpressa: "" }, soServico), String(tipo)).toBe(true);
+      expect(passaNoPortao({ tipoDaOferta: tipo, necessidadeExpressa: "" }, fonte, soServico), String(tipo)).toBe(false);
+    }
+    expect(passaNoPortao({ tipoDaOferta: "produto", necessidadeExpressa: "busca distribuidor para expansão na África" }, fonte, soServico)).toBe(true);
+  });
+
+  it("o piso não fecha quando há outra base declarada: necessidade, busca ou 'busco investimento'", () => {
+    const item = { tipoDaOferta: "nenhuma", necessidadeExpressa: "" };
+    expect(passaNoPortao(item, fonte, { whatIHave: ["Advocacia tributária"], whatINeed: ["distribuidores"] })).toBe(true);
+    expect(passaNoPortao(item, fonte, { whatIHave: ["Advocacia tributária"], seekingTypes: ["investor"] })).toBe(true);
+    expect(passaNoPortao(item, fonte, { whatIHave: ["Advocacia tributária"], lookingForInvestment: true })).toBe(true);
+    expect(passaNoPortao(item, fonte, { whatIHave: ["Advocacia tributária", "fazenda"] })).toBe(true);
+    expect(passaNoPortao(item, fonte, { whatIHave: [] })).toBe(true);
+  });
+
+  it("tipo irreconhecível com serviço no perfil fecha; sem serviço no perfil, passa", () => {
+    expect(exigeCitacao({ tipoDaOferta: "banana" }, { whatIHave: ["Advocacia tributária", "fazenda"], whatINeed: ["tecnologia"] })).toBe(true);
+    expect(exigeCitacao({ tipoDaOferta: "banana" }, { whatIHave: ["fazenda"] })).toBe(false);
   });
 
   it("a regra escrita para o modelo diz o essencial", () => {
@@ -117,7 +172,9 @@ vi.mock("./routers/consent", () => ({
 const { matchingRouter, notifyHighCompatibilityForOpportunity } = await import("./routers/matching");
 const ctx = { user: { id: 1, openId: "dona-1", email: "t@local", role: "silver" }, req: { headers: {}, socket: {} }, res: { cookie: () => {} } } as never;
 
-const perfilTributarista = { userId: 1, whatIHave: ["Advocacia tributária"], whatINeed: [], sector: "Jurídico" };
+// Declara uma busca ("investor") de propósito: sem base fora do serviço, o
+// piso do portão exigiria citação até para o café — e o teste do piso cobre isso.
+const perfilTributarista = { userId: 1, whatIHave: ["Advocacia tributária"], whatINeed: [], seekingTypes: ["investor"], sector: "Jurídico" };
 const oportunidades = [
   { id: 10, title: "Revisão fiscal", sector: "Indústria", type: "demand", tags: [], description: "Precisamos revisar nossos tributos e identificar créditos fiscais", status: "active", publishedBy: 9, isConfidential: false },
   { id: 11, title: "Distribuidor para a África", sector: "Farmacêutico", type: "demand", tags: [], description: "Indústria farmacêutica busca distribuidor para expansão na África", status: "active", publishedBy: 9, isConfidential: false },
@@ -140,7 +197,53 @@ describe("matching.getRecommendedOpportunities — o portão na recomendação",
     const lista = await matchingRouter.createCaller(ctx).getRecommendedOpportunities();
 
     silencio.mockRestore();
+    // A tributarista não tem nada em "preciso": o café (índice 2) só passa
+    // porque o perfil deste teste declara uma busca — sem isso o piso fecharia.
     expect(lista.map(o => o.id)).toEqual([10, 12]);
+  });
+
+  it("a citação é conferida contra a PRÓPRIA oportunidade: copiar a necessidade de outra do mesmo prompt não libera", async () => {
+    filas.push([perfilTributarista], oportunidades);
+    invokeLLM.mockResolvedValue(respostaDaIA({ matches: [
+      { index: 1, score: 88, reason: "Presumido", tipoDaOferta: "servico", necessidadeExpressa: "revisar nossos tributos e identificar créditos fiscais" },
+    ] }));
+    const silencio = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    const lista = await matchingRouter.createCaller(ctx).getRecommendedOpportunities();
+
+    silencio.mockRestore();
+    expect(lista).toEqual([]);
+  });
+
+  it("o piso: perfil só de serviço e sem busca declarada exige citação mesmo quando o modelo diz 'produto' ou 'nenhuma'", async () => {
+    filas.push([{ ...perfilTributarista, seekingTypes: [] }], oportunidades);
+    invokeLLM.mockResolvedValue(respostaDaIA({ matches: [
+      { index: 1, score: 85, reason: "Setor", tipoDaOferta: "nenhuma", necessidadeExpressa: "" },
+      { index: 2, score: 70, reason: "Café", tipoDaOferta: "produto", necessidadeExpressa: "" },
+      { index: 0, score: 90, reason: "Declarada", tipoDaOferta: "outros", necessidadeExpressa: "revisar nossos tributos e identificar créditos fiscais" },
+    ] }));
+    const silencio = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    const lista = await matchingRouter.createCaller(ctx).getRecommendedOpportunities();
+
+    silencio.mockRestore();
+    expect(lista.map(o => o.id)).toEqual([10]);
+  });
+
+  it("a descrição vai em até 800 caracteres em fronteira de palavra, e a citação do fim dela confere", async () => {
+    const longa = `${"Empresa consolidada no setor. ".repeat(20)}Precisamos de assessoria tributária para revisar a carga fiscal.`;
+    filas.push([perfilTributarista], [{ ...oportunidades[0], description: longa }]);
+    invokeLLM.mockResolvedValue(respostaDaIA({ matches: [
+      { index: 0, score: 90, reason: "Declarada", tipoDaOferta: "servico", necessidadeExpressa: "Precisamos de assessoria tributária para revisar a carga fiscal" },
+    ] }));
+
+    const lista = await matchingRouter.createCaller(ctx).getRecommendedOpportunities();
+
+    const chamada = invokeLLM.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const usuario = chamada.messages.find(m => m.role === "user")!.content;
+    expect(usuario).toContain("assessoria tributária para revisar a carga fiscal");
+    expect(usuario).toContain("cortadas em 800 caracteres");
+    expect(lista.map(o => o.id)).toEqual([10]);
   });
 
   it("o prompt carrega a regra e a resposta pede tipo e citação no schema", async () => {
@@ -177,6 +280,9 @@ describe("notifyHighCompatibilityForOpportunity — o portão no alerta", () => 
     const r = await notifyHighCompatibilityForOpportunity(11);
 
     silencio.mockRestore();
+    // A descrição vai inteira ao alerta (não mais 300 caracteres).
+    const chamada = invokeLLM.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    expect(chamada.messages.find(m => m.role === "user")!.content).toContain(oportunidade.description);
     expect(r).toEqual({ notified: 2 });
     expect(createNotification.mock.calls.map(c => (c[0] as { userId: number }).userId)).toEqual([3, 4]);
   });

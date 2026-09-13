@@ -6,7 +6,7 @@ import { exigirDb } from "./db";
 import { sendEmail } from "./_core/email";
 import { embedWithGemini } from "./gemini";
 import { nomeiamAMesmaCoisa, saoConcorrentes, slugDoTermo } from "@shared/direcao-do-termo";
-import { classificarOferta } from "@shared/tipo-da-oferta";
+import { classificarOferta, necessidadeGenericaNomeiaOServico } from "@shared/tipo-da-oferta";
 
 const SEMANTIC_THRESHOLD = 0.7;
 const SAVE_THRESHOLD = 50;
@@ -103,6 +103,12 @@ export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore 
   // produtos, ativos, investimento, conexões etc. a categoria segue valendo
   // 60, como sempre: a restrição é específica do tipo serviço.
   const ofertaEhServico = classificarOferta(asset.label, asset.category) === "servico";
+
+  // A necessidade GENÉRICA que nomeia a família do serviço também é demanda
+  // expressa: "Consultoria" procurado diante de "Consultoria jurídica"
+  // possuído — quem escreveu "consultoria" declarou precisar de consultoria
+  // (revisão adversarial de 12/09: sem isto o par caía de 60 para 0).
+  if (ofertaEhServico && necessidadeGenericaNomeiaOServico(asset.label, asset.category, need.label)) return { score: 100, type: "exact" as const };
 
   const categoriaAsset = slugifyMatchTag(asset.category ?? "");
   const categoriaNeed = slugifyMatchTag(need.category ?? "");
