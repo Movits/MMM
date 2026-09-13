@@ -18,7 +18,6 @@ vi.mock("@/lib/trpc", () => ({
       get: { useQuery: () => ({ data: null, isLoading: false }) },
       completeOnboarding: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
     },
-    consent: { accept: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } },
     useUtils: () => ({ consent: { status: { invalidate } } }),
   },
 }));
@@ -58,7 +57,8 @@ describe("Onboarding — cada passo começa do topo", () => {
       Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea"))
         .find(c => re.test(c.placeholder || ""));
     const nome = porPlaceholder(/nome|apelido/i);
-    const cidade = porPlaceholder(/S[ãa]o Paulo|cidade|city/i);
+    // Cidade: qualquer campo com "cidade", "city", "localiz", "locat" (cobre várias línguas)
+    const cidade = porPlaceholder(/cidade|city|localiz|locat|s[ãa]o paulo/i);
     expect(nome, "campo de nome não encontrado").toBeTruthy();
     expect(cidade, "campo de cidade não encontrado").toBeTruthy();
     fireEvent.change(nome!, { target: { value: "Fulana de Teste" } });
