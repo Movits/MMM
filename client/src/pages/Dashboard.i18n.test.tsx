@@ -103,7 +103,7 @@ const ESPERA = { timeout: 3000 };
 // fallback ("Usuária"; "Membro" é o que um tradutor apressado escreveria).
 // Com a tela em inglês nenhuma pode aparecer no texto do documento; o teste
 // em português prova que o regex reconhece o texto de verdade (não é vazio).
-const PORTUGUES = /oportunidades|Salas|Ver detalhes|novos|convite|Bem-vinda|Recomendadas|Usuária|Membro|Membra|Identidade|revelar/i;
+const PORTUGUES = /oportunidades|Salas|Ver detalhes|novos|convite|Boas-vindas|Recomendadas|Usuário|Membro|Identidade|revelar/i;
 function semPortugues(onde: string) {
   expect(document.body.textContent, onde).not.toMatch(PORTUGUES);
 }
@@ -253,7 +253,7 @@ describe("Dashboard em português — o que a usuária lia continua igual", () =
     expect(screen.getByRole("button", { name: "1 convite para responder" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "🔐 Salas de Negociação" })).toBeInTheDocument();
     expect(screen.getByText("Alimentos & Bebidas")).toBeInTheDocument();
-    expect(screen.getByText("Investidora")).toBeInTheDocument();
+    expect(screen.getByText("Investidor")).toBeInTheDocument();
     // O regex da varredura em inglês reconhece o português de verdade: se
     // parasse de casar aqui, a varredura passaria à toa.
     expect(document.body.textContent).toMatch(PORTUGUES);
@@ -385,11 +385,11 @@ describe("estados vazios e rótulos de fallback no idioma da tela", () => {
     semPortugues("todas as salas (Ouro), sem salas");
   });
 
-  it("português: 'Membra da rede', 'Tecnologia', 'Nenhuma recomendação por enquanto', 'Minhas Salas' e 'Nenhuma sala de negociação ainda'", async () => {
+  it("português: 'Membro da rede', 'Tecnologia', 'Nenhuma recomendação por enquanto', 'Minhas Salas' e 'Nenhuma sala de negociação ainda'", async () => {
     cenarioVazio();
     render(<Dashboard />);
 
-    expect(screen.getByRole("heading", { name: "Membra da rede" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Membro da rede" })).toBeInTheDocument();
     expect(screen.getByText("Tecnologia")).toBeInTheDocument();
     expect(screen.queryByText("Tecnologia & Software")).not.toBeInTheDocument();
     expect(screen.getByText(/Nenhuma recomendação por enquanto/)).toBeInTheDocument();

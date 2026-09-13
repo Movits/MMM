@@ -135,7 +135,7 @@ export const authRouter = router({
       // Enviar e-mail via Resend
       try {
         const { sendEmail, buildPasswordResetEmail } = await import("../_core/email");
-        const { html, text } = buildPasswordResetEmail(user.name || "Membra", resetUrl);
+        const { html, text } = buildPasswordResetEmail(user.name || "Membro", resetUrl);
         const emailSent = await sendEmail({
           to: user.email!,
           subject: "Redefina sua senha — MMM",

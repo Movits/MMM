@@ -109,7 +109,7 @@ describe("cartão de match — anônimo até o interesse mútuo", () => {
     expect(avatar.textContent?.trim()).toBe("");
 
     // Camada 5: o cartão RENDERIZOU — senão as negativas acima passariam por vazio.
-    expect(screen.getByRole("heading", { name: "Membra da rede" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Membro da rede" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Demonstrar Interesse" })).toBeInTheDocument();
   });
 
@@ -134,7 +134,7 @@ describe("cartão de match — anônimo até o interesse mútuo", () => {
     render(<Dashboard />);
 
     expect(document.body.innerHTML).not.toContain("Zoroastra");
-    expect(screen.getByRole("heading", { name: "Membra da rede" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Membro da rede" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Aceitar e revelar" })).toBeInTheDocument();
     expect(screen.getByText("Demonstrou interesse em você")).toBeInTheDocument();
   });
@@ -153,7 +153,7 @@ describe("cartão de match — anônimo até o interesse mútuo", () => {
   // Se a fixtura parar de chegar ao componente — prop renomeada, dublê defasado,
   // tela que não renderiza —, é ESTE teste que fica vermelho. Sem ele, todas as
   // negativas acima passariam por não haver nada na tela.
-  it("aceito: o nome APARECE, com o aviso de que ela também vê o seu", () => {
+  it("aceito: o nome APARECE, com o aviso de que a outra pessoa também vê o seu", () => {
     duble.respostas["matches.list"] = {
       data: [cartao({ connectionId: 7, connectionStatus: "accepted", souDestinataria: true })],
     };
@@ -162,7 +162,7 @@ describe("cartão de match — anônimo até o interesse mútuo", () => {
     expect(document.body.innerHTML).toContain("Zoroastra");
     expect(screen.getByRole("heading", { name: NOME_SECRETO })).toBeInTheDocument();
     expect(screen.getByText("Identidade revelada")).toBeInTheDocument();
-    expect(screen.getByText(/Ela também vê seu nome/)).toBeInTheDocument();
+    expect(screen.getByText(/A outra pessoa também vê seu nome/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Identidade oculta")).not.toBeInTheDocument();
   });
 
@@ -177,7 +177,7 @@ describe("cartão de match — anônimo até o interesse mútuo", () => {
 
     expect(await screen.findByRole("button", { name: "Aceitar e revelar" }, ESPERA)).toBeInTheDocument();
     expect(document.body.innerHTML).not.toContain("Zoroastra");
-    expect(screen.getAllByText("Membra da rede").length).toBeGreaterThan(0);
-    expect(screen.getByText(/vocês duas passam a ver o nome/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Membro da rede").length).toBeGreaterThan(0);
+    expect(screen.getByText(/os dois lados passam a ver o nome/i)).toBeInTheDocument();
   });
 });

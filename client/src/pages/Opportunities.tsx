@@ -178,7 +178,7 @@ function OpportunityCard({ opp, isGold, isSaved = false, onToggleSave, onDelete 
                   e.preventDefault();
                   e.stopPropagation();
                   if (confirm(t("opportunitiesPage.confirmDeleteOpportunity", { title: opp.title }))) {
-                    deleteOpp.mutate({ opportunityId: opp.id, reason: "Removida por membra Ouro" });
+                    deleteOpp.mutate({ opportunityId: opp.id, reason: "Removida por membro Ouro" });
                   }
                 }}
                 className="text-red-400/50 hover:text-red-400 transition-all duration-200"

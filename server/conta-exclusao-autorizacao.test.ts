@@ -171,7 +171,7 @@ describe("a última administradora (trava 3)", () => {
     outrasAdministradoras = 0;
     const { caller } = contexto({ role: "president" });
     await expect(caller.conta.excluirMinhaConta({ senha: "certa", confirmacao: "dona@exemplo.com" }))
-      .rejects.toThrow(/última administradora/);
+      .rejects.toThrow(/últim[oa] administrador/);
     expect(excluirContaFalso).not.toHaveBeenCalled();
   });
 

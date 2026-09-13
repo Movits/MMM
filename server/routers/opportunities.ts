@@ -222,7 +222,7 @@ Retorne um JSON estruturado com os campos: complianceLevel, explanation, riskAna
       const opp = await getOpportunityById(input.opportunityId);
       if (!opp) throw new TRPCError({ code: "NOT_FOUND" });
       if (opp.publishedBy !== ctx.user.id && ctx.user.role !== "admin" && ctx.user.role !== "president" && ctx.user.role !== "gold") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Apenas a criadora da oportunidade pode ver as interessadas" });
+        throw new TRPCError({ code: "FORBIDDEN", message: "Apenas quem criou a oportunidade pode ver os interessados" });
       }
       return getInterestsByOpportunity(input.opportunityId);
     }),
@@ -271,7 +271,7 @@ Retorne um JSON estruturado com os campos: complianceLevel, explanation, riskAna
               role: "system",
               content: `Você é a IA de Compliance e Due Diligence do ecossistema global "Mulheres que Movem o Mundo" (MMM).
 Analise a oportunidade de negócio e retorne um JSON com:
-- dynamicQuestion: uma pergunta direta e específica para a usuária sobre como comprovar que esta oportunidade existe (ex: "Você possui contrato de fornecimento ou carta de intenção assinada?")
+- dynamicQuestion: uma pergunta direta e específica para quem publicou sobre como comprovar que esta oportunidade existe (ex: "Você possui contrato de fornecimento ou carta de intenção assinada?")
 - suggestedDocuments: lista de 3 a 5 documentos específicos para este nicho/setor (ex: para Commodities → SGS, BL, Contrato de Fornecimento; para Tecnologia → Licença de Software, Termos de Uso, NDA)
 - documentJustifications: justificativa breve para cada documento sugerido
 - riskLevel: nível de risco preliminar ("low", "medium", "high")
@@ -387,7 +387,7 @@ Analise a oportunidade de negócio e retorne um JSON com:
       const [opp] = await db.select().from(opportunities).where(eq(opportunities.id, input.opportunityId)).limit(1);
       if (!opp) throw new TRPCError({ code: "NOT_FOUND", message: "Oportunidade não encontrada" });
       if (opp.publishedBy !== ctx.user.id && !['admin', 'president', 'gold'].includes(ctx.user.role)) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Apenas a criadora pode adicionar documentos" });
+        throw new TRPCError({ code: "FORBIDDEN", message: "Apenas quem criou a oportunidade pode adicionar documentos" });
       }
       const [doc] = await db.insert(opportunityDocuments).values({
         opportunityId: input.opportunityId,
