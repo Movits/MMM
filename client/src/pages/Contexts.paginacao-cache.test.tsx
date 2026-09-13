@@ -8,7 +8,7 @@ import { trpc } from "@/lib/trpc";
 import Contexts from "./Contexts";
 
 /**
- * Meus Contextos — a paginação com o React Query DE VERDADE.
+ * Minha Linha do Tempo — a paginação com o React Query DE VERDADE.
  *
  * Contexts.tsx carrega a MESMA cópia do clamp de Network.tsx, e Contexts.test
  * carrega a mesma cegueira: o tRPC vira um dublê síncrono em que `data` é
@@ -117,7 +117,7 @@ const indicador = () => (document.body.textContent ?? "").match(/Página \d+ de 
 const proxima = () => screen.getByRole("button", { name: "Próxima →" });
 const anterior = () => screen.getByRole("button", { name: "← Anterior" });
 
-describe("Meus Contextos — a página que esvaziou volta para a última que existe (com React Query de verdade)", () => {
+describe("Minha Linha do Tempo — a página que esvaziou volta para a última que existe (com React Query de verdade)", () => {
   it("(c1) a página 2 fica sem nada: a tela volta para a 1, sem 'Nenhum contexto ainda'", async () => {
     const t = novaTela();
     t.abrir();
