@@ -80,6 +80,37 @@ Um match só existe se passar por consentimento (etapa 11) e por visibilidade
 esquecimento no código não vira vazamento. A consulta completa está em
 privacidade.md.
 
+### O passo do distribuidor (pedido de interesse, 13/09/2026)
+
+No cruzamento de perfis do site, o clique em "Demonstrar Interesse" não vai direto
+à outra pessoa: uma pessoa real com o poder de distribuição (`users.isDistributor`)
+confere o par e só então encaminha. Máquina de estados de `connections.status`:
+
+| De | Para | Quem | Trava (WHERE) | Efeitos |
+|---|---|---|---|---|
+| — | `in_review` | solicitante (`connections.send`) | posse do `matchId` + termo do alvo | aviso aos distribuidores ativos (ou à presidência, se não houver nenhum) |
+| `in_review` A→B | `in_review` + `reciprocatedAt` | B clicando em A | `id AND status = 'in_review' AND reciprocatedAt IS NULL` | nenhum; resposta idêntica |
+| `in_review` | `pending` | distribuidor (`distribuicao.decidir`, encaminhar) | `id AND status = 'in_review'` + termo, conta ativa e portão da demanda expressa | `interest_received` a B; `system` a A; `MATCH_REVIEW_APPROVED` |
+| `in_review` + `reciprocatedAt` | `accepted` | distribuidor (encaminhar) | idem | 2× `MATCH_IDENTITY_REVEALED` (`via: distribuidor`); aviso aos dois |
+| `in_review` | `not_forwarded` | distribuidor (não encaminhar, com nota) | `id AND status = 'in_review'` | `system` a A, sem o motivo; B não é avisada; `MATCH_REVIEW_REJECTED` |
+| `pending` | `accepted` / `declined` | destinatária (`connections.respond`) | `id AND recipientId = ela AND status = 'pending'` | revelação só com 1 linha afetada |
+| `pending` A→B | `accepted` | B por `send` | `id AND status = 'pending'` | `via: interesse_mutuo` |
+| terminais | — | — | 0 linhas afetadas | `send` responde igual; `decidir` → CONFLICT |
+
+O que cada lado vê é o que a consulta devolve (`pedidoVisivelPara`, em `db.ts`):
+
+| Linha | Solicitante | Destinatária | Distribuidor |
+|---|---|---|---|
+| `in_review` | "Em análise" (desabilitado) | **nada** | fila |
+| `in_review` + `reciprocatedAt` | "Em análise" | "Em análise" | fila, com "interesse recíproco" |
+| `pending` | "Interesse enviado — aguardando" | "Demonstrou interesse em você" + aceitar/recusar | histórico |
+| `accepted` | nome | nome | histórico |
+| `declined` | "Interesse não aceito" | — | histórico |
+| `not_forwarded` | "Interesse não encaminhado" | **nada** | histórico |
+
+Sem distribuidor ativo, o pedido fica esperando (nunca passa sem análise) e a
+presidência recebe o aviso para conceder o poder no Painel Ouro.
+
 ### O funil do corretor
 
 Os sete status da etapa 12: `em_analise` → `primeiro_contato` → `reuniao_agendada` →

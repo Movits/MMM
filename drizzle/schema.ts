@@ -439,17 +439,33 @@ export const matches = mysqlTable("matches", {
 // ============================================================
 // CONEXÕES ENTRE USUÁRIOS (pedidos de contato)
 // ============================================================
+// Pedido de interesse do Smart Match. Máquina de estados (docs/arquitetura/fluxos.md):
+//   in_review     → nasceu; espera o DISTRIBUIDOR conferir (a destinatária não vê)
+//   pending       → encaminhado; espera a destinatária aceitar ou recusar
+//   accepted      → interesse mútuo: os nomes aparecem para as duas partes
+//   declined      → a destinatária recusou
+//   not_forwarded → o distribuidor não encaminhou (a destinatária nunca soube)
+//   blocked       → histórico
+// `reciprocatedAt` marca que a destinatária TAMBÉM clicou enquanto o pedido estava
+// em análise: uma linha só por par, e a aprovação já revela os dois nomes.
 export const connections = mysqlTable("connections", {
   id: int("id").autoincrement().primaryKey(),
   requesterId: int("requesterId").notNull(),
   recipientId: int("recipientId").notNull(),
-  status: mysqlEnum("status", ["pending", "accepted", "declined", "blocked"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "accepted", "declined", "blocked", "in_review", "not_forwarded"]).default("pending").notNull(),
   message: text("message"),
+  // Trilha do distribuidor, com os mesmos nomes de `opportunities`.
+  moderatedBy: int("moderatedBy"),
+  moderationNote: text("moderationNote"),
+  moderatedAt: timestamp("moderatedAt"),
+  reciprocatedAt: timestamp("reciprocatedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
   requesterIdx: index("conn_requester_idx").on(table.requesterId),
   recipientIdx: index("conn_recipient_idx").on(table.recipientId),
+  // A fila do distribuidor é `WHERE status = 'in_review'`.
+  statusIdx: index("conn_status_idx").on(table.status),
 }));
 
 // ============================================================

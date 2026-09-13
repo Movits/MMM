@@ -160,7 +160,7 @@ vi.mock("./db", () => new Proxy({}, {
     });
     if (prop === "createNotification") return async () => {};
     if (prop === "expressInterest") return async () => ({ alreadyExists: false });
-    if (prop === "sendConnectionRequest") return async () => ({ alreadyExists: false });
+    if (prop === "sendConnectionRequest") return async () => ({ revelou: false, connectionId: 7, emAnalise: false });
     if (prop === "then" || prop === Symbol.toStringTag) return undefined;
     return async () => undefined;
   },

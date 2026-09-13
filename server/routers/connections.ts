@@ -23,12 +23,16 @@ import { users } from "../../drizzle/schema";
  *
  * Gravada só no instante em que o status vira `accepted`, nunca a cada leitura da
  * lista — senão a trilha vira ruído e a consulta ganha escrita.
+ *
+ * `via` diz quem virou a chave: a destinatária aceitando, o segundo clique do
+ * interesse mútuo, ou o distribuidor aprovando um pedido que já era recíproco
+ * (routers/distribuicao.ts).
  */
-async function registrarRevelacao(
+export async function registrarRevelacao(
   connectionId: number | null,
   umLado: number,
   outroLado: number,
-  via: "aceite" | "interesse_mutuo",
+  via: "aceite" | "interesse_mutuo" | "distribuidor",
 ) {
   const { createAuditLog } = await import("../security");
   const resourceId = connectionId === null ? undefined : String(connectionId);
@@ -43,6 +47,34 @@ async function registrarRevelacao(
       riskLevel: "medium",
     });
   }
+}
+
+/**
+ * O pedido novo nasce esperando o distribuidor. Aviso no sino de quem distribui
+ * (menos a própria solicitante: ninguém decide o próprio pedido); sem nenhum
+ * distribuidor ativo, a presidência é avisada de que há pedido esperando. O
+ * corpo não diz QUEM pediu nem para quem — a fila é que mostra, com auditoria.
+ * Falha no aviso não desfaz o pedido, que já está gravado.
+ */
+async function avisarQuemDistribui(solicitanteId: number) {
+  try {
+    const { idsDosDistribuidoresAtivos, idsDaPresidenciaAtiva, createNotification } = await import("../db");
+    const distribuidores = (await idsDosDistribuidoresAtivos()).filter(id => id !== solicitanteId);
+    const haDistribuidor = distribuidores.length > 0;
+    const destinatarios = haDistribuidor ? distribuidores : (await idsDaPresidenciaAtiva()).filter(id => id !== solicitanteId);
+    const aviso = haDistribuidor
+      ? {
+        title: "Pedido de interesse para analisar",
+        body: "Um pedido de interesse do Smart Match está esperando a sua conferência na fila de distribuição.",
+      }
+      : {
+        title: "Pedido de interesse esperando sem distribuidor",
+        body: "Um pedido de interesse do Smart Match ficou esperando e nenhum distribuidor está ativo. Conceda o poder de distribuição no Painel Ouro, aba Distribuição.",
+      };
+    for (const userId of destinatarios) {
+      await createNotification({ userId, type: "system", ...aviso, actionUrl: "/president" });
+    }
+  } catch (_) { /* o pedido já está gravado; o sino é acessório */ }
 }
 
 export const connectionsRouter = router({
@@ -80,9 +112,13 @@ export const connectionsRouter = router({
 
       const resultado = await sendConnectionRequest(ctx.user.id, alvo);
       if (resultado.revelou) await registrarRevelacao(resultado.connectionId, ctx.user.id, alvo, "interesse_mutuo");
+      // Pedido novo: fica em análise até o distribuidor conferir e encaminhar.
+      // A destinatária não é avisada aqui — ela só fica sabendo se for encaminhado.
+      if (resultado.emAnalise) await avisarQuemDistribui(ctx.user.id);
       // Resposta IGUAL em todos os casos que não são erro: pedido novo, pedido
-      // repetido, recusado ou bloqueado. Antes, o `CONFLICT` distinguível dizia
-      // a quem perguntasse que aquela pessoa já tinha recusado.
+      // repetido, em análise, não encaminhado, recusado ou bloqueado. Antes, o
+      // `CONFLICT` distinguível dizia a quem perguntasse que aquela pessoa já
+      // tinha recusado.
       return { success: true, revelou: resultado.revelou };
     }),
 

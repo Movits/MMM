@@ -181,3 +181,66 @@ describe("cartão de match — anônimo até o interesse mútuo", () => {
     expect(screen.getByText(/os dois lados passam a ver o nome/i)).toBeInTheDocument();
   });
 });
+
+// ── O passo do distribuidor ─────────────────────────────────────────────────
+// Quem pediu vê "em análise" e depois, se for o caso, "não encaminhado". A
+// destinatária não vê nada (o servidor nem manda a linha), a não ser que ela
+// também tenha clicado — aí é "em análise" dos dois lados, nunca "Aceitar e
+// revelar": a revelação é do distribuidor. Em nenhum desses estados há nome.
+describe("cartão de match — o passo do distribuidor", () => {
+  it("em análise (quem pediu): botão desabilitado, sem nome, sem pedir de novo e sem dispensar", () => {
+    duble.respostas["matches.list"] = {
+      data: [cartao({ connectionId: 7, connectionStatus: "in_review", souDestinataria: false })],
+    };
+    render(<Dashboard />);
+
+    expect(document.body.innerHTML).not.toContain("Zoroastra");
+    expect(screen.getByRole("button", { name: "Em análise pelo distribuidor" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Demonstrar Interesse" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Aceitar e revelar" })).not.toBeInTheDocument();
+    // Não dá para sumir com o cartão enquanto alguém está decidindo sobre ele.
+    expect(screen.queryByRole("button", { name: "✕" })).not.toBeInTheDocument();
+  });
+
+  it("não encaminhado: botão desabilitado, sem nome; o cartão pode ser dispensado", () => {
+    duble.respostas["matches.list"] = {
+      data: [cartao({ connectionId: 7, connectionStatus: "not_forwarded", souDestinataria: false })],
+    };
+    render(<Dashboard />);
+
+    expect(document.body.innerHTML).not.toContain("Zoroastra");
+    expect(screen.getByRole("button", { name: "Interesse não encaminhado" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Demonstrar Interesse" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "✕" })).toBeInTheDocument();
+  });
+
+  it("em análise e recíproco (a destinatária também clicou): 'em análise', nunca 'Aceitar e revelar', e sem nome", () => {
+    duble.respostas["matches.list"] = {
+      data: [cartao({ connectionId: 7, connectionStatus: "in_review", souDestinataria: true })],
+    };
+    render(<Dashboard />);
+
+    expect(document.body.innerHTML).not.toContain("Zoroastra");
+    expect(screen.getByRole("button", { name: "Em análise pelo distribuidor" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Aceitar e revelar" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Demonstrou interesse em você")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Membro da rede" })).toBeInTheDocument();
+  });
+
+  it("aba Conexões: em análise e não encaminhado têm badge própria, sem nome e sem 'Aceitar e revelar'", async () => {
+    duble.respostas["connections.list"] = {
+      data: [
+        { id: 7, status: "in_review", souDestinataria: false, outraParteId: null, displayName: null, primarySpecialty: "finance", city: "Porto", message: null },
+        { id: 8, status: "not_forwarded", souDestinataria: false, outraParteId: null, displayName: null, primarySpecialty: "tech", city: "Lisboa", message: null },
+      ],
+    };
+    render(<Dashboard />);
+    fireEvent.click(screen.getByRole("button", { name: "Conexões (2)" }));
+
+    expect(await screen.findByText("🔎 Em análise", {}, ESPERA)).toBeInTheDocument();
+    expect(screen.getByText("✕ Não encaminhado")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Aceitar e revelar" })).not.toBeInTheDocument();
+    expect(document.body.innerHTML).not.toContain("Zoroastra");
+    expect(screen.getAllByText("Membro da rede").length).toBe(2);
+  });
+});

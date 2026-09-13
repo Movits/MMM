@@ -462,7 +462,7 @@
     "regenerate": "新しいマッチ",
     "logout": "サインアウト",
     "topMatches": "トップマッチ (80%+)",
-    "interestSent": "関心を送信しました。相手も関心を示した場合にのみ、あなたの名前が表示されます。",
+    "interestSent": "関心を送信しました。配信担当者が相性を確認してから相手に届けます。相手も関心を示した場合にのみ、あなたの名前が表示されます。",
     "interestError": "興味を送信できませんでした。もう一度お試しください。",
     "connectionAccepted": "つながりが承認されました。お互いの名前が表示されます。",
     "connectionDeclined": "リクエストが拒否されました。",
@@ -574,6 +574,10 @@
     "revealedBadge": "本人情報を公開済み",
     "revealedNote": "双方が関心を示しました。相手にもあなたの名前が表示されます。",
     "interestDeclined": "関心は承認されませんでした",
+    "interestInReview": "配信担当者が確認中",
+    "interestNotForwarded": "関心は届けられませんでした",
+    "inReview": "🔎 確認中",
+    "notForwarded": "✕ 届けられず",
     "viewConnection": "つながりを見る"
   },
   "auth": {

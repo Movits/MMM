@@ -462,7 +462,7 @@
     "regenerate": "Nouveaux matches",
     "logout": "Se déconnecter",
     "topMatches": "Top Matches (80%+)",
-    "interestSent": "Intérêt envoyé ! L'autre personne ne verra votre nom que si elle manifeste aussi son intérêt.",
+    "interestSent": "Intérêt envoyé ! Un distributeur vérifie la compatibilité avant de le transmettre. L'autre personne ne verra votre nom que si elle manifeste aussi son intérêt.",
     "interestError": "Impossible d'envoyer l'intérêt. Réessayez.",
     "connectionAccepted": "Connexion acceptée ! Vous voyez maintenant tous les deux le nom de l'autre.",
     "connectionDeclined": "Demande refusée.",
@@ -574,6 +574,10 @@
     "revealedBadge": "Identité révélée",
     "revealedNote": "Les deux parties ont manifesté leur intérêt. L'autre personne voit aussi votre nom.",
     "interestDeclined": "Intérêt non accepté",
+    "interestInReview": "En cours d'analyse par le distributeur",
+    "interestNotForwarded": "Intérêt non transmis",
+    "inReview": "🔎 En analyse",
+    "notForwarded": "✕ Non transmis",
     "viewConnection": "Voir la connexion"
   },
   "auth": {

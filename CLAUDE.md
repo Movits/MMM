@@ -166,9 +166,21 @@ encaminhá-lo à outra pessoa. `distribuidorProcedure` (em `_procedures.ts`) exi
 com a flag passa. Quem concede e revoga é `distribuicao.conceder/revogar`
 (`presidentProcedure`; auditoria `DISTRIBUTOR_GRANTED`/`DISTRIBUTOR_REVOKED` de risco
 alto e aviso `system` no sino), na aba Distribuição do Painel Ouro. O painel e o item
-de menu abrem também para quem tem a flag, mas só essa aba. A fila de análise (status
-`in_review` em `connections`) é a etapa seguinte; até ela entrar, o pedido de interesse
-segue direto à outra pessoa, como sempre.
+de menu abrem também para quem tem a flag, mas só essa aba.
+
+**O pedido de interesse passa pelo distribuidor.** `connections.status` (migração 0011):
+`in_review` (nasceu; espera o distribuidor) → `pending` (encaminhado; espera a
+destinatária) → `accepted` | `declined`; ou `in_review` → `not_forwarded` (não
+encaminhado). `reciprocatedAt` marca que a destinatária também clicou durante a análise
+(uma linha por par; a aprovação já vira `accepted` e revela os dois nomes). A
+destinatária NÃO vê `in_review` nem `not_forwarded` — o predicado `pedidoVisivelPara`
+em `db.ts` tira a linha do join em `getMatchesForUser` e do WHERE em
+`getConnectionsForUser` (regra de consulta, não de tela). A decisão
+(`distribuicao.decidir`) é um UPDATE com `status = 'in_review'` no WHERE: 0 linhas =
+CONFLICT, sem efeito; `respondToConnection` e o interesse mútuo em
+`sendConnectionRequest` também levam o status no WHERE. Sem distribuidor ativo o
+pedido FICA esperando e a presidência recebe o aviso: mesclar a fila só depois de
+conceder o poder em produção. Detalhes em docs/arquitetura/fluxos.md e privacidade.md.
 
 **Mas Ouro NÃO é staff em tudo.** A única assimetria de papel no servidor é `isStaff`
 em `oportunidade-acesso.ts`, que aceita só admin e president: uma conta Ouro APROVA
