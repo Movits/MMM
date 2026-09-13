@@ -303,7 +303,9 @@ export const platformNotifications = mysqlTable("platform_notifications", {
   type: mysqlEnum("type", [
     "new_match", "interest_received", "gold_granted", "gold_revoked",
     "opportunity_approved", "opportunity_rejected", "new_message",
-    "compliance_update", "system"
+    // A11: a outra parte precisa saber que a negociação foi encerrada e com que
+    // números, porque é ela quem confere se bate com o que foi combinado.
+    "compliance_update", "deal_closed", "system"
   ]).notNull(),
   title: varchar("title", { length: 200 }).notNull(),
   body: text("body"),
@@ -1201,3 +1203,60 @@ export const consents = mysqlTable("consents", {
 
 export type DocumentVersion = typeof documentVersions.$inferSelect;
 export type Consent = typeof consents.$inferSelect;
+
+/**
+ * A11 / etapa 12 — o negócio fechado e a comissão devida.
+ *
+ * A decisão D2 da cliente é que o dinheiro NÃO passa pela plataforma nesta
+ * versão: o site registra, o pagamento corre fora. Esta tabela é esse registro,
+ * e é o que sustenta a cobrança depois — sem ela, "fechamos negócio pelo MMM"
+ * é palavra contra palavra.
+ *
+ * Uma linha por sala (`roomUnique`): encerrar é um evento único. Quem encerrar
+ * de novo recebe o registro que já existe, não cria um segundo.
+ *
+ * Valores em decimal, nunca em float: `float` arredonda dinheiro de um jeito
+ * que aparece na fatura (o mesmo tipo de erro que fez 0,49999999999999994 no
+ * portão do matching). A moeda fica ao lado do valor porque a rede é
+ * internacional e "150000" sem moeda não é informação.
+ *
+ * `commissionPercent` tem teto de 50 na validação do router, que é o limite que
+ * a Dra. Glenda fixou em 31/08 (D1), sobre o LUCRO declarado — não sobre o valor
+ * do negócio. Por isso as duas colunas existem separadas.
+ */
+export const dealClosures = mysqlTable("deal_closures", {
+  id:                int("id").autoincrement().primaryKey(),
+  roomId:            int("roomId").notNull(),
+  opportunityId:     int("opportunityId").notNull(),
+  // Quem registrou o encerramento; as duas partes podem.
+  //
+  // A Dra. Glenda respondeu em 12/09/2026 que quem declara é o CONSULTOR DE
+  // NEGÓCIOS, não as partes. O papel de consultor ainda não existe no sistema
+  // (é a etapa 12, desenhada pelo Rosber no mesmo dia), então por ora quem
+  // registra continua sendo uma das partes e esta coluna guarda quem foi. Quando
+  // o consultor existir, a trava de quem pode registrar muda aqui.
+  closedByUserId:    int("closedByUserId").notNull(),
+  currency:          varchar("currency", { length: 3 }).default("BRL").notNull(),
+  dealValue:         decimal("dealValue", { precision: 14, scale: 2 }).notNull(),
+  // OS HONORÁRIOS DA INTERMEDIAÇÃO, e não o lucro do negócio.
+  //
+  // A primeira versão desta tabela tinha `declaredProfit` e calculava a comissão
+  // sobre o lucro declarado — leitura da decisão D1 de 31/08. Em 12/09/2026 a
+  // Dra. Glenda respondeu à pergunta direta ("o teto de 50% incide sobre o lucro
+  // ou sobre o valor do negócio?"): "Incide sobre o valor dos honorários da
+  // intermediação do negócio". Não é o lucro, não é o valor do negócio: é o que
+  // a plataforma cobra para intermediar.
+  intermediationFee: decimal("intermediationFee", { precision: 14, scale: 2 }).notNull(),
+  commissionPercent: decimal("commissionPercent", { precision: 5, scale: 2 }).notNull(),
+  // Guardado, não recalculado na leitura: o percentual combinado pode mudar de
+  // regra no futuro e o que foi acordado naquele dia precisa continuar de pé.
+  commissionAmount:  decimal("commissionAmount", { precision: 14, scale: 2 }).notNull(),
+  notes:             text("notes"),
+  closedAt:          timestamp("closedAt").defaultNow().notNull(),
+}, (table) => ({
+  roomUnique:    uniqueIndex("deal_closure_room_unique").on(table.roomId),
+  opportunityIdx: index("deal_closure_opportunity_idx").on(table.opportunityId),
+  closedByIdx:   index("deal_closure_closed_by_idx").on(table.closedByUserId),
+}));
+
+export type DealClosure = typeof dealClosures.$inferSelect;
