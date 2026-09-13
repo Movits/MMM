@@ -9,7 +9,7 @@
     "beta": "Beta"
   },
   "hero": {
-    "badge": "Globales Ökosystem der Möglichkeiten",
+    "badge": "Globales Ökosystem der Möglichkeiten • über 33 Länder • grenzenlose Chancen",
     "headline1": "Verbinde dich mit den klügsten Köpfen",
     "headline2": "Entfalte dein volles Potenzial",
     "headline3": "Dein Netzwerk, deine Macht",
@@ -26,7 +26,8 @@
     "users": "Aktive Nutzer",
     "opportunities": "Geschaffene Möglichkeiten",
     "satisfaction": "Zufriedenheit der Mitglieder",
-    "connections": "Erfolgreiche Verbindungen"
+    "connections": "Erfolgreiche Verbindungen",
+    "countries": "Länder mit registrierten Mitgliedern"
   },
   "steps": {
     "title": "So funktioniert MMM",

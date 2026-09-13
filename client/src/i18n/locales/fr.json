@@ -9,7 +9,7 @@
     "beta": "Beta"
   },
   "hero": {
-    "badge": "Écosystème Mondial d'Opportunités",
+    "badge": "Écosystème Mondial d'Opportunités • + de 33 pays • possibilités infinies",
     "headline1": "Connectez-vous. Collaborez. Conquérez.",
     "headline2": "Votre réseau d'élite pour le succès.",
     "headline3": "Élevez votre parcours professionnel.",
@@ -26,7 +26,8 @@
     "users": "Utilisateurs actifs",
     "opportunities": "Opportunités créées",
     "satisfaction": "Taux de satisfaction",
-    "connections": "Connexions établies"
+    "connections": "Connexions établies",
+    "countries": "Pays des membres inscrits"
   },
   "steps": {
     "title": "Comment ça marche",

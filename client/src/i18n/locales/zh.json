@@ -9,7 +9,7 @@
     "beta": "测试版"
   },
   "hero": {
-    "badge": "全球机遇生态系统",
+    "badge": "全球机遇生态系统 • 33+个国家 • 无限可能",
     "headline1": "连接。",
     "headline2": "成长。",
     "headline3": "征服。",
@@ -26,7 +26,8 @@
     "users": "已连接会员",
     "opportunities": "已创造机会",
     "satisfaction": "社区满意度",
-    "connections": "成功连接"
+    "connections": "成功连接",
+    "countries": "会员注册国家"
   },
   "steps": {
     "title": "工作原理",

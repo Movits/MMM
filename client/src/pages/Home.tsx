@@ -643,15 +643,29 @@ export default function Home() {
                 <span className="w-1.5 h-1.5 shrink-0 bg-[#c98f70] rounded-full animate-pulse" />
                 {/* O selo vem em trechos separados por " • ". Quando a linha não
                     comporta a frase inteira (celular), a quebra cai ENTRE trechos,
-                    e o separador que abriria a linha nova fica na margem negativa
-                    recortada pelo overflow-hidden: nenhuma linha começa com "•".
+                    e o marcador que abriria a linha nova cai no recorte do
+                    overflow-hidden: nenhuma linha começa com "•". Em LTR quem o
+                    empurra para fora é a margem negativa; em RTL, onde a margem
+                    é do lado errado (ela é física), quem faz o serviço é o
+                    -indent, que segue a direção do texto. Medido nos dois.
                     Se um trecho sozinho não cabe (telas de ~320 px), o recuo deslocado
                     (pl + -indent de 1em) faz a continuação começar fora do recorte;
                     o marcador zera o indent, que é herdado e o empurraria 1em à esquerda.
                     Leitor de tela recebe a frase inteira, sem os marcadores.
-                    No desktop (lg+) o selo mede a frase inteira (w-max): entre 1024
-                    e 1279 px a coluna de texto tem ~460 px e a frase pede ~483, que
-                    cabem na folga de 56 px até a coluna do globo, em uma linha só. */}
+
+                    No desktop o selo mede a frase inteira (w-max) e cabe em UMA
+                    linha: 530 px em pt-BR, o mais largo dos 10 idiomas (484 de
+                    texto + 32 do px-4 + 14 do ponto e do gap). A coluna de texto
+                    tem 548 px a partir de 1280, então cabe em todos eles — quem
+                    for traduzir o selo tem esses 548 px de orçamento. Entre 1024
+                    e 1279 o utilitário `container` troca de max-width e a coluna
+                    cai para 460: aí o selo TRANSBORDA 70 px, mais do que os 56 px
+                    de `gap-14`. Não bate em nada hoje porque a coluna da direita
+                    não é renderizada (MOSTRAR_CARTAO_DO_HERO = false, lá em cima);
+                    o globo que aparece ali é o FundoDoPlaneta, fixo atrás da
+                    página inteira, não aquele cartão. Quem religar o cartão troca
+                    `lg:` por `xl:` nas duas classes do selo: ele passa a quebrar
+                    em duas linhas de 1024 a 1279 px e não invade em largura alguma. */}
                 <span className="sr-only">{t("hero.badge")}</span>
                 <span aria-hidden="true" className="min-w-0 overflow-hidden">
                   <span className="-ml-[1em] flex flex-wrap">
@@ -702,7 +716,7 @@ export default function Home() {
                   { value: users.toLocaleString(), label: t("stats.users") },
                   { value: opps.toLocaleString(), label: t("stats.opportunities") },
                   { value: connections.toLocaleString(), label: t("stats.connections") },
-                  { value: countries.toLocaleString(), label: "Países representados" },
+                  { value: countries.toLocaleString(), label: t("stats.countries") },
                 ].map((s, i) => (
                   <div key={i}>
                     <div className="text-2xl font-extrabold text-white tracking-tight">{s.value}</div>
