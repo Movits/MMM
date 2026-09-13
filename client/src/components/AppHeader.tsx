@@ -113,7 +113,7 @@ export function GlobalMenu() {
             </Link>
           </DropdownMenuItem>
         ))}
-        {(user?.role === "president" || user?.role === "gold" || user?.role === "admin") && (
+        {(user?.role === "president" || user?.role === "gold" || user?.role === "admin" || user?.isDistributor === true) && (
           <>
             <DropdownMenuSeparator className="bg-white/[0.07] my-2" />
             <DropdownMenuItem asChild

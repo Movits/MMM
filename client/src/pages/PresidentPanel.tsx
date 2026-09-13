@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import {
   Shield, Users, Star, CheckCircle, XCircle, Clock,
   AlertTriangle, BarChart3, Crown, UserCheck, Globe,
-  FileText, ChevronRight, Search, Award, Lock
+  FileText, ChevronRight, Search, Award, Lock, Share2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from "@/components/ui/dialog";
 
-type Tab = "overview" | "gold" | "leaders" | "opportunities" | "compliance";
+type Tab = "overview" | "gold" | "leaders" | "opportunities" | "compliance" | "distribuicao";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 // A busca vai ao SERVIDOR (LIKE em nome e e-mail), com 300 ms de espera para
@@ -832,6 +832,226 @@ function ComplianceTab() {
   );
 }
 
+// ─── Módulo: Distribuição do Smart Match ─────────────────────────────────────
+// O distribuidor é a pessoa real que confere cada pedido de interesse antes de
+// encaminhá-lo à outra pessoa. O poder mora em `users.isDistributor` e acumula
+// com qualquer nível. Nesta etapa a aba traz só "Quem distribui" (conceder e
+// revogar, para Ouro/presidente/admin); a fila de análise chega na etapa
+// seguinte. Quem só distribui (sem Ouro) NÃO consulta `distribuicao.listar`:
+// a procedure é da presidência e devolveria 403.
+const NOME_DO_NIVEL: Record<string, string> = {
+  bronze: "Bronze", silver: "Prata", gold: "Ouro", admin: "Admin", president: "Presidente",
+};
+
+function AvisoDistribuidor() {
+  return (
+    <div className="p-5 rounded-2xl bg-amber-400/8 border border-amber-400/20">
+      <div className="flex items-center gap-3 mb-2">
+        <Share2 size={16} className="text-amber-400" />
+        <span className="text-sm font-bold text-amber-400">Você tem o poder de distribuição</span>
+      </div>
+      <p className="text-sm text-white/60 leading-relaxed">
+        A fila de análise dos pedidos de interesse do Smart Match será ativada na etapa seguinte.
+        Quando estiver no ar, cada clique em "Demonstrar Interesse" vai esperar a sua conferência
+        antes de chegar à outra pessoa.
+      </p>
+    </div>
+  );
+}
+
+function QuemDistribui() {
+  const [search, setSearch] = useState("");
+  const [concederDialog, setConcederDialog] = useState<{ userId: number; name: string } | null>(null);
+  const [revogarDialog, setRevogarDialog] = useState<{ userId: number; name: string } | null>(null);
+  const [motivo, setMotivo] = useState("");
+  const busca = useBuscaComAtraso(search);
+
+  const { data: distribuidores, refetch: refetchDistribuidores } = trpc.distribuicao.listar.useQuery();
+  // Mesma busca no servidor da aba Ouro; sem filtro de nível, porque o poder
+  // acumula com qualquer um. Quem já distribui sai da lista de candidatas.
+  const { data: membros } = trpc.president.listAllUsers.useQuery(
+    { search: busca || undefined },
+    { placeholderData: keepPreviousData },
+  );
+
+  const concederMutation = trpc.distribuicao.conceder.useMutation({
+    onSuccess: () => {
+      toast.success("Poder de distribuição concedido. A pessoa foi avisada no sino.");
+      setConcederDialog(null);
+      setMotivo("");
+      refetchDistribuidores();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const revogarMutation = trpc.distribuicao.revogar.useMutation({
+    onSuccess: () => {
+      toast.success("Poder de distribuição revogado. O nível da conta não muda.");
+      setRevogarDialog(null);
+      setMotivo("");
+      refetchDistribuidores();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const idsQueDistribuem = new Set((distribuidores ?? []).map(d => d.id));
+  const candidatas = (membros?.users ?? []).filter(u => !idsQueDistribuem.has(u.id));
+
+  return (
+    <>
+      {/* Quem distribui hoje */}
+      <div>
+        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Quem distribui hoje</h3>
+        {!distribuidores || distribuidores.length === 0 ? (
+          <div className="p-6 rounded-xl bg-white/3 border border-white/8 text-center text-white/30 text-sm">
+            Ninguém tem o poder de distribuição no momento.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {distribuidores.map(d => (
+              <div key={d.id} className="flex items-center justify-between p-4 rounded-xl bg-amber-400/8 border border-amber-400/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-amber-400/20 flex items-center justify-center">
+                    <Share2 size={14} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">{d.name || "Sem nome"}</p>
+                    <p className="text-xs text-white/40">
+                      {d.email} · {NOME_DO_NIVEL[d.role] ?? d.role}{d.isActive ? "" : " · conta inativa"}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-400 border-red-400/30 hover:bg-red-400/10 bg-transparent text-xs"
+                  onClick={() => { setRevogarDialog({ userId: d.id, name: d.name || "Membro" }); setMotivo(""); }}
+                >
+                  Revogar
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Conceder o poder */}
+      <div>
+        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Conceder o poder de distribuição</h3>
+        <div className="relative mb-3">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar quem vai distribuir (nome ou e-mail)..."
+            className="pl-9 bg-white/5 border-white/15 text-white placeholder-white/25 text-sm"
+          />
+        </div>
+        <AvisoListaCortada mostrando={membros?.users.length ?? 0} total={membros?.total ?? 0} />
+        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+          {candidatas.length === 0 ? (
+            <p className="text-center text-white/30 text-sm py-6">Nenhum membro encontrado.</p>
+          ) : candidatas.map(u => (
+            <div key={u.id} className="flex items-center justify-between p-3.5 rounded-xl bg-white/3 border border-white/8 hover:border-white/15 transition-colors">
+              <div>
+                <p className="text-sm font-medium text-white">{u.name || "Sem nome"}</p>
+                <p className="text-xs text-white/40">{u.email} · {NOME_DO_NIVEL[u.role] ?? u.role}</p>
+              </div>
+              <Button
+                size="sm"
+                className="bg-amber-400 hover:bg-amber-500 text-[#151312] text-xs font-bold"
+                onClick={() => { setConcederDialog({ userId: u.id, name: u.name || "Membro" }); setMotivo(""); }}
+              >
+                <Share2 size={12} className="mr-1" /> Conceder poder
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Dialog: Conceder */}
+      <Dialog open={!!concederDialog} onOpenChange={() => setConcederDialog(null)}>
+        <DialogContent className="bg-[#211e1b] border-amber-400/30 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-amber-400 flex items-center gap-2">
+              <Share2 size={16} /> Conceder poder de distribuição
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-white/70">
+              <strong className="text-white">{concederDialog?.name}</strong> passa a conferir cada pedido de
+              interesse do Smart Match antes de ele chegar à outra pessoa. O nível da conta não muda.
+            </p>
+            <Textarea
+              value={motivo}
+              onChange={e => setMotivo(e.target.value)}
+              placeholder="Motivo (opcional, fica na auditoria)..."
+              className="bg-white/5 border-white/15 text-white placeholder-white/30 text-sm resize-none"
+              rows={2}
+            />
+          </div>
+          <DialogFooter className="mt-2">
+            <Button variant="outline" onClick={() => setConcederDialog(null)} className="bg-transparent border-white/20 text-white/60">Cancelar</Button>
+            <Button
+              className="bg-amber-400 hover:bg-amber-500 text-[#151312] font-bold"
+              disabled={concederMutation.isPending}
+              onClick={() => concederDialog && concederMutation.mutate({ userId: concederDialog.userId, reason: motivo.trim() || undefined })}
+            >
+              {concederMutation.isPending ? "Concedendo..." : "Confirmar concessão"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Revogar */}
+      <Dialog open={!!revogarDialog} onOpenChange={() => setRevogarDialog(null)}>
+        <DialogContent className="bg-[#211e1b] border-red-400/30 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-red-400 flex items-center gap-2">
+              <XCircle size={16} /> Revogar poder de distribuição
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-white/60">
+            <strong className="text-white">{revogarDialog?.name}</strong> deixa de conferir os pedidos de interesse.
+            A conta continua ativa, no mesmo nível.
+          </p>
+          <Textarea
+            value={motivo}
+            onChange={e => setMotivo(e.target.value)}
+            placeholder="Motivo da revogação (mínimo 10 caracteres)..."
+            className="bg-white/5 border-white/15 text-white placeholder-white/30 text-sm resize-none"
+            rows={3}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevogarDialog(null)} className="bg-transparent border-white/20 text-white/60">Cancelar</Button>
+            <Button
+              className="bg-red-500 hover:bg-red-600 text-white font-bold"
+              disabled={motivo.trim().length < 10 || revogarMutation.isPending}
+              onClick={() => revogarDialog && revogarMutation.mutate({ userId: revogarDialog.userId, reason: motivo.trim() })}
+            >
+              {revogarMutation.isPending ? "Revogando..." : "Confirmar revogação"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function DistribuicaoTab({ podeGerir, souDistribuidor }: { podeGerir: boolean; souDistribuidor: boolean }) {
+  return (
+    <div className="space-y-8">
+      <SectionHeader
+        icon={Share2}
+        title="Distribuição do Smart Match"
+        subtitle="Uma pessoa real confere cada pedido de interesse antes de encaminhá-lo. O poder é da conta e acumula com qualquer nível."
+      />
+      {souDistribuidor && <AvisoDistribuidor />}
+      {podeGerir && <QuemDistribui />}
+    </div>
+  );
+}
+
 // ─── Componente Principal ─────────────────────────────────────────────────────
 export default function PresidentPanel() {
   const { user, loading } = useAuth();
@@ -844,13 +1064,18 @@ export default function PresidentPanel() {
     </div>
   );
 
-  if (!user || (user.role !== "president" && user.role !== "admin" && user.role !== "gold")) {
+  // Ouro = presidente = admin abre o painel inteiro. O poder de distribuição
+  // (users.isDistributor) abre SÓ a aba Distribuição, para quem não é Ouro.
+  const ehOuro = !!user && (user.role === "president" || user.role === "admin" || user.role === "gold");
+  const souDistribuidor = user?.isDistributor === true;
+
+  if (!user || (!ehOuro && !souDistribuidor)) {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center p-6">
         <div className="text-center max-w-sm">
           <Lock size={40} className="text-red-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Acesso Restrito</h2>
-          <p className="text-white/50 text-sm mb-6">Este painel é exclusivo para membros com Status Ouro.</p>
+          <p className="text-white/50 text-sm mb-6">Este painel é exclusivo para membros com Status Ouro ou com o poder de distribuição.</p>
           <Button onClick={() => navigate("/dashboard")} className="bg-amber-400 hover:bg-amber-500 text-[#151312] font-bold">
             Voltar ao Dashboard
           </Button>
@@ -859,13 +1084,17 @@ export default function PresidentPanel() {
     );
   }
 
-  const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
+  const abaDistribuicao = { id: "distribuicao" as const, label: "Distribuição", icon: Share2 };
+  const tabs: { id: Tab; label: string; icon: React.ElementType }[] = ehOuro ? [
     { id: "overview", label: "Visão Geral", icon: BarChart3 },
     { id: "gold", label: "Gestão Ouro", icon: Star },
     { id: "leaders", label: "Líderes", icon: Globe },
     { id: "opportunities", label: "Validações", icon: FileText },
     { id: "compliance", label: "Compliance", icon: Shield },
-  ];
+    abaDistribuicao,
+  ] : [abaDistribuicao];
+  // Quem só distribui não tem outra aba para abrir.
+  const abaAtiva: Tab = ehOuro ? activeTab : "distribuicao";
 
   return (
     <div className="min-h-screen bg-transparent text-white">
@@ -887,16 +1116,25 @@ export default function PresidentPanel() {
               </div>
             </div>
           </div>
-          <Badge className="bg-amber-400/15 text-amber-300 border-amber-400/30 text-xs">
-            <Crown size={10} className="mr-1" /> {user.role === "admin" ? "Admin" : "Ouro"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {ehOuro && (
+              <Badge className="bg-amber-400/15 text-amber-300 border-amber-400/30 text-xs">
+                <Crown size={10} className="mr-1" /> {user.role === "admin" ? "Admin" : "Ouro"}
+              </Badge>
+            )}
+            {souDistribuidor && (
+              <Badge className="bg-amber-400/15 text-amber-300 border-amber-400/30 text-xs">
+                <Share2 size={10} className="mr-1" /> Distribuidor
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}
         <div className="max-w-6xl mx-auto px-6 flex gap-1 overflow-x-auto pb-px">
           {tabs.map(tab => {
             const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
+            const isActive = abaAtiva === tab.id;
             return (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
@@ -914,11 +1152,12 @@ export default function PresidentPanel() {
 
       {/* Content */}
       <div className="max-w-6xl mx-auto px-6 py-8">
-        {activeTab === "overview" && <OverviewTab />}
-        {activeTab === "gold" && <GoldTab />}
-        {activeTab === "leaders" && <LeadersTab />}
-        {activeTab === "opportunities" && <OpportunitiesTab />}
-        {activeTab === "compliance" && <ComplianceTab />}
+        {abaAtiva === "overview" && <OverviewTab />}
+        {abaAtiva === "gold" && <GoldTab />}
+        {abaAtiva === "leaders" && <LeadersTab />}
+        {abaAtiva === "opportunities" && <OpportunitiesTab />}
+        {abaAtiva === "compliance" && <ComplianceTab />}
+        {abaAtiva === "distribuicao" && <DistribuicaoTab podeGerir={ehOuro} souDistribuidor={souDistribuidor} />}
       </div>
     </div>
   );

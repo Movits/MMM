@@ -51,6 +51,11 @@ export const users = mysqlTable("users", {
   isActive: boolean("isActive").default(true).notNull(),
   isVerified: boolean("isVerified").default(false).notNull(),
   onboardingCompleted: boolean("onboardingCompleted").default(false).notNull(),
+  // Poder de distribuição do Smart Match: a pessoa real que confere cada pedido de
+  // interesse antes de encaminhá-lo. É um PODER, não um nível: acumula com qualquer
+  // `role` e não é tocado por grantGoldAccess/revokeGoldAccess. Concedido e revogado
+  // pelo Painel Ouro (router `distribuicao`); exigido por `distribuidorProcedure`.
+  isDistributor: boolean("isDistributor").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

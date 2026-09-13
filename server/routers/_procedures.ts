@@ -25,3 +25,15 @@ export const goldProcedure = protectedProcedure.use(({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+// Distribuidor do Smart Match: a pessoa real que confere cada pedido de interesse
+// antes de encaminhá-lo. É um PODER da conta (`users.isDistributor`), não um nível:
+// Ouro, presidente ou admin SEM a flag levam 403 aqui, e uma Prata COM a flag passa.
+// `ctx.user` é a linha de `users` lida a cada requisição, então revogar o poder vale
+// na chamada seguinte, sem consulta extra.
+export const distribuidorProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.isDistributor !== true) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Acesso restrito ao distribuidor do Smart Match." });
+  }
+  return next({ ctx });
+});

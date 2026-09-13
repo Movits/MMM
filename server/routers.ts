@@ -22,6 +22,7 @@ import { sivcRouter } from "./routers/sivc";
 import { meetingsRouter } from "./routers/meetings";
 import { memoryRouter } from "./routers/memory";
 import { intelligentMatchesRouter } from "./routers/matches";
+import { distribuicaoRouter } from "./routers/distribuicao";
 
 // ============================================================
 // ROUTER PRINCIPAL — cada área vive em server/routers/<área>.ts
@@ -50,6 +51,7 @@ export const appRouter = router({
   meetings: meetingsRouter,
   memory: memoryRouter,
   intelligentMatches: intelligentMatchesRouter,
+  distribuicao: distribuicaoRouter,
 });
 
 export type AppRouter = typeof appRouter;

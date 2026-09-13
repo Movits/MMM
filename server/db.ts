@@ -1,4 +1,4 @@
-import { and, eq, desc, like, or, ne, notInArray, inArray, sql, isNull } from "drizzle-orm";
+import { and, eq, desc, asc, like, or, ne, notInArray, inArray, sql, isNull } from "drizzle-orm";
 const drizzleOr = or;
 import { drizzle } from "drizzle-orm/mysql2";
 import {
@@ -313,6 +313,26 @@ export async function revokeGoldAccess(grantedTo: number, revokedBy: number, rea
     .set({ revokedAt: new Date(), revokedBy, revokeReason: reason })
     .where(and(eq(goldAccessGrants.grantedTo, grantedTo)));
   await db.update(users).set({ role: "silver" }).where(eq(users.id, grantedTo));
+}
+
+// ─── Distribuidor do Smart Match ──────────────────────────────
+// O poder é uma coluna de `users` (isDistributor), não uma tabela de concessões
+// como o Ouro: a trilha de quem concedeu/revogou fica em audit_logs
+// (DISTRIBUTOR_GRANTED / DISTRIBUTOR_REVOKED). Sem e-mail de contato aqui além do
+// de login, que o Painel Ouro já mostra na gestão do Ouro.
+export async function listarDistribuidores() {
+  const db = await exigirDb();
+  return db.select({
+    id: users.id, name: users.name, email: users.email, role: users.role, isActive: users.isActive,
+  }).from(users)
+    .where(eq(users.isDistributor, true))
+    .orderBy(asc(users.name));
+}
+
+/** Liga ou desliga o poder de distribuição. Quem chama já conferiu que a conta existe. */
+export async function definirPoderDeDistribuicao(userId: number, temPoder: boolean) {
+  const db = await exigirDb();
+  await db.update(users).set({ isDistributor: temPoder }).where(eq(users.id, userId));
 }
 
 // ─── Sessions ────────────────────────────────────────────────
