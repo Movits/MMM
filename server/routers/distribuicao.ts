@@ -20,7 +20,8 @@ import { mascararContatosEmTexto } from "@shared/contato-em-texto";
 // de análise, por sua vez, exige `distribuidorProcedure` (a flag, não o nível).
 //
 // Idempotência: conceder a quem já tem, ou revogar de quem não tem, responde
-// sucesso sem gravar nada — sem auditoria nem notificação repetidas.
+// sucesso sem gravar nada — sem auditoria nem notificação repetidas, nem quando
+// duas requisições chegam juntas (o UPDATE só muda a linha no estado de antes).
 
 const TITULO_CONCEDIDO = "Você agora é distribuidor do Smart Match";
 const CORPO_CONCEDIDO =
@@ -53,7 +54,8 @@ export const distribuicaoRouter = router({
       if (!alvo) throw new TRPCError({ code: "NOT_FOUND", message: "Conta não encontrada." });
       if (alvo.isDistributor === true) return { success: true as const };
 
-      await definirPoderDeDistribuicao(input.userId, true);
+      const mudou = await definirPoderDeDistribuicao(input.userId, true);
+      if (!mudou) return { success: true as const }; // outra requisição concedeu antes
       await createAuditLog({
         userId: ctx.user.id, action: "DISTRIBUTOR_GRANTED", resource: "users", resourceId: String(input.userId),
         details: { reason: input.reason ?? null }, status: "success", riskLevel: "high",
@@ -76,7 +78,8 @@ export const distribuicaoRouter = router({
       if (!alvo) throw new TRPCError({ code: "NOT_FOUND", message: "Conta não encontrada." });
       if (alvo.isDistributor !== true) return { success: true as const };
 
-      await definirPoderDeDistribuicao(input.userId, false);
+      const mudou = await definirPoderDeDistribuicao(input.userId, false);
+      if (!mudou) return { success: true as const }; // outra requisição revogou antes
       await createAuditLog({
         userId: ctx.user.id, action: "DISTRIBUTOR_REVOKED", resource: "users", resourceId: String(input.userId),
         details: { reason: input.reason }, status: "success", riskLevel: "high",
@@ -95,7 +98,8 @@ export const distribuicaoRouter = router({
   // Os pedidos `in_review`, com as DUAS partes nomeadas, a nota do Smart Match na
   // direção do pedido e as travas que a aprovação vai reconferir (termo, conta
   // ativa, portão da demanda expressa). É a leitura nominal que atravessa donas,
-  // como o acervo Ouro, e por isso fica na trilha de auditoria.
+  // como o acervo Ouro, e por isso fica na trilha de auditoria. Os pedidos em que
+  // quem consulta é parte não vêm (listarPedidosEmAnalise).
   fila: distribuidorProcedure.query(async ({ ctx }) => {
     const pedidos = await listarPedidosEmAnalise(ctx.user.id);
     const ids = Array.from(new Set(pedidos.flatMap(p => [p.requesterId, p.recipientId])));
@@ -124,10 +128,11 @@ export const distribuicaoRouter = router({
     }));
   }),
 
-  // A decisão. Um único UPDATE com `status = 'in_review'` no WHERE: a segunda
-  // pessoa (ou a segunda aba) que decide o mesmo pedido leva CONFLICT e não
-  // produz efeito nenhum. Aprovar reconfere as travas ANTES do UPDATE: o termo
-  // pode ter sido revogado e o perfil pode ter mudado desde o clique.
+  // A decisão. O desfecho sai do BANCO no instante da escrita (decidirPedidoDeMatch):
+  // a segunda pessoa (ou a segunda aba) que decide o mesmo pedido leva CONFLICT e
+  // não produz efeito nenhum, e o clique recíproco que chega durante a decisão vira
+  // `accepted`. Aprovar reconfere as travas ANTES do UPDATE: o termo pode ter sido
+  // revogado e o perfil pode ter mudado desde o clique.
   decidir: distribuidorProcedure
     .input(z.object({
       connectionId: z.number().int(),
@@ -135,10 +140,17 @@ export const distribuicaoRouter = router({
       nota: z.string().max(1000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const pedido = await lerPedidoDeMatch(input.connectionId);
-      if (!pedido) throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
-      if (pedido.requesterId === ctx.user.id || pedido.recipientId === ctx.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Ninguém decide o próprio pedido de interesse." });
+      const pedido = await lerPedidoDeMatch(input.connectionId, ctx.user.id);
+      if (!pedido) {
+        // Id inexistente e pedido em que quem decide é PARTE recebem a mesma
+        // resposta: um código próprio para "é seu" denunciaria à destinatária
+        // distribuidora o pedido que está oculto para ela. A tentativa fica na
+        // trilha, como a alça inválida de connections.send.
+        await createAuditLog({
+          userId: ctx.user.id, action: "MATCH_HANDLE_INVALID", resource: "distribuicao.decidir",
+          resourceId: String(input.connectionId), status: "blocked", riskLevel: "high",
+        });
+        throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
       }
       if (pedido.status !== "in_review") throw new TRPCError({ code: "CONFLICT", message: "Este pedido já foi decidido." });
 
@@ -166,26 +178,24 @@ export const distribuicaoRouter = router({
         }
       }
 
-      const statusFinal = !input.aprovar ? "not_forwarded" : pedido.reciprocatedAt !== null ? "accepted" : "pending";
-      const decidiu = await decidirPedidoDeMatch(pedido.id, { statusFinal, moderatedBy: ctx.user.id, moderationNote: nota });
-      if (!decidiu) throw new TRPCError({ code: "CONFLICT", message: "Outra pessoa acabou de decidir este pedido." });
+      const decisao = await decidirPedidoDeMatch(pedido.id, { aprovar: input.aprovar, moderatedBy: ctx.user.id, moderationNote: nota });
+      if (!decisao) throw new TRPCError({ code: "CONFLICT", message: "Outra pessoa acabou de decidir este pedido." });
+      const { status: statusFinal, reciprocado } = decisao;
 
       await createAuditLog({
         userId: ctx.user.id,
         action: input.aprovar ? "MATCH_REVIEW_APPROVED" : "MATCH_REVIEW_REJECTED",
         resource: "connections", resourceId: String(pedido.id),
-        details: {
-          requesterId: pedido.requesterId, recipientId: pedido.recipientId,
-          reciprocado: pedido.reciprocatedAt !== null, statusFinal, nota,
-        },
+        details: { requesterId: pedido.requesterId, recipientId: pedido.recipientId, reciprocado, statusFinal, nota },
         status: "success", riskLevel: "medium",
       });
       if (statusFinal === "accepted") {
         await registrarRevelacao(pedido.id, pedido.requesterId, pedido.recipientId, "distribuidor");
       }
 
-      // Avisos no sino. Recusa: só a solicitante, sem o motivo (a nota é interna);
-      // a destinatária nunca soube do pedido e continua sem saber.
+      // Avisos no sino. Recusa: quem pediu (e a destinatária, só se ela também
+      // clicou), sempre sem o motivo — a nota é interna. A destinatária que não
+      // clicou nunca soube do pedido e continua sem saber.
       try {
         if (statusFinal === "pending") {
           await createNotification({
@@ -205,7 +215,16 @@ export const distribuicaoRouter = router({
             await createNotification({
               userId, type: "interest_received",
               title: "Interesse mútuo: nomes revelados",
-              body: "Vocês dois demonstraram interesse e o distribuidor encaminhou o match. Os nomes já aparecem na aba Conexões.",
+              body: "As duas pessoas demonstraram interesse e o distribuidor encaminhou o match. Os nomes já aparecem na aba Conexões.",
+              actionUrl: "/dashboard",
+            });
+          }
+        } else if (reciprocado) {
+          for (const userId of [pedido.requesterId, pedido.recipientId]) {
+            await createNotification({
+              userId, type: "system",
+              title: "Interesse não encaminhado",
+              body: "O distribuidor conferiu o interesse demonstrado pelas duas partes e não o encaminhou desta vez.",
               actionUrl: "/dashboard",
             });
           }
@@ -219,15 +238,16 @@ export const distribuicaoRouter = router({
         }
       } catch (_) { /* a decisão já está gravada; o sino é acessório */ }
 
-      return { success: true as const, statusFinal };
+      return { success: true as const, statusFinal, reciprocado };
     }),
 
   // As decisões já tomadas (de qualquer distribuidor), com os nomes das partes:
-  // leitura nominal, auditada como a fila.
+  // leitura nominal, auditada como a fila, e sem os pedidos em que quem consulta
+  // é parte.
   historico: distribuidorProcedure
     .input(z.object({ limit: z.number().int().min(1).max(100).default(50) }))
     .query(async ({ ctx, input }) => {
-      const decisoes = await listarHistoricoDeDistribuicao(input.limit);
+      const decisoes = await listarHistoricoDeDistribuicao(ctx.user.id, input.limit);
       await createAuditLog({
         userId: ctx.user.id, action: "DISTRIBUTOR_VIEW_QUEUE", resource: "connections",
         details: { escopo: "historico", decisoes: decisoes.length }, status: "success", riskLevel: "medium",

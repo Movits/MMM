@@ -861,7 +861,9 @@ export default function Dashboard() {
   const interestMutation = trpc.connections.send.useMutation({
     // `matchesQuery` também: o estado do cartão ("em análise") vem do servidor,
     // e sem este refetch o botão continuava "Demonstrar Interesse" até o F5.
-    onSuccess: () => { toast.success(t("dashboard.interestSent")); connectionsQuery.refetch(); matchesQuery.refetch(); },
+    // `revelou`: o clique completou um par já encaminhado e os nomes aparecem agora —
+    // dizer que "um distribuidor confere antes" seria falso com o nome já na tela.
+    onSuccess: (r) => { toast.success(r.revelou ? t("dashboard.connectionAccepted") : t("dashboard.interestSent")); connectionsQuery.refetch(); matchesQuery.refetch(); },
     onError: (err) => toast.error(err.message || t("dashboard.interestError")),
   });
   const respondMutation = trpc.connections.respond.useMutation({

@@ -294,8 +294,9 @@ Perguntas:
 2. O distribuidor recebe e-mail além do sino? Hoje é só o sino, e um pedido pode
    esperar dias sem ninguém abrir o Painel Ouro.
 3. Um pedido `not_forwarded` pode ser reconsiderado? Hoje não: a solicitante vê
-   "não encaminhado" e o par fica fechado. Se a outra pessoa clicar depois, nada
-   acontece (a resposta de `send` é a mesma de sempre) — limite conhecido.
+   "não encaminhado" e não pode pedir de novo. Se a outra pessoa clicar depois, o
+   clique vira um pedido novo dela, analisado pelos próprios méritos (responder
+   "nada" deixaria o cartão parado, e isso denunciaria a recusa).
 4. Com mais de um distribuidor, a fila é uma só. Atribuir por região/setor?
 
 Pendência técnica ligada: índice único no par de `connections` (exige colunas de

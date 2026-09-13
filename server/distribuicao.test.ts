@@ -14,10 +14,11 @@ process.env.DATABASE_URL ??= "mysql://teste:teste@localhost/teste";
  * sino. Conceder duas vezes não grava nada duas vezes.
  *
  * Parte 2 — a FILA: o pedido de interesse nasce `in_review`, avisa quem
- * distribui (nunca a destinatária) e só o distribuidor o encaminha
- * (`pending`/`accepted`) ou não (`not_forwarded`), num UPDATE com o status no
- * WHERE. A fila mostra as duas partes com nome e sem id/e-mail, e cada leitura
- * fica na auditoria.
+ * distribui (nunca uma das partes) e só o distribuidor o encaminha
+ * (`pending`/`accepted`) ou não (`not_forwarded`). A fila e o histórico mostram
+ * as duas partes com nome e sem id/e-mail, cada leitura fica na auditoria, e
+ * quem é parte de um pedido não o vê nem consegue distingui-lo de um id
+ * inexistente.
  *
  * `./db` vira um dublê por função (molde de etapa13-trilha-de-aceite.test.ts):
  * registra cada chamada com os argumentos para o teste dizer o que NÃO pode
@@ -33,10 +34,13 @@ const estado = vi.hoisted(() => ({
   distribuidores: [] as unknown[],
   auditorias: [] as Record<string, unknown>[],
   sinoForaDoAr: false,
+  poderMudou: true,
   // parte 2
   fila: [] as unknown[],
   pedido: null as Pedido | null,
   decidiu: true,
+  /** Reciprocidade vista pelo UPDATE (null = a mesma da leitura do router). */
+  reciprocadoNoBanco: null as boolean | null,
   historico: [] as unknown[],
   ativas: [] as number[],
   comTermo: [] as number[],
@@ -55,10 +59,21 @@ vi.mock("./db", () => new Proxy({}, {
       estado.chamadas.push({ fn: String(prop), args });
       if (prop === "getUserById") return estado.usuarias[args[0] as number] ?? null;
       if (prop === "listarDistribuidores") return estado.distribuidores;
+      if (prop === "definirPoderDeDistribuicao") return estado.poderMudou;
       if (prop === "createNotification" && estado.sinoForaDoAr) throw new Error("sino fora do ar");
       if (prop === "listarPedidosEmAnalise") return estado.fila;
-      if (prop === "lerPedidoDeMatch") return estado.pedido;
-      if (prop === "decidirPedidoDeMatch") return estado.decidiu;
+      if (prop === "lerPedidoDeMatch") {
+        // O recorte real mora no WHERE (match-em-analise.test.ts); o dublê o reproduz.
+        const distribuidorId = args[1] as number;
+        const p = estado.pedido;
+        return p && p.requesterId !== distribuidorId && p.recipientId !== distribuidorId ? p : null;
+      }
+      if (prop === "decidirPedidoDeMatch") {
+        if (!estado.decidiu) return null;
+        const { aprovar } = args[1] as { aprovar: boolean };
+        const reciprocado = estado.reciprocadoNoBanco ?? estado.pedido?.reciprocatedAt != null;
+        return { status: !aprovar ? "not_forwarded" : reciprocado ? "accepted" : "pending", reciprocado };
+      }
       if (prop === "listarHistoricoDeDistribuicao") return estado.historico;
       if (prop === "idsDeContasAtivas") return new Set((args[0] as number[]).filter(id => estado.ativas.includes(id)));
       if (prop === "resolverAlvoDoMatch") return estado.alvo;
@@ -118,6 +133,7 @@ beforeEach(() => {
   estado.auditorias = [];
   estado.distribuidores = [];
   estado.sinoForaDoAr = false;
+  estado.poderMudou = true;
   estado.usuarias = {
     7: { id: 7, name: "Dora Distribuidora", isDistributor: false },
     8: { id: 8, name: "Dina Já-Distribui", isDistributor: true },
@@ -125,6 +141,7 @@ beforeEach(() => {
   estado.fila = [];
   estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: null };
   estado.decidiu = true;
+  estado.reciprocadoNoBanco = null;
   estado.historico = [];
   estado.ativas = [2, 3];
   estado.comTermo = [2, 3];
@@ -214,6 +231,15 @@ describe("distribuicao.conceder", () => {
     expect(estado.auditorias).toEqual([]);
   });
 
+  it("concessão simultânea: se o UPDATE não mudou a linha (outra aba concedeu antes), nada de auditoria nem aviso", async () => {
+    estado.poderMudou = false;
+    const caller = distribuicaoRouter.createCaller(ctx({ role: "president" }));
+    await expect(caller.conceder({ userId: 7 })).resolves.toEqual({ success: true });
+    expect(chamadas("definirPoderDeDistribuicao")).toHaveLength(1);
+    expect(estado.auditorias).toEqual([]);
+    expect(avisos()).toEqual([]);
+  });
+
   it("conta inexistente → NOT_FOUND, nada gravado", async () => {
     const caller = distribuicaoRouter.createCaller(ctx({ role: "admin" }));
     await expect(caller.conceder({ userId: 999 })).rejects.toMatchObject({ code: "NOT_FOUND" });
@@ -258,6 +284,14 @@ describe("distribuicao.revogar", () => {
     expect(estado.auditorias).toEqual([]);
   });
 
+  it("revogação simultânea: se o UPDATE não mudou a linha, nada de auditoria nem aviso", async () => {
+    estado.poderMudou = false;
+    const caller = distribuicaoRouter.createCaller(ctx({ role: "president" }));
+    await expect(caller.revogar({ userId: 8, reason: "motivo com dez letras" })).resolves.toEqual({ success: true });
+    expect(estado.auditorias).toEqual([]);
+    expect(avisos()).toEqual([]);
+  });
+
   it("revogar NÃO mexe no nível: nenhuma chamada a revokeGoldAccess ou grantGoldAccess", async () => {
     const caller = distribuicaoRouter.createCaller(ctx({ role: "president" }));
     await caller.revogar({ userId: 8, reason: "motivo com dez letras" });
@@ -270,8 +304,8 @@ describe("distribuicao.revogar", () => {
 describe("connections.send — o pedido novo espera o distribuidor", () => {
   const solicitante = ctx({ id: 1, role: "silver" });
 
-  it("avisa só quem distribui (menos a própria solicitante), nunca a destinatária; corpo sem nome; resposta de sempre", async () => {
-    estado.distribuidoresAtivos = [1, 8, 9];
+  it("avisa quem distribui MENOS as duas partes; corpo sem nome; resposta de sempre", async () => {
+    estado.distribuidoresAtivos = [1, 2, 8, 9]; // 1 = quem pede, 2 = o alvo
     const r = await connectionsRouter.createCaller(solicitante).send({ matchId: 55 });
     expect(r).toEqual({ success: true, revelou: false });
 
@@ -280,17 +314,23 @@ describe("connections.send — o pedido novo espera o distribuidor", () => {
       expect(aviso).toMatchObject({ type: "system", actionUrl: "/president" });
       expect(`${aviso.title} ${aviso.body}`).not.toMatch(/Conta|conta-1|t@local/);
     }
-    // A destinatária (alvo 2) não recebe nada: ela só fica sabendo se for encaminhado.
-    expect(avisos().some(a => a.userId === 2)).toBe(false);
     expect(chamadas("idsDaPresidenciaAtiva")).toEqual([]);
     expect(acoes()).toEqual([]);
   });
 
-  it("sem distribuidor ativo, a presidência é avisada de que o pedido ficou esperando", async () => {
-    estado.distribuidoresAtivos = [];
-    estado.presidencia = [1, 4];
+  it("a destinatária é a ÚNICA distribuidora: ela não recebe nada (o sino denunciaria o pedido) e a presidência é avisada", async () => {
+    estado.distribuidoresAtivos = [2];
+    estado.presidencia = [4];
     await connectionsRouter.createCaller(solicitante).send({ matchId: 55 });
-    expect(avisos().map(a => a.userId)).toEqual([4]); // a própria solicitante (1) fica de fora
+    expect(avisos().map(a => a.userId)).toEqual([4]);
+    expect(String(avisos()[0].body)).toMatch(/nenhum distribuidor/i);
+  });
+
+  it("sem distribuidor ativo, a presidência é avisada — menos quem for parte do pedido", async () => {
+    estado.distribuidoresAtivos = [];
+    estado.presidencia = [1, 2, 4];
+    await connectionsRouter.createCaller(solicitante).send({ matchId: 55 });
+    expect(avisos().map(a => a.userId)).toEqual([4]);
     expect(String(avisos()[0].body)).toMatch(/nenhum distribuidor/i);
     expect(String(avisos()[0].body)).toMatch(/Painel Ouro/);
   });
@@ -378,17 +418,30 @@ describe("distribuicao.fila", () => {
 describe("distribuicao.decidir — travas antes do UPDATE", () => {
   const caller = () => distribuicaoRouter.createCaller(distribuidora);
 
-  it("pedido inexistente → NOT_FOUND", async () => {
+  it("pedido inexistente → NOT_FOUND, e a tentativa vai para a auditoria como alça inválida", async () => {
     estado.pedido = null;
-    await expect(caller().decidir({ connectionId: 1, aprovar: true })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(caller().decidir({ connectionId: 1, aprovar: true })).rejects.toMatchObject({ code: "NOT_FOUND", message: "Pedido não encontrado." });
     expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
+    expect(estado.auditorias).toEqual([expect.objectContaining({
+      userId: 9, action: "MATCH_HANDLE_INVALID", resource: "distribuicao.decidir", resourceId: "1", status: "blocked",
+    })]);
   });
 
-  it("quem é parte do pedido não decide (FORBIDDEN), mesmo com o poder", async () => {
-    estado.pedido = { id: 7, requesterId: 9, recipientId: 3, status: "in_review", reciprocatedAt: null };
-    await expect(caller().decidir({ connectionId: 7, aprovar: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
-    estado.pedido = { id: 7, requesterId: 2, recipientId: 9, status: "in_review", reciprocatedAt: null };
-    await expect(caller().decidir({ connectionId: 7, aprovar: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  it("quem é PARTE leva exatamente o mesmo NOT_FOUND de um id inexistente — um FORBIDDEN denunciaria o pedido oculto", async () => {
+    estado.pedido = null;
+    const inexistente = await caller().decidir({ connectionId: 7, aprovar: false, nota: "x" }).catch(e => e);
+
+    for (const pedido of [
+      { id: 7, requesterId: 9, recipientId: 3, status: "in_review", reciprocatedAt: null },
+      { id: 7, requesterId: 2, recipientId: 9, status: "in_review", reciprocatedAt: null },
+      { id: 7, requesterId: 2, recipientId: 9, status: "not_forwarded", reciprocatedAt: null },
+    ]) {
+      estado.pedido = pedido;
+      const erro = await caller().decidir({ connectionId: 7, aprovar: false, nota: "x" }).catch(e => e);
+      expect(erro.code).toBe(inexistente.code);
+      expect(erro.message).toBe(inexistente.message);
+    }
+    expect(chamadas("lerPedidoDeMatch").map(c => c.args)).toEqual(Array(4).fill([7, 9]));
     expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
   });
 
@@ -424,49 +477,78 @@ describe("distribuicao.decidir — travas antes do UPDATE", () => {
 
   it("as travas do encaminhamento não valem para NÃO encaminhar: recusa passa mesmo sem termo", async () => {
     estado.comTermo = [];
-    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "Sem termo vigente" })).resolves.toEqual({ success: true, statusFinal: "not_forwarded" });
+    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "Sem termo vigente" }))
+      .resolves.toEqual({ success: true, statusFinal: "not_forwarded", reciprocado: false });
   });
 });
 
 describe("distribuicao.decidir — efeitos", () => {
   const caller = () => distribuicaoRouter.createCaller(distribuidora);
 
-  it("encaminhar: vira pending num UPDATE travado, audita, avisa a destinatária (interest_received) e a solicitante (system)", async () => {
-    await expect(caller().decidir({ connectionId: 7, aprovar: true, nota: "Par forte" })).resolves.toEqual({ success: true, statusFinal: "pending" });
+  it("encaminhar: vira pending, audita, avisa a destinatária (interest_received) e a solicitante (system)", async () => {
+    await expect(caller().decidir({ connectionId: 7, aprovar: true, nota: "Par forte" }))
+      .resolves.toEqual({ success: true, statusFinal: "pending", reciprocado: false });
 
-    expect(chamadas("decidirPedidoDeMatch").map(c => c.args)).toEqual([[7, { statusFinal: "pending", moderatedBy: 9, moderationNote: "Par forte" }]]);
+    expect(chamadas("decidirPedidoDeMatch").map(c => c.args)).toEqual([[7, { aprovar: true, moderatedBy: 9, moderationNote: "Par forte" }]]);
     expect(estado.auditorias).toEqual([expect.objectContaining({
       userId: 9, action: "MATCH_REVIEW_APPROVED", resource: "connections", resourceId: "7",
       details: { requesterId: 2, recipientId: 3, reciprocado: false, statusFinal: "pending", nota: "Par forte" },
     })]);
     expect(avisos().map(a => [a.userId, a.type, a.actionUrl])).toEqual([[3, "interest_received", "/dashboard"], [2, "system", "/dashboard"]]);
-    // O aviso à destinatária não diz quem pediu.
     expect(`${avisos()[0].title} ${avisos()[0].body}`).not.toMatch(/Ana|Solicitante/);
   });
 
   it("encaminhar pedido recíproco: vira accepted, revela os dois nomes (via distribuidor) e avisa os dois", async () => {
     estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: new Date() };
-    await expect(caller().decidir({ connectionId: 7, aprovar: true })).resolves.toEqual({ success: true, statusFinal: "accepted" });
+    await expect(caller().decidir({ connectionId: 7, aprovar: true }))
+      .resolves.toEqual({ success: true, statusFinal: "accepted", reciprocado: true });
 
-    expect(chamadas("decidirPedidoDeMatch")[0].args[1]).toMatchObject({ statusFinal: "accepted", moderationNote: null });
+    expect(chamadas("decidirPedidoDeMatch")[0].args[1]).toMatchObject({ aprovar: true, moderationNote: null });
     expect(acoes()).toEqual(["MATCH_REVIEW_APPROVED", "MATCH_IDENTITY_REVEALED", "MATCH_IDENTITY_REVEALED"]);
     const revelacoes = estado.auditorias.filter(a => a.action === "MATCH_IDENTITY_REVEALED");
-    expect(revelacoes.map(a => [a.userId, (a.details as { contraparte: number; via: string }).contraparte, (a.details as { via: string }).via]))
+    expect(revelacoes.map(a => [a.userId, (a.details as { contraparte: number }).contraparte, (a.details as { via: string }).via]))
       .toEqual([[2, 3, "distribuidor"], [3, 2, "distribuidor"]]);
     expect(avisos().map(a => a.userId).sort()).toEqual([2, 3]);
+    for (const aviso of avisos()) expect(`${aviso.title} ${aviso.body}`).not.toMatch(/vocês dois|vocês duas/i);
   });
 
-  it("não encaminhar: vira not_forwarded com a nota, avisa só a solicitante e sem o motivo; a destinatária nunca sabe", async () => {
-    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "Setores sem relação" })).resolves.toEqual({ success: true, statusFinal: "not_forwarded" });
+  it("a destinatária clicou ENTRE a leitura do router e o UPDATE: vale o desfecho do banco (accepted) — revela e a trilha diz recíproco", async () => {
+    estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: null };
+    estado.reciprocadoNoBanco = true;
+    await expect(caller().decidir({ connectionId: 7, aprovar: true }))
+      .resolves.toEqual({ success: true, statusFinal: "accepted", reciprocado: true });
+    expect(acoes()).toEqual(["MATCH_REVIEW_APPROVED", "MATCH_IDENTITY_REVEALED", "MATCH_IDENTITY_REVEALED"]);
+    expect((estado.auditorias[0].details as { reciprocado: boolean }).reciprocado).toBe(true);
+    // Nunca "decida se aceita" para quem já tinha clicado.
+    expect(avisos().some(a => /decida se aceita/.test(String(a.body)))).toBe(false);
+  });
 
-    expect(chamadas("decidirPedidoDeMatch").map(c => c.args)).toEqual([[7, { statusFinal: "not_forwarded", moderatedBy: 9, moderationNote: "Setores sem relação" }]]);
+  it("não encaminhar: vira not_forwarded com a nota, avisa só a solicitante e sem o motivo; a destinatária que não clicou nunca sabe", async () => {
+    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "Setores sem relação" }))
+      .resolves.toEqual({ success: true, statusFinal: "not_forwarded", reciprocado: false });
+
+    expect(chamadas("decidirPedidoDeMatch").map(c => c.args)).toEqual([[7, { aprovar: false, moderatedBy: 9, moderationNote: "Setores sem relação" }]]);
     expect(acoes()).toEqual(["MATCH_REVIEW_REJECTED"]);
     expect(avisos().map(a => a.userId)).toEqual([2]);
     expect(`${avisos()[0].title} ${avisos()[0].body}`).not.toContain("Setores sem relação");
     expect(String(avisos()[0].title)).toMatch(/não encaminhado/i);
   });
 
-  it("outra pessoa decidiu antes (0 linhas afetadas): CONFLICT, sem auditoria, aviso ou revelação", async () => {
+  it("não encaminhar pedido RECÍPROCO: as duas pediram, as duas veem 'não encaminhado' e as duas são avisadas — sem o motivo", async () => {
+    estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: new Date() };
+    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "Setores sem relação" }))
+      .resolves.toEqual({ success: true, statusFinal: "not_forwarded", reciprocado: true });
+
+    expect(acoes()).toEqual(["MATCH_REVIEW_REJECTED"]);
+    expect(avisos().map(a => a.userId).sort()).toEqual([2, 3]);
+    for (const aviso of avisos()) {
+      expect(`${aviso.title} ${aviso.body}`).not.toContain("Setores sem relação");
+      // A frase "a outra pessoa não foi avisada" seria falsa aqui.
+      expect(String(aviso.body)).not.toMatch(/não foi avisada/);
+    }
+  });
+
+  it("outra pessoa decidiu antes (decisão nula): CONFLICT, sem auditoria, aviso ou revelação", async () => {
     estado.decidiu = false;
     estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: new Date() };
     await expect(caller().decidir({ connectionId: 7, aprovar: true })).rejects.toMatchObject({ code: "CONFLICT" });
@@ -477,17 +559,17 @@ describe("distribuicao.decidir — efeitos", () => {
 
   it("sino fora do ar não desfaz a decisão nem a auditoria", async () => {
     estado.sinoForaDoAr = true;
-    await expect(caller().decidir({ connectionId: 7, aprovar: true })).resolves.toEqual({ success: true, statusFinal: "pending" });
+    await expect(caller().decidir({ connectionId: 7, aprovar: true })).resolves.toEqual({ success: true, statusFinal: "pending", reciprocado: false });
     expect(acoes()).toEqual(["MATCH_REVIEW_APPROVED"]);
   });
 });
 
 describe("distribuicao.historico", () => {
-  it("devolve as decisões pelo helper, com o limite pedido, e audita a leitura nominal", async () => {
+  it("pede ao banco só as decisões em que quem consulta NÃO é parte, com o limite pedido, e audita a leitura", async () => {
     estado.historico = [{ connectionId: 7, resultado: "pending", solicitanteNome: "Ana", destinatariaNome: "Bia" }];
     const r = await distribuicaoRouter.createCaller(distribuidora).historico({ limit: 10 });
     expect(r).toEqual(estado.historico);
-    expect(chamadas("listarHistoricoDeDistribuicao").map(c => c.args)).toEqual([[10]]);
+    expect(chamadas("listarHistoricoDeDistribuicao").map(c => c.args)).toEqual([[9, 10]]);
     expect(estado.auditorias).toEqual([expect.objectContaining({ action: "DISTRIBUTOR_VIEW_QUEUE", details: { escopo: "historico", decisoes: 1 } })]);
   });
 
@@ -500,6 +582,7 @@ describe("distribuicao.historico", () => {
 describe("pinos de fonte", () => {
   const procedures = readFileSync(new URL("./routers/_procedures.ts", import.meta.url), "utf8");
   const blocoDistribuidor = procedures.slice(procedures.indexOf("export const distribuidorProcedure"));
+  const fonteDoRouter = readFileSync(new URL("./routers/distribuicao.ts", import.meta.url), "utf8");
 
   it("distribuidorProcedure decide por `ctx.user.isDistributor !== true` e não menciona `role`", () => {
     expect(blocoDistribuidor).toContain("ctx.user.isDistributor !== true");
@@ -529,9 +612,15 @@ describe("pinos de fonte", () => {
   });
 
   it("a fila e o histórico do router só saem por distribuidorProcedure; o poder, por presidentProcedure", () => {
-    const fonte = readFileSync(new URL("./routers/distribuicao.ts", import.meta.url), "utf8");
-    for (const proc of ["fila: distribuidorProcedure", "decidir: distribuidorProcedure", "historico: distribuidorProcedure"]) expect(fonte).toContain(proc);
-    for (const proc of ["listar: presidentProcedure", "conceder: presidentProcedure", "revogar: presidentProcedure"]) expect(fonte).toContain(proc);
-    expect(fonte).not.toContain("protectedProcedure");
+    for (const proc of ["fila: distribuidorProcedure", "decidir: distribuidorProcedure", "historico: distribuidorProcedure"]) expect(fonteDoRouter).toContain(proc);
+    for (const proc of ["listar: presidentProcedure", "conceder: presidentProcedure", "revogar: presidentProcedure"]) expect(fonteDoRouter).toContain(proc);
+    expect(fonteDoRouter).not.toContain("protectedProcedure");
+  });
+
+  it("decidir não lança FORBIDDEN: o recorte de quem é parte mora na consulta e responde NOT_FOUND", () => {
+    const decidir = fonteDoRouter.slice(fonteDoRouter.indexOf("decidir: distribuidorProcedure"), fonteDoRouter.indexOf("historico: distribuidorProcedure"));
+    expect(decidir).not.toContain('code: "FORBIDDEN"');
+    expect(decidir).toContain("lerPedidoDeMatch(input.connectionId, ctx.user.id)");
+    expect(fonteDoRouter).toContain("listarHistoricoDeDistribuicao(ctx.user.id, input.limit)");
   });
 });

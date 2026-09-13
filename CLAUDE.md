@@ -172,15 +172,21 @@ de menu abrem também para quem tem a flag, mas só essa aba.
 `in_review` (nasceu; espera o distribuidor) → `pending` (encaminhado; espera a
 destinatária) → `accepted` | `declined`; ou `in_review` → `not_forwarded` (não
 encaminhado). `reciprocatedAt` marca que a destinatária também clicou durante a análise
-(uma linha por par; a aprovação já vira `accepted` e revela os dois nomes). A
+(sem linha nova; a aprovação já vira `accepted` e revela os dois nomes). A
 destinatária NÃO vê `in_review` nem `not_forwarded` — o predicado `pedidoVisivelPara`
 em `db.ts` tira a linha do join em `getMatchesForUser` e do WHERE em
 `getConnectionsForUser` (regra de consulta, não de tela). A decisão
 (`distribuicao.decidir`) é um UPDATE com `status = 'in_review'` no WHERE: 0 linhas =
 CONFLICT, sem efeito; `respondToConnection` e o interesse mútuo em
-`sendConnectionRequest` também levam o status no WHERE. Sem distribuidor ativo o
-pedido FICA esperando e a presidência recebe o aviso: mesclar a fila só depois de
-conceder o poder em produção. Detalhes em docs/arquitetura/fluxos.md e privacidade.md.
+`sendConnectionRequest` também levam o status no WHERE. Quem é PARTE de um pedido
+não o vê na fila nem no histórico, não recebe o aviso do sino e leva NOT_FOUND ao
+tentar decidi-lo pelo id (nunca FORBIDDEN, que denunciaria o pedido oculto). Se a
+outra pessoa clica depois de um `not_forwarded` oculto para ela, nasce o pedido dela
+(o par pode ter duas linhas; o cartão mostra a mais recente visível). Sem
+distribuidor que possa decidir, o pedido FICA esperando e president/admin ativos
+recebem o aviso (contas Ouro não, como no aviso de oportunidade pendente): mesclar a
+fila só depois de conceder o poder em produção. Detalhes em docs/arquitetura/fluxos.md
+e privacidade.md.
 
 **Mas Ouro NÃO é staff em tudo.** A única assimetria de papel no servidor é `isStaff`
 em `oportunidade-acesso.ts`, que aceita só admin e president: uma conta Ouro APROVA

@@ -51,17 +51,22 @@ export async function registrarRevelacao(
 
 /**
  * O pedido novo nasce esperando o distribuidor. Aviso no sino de quem distribui
- * (menos a própria solicitante: ninguém decide o próprio pedido); sem nenhum
- * distribuidor ativo, a presidência é avisada de que há pedido esperando. O
+ * (menos as duas partes do pedido); sem distribuidor que possa decidir, a
+ * presidência é avisada de que há pedido esperando. O
  * corpo não diz QUEM pediu nem para quem — a fila é que mostra, com auditoria.
  * Falha no aviso não desfaz o pedido, que já está gravado.
  */
-async function avisarQuemDistribui(solicitanteId: number) {
+async function avisarQuemDistribui(solicitanteId: number, destinatariaId: number) {
   try {
     const { idsDosDistribuidoresAtivos, idsDaPresidenciaAtiva, createNotification } = await import("../db");
-    const distribuidores = (await idsDosDistribuidoresAtivos()).filter(id => id !== solicitanteId);
+    // Nenhuma das PARTES é avisada: a destinatária distribuidora ficaria sabendo do
+    // pedido oculto pelo próprio sino (a fila dela nem o mostra), e ninguém decide o
+    // próprio pedido. Se as únicas distribuidoras forem as partes, é como não haver
+    // distribuidor: ninguém pode decidir, e a presidência precisa saber.
+    const naoEParte = (id: number) => id !== solicitanteId && id !== destinatariaId;
+    const distribuidores = (await idsDosDistribuidoresAtivos()).filter(naoEParte);
     const haDistribuidor = distribuidores.length > 0;
-    const destinatarios = haDistribuidor ? distribuidores : (await idsDaPresidenciaAtiva()).filter(id => id !== solicitanteId);
+    const destinatarios = haDistribuidor ? distribuidores : (await idsDaPresidenciaAtiva()).filter(naoEParte);
     const aviso = haDistribuidor
       ? {
         title: "Pedido de interesse para analisar",
@@ -69,7 +74,7 @@ async function avisarQuemDistribui(solicitanteId: number) {
       }
       : {
         title: "Pedido de interesse esperando sem distribuidor",
-        body: "Um pedido de interesse do Smart Match ficou esperando e nenhum distribuidor está ativo. Conceda o poder de distribuição no Painel Ouro, aba Distribuição.",
+        body: "Um pedido de interesse do Smart Match ficou esperando e nenhum distribuidor ativo pode analisá-lo. Conceda o poder de distribuição no Painel Ouro, aba Distribuição.",
       };
     for (const userId of destinatarios) {
       await createNotification({ userId, type: "system", ...aviso, actionUrl: "/president" });
@@ -114,7 +119,7 @@ export const connectionsRouter = router({
       if (resultado.revelou) await registrarRevelacao(resultado.connectionId, ctx.user.id, alvo, "interesse_mutuo");
       // Pedido novo: fica em análise até o distribuidor conferir e encaminhar.
       // A destinatária não é avisada aqui — ela só fica sabendo se for encaminhado.
-      if (resultado.emAnalise) await avisarQuemDistribui(ctx.user.id);
+      if (resultado.emAnalise) await avisarQuemDistribui(ctx.user.id, alvo);
       // Resposta IGUAL em todos os casos que não são erro: pedido novo, pedido
       // repetido, em análise, não encaminhado, recusado ou bloqueado. Antes, o
       // `CONFLICT` distinguível dizia a quem perguntasse que aquela pessoa já
