@@ -89,9 +89,10 @@ function Router() {
           </ProtectedRoute>
         </Route>
 
-        {/* Painel Ouro — acesso restrito a membras Ouro e Admin */}
+        {/* Painel Ouro — Ouro/Admin, ou quem tem o poder de distribuição do Smart
+            Match (só a aba Distribuição). A guarda fina mora no próprio painel. */}
         <Route path={"/president"}>
-          <ProtectedRoute requireGold>
+          <ProtectedRoute>
             <InactivityGuard>
               <PresidentPanel />
             </InactivityGuard>

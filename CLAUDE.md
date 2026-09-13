@@ -159,6 +159,17 @@ cliente e confirmada pelo Roberto em 02/09/2026: toda conta Ouro tem o painel
 administrativo. Consequência: contas Ouro criadas só para teste (inclusive a do
 Roberto) precisam voltar a Prata antes da entrega.
 
+**Distribuidor do Smart Match é um PODER, não um nível.** `users.isDistributor`
+(migração 0010) marca a pessoa real que confere cada pedido de interesse antes de
+encaminhá-lo à outra pessoa. `distribuidorProcedure` (em `_procedures.ts`) exige
+`ctx.user.isDistributor === true` e não olha `role`: Ouro sem a flag leva 403, Prata
+com a flag passa. Quem concede e revoga é `distribuicao.conceder/revogar`
+(`presidentProcedure`; auditoria `DISTRIBUTOR_GRANTED`/`DISTRIBUTOR_REVOKED` de risco
+alto e aviso `system` no sino), na aba Distribuição do Painel Ouro. O painel e o item
+de menu abrem também para quem tem a flag, mas só essa aba. A fila de análise (status
+`in_review` em `connections`) é a etapa seguinte; até ela entrar, o pedido de interesse
+segue direto à outra pessoa, como sempre.
+
 **Mas Ouro NÃO é staff em tudo.** A única assimetria de papel no servidor é `isStaff`
 em `oportunidade-acesso.ts`, que aceita só admin e president: uma conta Ouro APROVA
 uma oportunidade pendente e leva 403 ao tentar ABRI-LA. Some-se outra armadilha:
