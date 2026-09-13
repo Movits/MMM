@@ -69,6 +69,7 @@ export const matchingRouter = router({
     const perfilNoPortao = {
       whatIHave: profile.whatIHave, whatINeed: profile.whatINeed,
       seekingTypes: profile.seekingTypes, lookingForInvestment: profile.lookingForInvestment,
+      activityArea: profile.activityArea, primarySpecialty: profile.primarySpecialty,
     };
 
     const aiResp = await invokeLLM({
@@ -130,7 +131,7 @@ ${REGRA_DA_DEMANDA_EXPRESSA}`,
       // citada e conferida no texto da própria oportunidade — a nota não
       // importa. Prompt é pedido; isto é a garantia.
       .filter((m) => {
-        const passa = passaNoPortao(m, textoDaOportunidade[m.index], perfilNoPortao);
+        const passa = passaNoPortao(m, textoDaOportunidade[m.index], perfilNoPortao, activeOpps[m.index]);
         if (!passa) console.info(`[Match] Oportunidade ${activeOpps[m.index].id} fora da recomendação: serviço sem necessidade expressa.`);
         return passa;
       })
@@ -169,8 +170,10 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
           seekingTypes: userProfiles.seekingTypes,
           interestSectors: userProfiles.interestSectors,
           activityArea: userProfiles.activityArea,
-          // Lido só pelo portão (base expressa fora do serviço); não vai ao prompt.
+          // Lidos só pelo portão (base expressa fora do serviço, e o piso quando
+          // "O que tenho" está vazio); não vão ao prompt.
           lookingForInvestment: userProfiles.lookingForInvestment,
+          primarySpecialty: userProfiles.primarySpecialty,
         })
         .from(userProfiles)
         .innerJoin(users, eq(users.id, userProfiles.userId))
@@ -252,7 +255,7 @@ ${REGRA_DA_DEMANDA_EXPRESSA}`,
         if (alert.index < 0 || alert.index >= profiles.length || alert.score < 80) continue;
         // O portão no alerta: serviço só avisa com a necessidade expressa
         // citada e conferida no texto da oportunidade que o modelo recebeu.
-        if (!passaNoPortao(alert, textoDaOportunidade, profiles[alert.index])) {
+        if (!passaNoPortao(alert, textoDaOportunidade, profiles[alert.index], opp)) {
           console.info(`[Match] Alerta da oportunidade ${opp.id} retido para o perfil ${profiles[alert.index].userId}: serviço sem necessidade expressa.`);
           continue;
         }

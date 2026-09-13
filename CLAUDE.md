@@ -188,7 +188,8 @@ Exceções deliberadas: `system.health` (responde `ok:false` com HTTP 503) e
 
 **Três motores de match convivem.** `server/match-service.ts` cruza contatos da mesma
 dona: `scoreMatch` aplica, nesta ordem, concorrentes → 0, slug exato → 100, mesmo
-objeto do termo → 100, mesmo núcleo → 100, mesma categoria → 60; o critério semântico
+objeto do termo → 100, mesmo núcleo → 100, necessidade genérica que nomeia a família do
+serviço → 100 (só para serviço), mesma categoria → 60 (não vale para serviço); o critério semântico
 vale 45, abaixo do limiar 50, logo está desligado por construção e o texto não sai
 para embeddings. `server/matching.ts` cruza perfis de usuárias em 6 dimensões
 ponderadas, com LLM só no insight. `routers/profileMatches.ts` expõe esses matches no

@@ -15,16 +15,19 @@
  * pessoa escreveu na oportunidade. Serviço sem citação conferida não sai da
  * tela, seja qual for a nota.
  *
- * E o rótulo do modelo não é a única trava (revisão adversarial de 12/09): o
- * classificador determinístico (shared/tipo-da-oferta.ts) é o PISO. Perfil
- * que só tem serviço a oferecer e nada declarado em "preciso"/"busca" exige
- * citação seja qual for o tipo que o modelo escreveu; tipo irreconhecível
- * com serviço no perfil também exige. Para produtos, ativos, investimento,
+ * E o rótulo do modelo não é a única trava (revisões adversariais de 12/09):
+ * o classificador determinístico (shared/tipo-da-oferta.ts) é o PISO. Perfil
+ * que só tem serviço a oferecer — em "O que tenho" ou, sem nada ali, na área
+ * de atuação e na especialidade que o prompt também recebe — e nada declarado
+ * em "preciso"/"busca" exige citação seja qual for o tipo que o modelo
+ * escreveu; tipo irreconhecível com serviço no perfil também exige. E a regra
+ * vale nos dois sentidos: oportunidade que OFERECE um serviço só casa com
+ * perfil que declarou precisar de algo. Para produtos, ativos, investimento,
  * conexões, tecnologia e imóveis nada muda: o portão só atua no tipo
  * "servico".
  */
 import { tokensDoTermo } from "@shared/direcao-do-termo";
-import { ehServico, TIPOS_DA_OFERTA, type TipoDaOferta } from "@shared/tipo-da-oferta";
+import { ehServico, PALAVRAS_DE_SERVICO, TIPOS_DA_OFERTA, type TipoDaOferta } from "@shared/tipo-da-oferta";
 
 /** Os nove tipos mais "nenhuma": o match que se apoia no que a pessoa PRECISA, não no que tem. */
 export const TIPOS_PARA_A_IA = [...TIPOS_DA_OFERTA.map(item => item.tipo), "nenhuma"] as const;
@@ -71,8 +74,8 @@ export const REGRA_DA_DEMANDA_EXPRESSA = `REGRA DA DEMANDA EXPRESSA (obrigatóri
 1. Antes de pontuar, classifique cada item de "tenho" / "O que tenho" em um destes tipos: servico, produto, ativo, oportunidade, investimento, conexao, tecnologia, imovel, outros.
 2. Um item do tipo SERVIÇO (advocacia, consultoria, assessoria, contabilidade, marketing, treinamento...) só sustenta compatibilidade quando o outro lado DECLARA, com todas as letras, que precisa desse serviço ou de uma solução semanticamente equivalente. As palavras podem ser outras: "advocacia tributária" atende "precisamos revisar nossos tributos e identificar créditos fiscais"; "consultoria para registro de medicamentos" atende "suporte para obter autorização regulatória do nosso medicamento".
 3. NÃO conta como necessidade: setor ou atividade econômica, porte, localização, cargo, problemas típicos do segmento, obrigações legais que normalmente se aplicam, serviços que "seriam úteis", necessidades prováveis ou oportunidades comerciais genéricas. Uma indústria farmacêutica que procura "distribuidor para a África" NÃO é match para um serviço tributário, ainda que toda indústria tenha impostos. Essas informações só podem aumentar a nota de um match que JÁ passou por esta regra; nunca criá-lo.
-4. Sem necessidade expressa compatível, o serviço não gera match: não o liste.
-5. Em cada resultado informe "tipoDaOferta": o tipo do item de "tenho" em que o match se apoia — ou "nenhuma" quando o match se apoia no que a pessoa PRECISA (o outro lado oferece o que ela declarou procurar). Quando "tipoDaOferta" for "servico", copie em "necessidadeExpressa" o trecho LITERAL do título, das tags ou da descrição do outro lado que declara a necessidade (as mesmas palavras, sem parafrasear; setor e tipo não são necessidade); nos demais casos deixe "necessidadeExpressa" vazio.
+4. Sem necessidade expressa compatível, o serviço não gera match: não o liste. Vale nos dois sentidos: uma OPORTUNIDADE que oferece um serviço só é compatível com quem DECLAROU precisar dele em "preciso"/"busca" — nunca com quem "poderia precisar" por causa do setor.
+5. Em cada resultado informe "tipoDaOferta": o tipo do item de "tenho" em que o match se apoia — ou "nenhuma" quando o match se apoia no que a pessoa PRECISA (o outro lado oferece o que ela declarou procurar). Quando "tipoDaOferta" for "servico", copie em "necessidadeExpressa" o trecho LITERAL do título, das tags ou da descrição do outro lado que declara a necessidade (as mesmas palavras, sem parafrasear, pelo menos duas palavras; setor e tipo não são necessidade); nos demais casos deixe "necessidadeExpressa" vazio.
 Princípio: não fazemos match porque alguém poderia precisar; fazemos match porque alguém declarou que precisa.`;
 
 const SINONIMOS_DE_TIPO: Record<string, TipoParaAIA> = {
@@ -127,21 +130,23 @@ const PALAVRAS_VAZIAS = new Set([
 /**
  * A citação está no texto-fonte? Conferência por palavras, não por texto
  * exato: a normalização apaga acento e caixa, e o modelo às vezes corta uma
- * palavra de ligação ou corrige um plural. Exige pelo menos uma palavra de
- * conteúdo e, entre elas, no máximo UMA ausente da fonte — com até três
- * palavras, nenhuma. Tolerância fixa, não proporção: 70% deixava passar duas
- * palavras inventadas a partir de sete e três a partir de dez, e "frase real
- * + serviço presumido emendado no fim" é justamente como o modelo presume
- * (revisão adversarial de 12/09). Uma citação inventada não passa, porque as
- * palavras dela não estão na fonte.
+ * palavra de ligação ou corrige um plural. Exige pelo menos DUAS palavras de
+ * conteúdo (uma tag solta é palavra-chave, não declaração) e, entre elas, no
+ * máximo UMA ausente da fonte — com até três, nenhuma; e a ausente nunca pode
+ * ser palavra de serviço, porque "frase real + serviço presumido emendado no
+ * fim" é justamente como o modelo presume. Tolerância fixa, não proporção:
+ * 70% deixava passar duas palavras inventadas a partir de sete (revisões
+ * adversariais de 12/09). Uma citação inventada não passa, porque as palavras
+ * dela não estão na fonte.
  */
 export function citacaoConfere(citacao: unknown, fonte: string): boolean {
   if (typeof citacao !== "string") return false;
   const palavras = tokensDoTermo(citacao).filter(palavra => palavra.length >= 3 && !PALAVRAS_VAZIAS.has(palavra));
-  if (palavras.length === 0) return false;
+  if (palavras.length < 2) return false;
   const daFonte = new Set(tokensDoTermo(fonte));
-  const faltando = palavras.filter(palavra => !daFonte.has(palavra)).length;
-  return palavras.length <= 3 ? faltando === 0 : faltando <= 1;
+  const ausentes = palavras.filter(palavra => !daFonte.has(palavra));
+  if (ausentes.some(palavra => PALAVRAS_DE_SERVICO.has(palavra))) return false;
+  return palavras.length <= 3 ? ausentes.length === 0 : ausentes.length <= 1;
 }
 
 export type ItemComPortao = { tipoDaOferta?: unknown; necessidadeExpressa?: unknown };
@@ -152,10 +157,38 @@ export type PerfilNoPortao = {
   whatINeed?: unknown;
   seekingTypes?: unknown;
   lookingForInvestment?: unknown;
+  activityArea?: unknown;
+  primarySpecialty?: unknown;
 };
+
+/** O que o portão lê da oportunidade do outro lado. */
+export type OportunidadeNoPortao = { type?: unknown; title?: unknown };
 
 const lista = (valor: unknown): string[] =>
   Array.isArray(valor) ? valor.filter((item): item is string => typeof item === "string" && item.trim() !== "") : [];
+const texto = (valor: unknown): string[] => (typeof valor === "string" && valor.trim() !== "" ? [valor] : []);
+
+/**
+ * O que o perfil OFERECE aos olhos do portão: "O que tenho" e, quando está
+ * vazio, a área de atuação e a especialidade — que o prompt também recebe e
+ * das quais o modelo deduz o serviço ("Área de atuação: advocacia
+ * tributária"). Sem isto o piso nunca disparava com a UI de hoje, que só
+ * grava ids fixos em "O que tenho".
+ */
+function ofertasDoPerfil(perfil: PerfilNoPortao): string[] {
+  const declaradas = lista(perfil.whatIHave);
+  return declaradas.length ? declaradas : [...texto(perfil.activityArea), ...texto(perfil.primarySpecialty)];
+}
+
+/** O perfil declarou precisar de alguma coisa (necessidade, busca ou "busco investimento")? */
+export function temNecessidadeDeclarada(perfil: PerfilNoPortao): boolean {
+  return lista(perfil.whatINeed).length > 0 || lista(perfil.seekingTypes).length > 0 || perfil.lookingForInvestment === true;
+}
+
+/** A oportunidade OFERECE um serviço (tipo "offer" com título de serviço)? */
+export function oportunidadeOfereceServico(oportunidade: OportunidadeNoPortao): boolean {
+  return oportunidade.type === "offer" && typeof oportunidade.title === "string" && ehServico(oportunidade.title);
+}
 
 /**
  * Este match exige a citação da necessidade expressa? Sim quando o modelo
@@ -167,21 +200,22 @@ const lista = (valor: unknown): string[] =>
 export function exigeCitacao(item: ItemComPortao, perfil?: PerfilNoPortao): boolean {
   const tipo = reconhecerTipo(item.tipoDaOferta);
   if (tipo === "servico") return true;
-  const ofertas = lista(perfil?.whatIHave);
+  if (!perfil) return false;
+  const ofertas = ofertasDoPerfil(perfil);
   if (ofertas.length === 0) return false;
   const servicos = ofertas.filter(oferta => ehServico(oferta));
   if (tipo === null && servicos.length > 0) return true;
-  const soServicos = servicos.length === ofertas.length;
-  const outraBase = lista(perfil?.whatINeed).length > 0 || lista(perfil?.seekingTypes).length > 0 || perfil?.lookingForInvestment === true;
-  return soServicos && !outraBase;
+  return servicos.length === ofertas.length && !temNecessidadeDeclarada(perfil);
 }
 
 /**
  * O portão: match apoiado em SERVIÇO só passa com a necessidade expressa
- * citada e conferida no texto que a pessoa escreveu. Qualquer outro tipo
- * passa como antes.
+ * citada e conferida no texto que a pessoa escreveu; e oportunidade que
+ * oferece um serviço só passa para quem declarou precisar de algo. Qualquer
+ * outro tipo passa como antes.
  */
-export function passaNoPortao(item: ItemComPortao, fonte: string, perfil?: PerfilNoPortao): boolean {
+export function passaNoPortao(item: ItemComPortao, fonte: string, perfil?: PerfilNoPortao, oportunidade?: OportunidadeNoPortao): boolean {
+  if (perfil && oportunidade && oportunidadeOfereceServico(oportunidade) && !temNecessidadeDeclarada(perfil)) return false;
   if (!exigeCitacao(item, perfil)) return true;
   return citacaoConfere(item.necessidadeExpressa, fonte);
 }

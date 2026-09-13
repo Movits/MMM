@@ -9,7 +9,7 @@ import { eq, ne, and, desc, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import { hasValidConsent, usersComConsentimento } from "./routers/consent";
 import { nomeiamAMesmaCoisa, slugDoTermo } from "@shared/direcao-do-termo";
-import { ehServico, ehServicoDeAssessoria } from "@shared/tipo-da-oferta";
+import { ehServico, ehServicoDeAssessoria, necessidadeGenericaNomeiaOServico } from "@shared/tipo-da-oferta";
 
 // ─── Encryption helpers (for sensitive data) ─────────────────
 const VAULT_KEY = process.env.VAULT_ENCRYPTION_KEY || requireSecret("JWT_SECRET");
@@ -233,7 +233,10 @@ function satisfaz(have: string, need: string): boolean {
   if (have === need) return true;
   if (HAVE_SATISFIES_NEED[have]?.includes(need)) return true;
   if (slugDoTermo(have) === slugDoTermo(need) || nomeiamAMesmaCoisa(have, need)) return true;
-  return need === "consultoria" && ehServicoDeAssessoria(have);
+  // A necessidade genérica que nomeia a família do serviço ("Consultoria"
+  // ou "Advogado" em texto livre) é demanda expressa, como no motor privado.
+  if (necessidadeGenericaNomeiaOServico(have, null, need)) return true;
+  return slugDoTermo(need) === "consultoria" && ehServicoDeAssessoria(have);
 }
 
 /** Quantas necessidades de `need` algum ativo de `have` satisfaz. */
@@ -432,16 +435,21 @@ const ROTULO_DE_VALOR: Record<string, string> = {
   transparency: "Transparência", sustainability: "Sustentabilidade",
   technical_excellence: "Excelência técnica",
 };
-// As opções fixas de "O que tenho" / "O que preciso" do onboarding, pelo rótulo
-// humano (WHAT_I_HAVE_OPTIONS / WHAT_I_NEED_OPTIONS em Onboarding.tsx). Texto
-// livre (gravado por "falar sobre o negócio") passa como veio.
-const ROTULO_DO_PERFIL_ESTRATEGICO: Record<string, string> = {
+// As opções fixas de "O que tenho" e de "O que preciso" do onboarding, pelo
+// rótulo humano (WHAT_I_HAVE_OPTIONS / WHAT_I_NEED_OPTIONS em Onboarding.tsx).
+// Dois mapas porque "investidores" e "licencas" existem nas duas listas com
+// rótulos diferentes. Texto livre (gravado por "falar sobre o negócio") passa
+// como veio.
+const ROTULO_DO_QUE_TENHO: Record<string, string> = {
   industria: "Indústria", fazenda: "Fazenda / Agro", laboratorio: "Laboratório", tecnologia: "Tecnologia",
-  investidores: "Investidores", acesso_governamental: "Acesso governamental",
+  investidores: "Rede de Investidores", acesso_governamental: "Acesso Governamental",
   commodities: "Matérias-primas (commodities)", licencas: "Licenças & Certificações", imoveis: "Imóveis",
-  logistica: "Logística", canais_comerciais: "Canais comerciais",
-  fornecedores: "Fornecedores", compradores: "Compradores", distribuidores: "Distribuidores",
-  parceiros: "Parceiros estratégicos", financiamento: "Financiamento", consultoria: "Consultoria",
+  logistica: "Logística", canais_comerciais: "Canais Comerciais",
+};
+const ROTULO_DO_QUE_PRECISO: Record<string, string> = {
+  fornecedores: "Fornecedores", investidores: "Investidores", compradores: "Compradores",
+  distribuidores: "Distribuidores", parceiros: "Parceiros Estratégicos", tecnologia: "Tecnologia",
+  financiamento: "Financiamento", licencas: "Licenças & Aprovações", consultoria: "Consultoria",
 };
 const rotular = (valores: unknown, mapa: Record<string, string>) =>
   ((valores as string[]) || []).map(valor => mapa[valor] ?? valor).join(", ");
@@ -474,10 +482,10 @@ Score de compatibilidade: ${scores.overall}%
 - Especialidade: ${scores.specialty}%
 - Valores: ${scores.values}%
 
-O que A tem: ${rotular(profileA.whatIHave, ROTULO_DO_PERFIL_ESTRATEGICO) || "não informado"}
-O que A precisa: ${rotular(profileA.whatINeed, ROTULO_DO_PERFIL_ESTRATEGICO) || "não informado"}
-O que B tem: ${rotular(profileB.whatIHave, ROTULO_DO_PERFIL_ESTRATEGICO) || "não informado"}
-O que B precisa: ${rotular(profileB.whatINeed, ROTULO_DO_PERFIL_ESTRATEGICO) || "não informado"}
+O que A tem: ${rotular(profileA.whatIHave, ROTULO_DO_QUE_TENHO) || "não informado"}
+O que A precisa: ${rotular(profileA.whatINeed, ROTULO_DO_QUE_PRECISO) || "não informado"}
+O que B tem: ${rotular(profileB.whatIHave, ROTULO_DO_QUE_TENHO) || "não informado"}
+O que B precisa: ${rotular(profileB.whatINeed, ROTULO_DO_QUE_PRECISO) || "não informado"}
 
 Escreva o insight em português, de forma direta e motivadora. Máximo 150 palavras.`;
 

@@ -59,6 +59,13 @@ describe("Serviço × necessidade que o NOMEIA — casa em 100", () => {
     // Outra especialidade pedida é outra necessidade; outra família também.
     expect(scoreMatch(item("Consultoria jurídica"), item("Consultoria em marketing")).score).toBe(0);
     expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Advocacia", "Serviços")).score).toBe(0);
+    // A família junta as flexões: "Advogado" procurado × "Advocacia tributária" possuído.
+    expect(scoreMatch(item("Advocacia tributária", "Jurídico"), item("Advogado", "Jurídico")).score).toBe(100);
+    expect(scoreMatch(item("Serviços jurídicos tributários"), item("Advogada")).score).toBe(100);
+  });
+
+  it("item coordenado ('Mina e consultoria mineral') fica com a mina e segue nos 60 por categoria", () => {
+    expect(scoreMatch(item("Mina e consultoria mineral", "Mineração"), item("Britagem", "Mineração"))).toEqual({ score: 60, type: "category" });
   });
 
   it("o motor privado não adivinha paráfrase: exemplo 1 do pedido só casa nos motores por IA", () => {

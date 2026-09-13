@@ -16,7 +16,12 @@ export const profileMatchesRouter = router({
       // agora aqui, colada no procedimento vivo.
       if (!(await hasValidConsent(ctx.user.id, "termo_smart_match"))) return [];
       const { getMatchesForUser } = await import("../db");
-      const lista = await getMatchesForUser(ctx.user.id, input.limit);
+      // Lê a janela inteira (50, o teto da procedure) e só depois corta no
+      // limite pedido: a linha bloqueada pelo portão fica no banco com a nota
+      // velha e alta, e com LIMIT antes do filtro ela ocupava a vaga de um
+      // match legítimo, que sumia da tela (revisão adversarial de 12/09).
+      const JANELA = 50;
+      const lista = await getMatchesForUser(ctx.user.id, JANELA);
       const ids = lista.map(m => m.matchedUserId).filter((id): id is number => id !== null);
       const comTermo = await usersComConsentimento(ids, "termo_smart_match");
       // Regra da demanda expressa (12/09/2026), também na LEITURA: a linha
@@ -29,7 +34,9 @@ export const profileMatchesRouter = router({
       const { matchesBloqueadosPelaDemandaExpressa } = await import("../matching");
       const autorizados = ids.filter(id => comTermo.has(id));
       const bloqueados = await matchesBloqueadosPelaDemandaExpressa(ctx.user.id, autorizados);
-      return lista.filter(m => m.matchedUserId !== null && comTermo.has(m.matchedUserId) && !bloqueados.has(m.matchedUserId));
+      return lista
+        .filter(m => m.matchedUserId !== null && comTermo.has(m.matchedUserId) && !bloqueados.has(m.matchedUserId))
+        .slice(0, input.limit);
     }),
 
   // Etapa 13 (prontidão): quantos matches EXISTEM mas estão ocultos porque o

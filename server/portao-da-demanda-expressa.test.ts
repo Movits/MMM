@@ -57,11 +57,18 @@ describe("citacaoConfere — a citação precisa estar no texto-fonte", () => {
     expect(citacaoConfere("precisa de advocacia tributária", fonte)).toBe(false);
   });
 
-  it("vazio, só palavras de ligação ou não-texto: não confere", () => {
+  it("vazio, só palavras de ligação, uma palavra só ou não-texto: não confere", () => {
     expect(citacaoConfere("", fonte)).toBe(false);
     expect(citacaoConfere("de para com", fonte)).toBe(false);
+    expect(citacaoConfere("tributos", fonte)).toBe(false); // uma tag solta é palavra-chave, não declaração
     expect(citacaoConfere(undefined, fonte)).toBe(false);
     expect(citacaoConfere(null, fonte)).toBe(false);
+  });
+
+  it("a palavra ausente nunca pode ser de serviço: 'frase real + serviço emendado' não passa", () => {
+    expect(citacaoConfere("precisamos revisar nossos tributos advocacia", fonte)).toBe(false);
+    expect(citacaoConfere("precisamos revisar nossos tributos consultoria", fonte)).toBe(false);
+    expect(citacaoConfere("precisamos revisar nossos tributos hoje", fonte)).toBe(true); // ausente comum, tolerada
   });
 
   it("tolera UMA palavra ausente a partir de quatro; até três, nenhuma — tolerância fixa, não proporção", () => {
@@ -135,6 +142,21 @@ describe("passaNoPortao — só serviço precisa de citação", () => {
   it("tipo irreconhecível com serviço no perfil fecha; sem serviço no perfil, passa", () => {
     expect(exigeCitacao({ tipoDaOferta: "banana" }, { whatIHave: ["Advocacia tributária", "fazenda"], whatINeed: ["tecnologia"] })).toBe(true);
     expect(exigeCitacao({ tipoDaOferta: "banana" }, { whatIHave: ["fazenda"] })).toBe(false);
+  });
+
+  it("com 'O que tenho' vazio, o piso lê a área de atuação e a especialidade (que o prompt também recebe)", () => {
+    expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: [], activityArea: "Advocacia tributária", whatINeed: [] })).toBe(true);
+    expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: [], activityArea: "Advocacia tributária", primarySpecialty: "vendas" })).toBe(false);
+    expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: ["fazenda"], activityArea: "Advocacia tributária" })).toBe(false);
+  });
+
+  it("nos dois sentidos: oportunidade que OFERECE um serviço só passa para quem declarou precisar de algo", () => {
+    const oferta = { type: "offer", title: "Assessoria tributária para indústrias" };
+    const item = { tipoDaOferta: "nenhuma", necessidadeExpressa: "" };
+    expect(passaNoPortao(item, fonte, { whatIHave: ["fazenda"], whatINeed: [] }, oferta)).toBe(false);
+    expect(passaNoPortao(item, fonte, { whatIHave: ["fazenda"], whatINeed: ["consultoria"] }, oferta)).toBe(true);
+    expect(passaNoPortao(item, fonte, { whatIHave: ["fazenda"], whatINeed: [] }, { type: "demand", title: "Assessoria tributária para indústrias" })).toBe(true);
+    expect(passaNoPortao(item, fonte, { whatIHave: ["fazenda"], whatINeed: [] }, { type: "offer", title: "Café especial da Bahia" })).toBe(true);
   });
 
   it("a regra escrita para o modelo diz o essencial", () => {
@@ -230,20 +252,44 @@ describe("matching.getRecommendedOpportunities — o portão na recomendação",
     expect(lista.map(o => o.id)).toEqual([10]);
   });
 
-  it("a descrição vai em até 800 caracteres em fronteira de palavra, e a citação do fim dela confere", async () => {
-    const longa = `${"Empresa consolidada no setor. ".repeat(20)}Precisamos de assessoria tributária para revisar a carga fiscal.`;
-    filas.push([perfilTributarista], [{ ...oportunidades[0], description: longa }]);
+  it("a descrição vai em 800 caracteres em fronteira de palavra: a necessidade antes do corte confere, depois do corte não chega ao modelo", async () => {
+    const necessidade = "Precisamos de assessoria tributária para revisar a carga fiscal.";
+    const enchimento = "Empresa consolidada no setor. ".repeat(30); // 900 caracteres
+    const cabe = { ...oportunidades[0], description: `${necessidade} ${enchimento}` };
+    const naoCabe = { ...oportunidades[0], id: 13, description: `${enchimento}${necessidade}` };
+    filas.push([perfilTributarista], [cabe, naoCabe]);
+    const citacao = { tipoDaOferta: "servico", necessidadeExpressa: "Precisamos de assessoria tributária para revisar a carga fiscal" };
     invokeLLM.mockResolvedValue(respostaDaIA({ matches: [
-      { index: 0, score: 90, reason: "Declarada", tipoDaOferta: "servico", necessidadeExpressa: "Precisamos de assessoria tributária para revisar a carga fiscal" },
+      { index: 0, score: 90, reason: "Declarada", ...citacao },
+      { index: 1, score: 90, reason: "Declarada", ...citacao },
     ] }));
+    const silencio = vi.spyOn(console, "info").mockImplementation(() => {});
 
     const lista = await matchingRouter.createCaller(ctx).getRecommendedOpportunities();
 
+    silencio.mockRestore();
     const chamada = invokeLLM.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
     const usuario = chamada.messages.find(m => m.role === "user")!.content;
-    expect(usuario).toContain("assessoria tributária para revisar a carga fiscal");
     expect(usuario).toContain("cortadas em 800 caracteres");
+    // a linha da segunda oportunidade termina com reticência e sem a necessidade
+    const linhaCortada = usuario.split("\n").find(l => l.startsWith("[1] "))!;
+    expect(linhaCortada).toContain("…");
+    expect(linhaCortada).not.toContain("carga fiscal");
     expect(lista.map(o => o.id)).toEqual([10]);
+  });
+
+  it("a citação é conferida contra o que a pessoa escreveu, não contra a linha do prompt: setor e tipo não valem", async () => {
+    filas.push([perfilTributarista], oportunidades);
+    invokeLLM.mockResolvedValue(respostaDaIA({ matches: [
+      // "Farmacêutico" e "demand" estão na linha do prompt (Setor:/Tipo:), não no texto da oportunidade 11
+      { index: 1, score: 88, reason: "Setor", tipoDaOferta: "servico", necessidadeExpressa: "Farmacêutico demand" },
+    ] }));
+    const silencio = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    const lista = await matchingRouter.createCaller(ctx).getRecommendedOpportunities();
+
+    silencio.mockRestore();
+    expect(lista).toEqual([]);
   });
 
   it("o prompt carrega a regra e a resposta pede tipo e citação no schema", async () => {
@@ -285,5 +331,19 @@ describe("notifyHighCompatibilityForOpportunity — o portão no alerta", () => 
     expect(chamada.messages.find(m => m.role === "user")!.content).toContain(oportunidade.description);
     expect(r).toEqual({ notified: 2 });
     expect(createNotification.mock.calls.map(c => (c[0] as { userId: number }).userId)).toEqual([3, 4]);
+  });
+
+  it("o piso no alerta: perfil só de serviço e sem busca declarada é retido mesmo quando o modelo diz 'produto'", async () => {
+    filas.push([oportunidades[1]], [
+      { userId: 2, role: "silver", whatIHave: ["Advocacia tributária"], whatINeed: [], sector: "Jurídico", seekingTypes: [], interestSectors: [], activityArea: null, lookingForInvestment: false, primarySpecialty: null },
+    ]);
+    invokeLLM.mockResolvedValue(respostaDaIA({ alerts: [{ index: 0, score: 90, tipoDaOferta: "produto", necessidadeExpressa: "" }] }));
+    const silencio = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    const r = await notifyHighCompatibilityForOpportunity(11);
+
+    silencio.mockRestore();
+    expect(r).toEqual({ notified: 0 });
+    expect(createNotification).not.toHaveBeenCalled();
   });
 });

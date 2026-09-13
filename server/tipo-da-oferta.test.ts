@@ -112,12 +112,42 @@ describe("Tipo da oferta — a ordem da decisão", () => {
     expect(classificarOferta("Rede de advogados")).toBe("conexao");
   });
 
-  it("substantivo de serviço colado à cabeça decide: 'Logistics consulting', 'Logística e consultoria aduaneira'", () => {
+  it("substantivo de serviço colado à cabeça decide: 'Logistics consulting', 'Tax law', 'Customs brokerage'", () => {
     expect(classificarOferta("Logistics consulting")).toBe("servico");
     expect(classificarOferta("Transport consultancy")).toBe("servico");
-    expect(classificarOferta("Logística e consultoria aduaneira")).toBe("servico");
     expect(classificarOferta("Real estate consulting")).toBe("servico");
     expect(classificarOferta("Real estate in Lisbon")).toBe("imovel");
+    expect(classificarOferta("Tax law")).toBe("servico");
+    expect(classificarOferta("International law firm")).toBe("servico");
+    expect(classificarOferta("Customs brokerage")).toBe("servico");
+    expect(classificarOferta("Technical support")).toBe("servico");
+    expect(classificarOferta("Despacho de abogados")).toBe("servico");
+  });
+
+  it("composto em inglês cuja última palavra é de outro tipo: o serviço é só o assunto", () => {
+    expect(classificarOferta("Marketing platform")).toBe("tecnologia");
+    expect(classificarOferta("Accounting software")).toBe("tecnologia");
+    expect(classificarOferta("Training materials")).toBe("produto");
+    expect(classificarOferta("Legal database")).toBe("tecnologia");
+    // e o contrário continua serviço
+    expect(classificarOferta("Consulting services")).toBe("servico");
+    expect(classificarOferta("Marketing digital")).toBe("servico");
+  });
+
+  it("conjunção coordena outro item: a cabeça fica com o que é", () => {
+    expect(classificarOferta("Mina e consultoria mineral")).toBe("ativo");
+    expect(classificarOferta("Capital e mentoria")).toBe("investimento");
+    expect(classificarOferta("Logística e consultoria aduaneira")).toBe("ativo");
+    expect(classificarOferta("Peças e manutenção")).toBe("outros");
+  });
+
+  it("cabeça genérica 'serviços' deixa o complemento decidir", () => {
+    expect(classificarOferta("Serviços de logística")).toBe("ativo");
+    expect(classificarOferta("Serviços financeiros")).toBe("investimento");
+    expect(classificarOferta("Serviços de tecnologia")).toBe("tecnologia");
+    expect(classificarOferta("Serviços de consultoria")).toBe("servico");
+    expect(classificarOferta("Serviços de tradução")).toBe("servico");
+    expect(classificarOferta("Serviços")).toBe("servico");
   });
 
   it("atrás de preposição, com cabeça de outra natureza, o serviço é só modificador (produto/ativo não mudam)", () => {
@@ -147,11 +177,14 @@ describe("Tipo da oferta — a ordem da decisão", () => {
     expect(ehServico("Instalação industrial")).toBe(false);
   });
 
-  it("cabeça neutra (empresa, escritório) deixa o resto do termo decidir — inclusive o adjetivo", () => {
+  it("cabeça neutra (empresa, escritório) deixa o complemento pelo genitivo decidir — inclusive o adjetivo", () => {
     expect(classificarOferta("Escritório de advocacia")).toBe("servico");
     expect(classificarOferta("Empresa de contabilidade")).toBe("servico");
     expect(classificarOferta("Escritório jurídico")).toBe("servico");
     expect(classificarOferta("Escritório comercial")).toBe("outros");
+    // "para" não é genitivo: o escritório PARA advogados é o imóvel
+    expect(classificarOferta("Escritório para advogados", "Imóveis")).toBe("imovel");
+    expect(ehServico("Escritório para advogados")).toBe(false);
   });
 
   it("marcadores fracos, artigos e genitivo saem da frente", () => {
@@ -172,18 +205,29 @@ describe("Tipo da oferta — a ordem da decisão", () => {
     expect(classificarOferta("Software de gestão", "Serviços")).toBe("tecnologia");
   });
 
-  it("na categoria, palavra de outro tipo vence 'serviços': 'Serviços financeiros' é capital", () => {
+  it("na categoria, palavra de outro tipo vence só o genérico 'serviços': 'Serviços financeiros' é capital", () => {
     expect(classificarOferta("Linha de crédito", "Serviços financeiros")).toBe("investimento");
     expect(classificarOferta("Linha de crédito", "Serviços de tecnologia")).toBe("tecnologia");
     expect(classificarOferta("Linha de crédito", "Serviços jurídicos")).toBe("servico");
     expect(ehServico("Linha de crédito", "Serviços financeiros")).toBe(false);
   });
+
+  it("na categoria, palavra ESPECÍFICA de serviço decide em qualquer posição: 'Consultoria financeira' é serviço", () => {
+    expect(classificarOferta("Planejamento patrimonial", "Consultoria financeira")).toBe("servico");
+    expect(classificarOferta("Contratos", "Advocacia imobiliária")).toBe("servico");
+    expect(classificarOferta("Campanhas", "Marketing")).toBe("servico");
+    expect(classificarOferta("Relatórios", "Auditoria")).toBe("servico");
+    expect(classificarOferta("Programa para fundadoras", "Mentoria")).toBe("servico");
+  });
 });
 
 describe("Família do serviço e necessidade genérica", () => {
-  it("a família é o primeiro substantivo de serviço; 'serviços' sozinho não é família", () => {
+  it("a família é o lema do primeiro substantivo de serviço; 'serviços' sozinho não é família", () => {
     expect(familiaDoServico("Consultoria jurídica")).toBe("consultoria");
     expect(familiaDoServico("Empresa de consultoria")).toBe("consultoria");
+    expect(familiaDoServico("Tax consulting")).toBe("consultoria");
+    expect(familiaDoServico("Advogada tributarista")).toBe("advocacia");
+    expect(familiaDoServico("Serviços jurídicos tributários")).toBe("advocacia");
     expect(familiaDoServico("Serviços de tradução")).toBe("traducao");
     expect(familiaDoServico("Serviços")).toBeNull();
     expect(familiaDoServico("Mina de lítio")).toBeNull();
@@ -194,9 +238,18 @@ describe("Família do serviço e necessidade genérica", () => {
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Procura consultoria")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Empresa de consultoria", null, "Consultoria")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consultoria em marketing")).toBe(false);
+    expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consultoria tributária")).toBe(false); // duas palavras: outra necessidade
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Advocacia")).toBe(false);
     expect(necessidadeGenericaNomeiaOServico("Serviços jurídicos", null, "Serviços")).toBe(false);
     expect(necessidadeGenericaNomeiaOServico("Mina de lítio", null, "Consultoria")).toBe(false);
+  });
+
+  it("a família junta flexões e idiomas: 'Advogado' procurado nomeia 'Advocacia tributária' e 'Serviços jurídicos'", () => {
+    expect(necessidadeGenericaNomeiaOServico("Advocacia tributária", null, "Advogado")).toBe(true);
+    expect(necessidadeGenericaNomeiaOServico("Serviços jurídicos tributários", null, "Advogada")).toBe(true);
+    expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consulting")).toBe(true);
+    expect(necessidadeGenericaNomeiaOServico("Contabilidade para PMEs", null, "Contador")).toBe(true);
+    expect(necessidadeGenericaNomeiaOServico("Advocacia tributária", null, "Contador")).toBe(false);
   });
 });
 

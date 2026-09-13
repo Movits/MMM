@@ -15,8 +15,9 @@ import type { UserProfile } from "../drizzle/schema";
  * tenho" é só serviço ("Advocacia tributária", texto livre que o zod aceita e
  * "falar sobre o negócio" grava) virava match com quem "poderia precisar" —
  * por setor, nunca por necessidade declarada. Agora o par sustentado só por
- * serviço sem demanda expressa dá zero (bloqueio nomeado), a linha antiga sai
- * do banco no "Reanalisar" e some da leitura. Base expressa por outro caminho
+ * serviço sem demanda expressa dá zero (bloqueio nomeado), não é gravado no
+ * "Reanalisar" e some da leitura (a linha antiga fica, com a dispensa da dona
+ * preservada). Base expressa por outro caminho
  * (produto que a outra declarou precisar, investimento buscado × capacidade
  * declarada) mantém o par: a regra é específica de serviço.
  */
@@ -106,6 +107,21 @@ describe("calculateCompatibilityScore — necessidade expressa libera o serviço
     );
     expect(r.bloqueio).toBeUndefined();
     expect(r.complementarity).toBe(60);
+  });
+
+  it("necessidade genérica em texto livre também é demanda expressa: 'Consultoria' × 'Consultoria jurídica', 'Advogado' × 'Advocacia tributária'", () => {
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria jurídica"] }), perfil({ whatINeed: ["Consultoria"] })).complementarity).toBe(60);
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Advocacia tributária"] }), perfil({ whatINeed: ["Advogado"] })).complementarity).toBe(60);
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Advocacia tributária"] }), perfil({ whatINeed: ["Consultoria"] })).complementarity).toBe(60); // assessoria
+  });
+
+  it("'busco investimento' × capacidade menor que o valor buscado não é base expressa", () => {
+    const r = calculateCompatibilityScore(
+      perfil({ whatIHave: ["Advocacia tributária"], lookingForInvestment: false, investmentCapacity: "under_10k" }),
+      perfil({ lookingForInvestment: true, investmentAmountSeeking: "1m_plus" }),
+    );
+    expect(r.investment).not.toBe(90);
+    expect(r.bloqueio).toBe("servico-sem-demanda-expressa");
   });
 
   it("'Consultoria' não é atendida por qualquer serviço: marketing não é assessoria", () => {
