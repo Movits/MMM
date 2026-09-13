@@ -578,7 +578,7 @@ describe("limpeza, direção A: todo par do plano existe em drizzle/schema.ts", 
     expect(PLANO_DE_LIMPEZA.filter((p: any) => p.acao === "alertar").map((p: any) => `${p.tabela}.${p.coluna}`)).toEqual([
       "opportunity_interests.opportunityId", "saved_opportunities.opportunityId", "deal_rooms.opportunityId",
       "national_leaders.nominatedBy", "national_leaders.revokedBy", "president_validations.validatedBy",
-      "security_events.resolvedBy", "opportunities.moderatedBy", "gold_access_grants.grantedBy", "gold_access_grants.revokedBy",
+      "connections.moderatedBy", "security_events.resolvedBy", "opportunities.moderatedBy", "gold_access_grants.grantedBy", "gold_access_grants.revokedBy",
     ]);
   });
 
@@ -610,7 +610,8 @@ describe("limpeza, direção B: tabela nova com coluna de usuária (owner_id, us
     // Igualdade de propósito: subir é normal ao criar tabela; baixar exige explicar
     // qual coluna de usuária sumiu do parse.
     // 57: a etapa 13 somou nda_acceptances.userId (trilha de aceite do NDA).
-    expect(paresDeUsuariaNoSchema).toHaveLength(57);
+    // 58: o distribuidor do Smart Match somou connections.moderatedBy.
+    expect(paresDeUsuariaNoSchema).toHaveLength(58);
     expect(paresDeUsuariaNoSchema).toContainEqual({ tabela: "private_contacts", coluna: "ownerId" });
     expect(paresDeUsuariaNoSchema).toContainEqual({ tabela: "gold_access_grants", coluna: "revokedBy" });
     expect(paresDeUsuariaNoSchema).toContainEqual({ tabela: "nda_acceptances", coluna: "userId" });

@@ -843,22 +843,6 @@ const NOME_DO_NIVEL: Record<string, string> = {
   bronze: "Bronze", silver: "Prata", gold: "Ouro", admin: "Admin", president: "Presidente",
 };
 
-function AvisoDistribuidor() {
-  return (
-    <div className="p-5 rounded-2xl bg-amber-400/8 border border-amber-400/20">
-      <div className="flex items-center gap-3 mb-2">
-        <Share2 size={16} className="text-amber-400" />
-        <span className="text-sm font-bold text-amber-400">Você tem o poder de distribuição</span>
-      </div>
-      <p className="text-sm text-white/60 leading-relaxed">
-        A fila de análise dos pedidos de interesse do Smart Match será ativada na etapa seguinte.
-        Quando estiver no ar, cada clique em "Demonstrar Interesse" vai esperar a sua conferência
-        antes de chegar à outra pessoa.
-      </p>
-    </div>
-  );
-}
-
 function QuemDistribui() {
   const [search, setSearch] = useState("");
   const [concederDialog, setConcederDialog] = useState<{ userId: number; name: string } | null>(null);
@@ -1038,6 +1022,252 @@ function QuemDistribui() {
   );
 }
 
+// ─── Fila de análise (só quem tem o poder) ───────────────────────────────────
+// Cada pedido mostra as DUAS partes com nome, a nota do Smart Match na direção do
+// pedido e as travas que o servidor reconfere ao encaminhar (termo, conta ativa,
+// portão da demanda expressa). É leitura nominal: o servidor a audita.
+const RESULTADO_DA_DECISAO: Record<string, string> = {
+  pending: "Encaminhado · aguardando resposta",
+  accepted: "Encaminhado · interesse mútuo, nomes revelados",
+  declined: "Encaminhado · a outra pessoa não aceitou",
+  not_forwarded: "Não encaminhado",
+  blocked: "Bloqueado",
+  in_review: "Em análise",
+};
+
+function Chip({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] border ${
+      ok ? "bg-emerald-400/10 text-emerald-300 border-emerald-400/25" : "bg-red-400/10 text-red-300 border-red-400/25"
+    }`}>
+      {ok ? <CheckCircle size={10} /> : <XCircle size={10} />} {children}
+    </span>
+  );
+}
+
+function ListaCurta({ rotulo, itens }: { rotulo: string; itens: unknown }) {
+  const lista = Array.isArray(itens) ? itens.map(String).filter(Boolean) : [];
+  if (lista.length === 0) return null;
+  return (
+    <p className="text-xs text-white/50 mt-1">
+      <span className="text-white/30">{rotulo}: </span>{lista.slice(0, 6).join(", ")}{lista.length > 6 ? "…" : ""}
+    </p>
+  );
+}
+
+type PerfilDaFila = {
+  name: string | null; displayName: string | null; role: string;
+  isActive: boolean; isVerified: boolean; onboardingCompleted: boolean;
+  company: string | null; jobTitle: string | null; city: string | null; country: string | null;
+  sector: string | null; primarySpecialty: string | null; bio: string | null;
+  whatIHave: unknown; whatINeed: unknown; seekingTypes: unknown; profileCompleteness: number | null;
+};
+
+function PerfilNaFila({ titulo, perfil, termoOk }: { titulo: string; perfil: PerfilDaFila; termoOk: boolean }) {
+  const nome = perfil.name || perfil.displayName || "Sem nome";
+  const lugar = [perfil.city, perfil.country].filter(Boolean).join(", ");
+  const atuacao = [perfil.sector, perfil.primarySpecialty].filter(Boolean).join(" · ");
+  return (
+    <div className="flex-1 min-w-0 rounded-xl bg-white/3 border border-white/8 p-4">
+      <p className="text-[11px] uppercase tracking-wider text-white/40 mb-1">{titulo}</p>
+      <p className="text-sm font-semibold text-white">{nome}</p>
+      {perfil.displayName && perfil.displayName !== perfil.name && (
+        <p className="text-xs text-white/40">aparece como "{perfil.displayName}"</p>
+      )}
+      <p className="text-xs text-white/50 mt-1">{[perfil.jobTitle, perfil.company].filter(Boolean).join(" · ") || "Cargo e empresa não informados"}</p>
+      {(lugar || atuacao) && <p className="text-xs text-white/40">{[lugar, atuacao].filter(Boolean).join(" · ")}</p>}
+      <div className="flex flex-wrap gap-1.5 mt-2">
+        <Chip ok={termoOk}>termo do Smart Match</Chip>
+        <Chip ok={perfil.isActive}>conta ativa</Chip>
+        <Chip ok={perfil.isVerified}>verificada</Chip>
+        <Chip ok={perfil.onboardingCompleted}>perfil concluído</Chip>
+        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] border bg-white/5 text-white/50 border-white/10">
+          {NOME_DO_NIVEL[perfil.role] ?? perfil.role} · perfil {perfil.profileCompleteness ?? 0}%
+        </span>
+      </div>
+      <ListaCurta rotulo="Tem" itens={perfil.whatIHave} />
+      <ListaCurta rotulo="Precisa" itens={perfil.whatINeed} />
+      <ListaCurta rotulo="Busca" itens={perfil.seekingTypes} />
+      {perfil.bio && <p className="text-xs text-white/50 mt-2 whitespace-pre-line">{perfil.bio}</p>}
+    </div>
+  );
+}
+
+function FilaDeAnalise() {
+  const [recusaDialog, setRecusaDialog] = useState<{ connectionId: number; quem: string } | null>(null);
+  const [nota, setNota] = useState("");
+  const { data: fila, refetch: refetchFila } = trpc.distribuicao.fila.useQuery();
+  const { data: historico, refetch: refetchHistorico } = trpc.distribuicao.historico.useQuery({ limit: 30 });
+
+  const decidirMutation = trpc.distribuicao.decidir.useMutation({
+    onSuccess: (r) => {
+      toast.success(
+        r.statusFinal === "not_forwarded" ? "Pedido não encaminhado. A outra pessoa não foi avisada."
+          : r.statusFinal === "accepted" ? "Encaminhado. Era recíproco: os nomes já aparecem para as duas partes."
+            : "Encaminhado. A outra pessoa recebe o pedido agora.",
+      );
+      setRecusaDialog(null);
+      setNota("");
+      refetchFila();
+      refetchHistorico();
+    },
+    onError: (e) => { toast.error(e.message); refetchFila(); },
+  });
+
+  const pedidos = fila ?? [];
+
+  return (
+    <>
+      <div>
+        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Fila de análise</h3>
+        {pedidos.length === 0 ? (
+          <div className="p-6 rounded-xl bg-white/3 border border-white/8 text-center text-white/30 text-sm">
+            Nenhum pedido de interesse esperando análise.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {pedidos.map(p => {
+              const travasOk = p.termoOk.solicitante && p.termoOk.destinataria && p.ativas.solicitante && p.ativas.destinataria && !p.bloqueadoPeloPortao;
+              const quem = `${p.solicitante.name || "Sem nome"} → ${p.destinataria.name || "Sem nome"}`;
+              return (
+                <div key={p.connectionId} className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5 space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <p className="text-xs text-white/40">
+                      Pedido #{p.connectionId} · {new Date(p.createdAt).toLocaleString("pt-BR")}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {p.reciprocado && (
+                        <Badge className="bg-emerald-400/15 text-emerald-300 border-emerald-400/30 text-[11px]">Interesse recíproco</Badge>
+                      )}
+                      {p.bloqueadoPeloPortao && (
+                        <Badge className="bg-red-400/15 text-red-300 border-red-400/30 text-[11px]">Portão da demanda expressa</Badge>
+                      )}
+                      <Badge className="bg-amber-400/15 text-amber-300 border-amber-400/30 text-[11px]">
+                        {p.compatibilidade ? `Compatibilidade ${p.compatibilidade.overallScore}%` : "Sem nota do Smart Match"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <PerfilNaFila titulo="Quem pediu" perfil={p.solicitante} termoOk={p.termoOk.solicitante} />
+                    <PerfilNaFila titulo="Quem recebe" perfil={p.destinataria} termoOk={p.termoOk.destinataria} />
+                  </div>
+
+                  {p.compatibilidade && (
+                    <div className="rounded-xl bg-white/3 border border-white/8 p-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs text-white/50">
+                        {([
+                          ["Especialidade", p.compatibilidade.specialtyScore],
+                          ["Objetivos", p.compatibilidade.objectivesScore],
+                          ["Porte", p.compatibilidade.incomeScore],
+                          ["Localização", p.compatibilidade.locationScore],
+                          ["Valores", p.compatibilidade.valuesScore],
+                        ] as const).map(([rotulo, valor]) => (
+                          <div key={rotulo}><span className="text-white/30">{rotulo}</span> <span className="text-white/80 font-semibold">{valor ?? 0}%</span></div>
+                        ))}
+                      </div>
+                      {p.compatibilidade.aiInsight && (
+                        <p className="text-xs text-white/50 mt-2 italic">{p.compatibilidade.aiInsight}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {!travasOk && (
+                    <p className="text-xs text-red-300/80">
+                      Uma trava está vermelha: o servidor recusa o encaminhamento até ela ficar verde.
+                    </p>
+                  )}
+
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-400 border-red-400/30 hover:bg-red-400/10 bg-transparent text-xs"
+                      disabled={decidirMutation.isPending}
+                      onClick={() => { setRecusaDialog({ connectionId: p.connectionId, quem }); setNota(""); }}
+                    >
+                      Não encaminhar
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-amber-400 hover:bg-amber-500 text-[#151312] text-xs font-bold"
+                      disabled={decidirMutation.isPending || !travasOk}
+                      onClick={() => decidirMutation.mutate({ connectionId: p.connectionId, aprovar: true })}
+                    >
+                      <Share2 size={12} className="mr-1" /> Encaminhar
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Últimas decisões</h3>
+        {!historico || historico.length === 0 ? (
+          <div className="p-6 rounded-xl bg-white/3 border border-white/8 text-center text-white/30 text-sm">
+            Nenhuma decisão registrada ainda.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {historico.map(h => (
+              <div key={h.connectionId} className="p-3.5 rounded-xl bg-white/3 border border-white/8 text-xs">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-white/80">
+                    {h.solicitanteNome || "Sem nome"} → {h.destinatariaNome || "Sem nome"}
+                    {h.reciprocado ? " (recíproco)" : ""}
+                  </span>
+                  <span className={h.resultado === "not_forwarded" ? "text-red-300" : "text-emerald-300"}>
+                    {RESULTADO_DA_DECISAO[h.resultado] ?? h.resultado}
+                  </span>
+                </div>
+                <p className="text-white/35 mt-1">
+                  {h.decididoEm ? new Date(h.decididoEm).toLocaleString("pt-BR") : ""} · por {h.decididoPor?.name || "—"}
+                  {h.nota ? ` · nota: ${h.nota}` : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Dialog: Não encaminhar */}
+      <Dialog open={!!recusaDialog} onOpenChange={() => setRecusaDialog(null)}>
+        <DialogContent className="bg-[#211e1b] border-red-400/30 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-red-400 flex items-center gap-2">
+              <XCircle size={16} /> Não encaminhar o pedido
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-white/60">
+            <strong className="text-white">{recusaDialog?.quem}</strong>. Quem pediu vê "interesse não encaminhado";
+            a outra pessoa não é avisada. A nota fica só na trilha interna.
+          </p>
+          <Textarea
+            value={nota}
+            onChange={e => setNota(e.target.value)}
+            placeholder="Por que não encaminhar (obrigatório, fica na trilha interna)..."
+            className="bg-white/5 border-white/15 text-white placeholder-white/30 text-sm resize-none"
+            rows={3}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRecusaDialog(null)} className="bg-transparent border-white/20 text-white/60">Cancelar</Button>
+            <Button
+              className="bg-red-500 hover:bg-red-600 text-white font-bold"
+              disabled={nota.trim().length === 0 || decidirMutation.isPending}
+              onClick={() => recusaDialog && decidirMutation.mutate({ connectionId: recusaDialog.connectionId, aprovar: false, nota: nota.trim() })}
+            >
+              {decidirMutation.isPending ? "Registrando..." : "Confirmar: não encaminhar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function DistribuicaoTab({ podeGerir, souDistribuidor }: { podeGerir: boolean; souDistribuidor: boolean }) {
   return (
     <div className="space-y-8">
@@ -1046,7 +1276,7 @@ function DistribuicaoTab({ podeGerir, souDistribuidor }: { podeGerir: boolean; s
         title="Distribuição do Smart Match"
         subtitle="Uma pessoa real confere cada pedido de interesse antes de encaminhá-lo. O poder é da conta e acumula com qualquer nível."
       />
-      {souDistribuidor && <AvisoDistribuidor />}
+      {souDistribuidor && <FilaDeAnalise />}
       {podeGerir && <QuemDistribui />}
     </div>
   );

@@ -462,7 +462,7 @@
     "regenerate": "新匹配",
     "logout": "退出登录",
     "topMatches": "顶级匹配 (80%+)",
-    "interestSent": "已表达兴趣！只有当对方也表达兴趣时，才会看到你的姓名。",
+    "interestSent": "已表达兴趣！分发人会先核实匹配度再转交。只有当对方也表达兴趣时，才会看到你的姓名。",
     "interestError": "无法发送兴趣。请重试。",
     "connectionAccepted": "连接已接受！你们现在都能看到对方的姓名。",
     "connectionDeclined": "请求已拒绝。",
@@ -574,6 +574,10 @@
     "revealedBadge": "身份已公开",
     "revealedNote": "你们双方都表达了兴趣。对方也能看到你的姓名。",
     "interestDeclined": "兴趣未被接受",
+    "interestInReview": "分发人审核中",
+    "interestNotForwarded": "兴趣未被转交",
+    "inReview": "🔎 审核中",
+    "notForwarded": "✕ 未转交",
     "viewConnection": "查看连接"
   },
   "auth": {

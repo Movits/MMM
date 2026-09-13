@@ -204,6 +204,7 @@ export const COBERTAS_PELO_PAI = [
  */
 export const ATORES_SECUNDARIOS_PRESERVADOS = [
   { tabela: "opportunities", coluna: "moderatedBy", motivo: "quem moderou a oportunidade de OUTRA; registro do ato institucional" },
+  { tabela: "connections", coluna: "moderatedBy", motivo: "quem distribuiu o pedido de interesse de OUTRAS duas; registro do ato institucional (os pedidos da própria conta saem por requesterId/recipientId)" },
   { tabela: "gold_access_grants", coluna: "grantedBy", motivo: "quem concedeu o Ouro a OUTRA; a concessão é da outra" },
   { tabela: "gold_access_grants", coluna: "revokedBy", motivo: "quem revogou o Ouro de OUTRA" },
   { tabela: "national_leaders", coluna: "nominatedBy", motivo: "quem indicou OUTRA líder nacional" },

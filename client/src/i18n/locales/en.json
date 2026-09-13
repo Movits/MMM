@@ -462,7 +462,7 @@
     "regenerate": "New matches",
     "logout": "Sign out",
     "topMatches": "Top Matches (80%+)",
-    "interestSent": "Interest sent! They will only see your name if they express interest too.",
+    "interestSent": "Interest sent! A distributor checks compatibility before forwarding it. They will only see your name if they express interest too.",
     "interestError": "Could not send interest. Please try again.",
     "connectionAccepted": "Connection accepted! You can both see each other's name now.",
     "connectionDeclined": "Request declined.",
@@ -574,6 +574,10 @@
     "revealedBadge": "Identity revealed",
     "revealedNote": "You both expressed interest. They can see your name too.",
     "interestDeclined": "Interest not accepted",
+    "interestInReview": "Under review by the distributor",
+    "interestNotForwarded": "Interest not forwarded",
+    "inReview": "🔎 Under review",
+    "notForwarded": "✕ Not forwarded",
     "viewConnection": "View connection"
   },
   "auth": {

@@ -321,6 +321,40 @@ quem eu sou?" precisa ter resposta.
 **Limite conhecido**: revelação não se revoga. Aceitou, viu. Vale a mesma
 ressalva da seção anterior sobre o que o aceite não desfaz.
 
+## O passo do distribuidor (match de perfis)
+
+Pedido do Nicolas, 13/09/2026: entre o clique em "Demonstrar Interesse" e a entrega
+do pedido à outra pessoa entra o **distribuidor**, uma pessoa real que confere se o
+match é compatível e apto. O poder mora em `users.isDistributor` e acumula com
+qualquer nível; quem concede é Ouro, presidente ou admin (`distribuicao.conceder`).
+
+O que muda na privacidade, em três frases:
+
+- **A destinatária não sabe que foi pedida enquanto o pedido está em análise, nem
+  se ele não for encaminhado.** As linhas `in_review` e `not_forwarded` com
+  `recipientId = ela` e `reciprocatedAt IS NULL` não entram no join de
+  `getMatchesForUser` nem no WHERE de `getConnectionsForUser` (`pedidoVisivelPara`,
+  em `server/db.ts`). Para ela não existe pedido — o cartão continua em "Demonstrar
+  Interesse". Regra de consulta, não de tela: não há estado nulo a esconder no
+  componente.
+- **O distribuidor lê os dois perfis com nome.** É a segunda leitura nominal que
+  atravessa donas (a primeira é o acervo Ouro), e por isso `distribuicao.fila` e
+  `distribuicao.historico` gravam `DISTRIBUTOR_VIEW_QUEUE` em `audit_logs`. O que a
+  fila nunca traz: `userId` das partes, e-mail, telefone, cofre, LinkedIn, site, foto.
+  A bio sai mascarada por `mascararContatosEmTexto`. Quem é parte do pedido não o vê
+  na fila nem decide sobre ele.
+- **A resposta de `connections.send` continua idêntica** em todos os desfechos
+  (novo, em análise, repetido, recusado, não encaminhado): sem oráculo. A recusa do
+  distribuidor chega à solicitante como "não encaminhado", sem o motivo; a nota é
+  interna (`connections.moderationNote`).
+
+Interesse recíproco durante a análise (`reciprocatedAt`): o pedido passa a ser das
+duas, as duas veem "em análise", e a aprovação vira `accepted` de uma vez, com as
+duas linhas de `MATCH_IDENTITY_REVEALED` (`via: "distribuidor"`).
+
+**Limite conhecido**: o termo do Smart Match não diz, hoje, que uma pessoa lê os
+dois perfis antes da entrega. Registrado em decisoes-em-aberto.md (D7).
+
 ## Checklist antes de qualquer publicação
 
 - [ ] A aplicação conecta com `mmm_app`, nunca com a dona das tabelas
@@ -333,6 +367,9 @@ ressalva da seção anterior sobre o que o aceite não desfaz.
 - [ ] No cruzamento de PERFIS, nenhuma resposta do servidor traz nome, nome civil,
       empresa, cargo, foto ou bio de uma membra antes do interesse mútuo
 - [ ] E nenhuma traz o `userId` real de uma contraparte ainda não revelada
+- [ ] A destinatária de um pedido em análise (ou não encaminhado) não recebe a linha
+      em nenhuma consulta; a fila do distribuidor não traz id, e-mail, telefone nem
+      cofre das partes
 - [ ] Revogar autorização tira o acesso na consulta seguinte
 - [ ] Áudio de reunião e cartões de visita ficam em storage cifrado, com URL
       temporária, não em link público permanente

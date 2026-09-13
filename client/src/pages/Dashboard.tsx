@@ -252,7 +252,7 @@ type MatchData = {
   values: unknown; sector: string | null;
   // O estado do interesse e o nome (quando há) chegam resolvidos do servidor.
   connectionId: number | null;
-  connectionStatus: "pending" | "accepted" | "declined" | "blocked" | null;
+  connectionStatus: "pending" | "accepted" | "declined" | "blocked" | "in_review" | "not_forwarded" | null;
   souDestinataria: boolean | null;
   displayName: string | null;
 };
@@ -293,11 +293,17 @@ function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, i
   const aguardando = match.connectionStatus === "pending" && !match.souDestinataria;
   const recebido = match.connectionStatus === "pending" && Boolean(match.souDestinataria);
   const recusada = match.connectionStatus === "declined" || match.connectionStatus === "blocked";
+  // O passo do distribuidor: quem pediu vê "em análise" e, se for o caso, "não
+  // encaminhado". A destinatária não vê nada disso — o servidor nem manda a
+  // linha para ela —, a não ser que ela também tenha clicado (aí é "em análise"
+  // dos dois lados, e a aprovação já revela os dois nomes).
+  const emAnalise = match.connectionStatus === "in_review";
+  const naoEncaminhada = match.connectionStatus === "not_forwarded";
   const nome = revelada ? (match.displayName || t("dashboard.userFallback")) : null;
   // Dispensar só faz sentido quando não há conversa em curso: some nos estados
   // em que a outra parte está esperando algo, para ninguém sumir com um cartão
   // do qual ainda depende.
-  const podeDispensar = !aguardando && !recebido && !revelada;
+  const podeDispensar = !aguardando && !recebido && !revelada && !emAnalise;
 
   return (
     <div
@@ -417,12 +423,15 @@ function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, i
               className="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-md shadow-[#c98f70]/15">
               {t("dashboard.viewConnection")}
             </button>
-          ) : aguardando || recusada ? (
+          ) : aguardando || recusada || emAnalise || naoEncaminhada ? (
             // Desabilitado em vez de sumir: antes o botão continuava clicável e o
             // segundo clique devolvia erro vermelho de conflito.
             <button disabled
               className="flex-1 py-2.5 px-4 rounded-xl font-medium text-sm border border-white/15 text-white/50 cursor-default">
-              {aguardando ? t("dashboard.interestWaiting") : t("dashboard.interestDeclined")}
+              {aguardando ? t("dashboard.interestWaiting")
+                : emAnalise ? t("dashboard.interestInReview")
+                  : naoEncaminhada ? t("dashboard.interestNotForwarded")
+                    : t("dashboard.interestDeclined")}
             </button>
           ) : (
             <button
@@ -850,7 +859,9 @@ export default function Dashboard() {
     onSuccess: () => { matchesQuery.refetch(); toast.success(t("dashboard.dismiss")); },
   });
   const interestMutation = trpc.connections.send.useMutation({
-    onSuccess: () => { toast.success(t("dashboard.interestSent")); connectionsQuery.refetch(); },
+    // `matchesQuery` também: o estado do cartão ("em análise") vem do servidor,
+    // e sem este refetch o botão continuava "Demonstrar Interesse" até o F5.
+    onSuccess: () => { toast.success(t("dashboard.interestSent")); connectionsQuery.refetch(); matchesQuery.refetch(); },
     onError: (err) => toast.error(err.message || t("dashboard.interestError")),
   });
   const respondMutation = trpc.connections.respond.useMutation({
@@ -1131,10 +1142,14 @@ export default function Dashboard() {
                     ) : (
                       <Badge className={
                         conn.status === "accepted" ? "bg-emerald-400/15 text-emerald-400 border-emerald-400/25"
-                          : conn.status === "pending" ? "bg-[#c98f70]/15 text-[#c98f70] border-[#c98f70]/25"
+                          : conn.status === "pending" || conn.status === "in_review" ? "bg-[#c98f70]/15 text-[#c98f70] border-[#c98f70]/25"
                             : "bg-white/8 text-white/35 border-white/15"
                       }>
-                        {conn.status === "accepted" ? t("dashboard.connected") : conn.status === "pending" ? t("dashboard.pending") : t("dashboard.declined")}
+                        {conn.status === "accepted" ? t("dashboard.connected")
+                          : conn.status === "pending" ? t("dashboard.pending")
+                            : conn.status === "in_review" ? t("dashboard.inReview")
+                              : conn.status === "not_forwarded" ? t("dashboard.notForwarded")
+                                : t("dashboard.declined")}
                       </Badge>
                     )}
                   </div>

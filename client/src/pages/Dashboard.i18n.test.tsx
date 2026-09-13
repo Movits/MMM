@@ -443,3 +443,26 @@ describe("Dashboard em inglês — varredura do texto inteiro, aba por aba", () 
     semPortugues("aba de perfil");
   });
 });
+
+describe("o passo do distribuidor no idioma da tela", () => {
+  it("inglês: 'Under review by the distributor' no cartão e 'Under review' na aba Conexões, nada em português", async () => {
+    await i18n.changeLanguage("en");
+    duble.respostas["matches.list"] = { data: [match(1, false, { connectionId: 7, connectionStatus: "in_review", souDestinataria: false })] };
+    duble.respostas["connections.list"] = {
+      data: [{ id: 7, status: "in_review", souDestinataria: false, outraParteId: null, displayName: null, primarySpecialty: "finance", city: "Porto", message: null }],
+    };
+    render(<Dashboard />);
+    expect(screen.getByRole("button", { name: "Under review by the distributor" })).toBeDisabled();
+    expect(screen.queryByText(/Em análise/)).not.toBeInTheDocument();
+    semPortugues("cartão em análise");
+
+    fireEvent.click(screen.getByRole("button", { name: "Connections (1)" }));
+    expect(await screen.findByText("🔎 Under review")).toBeInTheDocument();
+    semPortugues("aba Conexões em análise");
+  });
+
+  it("português: o toast do interesse enviado agora avisa que um distribuidor confere antes de encaminhar", () => {
+    expect(i18n.t("dashboard.interestSent")).toMatch(/distribuidor confere/);
+    expect(i18n.t("dashboard.interestNotForwarded")).toBe("Interesse não encaminhado");
+  });
+});
