@@ -9,7 +9,7 @@ import { montarPracasDoGlobo, type Ligacao, type Praca } from "@/lib/pracas-do-g
 import {
   Briefcase, HandCoins, GraduationCap, Handshake, Rocket, Lightbulb,
   Lock, ShieldCheck, BadgeCheck, KeyRound,
-  UserRound, BrainCircuit, Zap, Sparkles, ArrowRight, ChevronDown, Star, Send,
+  UserRound, BrainCircuit, Zap, Sparkles, ArrowRight, ChevronDown, Star, Send, Globe,
 } from "lucide-react";
 
 // Imagem do hero (client/public/images). O mapa bordado em fio de ouro sobre
@@ -665,24 +665,74 @@ export default function Home() {
                 </span>
               </div>
 
-              <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.05] mb-6 tracking-tight"
+              {/* Hierarquia da Hero, do mais forte ao botão: o título é o maior
+                  elemento; a frase "quem você precisa conhecer" vem logo abaixo,
+                  em corpo intermediário; alcance e IA são duas linhas de apoio com
+                  ícone, a do alcance mais clara (o país em destaque) e a da IA mais
+                  discreta, para não competir com o título; o gatilho de
+                  curiosidade ganha a rampa do ouro rosé e o filete lateral; o
+                  fechamento fica colado ao botão. Tudo com as cores, os raios e a
+                  entrada fadeInUp que a Hero já usava.
+                  Medido no navegador: com o título em 6xl na coluna estreita das
+                  duas colunas (lg+), ele quebrava em 4 linhas e o botão caía abaixo
+                  da primeira tela em 1280×800 e 1440×900; em lg ele fica em 5xl
+                  (continua de longe o maior texto) e o destaque do título é um
+                  bloco só, para "certas." não ficar sozinho numa linha. As margens
+                  entre os blocos são um degrau menores que as antigas para o botão
+                  caber na primeira tela em 1280×800, e o texto do botão quebra
+                  equilibrado no celular ("ENCONTRE SEU / BUSINESS MATCH"). O espaço
+                  entre as duas partes do título mora no fim de hero.headline1, e
+                  não aqui: japonês e chinês não separam palavras com espaço. */}
+              <h1 className="text-4xl md:text-6xl lg:text-5xl font-extrabold leading-[1.05] mb-5 tracking-tight"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.1s both" }}>
-                <span className="text-white">{t("hero.headline1")} </span>
-                <span className="text-[#c98f70]">{t("hero.headline2")}</span>
-                <br />
-                <span className="text-white">{t("hero.headline3")} </span>
-                <span className="text-white/30">{t("hero.headline4")}</span>
+                <span className="text-white">{t("hero.headline1")}</span>
+                <span className="inline-block text-[#c98f70]">{t("hero.headline2")}</span>
               </h1>
 
-              <p className="text-base md:text-lg text-white/45 max-w-xl mb-10 leading-relaxed"
+              <p className="text-lg md:text-xl text-white/75 max-w-xl mb-5 leading-relaxed"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.2s both" }}>
                 {t("hero.subtitle")}
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-3 mb-14"
+              <div className="max-w-xl space-y-3 mb-5"
+                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.25s both" }}>
+                <div className="flex items-start gap-3">
+                  <span className="w-9 h-9 shrink-0 rounded-xl bg-[#c98f70]/10 border border-[#c98f70]/25 flex items-center justify-center" aria-hidden="true">
+                    <Globe className="w-4 h-4 text-[#c98f70]" />
+                  </span>
+                  <p className="text-sm md:text-base text-white/70 leading-relaxed">
+                    {t("hero.globalBefore")}<strong className="font-semibold text-white">{t("hero.globalHighlight")}</strong>{t("hero.globalAfter")}
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="w-9 h-9 shrink-0 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center" aria-hidden="true">
+                    <Sparkles className="w-4 h-4 text-white/50" />
+                  </span>
+                  <p className="text-sm text-white/45 leading-relaxed">
+                    {t("hero.ai")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="max-w-xl border-s-2 border-[#c98f70]/60 ps-4 mb-5"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.3s both" }}>
+                <p className="text-xl md:text-2xl font-bold leading-snug bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+                  {t("hero.hook")}
+                </p>
+                <p className="text-sm md:text-base text-white/55 mt-2 leading-relaxed">
+                  {t("hero.discover")}
+                </p>
+              </div>
+
+              <p className="text-base font-semibold text-white mb-3"
+                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.35s both" }}>
+                {t("hero.closing")}
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3 mb-14"
+                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.4s both" }}>
                 <Link href={isAuthenticated ? "/dashboard" : "/register"}>
-                  <button className="group w-full sm:w-auto bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-7 py-3.5 rounded-2xl text-base transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-2">
+                  <button className="group w-full sm:w-auto bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-7 py-3.5 rounded-2xl text-base text-balance transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-2">
                     {t("hero.cta")}
                     <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </button>
@@ -697,7 +747,7 @@ export default function Home() {
 
               {/* Stats minimalistas */}
               <div ref={statsRef} className="flex flex-wrap gap-x-10 gap-y-6"
-                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.4s both" }}>
+                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.45s both" }}>
                 {[
                   { value: users.toLocaleString(), label: t("stats.users") },
                   { value: opps.toLocaleString(), label: t("stats.opportunities") },
