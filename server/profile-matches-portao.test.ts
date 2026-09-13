@@ -32,7 +32,11 @@ const ctx = { user: { id: 1, openId: "dona-1", email: "t@local", role: "silver" 
 describe("profileMatches.list — serviço casado por presunção não volta à tela", () => {
   it("filtra os pares que o portão bloqueia hoje, passando os ids da lista", async () => {
     const lista = await profileMatchesRouter.createCaller(ctx).list({ limit: 20 });
-    expect(lista.map(m => m.matchedUserId)).toEqual([2]);
+    // O `matchedUserId` não atravessa mais para o navegador: é id real, e toda
+    // conta Ouro tem o painel que lista usuárias por nome. A linha passa a ser
+    // identificada na tela pelo `matchId` — matchId 1 é o par com a usuária 2.
+    expect(lista.map(m => m.matchId)).toEqual([1]);
+    expect(lista.every(m => !("matchedUserId" in m))).toBe(true);
     expect(matchesBloqueados).toHaveBeenCalledWith(1, [2, 3]);
   });
 
@@ -44,14 +48,14 @@ describe("profileMatches.list — serviço casado por presunção não volta à 
     ]);
     const lista = await profileMatchesRouter.createCaller(ctx).list({ limit: 2 });
     expect(getMatchesForUser).toHaveBeenCalledWith(1, 50);
-    expect(lista.map(m => m.matchedUserId)).toEqual([2, 4]);
+    expect(lista.map(m => m.matchId)).toEqual([2, 3]);
   });
 
   it("só os ids COM termo chegam ao portão: o perfil de quem revogou não é cruzado nem para decidir", async () => {
     matchesBloqueados.mockClear();
     usersComConsentimento.mockResolvedValueOnce(new Set([2]));
     const lista = await profileMatchesRouter.createCaller(ctx).list({ limit: 20 });
-    expect(lista.map(m => m.matchedUserId)).toEqual([2]);
+    expect(lista.map(m => m.matchId)).toEqual([1]);
     expect(matchesBloqueados).toHaveBeenCalledWith(1, [2]);
   });
 });

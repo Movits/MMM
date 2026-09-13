@@ -36,7 +36,36 @@ export const profileMatchesRouter = router({
       const bloqueados = await matchesBloqueadosPelaDemandaExpressa(ctx.user.id, autorizados);
       return lista
         .filter(m => m.matchedUserId !== null && comTermo.has(m.matchedUserId) && !bloqueados.has(m.matchedUserId))
-        .slice(0, input.limit);
+        .slice(0, input.limit)
+        // O `matchedUserId` serviu às três travas acima e PARA AQUI: ele não
+        // atravessa para o navegador. É id real, e toda conta Ouro tem o painel
+        // administrativo, que lista usuárias por nome — id na mão de uma Ouro é
+        // deanonimização de um salto. O cartão age pelo `matchId`, que já usava
+        // para dispensar. Lista-branca explícita, e não `delete`, para que campo
+        // novo no `db.ts` precise ser admitido aqui de propósito.
+        .map(m => ({
+          matchId: m.matchId,
+          overallScore: m.overallScore,
+          specialtyScore: m.specialtyScore,
+          objectivesScore: m.objectivesScore,
+          incomeScore: m.incomeScore,
+          locationScore: m.locationScore,
+          valuesScore: m.valuesScore,
+          aiInsight: m.aiInsight,
+          userSeen: m.userSeen,
+          createdAt: m.createdAt,
+          city: m.city,
+          country: m.country,
+          sector: m.sector,
+          primarySpecialty: m.primarySpecialty,
+          seekingTypes: m.seekingTypes,
+          businessInterests: m.businessInterests,
+          values: m.values,
+          connectionId: m.connectionId,
+          connectionStatus: m.connectionStatus,
+          souDestinataria: m.souDestinataria,
+          displayName: m.displayName,
+        }));
     }),
 
   // Etapa 13 (prontidão): quantos matches EXISTEM mas estão ocultos porque o

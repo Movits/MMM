@@ -198,7 +198,11 @@ describe("Etapa 8/11 — a trava de leitura mora no caminho vivo", () => {
     usersComConsentimento.mockResolvedValue(new Set([3]));
     const lista = await perfis.list({ limit: 20 });
     expect(lista).toHaveLength(1);
-    expect((lista[0] as { matchedUserId: number }).matchedUserId).toBe(3);
+    // O par com a usuária 3 é a linha matchId 2 (ver o dublê no topo do arquivo).
+    // O `matchedUserId` deixou de sair no payload, então a asserção passa a ser
+    // pelo `matchId` — e de quebra prova que o id real não vaza.
+    expect(lista[0].matchId).toBe(2);
+    expect("matchedUserId" in lista[0]).toBe(false);
   });
 
   it("a duplicata sem trava foi aposentada: matching.ts não exporta mais getMatchesForUser", () => {
