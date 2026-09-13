@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { exigeCnpj, isValidCnpj, normalizeCnpj } from "../../shared/business-registration";
 import { exigirDb, getUserProfile, upsertUserProfile } from "../db";
+import { cargoEEmpresaParaGravar } from "../perfil-consolidado";
 import { users, userProfiles } from "../../drizzle/schema";
 import { toPublicUser } from "../auth";
 
@@ -42,6 +43,8 @@ export const profileRouter = router({
      companySize: z.enum(["mei", "micro", "small", "medium", "large"]).optional(),
      companyCnpj: z.string().max(18).optional(),
      gender: z.enum(["male", "female", "prefer_not_to_say"]).optional(),
+     shortTermGoal: z.string().max(2000).optional(),
+     longTermGoal: z.string().max(2000).optional(),
      // Novos campos v2
      jobTitle: z.string().max(200).optional(),
      activityArea: z.string().max(200).optional(),
@@ -100,10 +103,15 @@ export const profileRouter = router({
      secondarySpecialties: z.array(z.string().min(1).max(100)).optional(),
      experienceYears: z.number().int().min(0).max(60).optional(),
      educationLevel: z.string().max(50).optional(),
+     // Nomes antigos de cargo e empresa: aceitos para o Onboarding em cache
+     // durante o deploy, mas gravados em jobTitle/company (ver abaixo).
      currentRole: z.string().max(200).optional(),
      currentCompany: z.string().max(200).optional(),
      sector: z.string().max(100).optional(),
      seekingTypes: z.array(z.string()).optional(),
+     // As metas eram coletadas e descartadas: não havia coluna para elas.
+     shortTermGoal: z.string().max(2000).optional(),
+     longTermGoal: z.string().max(2000).optional(),
      businessInterests: z.array(z.string()).optional(),
      preferredCompanySize: z.string().max(50).optional(),
      openToRemote: z.boolean().optional(),
@@ -129,7 +137,7 @@ export const profileRouter = router({
       if (exigeCnpj(input.personType) && !input.companyCnpj) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o CNPJ: ele é obrigatório para MEI, pessoa jurídica e organização sem fins lucrativos." });
       }
-      const { company, position, jobTitle, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed, personType, companySize, companyCnpj, ...profileData } = input;
+      const { company, position, jobTitle, currentRole, currentCompany, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed, personType, companySize, companyCnpj, ...profileData } = input;
       await upsertUserProfile(ctx.user.id, profileData);
       const db = await exigirDb();
       await db.update(users).set({
@@ -140,7 +148,11 @@ export const profileRouter = router({
       }).where(eq(users.id, ctx.user.id));
       // Salvar campos v2 no user_profiles
       const profileUpdates: Record<string, unknown> = {};
-      if (jobTitle !== undefined) profileUpdates.jobTitle = jobTitle;
+      // Cargo e empresa vão só para jobTitle/company, a coluna que fica; as
+      // antigas (currentRole/currentCompany) não recebem mais escrita.
+      const { jobTitle: cargo, company: empresa } = cargoEEmpresaParaGravar({ jobTitle, currentRole, company, currentCompany });
+      if (cargo !== undefined) profileUpdates.jobTitle = cargo;
+      if (empresa !== undefined) profileUpdates.company = empresa;
       if (activityArea !== undefined) profileUpdates.activityArea = activityArea;
       if (currentResources !== undefined) profileUpdates.currentResources = currentResources;
       if (personType !== undefined) profileUpdates.personType = personType;

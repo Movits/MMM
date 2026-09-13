@@ -131,7 +131,7 @@ describe("Oportunidades — lista e vitrine em erro", () => {
 });
 
 describe("Dashboard — matches em erro", () => {
-  const perfil = { profile: { displayName: "Glenda", currentRole: "CEO", city: "São Paulo", profileCompleteness: 80 } };
+  const perfil = { profile: { displayName: "Glenda", jobTitle: "CEO", city: "São Paulo", profileCompleteness: 80 } };
 
   it("stats mostram '—' (não zero) e a aba de matches traz o alerta, sem convite a gerar os primeiros matches", async () => {
     duble.respostas["profile.get"] = { data: perfil };

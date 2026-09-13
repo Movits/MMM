@@ -89,7 +89,7 @@ function match(matchId: number, userSeen: boolean, extra: Record<string, unknown
   };
 }
 
-const perfil = { profile: { displayName: "Ana", currentRole: "CEO", city: "Lisboa", profileCompleteness: 80 } };
+const perfil = { profile: { displayName: "Ana", jobTitle: "CEO", city: "Lisboa", profileCompleteness: 80 } };
 
 // A tela tem dois atrasos de tempo real: o banner Ouro entra 500 ms depois
 // de montar e a troca de aba leva 180 ms (animação). Todo `findBy*` que espera
