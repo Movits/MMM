@@ -165,3 +165,27 @@ describe("Matches do Dashboard — setor normalizado para a chave canônica", ()
     expect(scores.sector).toBe(70);
   });
 });
+
+describe("Portão de dados suficientes — limiar 50 (pesos inteiros: 30+20+20+15+10+5)", () => {
+  // Função auxiliar para criar scores próximos aos limiares
+  const perfil = (userId: number, mods: Partial<typeof perfilDona>) => ({ ...perfilDona, ...mods, userId });
+
+  it("score 73: complementar em tudo, acima de 50, passa (insight gerado)", async () => {
+    // candidata original = ~73
+    filas.push([perfilDona], [candidata(2)], []);
+
+    const criados = await motor.generateMatchesForUser(1);
+
+    expect(criados).toBe(1);
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0].values.overallScore).toBe(73);
+  });
+
+  it("score >= 50 cria matches; limiar foi 40, agora é 50", async () => {
+    // Comentário antigo (linha 63) citava "acima dos limiares de 40 e de 70"
+    // Novo limiar: 50. Score 73 > 50, portanto passa.
+    const scores = motor.calculateCompatibilityScore(perfilDona, candidata(2));
+    expect(scores.overall).toBeGreaterThanOrEqual(50);
+  });
+});
+
