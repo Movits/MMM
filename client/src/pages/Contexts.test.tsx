@@ -4,7 +4,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import Contexts from "./Contexts";
 
 /**
- * Etapa 5 — a tela Meus Contextos (revisão da PR-A):
+ * Etapa 5 — a tela Minha Linha do Tempo (revisão da PR-A):
  *
  * A. Excluir o único contexto da última página deixava a consulta presa numa
  *    página que não existe mais, sem paginação para voltar.
@@ -73,7 +73,7 @@ beforeEach(() => {
   duble.get.mockReturnValue({ data: undefined, isLoading: false, isError: false, error: null, refetch: duble.refetchDetalhe });
 });
 
-describe("Meus Contextos — página que deixou de existir volta para a ÚLTIMA que existe", () => {
+describe("Minha Linha do Tempo — página que deixou de existir volta para a ÚLTIMA que existe", () => {
   it("41 contextos, o único da página 3 é excluído: a consulta seguinte pede a página 2 (não a 1) e 'Contexto 21' aparece", () => {
     const faixa = (de: number, ate: number) => Array.from({ length: ate - de + 1 }, (_, i) => contexto(de + i));
     let excluido = false;
@@ -96,7 +96,7 @@ describe("Meus Contextos — página que deixou de existir volta para a ÚLTIMA 
   });
 });
 
-describe("Meus Contextos — erro de consulta não é 'nenhum contexto ainda'", () => {
+describe("Minha Linha do Tempo — erro de consulta não é 'nenhum contexto ainda'", () => {
   it("lista em erro: alerta com a mensagem do servidor, sem o estado vazio e sem contador", () => {
     servidorResponde(() => ({ isError: true, error: erroDoServidor }));
     render(<Contexts />);
@@ -127,7 +127,7 @@ describe("Meus Contextos — erro de consulta não é 'nenhum contexto ainda'", 
     expect(duble.refetchDetalhe).toHaveBeenCalledTimes(1);
 
     // Voltar fecha o modal: a lista continua lá e o alerta vai embora.
-    fireEvent.click(screen.getByRole("button", { name: /Contextos/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Linha do Tempo/ }));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByText("CPHI 2024")).toBeInTheDocument();
   });

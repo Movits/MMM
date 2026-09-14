@@ -65,7 +65,7 @@ export const dealRoomRouter = router({
         userId: opp.publishedBy,
         type: "interest_received",
         title: "💼 Nova solicitação de Deal Room",
-        body: `Uma membra demonstrou interesse em "${opp.title}" e aguarda seu aceite do NDA para abrir a sala de negociação.`,
+        body: `Um membro demonstrou interesse em "${opp.title}" e aguarda seu aceite do NDA para abrir a sala de negociação.`,
         actionUrl: `/deal-room/${roomId}`,
         isRead: false,
       });
@@ -127,13 +127,13 @@ export const dealRoomRouter = router({
 
         // Mensagem de boas-vindas do sistema (senderId = 0)
         const welcomeMsg = [
-          "🎉 **Bem-vindas à Deal Room!**",
+          "🎉 **Boas-vindas à Deal Room!**",
           "",
           "Ambas as partes assinaram o NDA (Acordo de Confidencialidade). Esta sala de negociação privada está agora ativa.",
           "",
           "**📋 Regras de conduta desta sala:**",
           "• Mantenha todas as informações compartilhadas em estrita confidencialidade.",
-          "• Seja objetiva e respeitosa em todas as comunicações.",
+          "• Seja objetivo e respeitoso em todas as comunicações.",
           "• Não compartilhe dados sensíveis fora desta plataforma.",
           "• Documentos enviados aqui são protegidos pelo NDA assinado.",
           "• Em caso de descumprimento, a sala poderá ser encerrada.",
@@ -222,7 +222,7 @@ export const dealRoomRouter = router({
         .from(users)
         .where(eq(users.id, room.ownerId === ctx.user.id ? room.interestedId : room.ownerId))
         .limit(1);
-      return { ...room, opportunityTitle: opp?.title || "Oportunidade", otherPartyName: other?.name || "Membra" };
+      return { ...room, opportunityTitle: opp?.title || "Oportunidade", otherPartyName: other?.name || "Membro" };
     }));
 
     return enriched;
@@ -352,7 +352,7 @@ export const dealRoomRouter = router({
   // Listar TODAS as Deal Rooms — acesso exclusivo para Ouro
   listAllRooms: protectedProcedure.query(async ({ ctx }) => {
     if (!isGoldOrAbove(ctx.user.role))
-      throw new TRPCError({ code: "FORBIDDEN", message: "Acesso exclusivo para membras Ouro" });
+      throw new TRPCError({ code: "FORBIDDEN", message: "Acesso exclusivo para membros Ouro" });
     const db = await exigirDb();
     const rooms = await db.select().from(dealRooms)
       .orderBy(desc(dealRooms.updatedAt))
@@ -367,8 +367,8 @@ export const dealRoomRouter = router({
       return {
         ...room,
         opportunityTitle: opp?.title || "Oportunidade",
-        ownerName: owner?.name || "Membra",
-        interestedName: interested?.name || "Membra",
+        ownerName: owner?.name || "Membro",
+        interestedName: interested?.name || "Membro",
       };
     }));
     return enriched;

@@ -187,7 +187,7 @@ function OpportunityCard({ opp, isGold, isSaved = false, onToggleSave, onDelete 
                   e.preventDefault();
                   e.stopPropagation();
                   if (confirm(t("opportunitiesPage.confirmDeleteOpportunity", { title: opp.title }))) {
-                    deleteOpp.mutate({ opportunityId: opp.id, reason: "Removida por membra Ouro" });
+                    deleteOpp.mutate({ opportunityId: opp.id, reason: "Removida por membro Ouro" });
                   }
                 }}
                 className="text-red-400/50 hover:text-red-400 transition-all duration-200"
@@ -307,7 +307,7 @@ export default function Opportunities() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
-      <div className="border-b border-white/10 bg-[#060E1A]/95 backdrop-blur-xl sticky top-0 z-40">
+      <div className="border-b border-white/10 bg-[#151312]/95 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/dashboard">
@@ -386,7 +386,7 @@ export default function Opportunities() {
               <SelectTrigger className="w-40 bg-white/5 border-white/10 text-white h-9 text-sm">
                 <SelectValue placeholder={t("opportunitiesPage.typeFilterPlaceholder")} />
               </SelectTrigger>
-              <SelectContent className="bg-[#0d1628] border-white/10 text-white">
+              <SelectContent className="bg-[#211e1b] border-white/10 text-white">
                 <SelectItem value="all">{t("opportunitiesPage.allTypes")}</SelectItem>
                 <SelectItem value="offer">{t("opportunitiesPage.typeOffer")}</SelectItem>
                 <SelectItem value="demand">{t("opportunitiesPage.typeDemand")}</SelectItem>
@@ -399,7 +399,7 @@ export default function Opportunities() {
               <SelectTrigger className="w-44 bg-white/5 border-white/10 text-white h-9 text-sm">
                 <SelectValue placeholder={t("opportunitiesPage.trustLevelPlaceholder")} />
               </SelectTrigger>
-              <SelectContent className="bg-[#0d1628] border-white/10 text-white">
+              <SelectContent className="bg-[#211e1b] border-white/10 text-white">
                 <SelectItem value="all">{t("opportunitiesPage.allLevels")}</SelectItem>
                 <SelectItem value="green">{t("opportunitiesPage.levelGreen")}</SelectItem>
                 <SelectItem value="yellow">{t("opportunitiesPage.levelYellow")}</SelectItem>

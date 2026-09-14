@@ -80,6 +80,8 @@ export const PLANO_DE_LIMPEZA = [
   { tabela: "deal_rooms", coluna: "interestedId", chave: "id", acao: "apagar", filtroChave: { coluna: "ownerId", chave: "id" } },
   { tabela: "connections", coluna: "requesterId", chave: "id", acao: "apagar" },
   { tabela: "connections", coluna: "recipientId", chave: "id", acao: "apagar" },
+  // O distribuidor do Smart Match decidiu pedidos de OUTRAS duas: fica para decisão humana.
+  { tabela: "connections", coluna: "moderatedBy", chave: "id", acao: "alertar", excetoSe: { coluna: "requesterId", chave: "id" } },
   { tabela: "matches", coluna: "userId", chave: "id", acao: "apagar" },
   { tabela: "matches", coluna: "matchedUserId", chave: "id", acao: "apagar" },
   { tabela: "password_reset_tokens", coluna: "userId", chave: "id", acao: "apagar" },

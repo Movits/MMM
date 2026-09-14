@@ -283,6 +283,78 @@ conversa.
 
 ---
 
+## O portão da revelação mútua (match de perfis)
+
+Decisão da cliente, 12/09/2026: no cruzamento de perfis o nome de uma membra não
+aparece para outra antes do **interesse mútuo**. Vale para o nome e para a
+inicial do avatar — a letra sozinha já estreita demais quem pode ser.
+
+Como a regra é de consulta e não de tela, ela vive em dois lugares e em nenhum
+componente:
+
+- `getMatchesForUser` (`server/db.ts`) **não seleciona** `displayName`,
+  `avatarUrl`, `bio`, `users.name`, `users.company`, `users.position`,
+  `currentRole`, `currentCompany`. O nome só existe na consulta atrás de um
+  `CASE WHEN connections.status = 'accepted'`.
+- `getConnectionsForUser` usa o **mesmo predicado**. Enquanto está `pending`, as
+  duas pontas recebem a mesma projeção anônima — quem pede não se expõe sozinha,
+  e quem recebe decide pelo perfil, não por quem a pessoa é.
+
+A simetria não depende de disciplina de quem escreve o código: é uma linha e uma
+coluna `status`, lida pelo mesmo predicado dos dois lados. Não existe estado
+"revelado para A e não para B".
+
+O `matchedUserId` também não atravessa para o navegador. Ele serve às travas do
+servidor (consentimento, demanda expressa, contagem de rede aguardando) e é
+recortado no router. O motivo é concreto: **toda conta Ouro tem o painel
+administrativo**, que lista usuárias por nome — id real na mão de uma Ouro é
+deanonimização de um salto. A tela age pelo `matchId`, que é id de linha de
+match, não de pessoa.
+
+O bilhete de texto livre saiu do pedido de conexão: o detector A13 barra telefone
+e e-mail, não **nome**, e uma linha de texto atravessaria o portão inteiro.
+
+A revelação entra em `audit_logs` como `MATCH_IDENTITY_REVEALED`, duas linhas —
+uma por parte —, pelo mesmo motivo do `GOLD_ACERVO_READ`: "quem passou a saber
+quem eu sou?" precisa ter resposta.
+
+**Limite conhecido**: revelação não se revoga. Aceitou, viu. Vale a mesma
+ressalva da seção anterior sobre o que o aceite não desfaz.
+
+## O passo do distribuidor (match de perfis)
+
+Pedido do Nicolas, 13/09/2026: entre o clique em "Demonstrar Interesse" e a entrega
+do pedido à outra pessoa entra o **distribuidor**, uma pessoa real que confere se o
+match é compatível e apto. O poder mora em `users.isDistributor` e acumula com
+qualquer nível; quem concede é Ouro, presidente ou admin (`distribuicao.conceder`).
+
+O que muda na privacidade, em três frases:
+
+- **A destinatária não sabe que foi pedida enquanto o pedido está em análise, nem
+  se ele não for encaminhado.** As linhas `in_review` e `not_forwarded` com
+  `recipientId = ela` e `reciprocatedAt IS NULL` não entram no join de
+  `getMatchesForUser` nem no WHERE de `getConnectionsForUser` (`pedidoVisivelPara`,
+  em `server/db.ts`). Para ela não existe pedido — o cartão continua em "Demonstrar
+  Interesse". Regra de consulta, não de tela: não há estado nulo a esconder no
+  componente.
+- **O distribuidor lê os dois perfis com nome.** É a segunda leitura nominal que
+  atravessa donas (a primeira é o acervo Ouro), e por isso `distribuicao.fila` e
+  `distribuicao.historico` gravam `DISTRIBUTOR_VIEW_QUEUE` em `audit_logs`. O que a
+  fila nunca traz: `userId` das partes, e-mail, telefone, cofre, LinkedIn, site, foto.
+  A bio sai mascarada por `mascararContatosEmTexto`. Quem é parte do pedido não o vê
+  na fila nem decide sobre ele.
+- **A resposta de `connections.send` continua idêntica** em todos os desfechos
+  (novo, em análise, repetido, recusado, não encaminhado): sem oráculo. A recusa do
+  distribuidor chega à solicitante como "não encaminhado", sem o motivo; a nota é
+  interna (`connections.moderationNote`).
+
+Interesse recíproco durante a análise (`reciprocatedAt`): o pedido passa a ser das
+duas, as duas veem "em análise", e a aprovação vira `accepted` de uma vez, com as
+duas linhas de `MATCH_IDENTITY_REVEALED` (`via: "distribuidor"`).
+
+**Limite conhecido**: o termo do Smart Match não diz, hoje, que uma pessoa lê os
+dois perfis antes da entrega. Registrado em decisoes-em-aberto.md (D7).
+
 ## Checklist antes de qualquer publicação
 
 - [ ] A aplicação conecta com `mmm_app`, nunca com a dona das tabelas
@@ -292,6 +364,12 @@ conversa.
 - [ ] O Match não cruza dado de quem não consentiu
 - [ ] No nível público, nenhuma resposta do servidor contém nome, telefone, e-mail,
       WhatsApp, LinkedIn, Instagram, foto ou cartão de visita de contato
+- [ ] No cruzamento de PERFIS, nenhuma resposta do servidor traz nome, nome civil,
+      empresa, cargo, foto ou bio de uma membra antes do interesse mútuo
+- [ ] E nenhuma traz o `userId` real de uma contraparte ainda não revelada
+- [ ] A destinatária de um pedido em análise (ou não encaminhado) não recebe a linha
+      em nenhuma consulta; a fila do distribuidor não traz id, e-mail, telefone nem
+      cofre das partes
 - [ ] Revogar autorização tira o acesso na consulta seguinte
 - [ ] Áudio de reunião e cartões de visita ficam em storage cifrado, com URL
       temporária, não em link público permanente

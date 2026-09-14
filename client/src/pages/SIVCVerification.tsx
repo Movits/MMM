@@ -42,7 +42,7 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
   const radius = (size - 8) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (score / 100) * circumference;
-  const color = score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444";
+  const color = score >= 80 ? "#10b981" : score >= 60 ? "#c98f70" : "#ef4444";
 
   return (
     <svg width={size} height={size} className="rotate-[-90deg]">

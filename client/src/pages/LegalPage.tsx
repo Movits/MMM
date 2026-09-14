@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 
 function LegalShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#060b14] text-white antialiased">
+    <div className="min-h-screen bg-[#151312] text-white antialiased">
       <nav className="border-b border-white/[0.05] px-6 py-4">
         <Link href="/">
           <span className="inline-flex items-center gap-2 text-white/50 hover:text-white transition-colors cursor-pointer text-sm">
@@ -33,8 +33,8 @@ export function PrivacyPage() {
       </p>
       <p>
         Enquanto isso, valem os princípios que orientam o produto desde o
-        desenho: a sua base de contatos é privada e nunca é exposta a outras
-        usuárias; dados sensíveis ficam guardados de forma cifrada; e nenhuma
+        desenho: a sua base de contatos é privada e nunca é exposta a outros
+        usuários; dados sensíveis ficam guardados de forma cifrada; e nenhuma
         informação sua é vendida ou compartilhada com terceiros.
       </p>
       <p>
@@ -54,7 +54,7 @@ export function TermsPage() {
       </p>
       <p>
         Em resumo do que já vale hoje: a plataforma destina-se a conexões de
-        negócio entre mulheres empreendedoras; oportunidades publicadas passam
+        negócio entre pessoas empreendedoras; oportunidades publicadas passam
         por análise e validação; e acordos fechados a partir das conexões devem
         respeitar as regras de intermediação da comunidade.
       </p>

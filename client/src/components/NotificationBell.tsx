@@ -95,7 +95,7 @@ export function NotificationBell() {
         onClick={handleOpen}
         className="relative flex items-center justify-center w-9 h-9 rounded-full hover:bg-white/8 transition-colors duration-200"
         title="Notificações"
-        style={{ color: unreadCount > 0 ? "#f5a623" : "rgba(255,255,255,0.45)" }}
+        style={{ color: unreadCount > 0 ? "#c98f70" : "rgba(255,255,255,0.45)" }}
       >
         {/* Ícone sino SVG */}
         <svg
@@ -113,9 +113,9 @@ export function NotificationBell() {
         {/* Badge de contagem */}
         {unreadCount > 0 && (
           <span
-            className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[9px] font-black text-[#060e1a] rounded-full min-w-[16px] h-4 px-1"
+            className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[9px] font-black text-[#151312] rounded-full min-w-[16px] h-4 px-1"
             style={{
-              background: "linear-gradient(135deg, #f5a623, #ffd166)",
+              background: "linear-gradient(135deg, #c98f70, #efcba8)",
               animation: "badgePop 0.3s cubic-bezier(0.23,1,0.32,1)",
             }}
           >
@@ -133,7 +133,7 @@ export function NotificationBell() {
           <div
             className="absolute right-0 top-full mt-2 z-50 w-80 rounded-2xl overflow-hidden shadow-2xl shadow-black/50"
             style={{
-              background: "linear-gradient(180deg, #0d1b2e 0%, #0a1628 100%)",
+              background: "linear-gradient(180deg, #211e1b 0%, #211e1b 100%)",
               border: "1px solid rgba(255,255,255,0.1)",
               animation: "dropdownIn 0.2s cubic-bezier(0.23,1,0.32,1)",
               transformOrigin: "top right",
@@ -144,7 +144,7 @@ export function NotificationBell() {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-white">Notificações</span>
                 {unreadCount > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#f5a623]/20 text-[#f5a623] border border-[#f5a623]/30">
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#c98f70]/20 text-[#c98f70] border border-[#c98f70]/30">
                     {unreadCount} nova{unreadCount > 1 ? "s" : ""}
                   </span>
                 )}
@@ -182,7 +182,7 @@ export function NotificationBell() {
             {notifications.length > 0 && (
               <div className="border-t border-white/8 px-4 py-2.5 text-center">
                 <Link href="/dashboard" onClick={() => setOpen(false)}>
-                  <span className="text-[11px] text-[#f5a623]/70 hover:text-[#f5a623] transition-colors cursor-pointer">
+                  <span className="text-[11px] text-[#c98f70]/70 hover:text-[#c98f70] transition-colors cursor-pointer">
                     Ver todas as notificações
                   </span>
                 </Link>
@@ -228,7 +228,7 @@ function NotifItem({ notif, index, onClose }: { notif: Notification; index: numb
   const content = (
     <div
       className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors duration-150 ${
-        isUnread ? "bg-[#f5a623]/4 hover:bg-[#f5a623]/8" : "hover:bg-white/4"
+        isUnread ? "bg-[#c98f70]/4 hover:bg-[#c98f70]/8" : "hover:bg-white/4"
       }`}
       style={{
         animation: `notifSlideIn 0.25s cubic-bezier(0.23,1,0.32,1) ${index * 30}ms both`,
@@ -237,7 +237,7 @@ function NotifItem({ notif, index, onClose }: { notif: Notification; index: numb
     >
       {/* Ícone */}
       <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5"
-        style={{ background: isUnread ? "rgba(245,166,35,0.12)" : "rgba(255,255,255,0.05)" }}>
+        style={{ background: isUnread ? "rgba(201,143,112,0.12)" : "rgba(255,255,255,0.05)" }}>
         <NotifIcon type={notif.type} />
       </div>
 
@@ -248,7 +248,7 @@ function NotifItem({ notif, index, onClose }: { notif: Notification; index: numb
             {notif.title}
           </p>
           {isUnread && (
-            <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623] flex-shrink-0 mt-1" />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#c98f70] flex-shrink-0 mt-1" />
           )}
         </div>
         {notif.body && (

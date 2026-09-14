@@ -20,13 +20,13 @@ export function ErroDeConsulta({ erro, aoTentarDeNovo }: {
 }) {
   const { t } = useTranslation();
   return (
-    <div role="alert" className="bg-[#0d1530] border border-white/8 rounded-2xl p-8 text-center">
+    <div role="alert" className="bg-[#1b1714] border border-white/8 rounded-2xl p-8 text-center">
       <div className="text-4xl mb-3">📡</div>
       <p className="text-white font-semibold text-sm">{t("errorBoundary.title")}</p>
       <p className="text-white/40 text-sm mt-1">{mensagemDeErroParaTela(erro, t)}</p>
       {aoTentarDeNovo && (
         <button type="button" onClick={aoTentarDeNovo}
-          className="mt-4 px-5 py-2 rounded-xl text-xs font-semibold border border-[#f5a623]/30 text-[#f5a623] hover:bg-[#f5a623]/8 transition-colors">
+          className="mt-4 px-5 py-2 rounded-xl text-xs font-semibold border border-[#c98f70]/30 text-[#c98f70] hover:bg-[#c98f70]/8 transition-colors">
           {t("errorBoundary.retryButton")}
         </button>
       )}

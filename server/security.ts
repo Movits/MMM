@@ -9,7 +9,7 @@
  */
 
 import crypto from "crypto";
-import { eq, and, desc, gte, sql } from "drizzle-orm";
+import { eq, and, desc, gt, gte, sql, count } from "drizzle-orm";
 import { exigirDb } from "./db";
 import { requireSecret } from "./_core/env";
 import {
@@ -239,14 +239,58 @@ export async function createAuditLog(params: {
 // ============================================================
 // EVENTOS DE SEGURANÇA
 // ============================================================
+/**
+ * Alerta repetido não vira linha nova enquanto a janela não fecha.
+ *
+ * Sem isso, `detectSessionAnomaly` — que roda em TODA requisição autenticada —
+ * grava uma linha a cada vez que a condição continua valendo. Em 13 dias, 26
+ * contas de TESTE produziram 851 eventos não resolvidos (678 deles de
+ * "multiple_sessions"), e a lista de segurança do painel deixou de ser legível:
+ * o alerta que importa fica soterrado pela repetição do que já se sabe.
+ *
+ * A janela vale por (conta, tipo de evento). É consulta indexada
+ * (`security_userId_idx`) e só roda quando o código já decidiu alertar, então
+ * não custa nada no caminho comum, em que não há alerta nenhum.
+ */
+const JANELA_DE_REPETICAO_MS = 30 * 60 * 1000;
+
+async function jaAlertouNaJanela(
+  userId: number,
+  eventType: string,
+  janelaMs: number
+): Promise<boolean> {
+  const db = await exigirDb();
+  const desde = new Date(Date.now() - janelaMs);
+  const anterior = await db
+    .select({ id: securityEvents.id })
+    .from(securityEvents)
+    .where(
+      and(
+        eq(securityEvents.userId, userId),
+        eq(securityEvents.eventType, eventType as "suspicious_ip"),
+        gte(securityEvents.createdAt, desde)
+      )
+    )
+    .limit(1);
+  return anterior.length > 0;
+}
+
 export async function createSecurityEvent(
   userId: number | null,
   eventType: "failed_login" | "suspicious_ip" | "multiple_sessions" | "brute_force_attempt" | "unusual_location" | "account_locked" | "password_reset" | "mfa_failed" | "data_export" | "admin_access",
   severity: "info" | "warning" | "critical",
   ipAddress?: string,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
+  opcoes?: { naoRepetirPorMs?: number }
 ): Promise<void> {
   const db = await exigirDb();
+
+  // Repetição do MESMO alerta, para a MESMA conta, dentro da janela: não grava.
+  // Só quem pede (`naoRepetirPorMs`) é dedupado — evento de tentativa de força
+  // bruta e bloqueio de conta continuam sendo gravados sempre, um por um.
+  if (userId && opcoes?.naoRepetirPorMs) {
+    if (await jaAlertouNaJanela(userId, eventType, opcoes.naoRepetirPorMs)) return;
+  }
 
   await db.insert(securityEvents).values({
     userId,
@@ -267,6 +311,22 @@ export async function createSecurityEvent(
       title: "⚠️ Alerta de Segurança",
       body: `Detectamos atividade suspeita na sua conta: ${eventType.replace(/_/g, " ")}. Se não foi você, altere sua senha imediatamente.`,
     });
+  }
+
+  // O bloqueio automático é avaliado AQUI, e não a cada requisição.
+  //
+  // Ele conta eventos críticos da conta na última hora, então o único instante
+  // em que essa conta pode cruzar o limite é o instante em que um evento
+  // crítico nasce — que é este. Antes, `getUserFromRequest` chamava a checagem
+  // em TODA requisição autenticada: um SELECT por requisição que, entre dois
+  // eventos críticos, só podia devolver o mesmo resultado de antes. E o caso
+  // "a conta já está bloqueada" também não dependia dele: `getUserFromRequest`
+  // recusa `isActive === false` antes, com a mensagem de conta desativada.
+  //
+  // `account_locked` fica de fora para o bloqueio não se realimentar: ele é
+  // gravado como crítico pela própria função de bloqueio.
+  if (userId && severity === "critical" && eventType !== "account_locked") {
+    await checkAutoLockThreshold(userId, ipAddress).catch(() => false);
   }
 }
 
@@ -498,9 +558,26 @@ export async function getAllUsers(limit = 100, offset = 0) {
 // ============================================================
 
 /**
+ * Quantas sessões a amostra traz para comparar IP e dispositivo. Não é o
+ * limite do alerta: quando a amostra enche, a contagem real é pedida à parte.
+ */
+const TAMANHO_DA_AMOSTRA = 10;
+
+/** A partir de quantas sessões simultâneas o alerta é gravado. */
+const LIMITE_DE_SESSOES_SIMULTANEAS = 10;
+
+/** A partir de quantas o alerta deixa de ser aviso e vira crítico. */
+const LIMITE_CRITICO_DE_SESSOES = 20;
+
+/**
  * Detecta anomalias na sessão atual comparando IP e User-Agent
  * com as sessões ativas do usuário. Gera alertas automáticos
  * quando detecta acesso de localização ou dispositivo diferente.
+ *
+ * RODA EM TODA REQUISIÇÃO AUTENTICADA (`server/_core/index.ts` → `sdk.ts`),
+ * então cada consulta a mais aqui é uma consulta a mais por requisição de
+ * cada usuária. É por isso que a contagem exata só é pedida quando a amostra
+ * enche, e que o alerta repetido é barrado antes de virar linha no banco.
  */
 export async function detectSessionAnomaly(
   userId: number,
@@ -509,19 +586,28 @@ export async function detectSessionAnomaly(
 ): Promise<void> {
   const db = await exigirDb();
 
-  // Buscar sessões ativas recentes do usuário (últimas 24h)
+  // A sessão precisa estar ativa E NÃO VENCIDA.
+  //
+  // Sem o filtro de validade, sessão vencida que ninguém desativou ainda
+  // contava como simultânea. E ninguém desativa sozinho: `cleanupExpiredSessions`
+  // só roda quando alguém abre o painel administrativo. Em produção, em 12/09,
+  // havia 80 sessões vencidas ainda marcadas como ativas — eram elas que
+  // enchiam a contagem e disparavam o alerta de "múltiplas sessões".
+  const agora = new Date();
+  const filtroDeSessoesVivas = and(
+    eq(sessions.userId, userId),
+    eq(sessions.isActive, true),
+    gt(sessions.expiresAt, agora),
+    gte(sessions.lastActivityAt, new Date(Date.now() - 24 * 60 * 60 * 1000))
+  );
+
+  // A amostra serve para comparar IP e dispositivo; dez bastam para isso.
   const recentSessions = await db
     .select()
     .from(sessions)
-    .where(
-      and(
-        eq(sessions.userId, userId),
-        eq(sessions.isActive, true),
-        gte(sessions.lastActivityAt, new Date(Date.now() - 24 * 60 * 60 * 1000))
-      )
-    )
+    .where(filtroDeSessoesVivas)
     .orderBy(desc(sessions.lastActivityAt))
-    .limit(10);
+    .limit(TAMANHO_DA_AMOSTRA);
 
   if (recentSessions.length === 0) return;
 
@@ -534,8 +620,20 @@ export async function detectSessionAnomaly(
   const knownFingerprints = new Set(recentSessions.map(s => s.deviceFingerprint).filter(Boolean));
   const isNewDevice = !knownFingerprints.has(currentUaFingerprint);
 
-  // Contar sessões simultâneas ativas
-  const activeSessions = recentSessions.length;
+  // O NÚMERO DE SESSÕES SIMULTÂNEAS, e não o tamanho da amostra.
+  //
+  // Antes, `activeSessions` era `recentSessions.length` — uma lista com
+  // `.limit(10)`. Duas consequências: o campo `activeSessions` gravado no
+  // evento era SEMPRE 10, em todas as linhas do painel, e o ramo
+  // `activeSessions >= 20 ? "critical" : "warning"` era inalcançável por
+  // construção, porque dez nunca chega a vinte. A contagem de verdade só é
+  // pedida quando a amostra enche, que é o único caso em que ela pode mudar
+  // alguma coisa — no caminho comum continua sendo uma consulta só.
+  let activeSessions = recentSessions.length;
+  if (activeSessions >= TAMANHO_DA_AMOSTRA) {
+    const contagem = await db.select({ n: count() }).from(sessions).where(filtroDeSessoesVivas);
+    activeSessions = Number(contagem[0]?.n ?? activeSessions);
+  }
 
   // Alertar sobre novo IP (possível acesso de localização diferente)
   if (isNewIp && recentSessions.length > 0) {
@@ -548,22 +646,24 @@ export async function detectSessionAnomaly(
         newIp: currentIp,
         knownIps: Array.from(knownIps),
         message: "Acesso detectado de endereço IP diferente dos registros anteriores",
-      }
+      },
+      { naoRepetirPorMs: JANELA_DE_REPETICAO_MS }
     ).catch(() => {});
   }
 
   // Alertar sobre múltiplas sessões simultâneas apenas em volume muito alto
   // (threshold elevado para não gerar alertas em uso normal ou testes)
-  if (activeSessions >= 10) {
+  if (activeSessions >= LIMITE_DE_SESSOES_SIMULTANEAS) {
     await createSecurityEvent(
       userId,
       "multiple_sessions",
-      activeSessions >= 20 ? "critical" : "warning",
+      activeSessions >= LIMITE_CRITICO_DE_SESSOES ? "critical" : "warning",
       currentIp,
       {
         activeSessions,
         message: `${activeSessions} sessões simultâneas detectadas`,
-      }
+      },
+      { naoRepetirPorMs: JANELA_DE_REPETICAO_MS }
     ).catch(() => {});
   }
 

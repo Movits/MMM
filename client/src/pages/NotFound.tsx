@@ -18,7 +18,7 @@ export default function NotFound() {
         {[...Array(15)].map((_, i) => (
           <div
             key={i}
-            className="absolute rounded-full bg-[#f5a623]"
+            className="absolute rounded-full bg-[#c98f70]"
             style={{
               width: `${Math.random() * 3 + 1}px`,
               height: `${Math.random() * 3 + 1}px`,
@@ -50,7 +50,7 @@ export default function NotFound() {
           <div
             className="text-[10rem] font-black leading-none select-none"
             style={{
-              background: "linear-gradient(135deg, rgba(245,166,35,0.15) 0%, rgba(245,166,35,0.05) 100%)",
+              background: "linear-gradient(135deg, rgba(201,143,112,0.15) 0%, rgba(201,143,112,0.05) 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
             }}
@@ -76,14 +76,14 @@ export default function NotFound() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={() => navigate("/")}
-            className="group relative bg-[#f5a623] hover:bg-[#e09520] text-[#060e1a] font-black px-7 py-3 rounded-xl text-sm transition-all duration-200 active:scale-95 shadow-xl shadow-[#f5a623]/20 overflow-hidden"
+            className="group relative bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-black px-7 py-3 rounded-xl text-sm transition-all duration-200 active:scale-95 shadow-xl shadow-[#c98f70]/20 overflow-hidden"
           >
             <span className="relative z-10">← {t("errors.backHome", "Voltar para o início")}</span>
             <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12" />
           </button>
           <button
             onClick={() => navigate("/dashboard")}
-            className="border border-white/15 hover:border-[#f5a623]/40 text-white/60 hover:text-white px-7 py-3 rounded-xl text-sm transition-all duration-200"
+            className="border border-white/15 hover:border-[#c98f70]/40 text-white/60 hover:text-white px-7 py-3 rounded-xl text-sm transition-all duration-200"
           >
             {t("errors.goToDashboard", "Ir para o Dashboard")}
           </button>

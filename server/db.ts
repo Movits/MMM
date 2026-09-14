@@ -1,6 +1,7 @@
-import { and, eq, desc, like, or, ne, notInArray, inArray, sql, isNull } from "drizzle-orm";
+import { and, eq, desc, asc, like, or, ne, notInArray, inArray, sql, isNull } from "drizzle-orm";
 const drizzleOr = or;
 import { drizzle } from "drizzle-orm/mysql2";
+import { alias } from "drizzle-orm/mysql-core";
 import {
   users, userProfiles, opportunities, opportunityDocuments,
   opportunityInterests, savedOpportunities, opportunityMatches,
@@ -21,7 +22,6 @@ import {
 import { ENV } from './_core/env';
 import nodeCrypto from "node:crypto";
 import { slugifyMatchTag } from "./match-service";
-import { mascararContatosEmTexto } from "@shared/contato-em-texto";
 import { normalizar } from "@shared/direcao-do-termo";
 import { BancoIndisponivel } from "./banco-indisponivel";
 import { condicaoDeStatusNasListas } from "./oportunidade-acesso";
@@ -350,6 +350,188 @@ export async function revokeGoldAccess(grantedTo: number, revokedBy: number, rea
   await db.update(users).set({ role: "silver" }).where(eq(users.id, grantedTo));
 }
 
+// ─── Distribuidor do Smart Match ──────────────────────────────
+// O poder é uma coluna de `users` (isDistributor), não uma tabela de concessões
+// como o Ouro: a trilha de quem concedeu/revogou fica em audit_logs
+// (DISTRIBUTOR_GRANTED / DISTRIBUTOR_REVOKED). Sem e-mail de contato aqui além do
+// de login, que o Painel Ouro já mostra na gestão do Ouro.
+export async function listarDistribuidores() {
+  const db = await exigirDb();
+  return db.select({
+    id: users.id, name: users.name, email: users.email, role: users.role, isActive: users.isActive,
+  }).from(users)
+    .where(eq(users.isDistributor, true))
+    .orderBy(asc(users.name));
+}
+
+/** Liga ou desliga o poder de distribuição. Quem chama já conferiu que a conta existe. */
+export async function definirPoderDeDistribuicao(userId: number, temPoder: boolean) {
+  const db = await exigirDb();
+  await db.update(users).set({ isDistributor: temPoder }).where(eq(users.id, userId));
+}
+
+/** Ids de quem pode receber o aviso de "pedido esperando": distribuidores ativos. */
+export async function idsDosDistribuidoresAtivos(): Promise<number[]> {
+  const db = await exigirDb();
+  const linhas = await db.select({ id: users.id }).from(users)
+    .where(and(eq(users.isDistributor, true), eq(users.isActive, true)));
+  return linhas.map(l => l.id);
+}
+
+/** Ids da presidência ativa (president/admin), avisada quando não há distribuidor. */
+export async function idsDaPresidenciaAtiva(): Promise<number[]> {
+  const db = await exigirDb();
+  const linhas = await db.select({ id: users.id }).from(users)
+    .where(and(inArray(users.role, ["president", "admin"]), eq(users.isActive, true)));
+  return linhas.map(l => l.id);
+}
+
+/** Quais destes ids são contas ativas. */
+export async function idsDeContasAtivas(ids: number[]): Promise<Set<number>> {
+  if (ids.length === 0) return new Set();
+  const db = await exigirDb();
+  const linhas = await db.select({ id: users.id }).from(users)
+    .where(and(inArray(users.id, ids), eq(users.isActive, true)));
+  return new Set(linhas.map(l => l.id));
+}
+
+// A fila do distribuidor mostra as DUAS partes com nome: é a leitura nominal que
+// atravessa donas, como o acervo Ouro, e por isso o router a audita
+// (DISTRIBUTOR_VIEW_QUEUE). O que nunca sai daqui: e-mail, telefone, cofre
+// (encryptedSensitiveData), LinkedIn, site, avatar. A bio sai crua e o router a
+// mascara (mascararContatosEmTexto) antes de responder.
+const solicitante = alias(users, "solicitante");
+const destinataria = alias(users, "destinataria");
+const perfilDaSolicitante = alias(userProfiles, "perfil_da_solicitante");
+const perfilDaDestinataria = alias(userProfiles, "perfil_da_destinataria");
+
+function projecaoParaAnalise(
+  conta: typeof solicitante | typeof destinataria,
+  perfil: typeof perfilDaSolicitante | typeof perfilDaDestinataria,
+) {
+  return {
+    name: conta.name,
+    role: conta.role,
+    isActive: conta.isActive,
+    isVerified: conta.isVerified,
+    onboardingCompleted: conta.onboardingCompleted,
+    displayName: perfil.displayName,
+    company: sql<string | null>`COALESCE(${perfil.company}, ${conta.company})`,
+    jobTitle: sql<string | null>`COALESCE(${perfil.jobTitle}, ${conta.position})`,
+    city: perfil.city,
+    country: sql<string | null>`COALESCE(${perfil.country}, ${conta.country})`,
+    sector: perfil.sector,
+    primarySpecialty: perfil.primarySpecialty,
+    bio: perfil.bio,
+    whatIHave: perfil.whatIHave,
+    whatINeed: perfil.whatINeed,
+    seekingTypes: perfil.seekingTypes,
+    profileCompleteness: perfil.profileCompleteness,
+  };
+}
+
+/**
+ * Os pedidos esperando o distribuidor, mais antigos primeiro. Os pedidos em que
+ * o próprio distribuidor é parte ficam de fora: ninguém decide o próprio match.
+ * Os ids das partes saem para as travas do router (termo, portão) e PARAM lá.
+ */
+export async function listarPedidosEmAnalise(distribuidorId: number, limit = 50) {
+  const db = await exigirDb();
+  return db.select({
+    connectionId: connections.id,
+    requesterId: connections.requesterId,
+    recipientId: connections.recipientId,
+    createdAt: connections.createdAt,
+    reciprocatedAt: connections.reciprocatedAt,
+    solicitante: projecaoParaAnalise(solicitante, perfilDaSolicitante),
+    destinataria: projecaoParaAnalise(destinataria, perfilDaDestinataria),
+    // A nota do Smart Match na direção do pedido (quem clicou → quem recebe).
+    compatibilidade: {
+      overallScore: matches.overallScore,
+      specialtyScore: matches.specialtyScore,
+      objectivesScore: matches.objectivesScore,
+      incomeScore: matches.incomeScore,
+      locationScore: matches.locationScore,
+      valuesScore: matches.valuesScore,
+      aiInsight: matches.aiInsight,
+    },
+  })
+    .from(connections)
+    .innerJoin(solicitante, eq(solicitante.id, connections.requesterId))
+    .innerJoin(destinataria, eq(destinataria.id, connections.recipientId))
+    .leftJoin(perfilDaSolicitante, eq(perfilDaSolicitante.userId, connections.requesterId))
+    .leftJoin(perfilDaDestinataria, eq(perfilDaDestinataria.userId, connections.recipientId))
+    .leftJoin(matches, and(eq(matches.userId, connections.requesterId), eq(matches.matchedUserId, connections.recipientId)))
+    .where(and(
+      eq(connections.status, "in_review"),
+      ne(connections.requesterId, distribuidorId),
+      ne(connections.recipientId, distribuidorId),
+    ))
+    .orderBy(asc(connections.createdAt))
+    .limit(limit);
+}
+
+/** A linha crua do pedido, para o router conferir as travas antes de decidir. */
+export async function lerPedidoDeMatch(connectionId: number) {
+  const db = await exigirDb();
+  const [linha] = await db.select({
+    id: connections.id,
+    requesterId: connections.requesterId,
+    recipientId: connections.recipientId,
+    status: connections.status,
+    reciprocatedAt: connections.reciprocatedAt,
+  })
+    .from(connections)
+    .where(eq(connections.id, connectionId))
+    .limit(1);
+  return linha ?? null;
+}
+
+/**
+ * A decisão do distribuidor num único UPDATE com trava otimista: só sai do
+ * `in_review`. Devolve se a linha ainda estava em análise (1) ou se alguém
+ * decidiu antes (0) — quem chama só produz efeitos (avisos, revelação,
+ * auditoria) com 1.
+ */
+export async function decidirPedidoDeMatch(
+  connectionId: number,
+  decisao: { statusFinal: "pending" | "accepted" | "not_forwarded"; moderatedBy: number; moderationNote: string | null },
+): Promise<boolean> {
+  const db = await exigirDb();
+  const [resultado] = await db.update(connections)
+    .set({
+      status: decisao.statusFinal,
+      moderatedBy: decisao.moderatedBy,
+      moderationNote: decisao.moderationNote,
+      moderatedAt: new Date(),
+    })
+    .where(and(eq(connections.id, connectionId), eq(connections.status, "in_review")));
+  return linhasAfetadas(resultado) === 1;
+}
+
+/** As últimas decisões, mais recentes primeiro. `resultado` é o status ATUAL da linha. */
+export async function listarHistoricoDeDistribuicao(limit = 50) {
+  const db = await exigirDb();
+  const distribuidor = alias(users, "distribuidor");
+  return db.select({
+    connectionId: connections.id,
+    decididoEm: connections.moderatedAt,
+    decididoPor: { id: distribuidor.id, name: distribuidor.name },
+    resultado: connections.status,
+    nota: connections.moderationNote,
+    reciprocado: sql<boolean>`${connections.reciprocatedAt} IS NOT NULL`,
+    solicitanteNome: solicitante.name,
+    destinatariaNome: destinataria.name,
+  })
+    .from(connections)
+    .innerJoin(solicitante, eq(solicitante.id, connections.requesterId))
+    .innerJoin(destinataria, eq(destinataria.id, connections.recipientId))
+    .leftJoin(distribuidor, eq(distribuidor.id, connections.moderatedBy))
+    .where(sql`${connections.moderatedAt} IS NOT NULL`)
+    .orderBy(desc(connections.moderatedAt))
+    .limit(limit);
+}
+
 // ─── Sessions ────────────────────────────────────────────────
 export async function createSession(data: typeof sessions.$inferInsert) {
   const db = await exigirDb();
@@ -502,9 +684,35 @@ export async function getAuditLogs(filters: { userId?: number; action?: string; 
 }
 
 // ─── Matches (sistema original MMM) ────────────────────────────────────────────────
+/**
+ * A projeção ANÔNIMA do cruzamento de perfis.
+ *
+ * Regra da cliente (12/09/2026): o nome de uma membra não aparece para outra
+ * antes do interesse mútuo. Como privacidade aqui é regra de CONSULTA e não de
+ * tela (docs/arquitetura/privacidade.md), o que identifica não é escondido no
+ * componente — não é lido do banco. Ficaram de fora, de propósito:
+ * `displayName`, `avatarUrl`, `bio`, `users.name` (nome civil), `users.company`,
+ * `users.position`, `currentCompany`, `currentRole`, `sectors`,
+ * `profileCompleteness`, `experienceYears` e `workStyle`. Boa parte deles nunca
+ * foi desenhada em tela nenhuma: trafegavam na resposta tRPC para ninguém ver,
+ * legíveis por quem abrisse o devtools.
+ *
+ * A identidade entra pelo outro lado, em `getConnectionsForUser`, e só quando a
+ * conexão está `accepted` — que é onde o interesse mútuo fica registrado.
+ *
+ * `matchedUserId` CONTINUA aqui porque três travas do servidor dependem dele:
+ * o consentimento dos dois lados, o portão da demanda expressa e a contagem de
+ * `redeAguardando` (server/routers/profileMatches.ts). Ele é recortado no
+ * router, depois dos filtros, e não chega ao navegador — id real na mão de uma
+ * conta Ouro é deanonimização de um salto, porque toda conta Ouro tem o painel
+ * administrativo, que lista usuárias por nome.
+ *
+ * O `aiInsight` pode ficar: o prompt que o gera (server/matching.ts) monta os
+ * dois perfis só com especialidade, busca, setor e valores — nome nunca entra.
+ */
 export async function getMatchesForUser(userId: number, limit = 20) {
   const db = await exigirDb();
-  const linhas = await db.select({
+  return db.select({
     matchId: matches.id,
     matchedUserId: matches.matchedUserId,
     overallScore: matches.overallScore,
@@ -517,41 +725,47 @@ export async function getMatchesForUser(userId: number, limit = 20) {
     userSeen: matches.userSeen,
     userDismissed: matches.userDismissed,
     createdAt: matches.createdAt,
-    displayName: userProfiles.displayName,
-    avatarUrl: userProfiles.avatarUrl,
-    bio: userProfiles.bio,
     city: userProfiles.city,
     country: userProfiles.country,
-    sectors: userProfiles.sectors,
-    profileCompleteness: userProfiles.profileCompleteness,
-    userName: users.name,
-    userCompany: users.company,
-    userPosition: users.position,
     // Campos de matching
     primarySpecialty: userProfiles.primarySpecialty,
-    currentRole: userProfiles.currentRole,
-    currentCompany: userProfiles.currentCompany,
     seekingTypes: userProfiles.seekingTypes,
     businessInterests: userProfiles.businessInterests,
     values: userProfiles.values,
     sector: userProfiles.sector,
-    experienceYears: userProfiles.experienceYears,
-    workStyle: userProfiles.workStyle,
+    // O estado do interesse vem do SERVIDOR, resolvido aqui. A tela não tem como
+    // cruzar match e conexão por conta própria — e é bom que não tenha: para
+    // cruzar, precisaria do id da outra usuária, que é justamente o que não pode
+    // atravessar. `connectionId` é id de conexão, não de pessoa.
+    connectionId: connections.id,
+    connectionStatus: connections.status,
+    souDestinataria: sql<boolean>`${connections.recipientId} = ${userId}`,
+    // O MESMO predicado do portão de `getConnectionsForUser`: nome só com aceite.
+    displayName: sql<string | null>`CASE WHEN ${connections.status} = 'accepted' THEN ${userProfiles.displayName} ELSE NULL END`,
   })
     .from(matches)
     .innerJoin(userProfiles, eq(userProfiles.userId, matches.matchedUserId!))
+    // O join com `users` não traz mais coluna nenhuma: ele sobrevive só como
+    // garantia de que a conta existe — conta excluída (server/exclusao-de-conta.ts)
+    // não pode deixar match órfão apontando para linha que sumiu.
     .innerJoin(users, eq(users.id, matches.matchedUserId!))
+    .leftJoin(connections, and(
+      or(
+        and(eq(connections.requesterId, userId), eq(connections.recipientId, matches.matchedUserId!)),
+        and(eq(connections.requesterId, matches.matchedUserId!), eq(connections.recipientId, userId)),
+      ),
+      // O passo do distribuidor é invisível para a destinatária: a linha em
+      // análise (ou não encaminhada) não entra no join — para ela é como se
+      // não houvesse pedido. Regra de consulta, não de tela.
+      pedidoVisivelPara(userId),
+    ))
     .where(and(eq(matches.userId, userId), eq(matches.userDismissed, false)))
     .orderBy(desc(matches.overallScore))
     .limit(limit);
-  // A13: a bio é texto livre da OUTRA usuária chegando a esta — quem escreveu
-  // telefone/e-mail na própria bio não pode usá-la como canal de contato nos
-  // matches. A dona segue vendo a própria bio inteira no perfil; aqui, a
-  // versão que circula sai mascarada.
-  return linhas.map(linha => ({
-    ...linha,
-    bio: linha.bio ? mascararContatosEmTexto(linha.bio) : linha.bio,
-  }));
+  // A13 (histórico): a `bio` era texto livre da OUTRA usuária chegando a esta, e
+  // saía daqui mascarada contra telefone/e-mail. Ela deixou de ser lida — proteção
+  // maior, não menor: o que não é selecionado não precisa ser mascarado. A máscara
+  // `mascararContatosEmTexto` segue viva e em uso no resto do produto.
 }
 
 export async function dismissMatch(userId: number, matchId: number) {
@@ -566,48 +780,190 @@ export async function regenerateMatches(userId: number): Promise<number> {
   return generateMatchesForUser(userId);
 }
 
+/**
+ * A alça do cartão anônimo: de `matchId` para a usuária do outro lado.
+ *
+ * Com o `matchedUserId` fora do payload, o navegador age pelo `matchId` — que ele
+ * já recebia para dispensar. Quem protege não é a opacidade do número e sim o
+ * predicado de posse: a linha tem de ser um match DESTA usuária. Enumerar id
+ * alheio devolve `null` e não escreve nada.
+ *
+ * Conserta de passagem um buraco antigo: `connections.send` aceitava qualquer
+ * `targetUserId`, match ou não. Somado ao `connections.list`, que devolvia nome e
+ * empresa de qualquer pendente, isso permitia varrer a base inteira de qualquer
+ * conta autenticada.
+ */
+export async function resolverAlvoDoMatch(userId: number, matchId: number): Promise<number | null> {
+  const db = await exigirDb();
+  const linha = await db.select({ matchedUserId: matches.matchedUserId })
+    .from(matches)
+    .where(and(
+      eq(matches.id, matchId),
+      eq(matches.userId, userId),
+      eq(matches.userDismissed, false),
+    ))
+    .limit(1);
+  return linha[0]?.matchedUserId ?? null;
+}
+
 // ─── Connections ────────────────────────────────────────────────────────────────
+/**
+ * O PORTÃO DA REVELAÇÃO MÚTUA.
+ *
+ * Esta é a única consulta do painel que devolve identidade de outra membra, e
+ * ela só devolve quando a conexão está `accepted` — o registro de que as duas
+ * quiseram. Enquanto está `pending`, as duas pontas recebem exatamente a mesma
+ * projeção anônima: quem pediu não se expõe sozinha, e quem recebeu decide pelo
+ * que o perfil diz, não por quem a pessoa é.
+ *
+ * A simetria não depende de disciplina de quem escreve o código: é UMA linha e
+ * UMA coluna `status`, lida pelo mesmo predicado pelos dois lados. Não existe
+ * estado "revelado para A e não para B".
+ *
+ * `requesterId` e `recipientId` NÃO saem enquanto está pendente — são o id real
+ * da outra parte. No lugar deles vai `souDestinataria`, que é o que a tela
+ * precisa para saber de que lado está. `outraParteId` só volta depois do aceite,
+ * porque a mensagem direta de Ouro precisa dele.
+ *
+ * O bilhete (`message`) também espera o aceite: o bloqueio A13 barra telefone e
+ * e-mail, não nome — "oi, aqui é a Ana da Vinícola X" atravessaria o portão
+ * inteiro numa linha de texto livre.
+ */
 export async function getConnectionsForUser(userId: number) {
   const db = await exigirDb();
+  const outraParte = sql`CASE WHEN ${connections.requesterId} = ${userId} THEN ${connections.recipientId} ELSE ${connections.requesterId} END`;
+  const aceita = sql`${connections.status} = 'accepted'`;
   return db.select({
     id: connections.id,
-    requesterId: connections.requesterId,
-    recipientId: connections.recipientId,
     status: connections.status,
-    message: connections.message,
     createdAt: connections.createdAt,
-    displayName: userProfiles.displayName,
-    avatarUrl: userProfiles.avatarUrl,
+    souDestinataria: sql<boolean>`${connections.recipientId} = ${userId}`,
+    // Anônimo dos dois lados, sempre: é com isto que se decide aceitar.
     city: userProfiles.city,
-    sectors: userProfiles.sectors,
-    userName: users.name,
-    userCompany: users.company,
     primarySpecialty: userProfiles.primarySpecialty,
+    // Só depois do aceite.
+    outraParteId: sql<number | null>`CASE WHEN ${aceita} THEN ${outraParte} ELSE NULL END`,
+    message: sql<string | null>`CASE WHEN ${aceita} THEN ${connections.message} ELSE NULL END`,
+    displayName: sql<string | null>`CASE WHEN ${aceita} THEN ${userProfiles.displayName} ELSE NULL END`,
+    avatarUrl: sql<string | null>`CASE WHEN ${aceita} THEN ${userProfiles.avatarUrl} ELSE NULL END`,
+    userName: sql<string | null>`CASE WHEN ${aceita} THEN ${users.name} ELSE NULL END`,
+    userCompany: sql<string | null>`CASE WHEN ${aceita} THEN ${users.company} ELSE NULL END`,
   })
     .from(connections)
     .innerJoin(userProfiles, sql`${userProfiles.userId} = CASE WHEN ${connections.requesterId} = ${userId} THEN ${connections.recipientId} ELSE ${connections.requesterId} END`)
     .innerJoin(users, sql`${users.id} = CASE WHEN ${connections.requesterId} = ${userId} THEN ${connections.recipientId} ELSE ${connections.requesterId} END`)
-    .where(or(eq(connections.requesterId, userId), eq(connections.recipientId, userId)))
+    .where(and(
+      or(eq(connections.requesterId, userId), eq(connections.recipientId, userId)),
+      // O MESMO predicado de getMatchesForUser: em análise ou não encaminhado
+      // não existe para a destinatária.
+      pedidoVisivelPara(userId),
+    ))
     .orderBy(desc(connections.createdAt))
     .limit(50);
 }
 
-export async function sendConnectionRequest(requesterId: number, recipientId: number, message?: string) {
-  const db = await exigirDb();
-  const existing = await db.select({ id: connections.id })
-    .from(connections)
-    .where(and(eq(connections.requesterId, requesterId), eq(connections.recipientId, recipientId)))
-    .limit(1);
-  if (existing.length > 0) return { alreadyExists: true };
-  await db.insert(connections).values({ requesterId, recipientId, message });
-  return { alreadyExists: false };
+/**
+ * O passo do distribuidor (in_review) e o seu desfecho negativo (not_forwarded)
+ * são invisíveis para a DESTINATÁRIA: ela só fica sabendo do pedido depois que
+ * ele é encaminhado. A exceção é quando ela mesma também clicou enquanto o
+ * pedido estava em análise (`reciprocatedAt`): aí o pedido é dela também.
+ * Compartilhado por getMatchesForUser e getConnectionsForUser, para não existir
+ * "a lista de matches esconde e a de conexões mostra".
+ */
+function pedidoVisivelPara(userId: number) {
+  return sql`NOT (${connections.status} IN ('in_review', 'not_forwarded') AND ${connections.recipientId} = ${userId} AND ${connections.reciprocatedAt} IS NULL)`;
 }
 
+/**
+ * Quantas linhas o UPDATE alcançou (cópia da função de match-service.ts, que
+ * importa este módulo). O mysql2 liga CLIENT_FOUND_ROWS: conta a linha que o
+ * WHERE ENCONTROU, não a que mudou de valor — o que uma trava otimista quer.
+ */
+function linhasAfetadas(resultado: unknown) {
+  const cabecalho = Array.isArray(resultado) ? resultado[0] : resultado;
+  return (cabecalho as { affectedRows?: number } | null | undefined)?.affectedRows ?? 0;
+}
+
+/**
+ * Demonstrar interesse — olhando os DOIS sentidos.
+ *
+ * A versão anterior só procurava `(requesterId = eu, recipientId = ela)`. Se as
+ * duas clicassem em "Demonstrar Interesse" no cartão uma da outra, nasciam DUAS
+ * linhas pendentes: as duas tinham demonstrado interesse e nenhuma via nenhuma —
+ * exatamente o que a regra do interesse mútuo promete que não acontece. Agora a
+ * linha invertida pendente é o próprio aceite.
+ *
+ * A resposta é DELIBERADAMENTE a mesma em todos os casos que não são erro. Antes,
+ * uma linha existente virava `CONFLICT` distinguível, o que transformava a rota
+ * num oráculo: dava para descobrir que alguém recusou ou bloqueou.
+ */
+/**
+ * O clique em "Demonstrar Interesse". Quatro desfechos, todos com a MESMA resposta
+ * para o navegador (connections.send não distingue):
+ * - par novo → nasce `in_review`, esperando o distribuidor (`emAnalise: true`,
+ *   para o router avisar quem distribui);
+ * - a outra parte já tinha pedido e o pedido está `in_review` → grava só
+ *   `reciprocatedAt`: uma linha por par, e a aprovação já revela os dois nomes;
+ * - a outra parte já tinha pedido e o pedido está `pending` (encaminhado) →
+ *   interesse mútuo, vira `accepted`;
+ * - qualquer outra linha existente (recusada, não encaminhada, repetida) → nada.
+ * Os UPDATEs levam o status lido no WHERE: duas abas não revelam duas vezes.
+ */
+export async function sendConnectionRequest(requesterId: number, recipientId: number) {
+  const db = await exigirDb();
+  const par = await db.select({
+    id: connections.id,
+    requesterId: connections.requesterId,
+    status: connections.status,
+    reciprocatedAt: connections.reciprocatedAt,
+  })
+    .from(connections)
+    .where(or(
+      and(eq(connections.requesterId, requesterId), eq(connections.recipientId, recipientId)),
+      and(eq(connections.requesterId, recipientId), eq(connections.recipientId, requesterId)),
+    ))
+    .limit(2);
+
+  const invertida = par.find(l => l.requesterId === recipientId);
+  if (invertida?.status === "pending") {
+    const [resultado] = await db.update(connections)
+      .set({ status: "accepted" })
+      .where(and(eq(connections.id, invertida.id), eq(connections.status, "pending")));
+    return { revelou: linhasAfetadas(resultado) === 1, connectionId: invertida.id, emAnalise: false };
+  }
+  if (invertida?.status === "in_review" && invertida.reciprocatedAt === null) {
+    await db.update(connections)
+      .set({ reciprocatedAt: new Date() })
+      .where(and(eq(connections.id, invertida.id), eq(connections.status, "in_review"), isNull(connections.reciprocatedAt)));
+    return { revelou: false, connectionId: invertida.id, emAnalise: false };
+  }
+  if (par.length > 0) return { revelou: false, connectionId: par[0].id, emAnalise: false };
+
+  const [inserido] = await db.insert(connections).values({ requesterId, recipientId, status: "in_review" });
+  const connectionId = (inserido as { insertId?: number } | undefined)?.insertId ?? null;
+  return { revelou: false, connectionId, emAnalise: true };
+}
+
+/** Devolve se o aceite realmente aconteceu, para a trilha de auditoria saber. */
 export async function respondToConnection(connectionId: number, userId: number, accept: boolean) {
   const db = await exigirDb();
-  await db.update(connections)
+  const linha = await db.select({
+    id: connections.id,
+    requesterId: connections.requesterId,
+    status: connections.status,
+  })
+    .from(connections)
+    .where(and(eq(connections.id, connectionId), eq(connections.recipientId, userId)))
+    .limit(1);
+  if (linha.length === 0 || linha[0].status !== "pending") return { revelou: false, contraparte: null };
+
+  // Status no WHERE: a segunda aba que aceita depois da primeira não afeta linha
+  // nenhuma e não revela (nem audita) de novo.
+  const [resultado] = await db.update(connections)
     .set({ status: accept ? "accepted" : "declined" })
-    .where(and(eq(connections.id, connectionId), eq(connections.recipientId, userId)));
+    .where(and(eq(connections.id, connectionId), eq(connections.recipientId, userId), eq(connections.status, "pending")));
+  if (linhasAfetadas(resultado) !== 1) return { revelou: false, contraparte: null };
+  return { revelou: accept, contraparte: linha[0].requesterId };
 }
 
 // ─── Private Contacts (Minha Rede de Relacionamentos) ─────────────────────────

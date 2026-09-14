@@ -180,7 +180,7 @@ function ehCompostoNominal(cabeca: string, seguinte: string | undefined): boolea
  * "procuro exportar vinho" é oferta, porque quem escreveu disse o que pretende
  * fazer.
  */
-const MARCADORES_FRACOS = new Set([
+export const MARCADORES_FRACOS = new Set([
   // pt — o que a pessoa quer
   "procura", "procuro", "procurar", "procurando", "busca", "busco", "buscar",
   "buscando", "precisa", "preciso", "precisar", "precisando", "necessita",
@@ -206,9 +206,9 @@ const DIRECAO_POR_CABECA = new Map<string, Direcao>([
 /**
  * Só o genitivo apresenta o objeto: "exportação DE vinho" — o vinho é a coisa.
  */
-const GENITIVOS = new Set(["de", "da", "do", "das", "dos", "of"]);
+export const GENITIVOS = new Set(["de", "da", "do", "das", "dos", "of"]);
 
-const ARTIGOS = new Set(["a", "o", "as", "os", "um", "uma", "the", "el", "la", "los", "las", "un", "una"]);
+export const ARTIGOS = new Set(["a", "o", "as", "os", "um", "uma", "the", "el", "la", "los", "las", "un", "una"]);
 
 /**
  * Preposição que apresenta destino, canal ou circunstância — nunca o produto.
@@ -343,8 +343,23 @@ export function normalizar(texto: string) {
  */
 export const SEPARADOR_DE_PALAVRA = new RegExp("[^\\p{L}\\p{M}\\p{N}]+", "gu");
 
-function tokens(texto: string) {
+/** As palavras de um termo, normalizadas — a mesma tokenização do analisador. */
+export function tokensDoTermo(texto: string) {
   return normalizar(texto).split(SEPARADOR_DE_PALAVRA).filter(Boolean);
+}
+
+/**
+ * O slug de uma tag — o mesmo que `contact_assets.tag_slug` guarda e que
+ * `slugifyMatchTag` (server/match-service.ts) devolve. Mora aqui porque o
+ * motor de perfis (server/matching.ts) também compara texto livre por slug
+ * desde a regra da demanda expressa, e os dois precisam enxergar as mesmas
+ * letras. O corte é por caractere, não por unidade UTF-16: tag_slug é
+ * varchar(160) em utf8mb4, e uma surrogate pair partida ao meio nem entra no
+ * banco.
+ */
+export function slugDoTermo(valor: string) {
+  const slug = normalizar(valor).replace(SEPARADOR_DE_PALAVRA, "-").replace(/^-+|-+$/g, "");
+  return Array.from(slug).slice(0, 160).join("");
 }
 
 export type TermoAnalisado = {
@@ -371,7 +386,7 @@ type Forma = "verbo" | "substantivo-com-objeto" | "substantivo-sem-objeto";
 type Analise = TermoAnalisado & { forma: Forma | null };
 
 function analisar(rotulo: string): Analise {
-  const palavras = tokens(rotulo);
+  const palavras = tokensDoTermo(rotulo);
 
   // Descasca os marcadores fracos da frente. Quando o que vem depois não é
   // objeto extraível, para de descascar: "Procura", sozinho, continua sendo
@@ -500,6 +515,13 @@ const CABECAS_TRANSPARENTES = new Set([
   // es
   "proveedor", "proveedores", "productor", "productores", "distribuidor",
   "distribuidores", "granja", "granjas",
+  // pt/en/es — o SERVIÇO nomeado pelo genitivo. "Serviços DE tradução" e
+  // "tradução" falam do mesmo serviço, como "mina DE terras raras" e "terras
+  // raras" falam da mesma substância. Entrou com a regra da demanda expressa
+  // (12/09/2026): serviço só casa com necessidade que o NOMEIA, e é assim que
+  // se nomeia — "prestação de serviços de contabilidade" atravessa duas
+  // cabeças até "contabilidade" (nucleoDoTermo repete enquanto houver cabeça).
+  "servico", "servicos", "prestacao", "service", "services", "servicio", "servicios",
 ]);
 
 /**
@@ -626,14 +648,45 @@ function semPluralFinal(texto: string): string {
  */
 export function nucleoDoTermo(rotulo: string): string {
   const { objeto } = analisarTermo(rotulo);
-  const palavras = objeto.split("-").filter(Boolean);
-  if (palavras.length < 3) return objeto;
+  let palavras = objeto.split("-").filter(Boolean);
   // Exige a forma exata "CABEÇA + genitivo + substância": é o padrão em que a
-  // cabeça comprovadamente não é a mercadoria. Qualquer outra forma fica inteira.
-  if (!CABECAS_TRANSPARENTES.has(palavras[0]) || !GENITIVOS.has(palavras[1])) return objeto;
-  const substancia = objetoDepoisDe(palavras.slice(1));
-  if (!substancia || ehLugar(substancia)) return objeto;
-  return substancia.join("-");
+  // cabeça comprovadamente não é a mercadoria. Qualquer outra forma fica
+  // inteira. Repete enquanto a substância começar por outra cabeça
+  // transparente ("prestação de serviços de contabilidade" → "serviços de
+  // contabilidade" → "contabilidade"); diante de lugar, para onde está.
+  while (palavras.length >= 3 && CABECAS_TRANSPARENTES.has(palavras[0]) && GENITIVOS.has(palavras[1])) {
+    const substancia = objetoDepoisDe(palavras.slice(1));
+    if (!substancia || ehLugar(substancia)) break;
+    palavras = substancia;
+  }
+  return palavras.length ? palavras.join("-") : objeto;
+}
+
+/**
+ * As duas pontas nomeiam a MESMA coisa? É a equivalência que o motor privado
+ * (`scoreMatch`) sempre usou depois do slug: mesmo objeto (tirado o verbo de
+ * direção e os marcadores fracos) ou mesmo núcleo (atravessada a cabeça
+ * transparente). Vive aqui porque o motor de perfis também precisa dela desde
+ * a regra da demanda expressa — texto livre em "o que tenho" de uma usuária
+ * diante do "o que preciso" de outra.
+ *
+ * Lugar não é mercadoria de quem DECLAROU direção: "Importação da China" ×
+ * "Exportação da China" reduzem os dois lados a "china", e isso é a nota de
+ * quem tem a MESMA coisa. A guarda vale para o objeto E para o núcleo — só
+ * num deles, o outro ainda casava — e só quando ao menos uma ponta trouxe
+ * verbo ou substantivo de ação: sem direção nas palavras, "China" × "Procura
+ * China" é a mesma coisa dita de dois jeitos, como "Terras raras" × "Procura
+ * terras raras" (revisão adversarial de 05/09).
+ */
+export function nomeiamAMesmaCoisa(rotuloOferta: string, rotuloDemanda: string): boolean {
+  const termoOferta = analisarTermo(rotuloOferta);
+  const termoDemanda = analisarTermo(rotuloDemanda);
+  const direcaoDeclarada = termoOferta.verbo !== null || termoDemanda.verbo !== null;
+  const ehSubstancia = (x: string) => !!x && !(direcaoDeclarada && ehLugar(x.split("-")));
+  if (ehSubstancia(termoOferta.objeto) && termoOferta.objeto === termoDemanda.objeto) return true;
+  const nucleoOferta = nucleoDoTermo(rotuloOferta);
+  const nucleoDemanda = nucleoDoTermo(rotuloDemanda);
+  return ehSubstancia(nucleoOferta) && nucleoOferta === nucleoDemanda;
 }
 
 /**

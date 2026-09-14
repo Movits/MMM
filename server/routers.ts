@@ -1,6 +1,7 @@
 import { systemRouter } from "./_core/systemRouter";
 import { router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
+import { contaRouter } from "./routers/conta";
 import { profileRouter } from "./routers/profile";
 import { opportunitiesRouter } from "./routers/opportunities";
 import { notificationsRouter } from "./routers/notifications";
@@ -21,6 +22,7 @@ import { sivcRouter } from "./routers/sivc";
 import { meetingsRouter } from "./routers/meetings";
 import { memoryRouter } from "./routers/memory";
 import { intelligentMatchesRouter } from "./routers/matches";
+import { distribuicaoRouter } from "./routers/distribuicao";
 
 // ============================================================
 // ROUTER PRINCIPAL — cada área vive em server/routers/<área>.ts
@@ -30,6 +32,7 @@ export const appRouter = router({
   dealRoom: dealRoomRouter,
   sivc: sivcRouter,
   auth: authRouter,
+  conta: contaRouter,
   profile: profileRouter,
   opportunities: opportunitiesRouter,
   notifications: notificationsRouter,
@@ -48,6 +51,7 @@ export const appRouter = router({
   meetings: meetingsRouter,
   memory: memoryRouter,
   intelligentMatches: intelligentMatchesRouter,
+  distribuicao: distribuicaoRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -278,6 +278,31 @@ alguém prometer prazo.
 
 ---
 
+## D7: O termo do Smart Match e o distribuidor
+
+**Trava:** jurídico. Desde 13/09/2026 uma pessoa real (o distribuidor,
+`users.isDistributor`) lê os DOIS perfis com nome antes de encaminhar um pedido de
+interesse — e o termo do Smart Match vigente não diz isso. A implementação já
+audita cada leitura (`DISTRIBUTOR_VIEW_QUEUE`), mas o texto do termo precisa de uma
+versão nova citando o passo; versão nova de termo é `document_versions` + novo
+aceite (etapa 11).
+
+Perguntas:
+
+1. O termo passa a dizer que "uma pessoa designada pelo MMM confere a
+   compatibilidade e lê os dois perfis antes de encaminhar"?
+2. O distribuidor recebe e-mail além do sino? Hoje é só o sino, e um pedido pode
+   esperar dias sem ninguém abrir o Painel Ouro.
+3. Um pedido `not_forwarded` pode ser reconsiderado? Hoje não: a solicitante vê
+   "não encaminhado" e o par fica fechado. Se a outra pessoa clicar depois, nada
+   acontece (a resposta de `send` é a mesma de sempre) — limite conhecido.
+4. Com mais de um distribuidor, a fila é uma só. Atribuir por região/setor?
+
+Pendência técnica ligada: índice único no par de `connections` (exige colunas de
+par ordenado e backfill; hoje a trava contra dupla revelação é o status no WHERE).
+
+---
+
 ## Decisões de produto do modelo de acesso
 
 Três definições que a revisão técnica do modelo levantou. São regras de produto, não

@@ -15,7 +15,7 @@ export const presidentRouter = router({
   grantGold: presidentProcedure
     .input(z.object({
       userId: z.number().int(),
-      reason: z.string().max(500).optional().default("Promovida pela Presidente do MMM"),
+      reason: z.string().max(500).optional().default("Promovido pelo Presidente do MMM"),
     }))
     .mutation(async ({ ctx, input }) => {
       // Buscar nome da usuária para personalizar a mensagem
@@ -23,7 +23,7 @@ export const presidentRouter = router({
       const [targetUser] = await db.select({ name: users.name }).from(users).where(eq(users.id, input.userId)).limit(1);
       const userName = targetUser?.name || "";
       const firstName = userName.split(" ")[0] || "";
-      await grantGoldAccess(input.userId, ctx.user.id, input.reason || "Promovida pela Presidente do MMM");
+      await grantGoldAccess(input.userId, ctx.user.id, input.reason || "Promovido pelo Presidente do MMM");
       await createAuditLog({ userId: ctx.user.id, action: "PRESIDENT_GRANT_GOLD", resource: "users", resourceId: String(input.userId), details: { reason: input.reason }, status: "success", riskLevel: "high" });
       // Notificar a usuária promovida com mensagem automática
       try {
@@ -31,14 +31,14 @@ export const presidentRouter = router({
           userId: input.userId,
           type: "gold_granted",
           title: "⭐ Parabéns, você agora é nível OURO!",
-          body: `Olá${firstName ? ", " + firstName : ""}! Parabéns, você agora é nível OURO! Uma Presidente do MMM reconheceu o seu potencial e concedeu a você o Selo de Exclusividade Institucional Ouro. Bem-vinda ao grupo mais seleto da plataforma!`,
+          body: `Olá${firstName ? ", " + firstName : ""}! Parabéns, você agora é nível OURO! Um Presidente do MMM reconheceu o seu potencial e concedeu a você o Selo de Exclusividade Institucional Ouro. Boas-vindas ao grupo mais seleto da plataforma!`,
           actionUrl: "/dashboard",
         });
       } catch (_) { /* não bloquear se notificação falhar */ }
       // Enviar mensagem direta na caixa de mensagens da usuária promovida
       try {
         const { directMessages } = await import("../../drizzle/schema");
-        const goldMsg = `⭐ Parabéns${firstName ? ", " + firstName : ""}! Você acaba de ser promovida ao nível OURO no MMM!\n\nUma membra Ouro do MMM reconheceu o seu potencial e concedeu a você o Selo de Exclusividade Institucional Ouro. A partir de agora você tem acesso completo a todas as funcionalidades da plataforma: Deal Rooms, Conexões Estratégicas, Painel Ouro e muito mais.\n\nMotivo da promoção: ${input.reason || "Promovida pela Presidente do MMM"}\n\nBem-vinda ao grupo mais seleto da plataforma! 🌟`;
+        const goldMsg = `⭐ Parabéns${firstName ? ", " + firstName : ""}! Você acaba de ser promovido ao nível OURO no MMM!\n\nUm membro Ouro do MMM reconheceu o seu potencial e concedeu a você o Selo de Exclusividade Institucional Ouro. A partir de agora você tem acesso completo a todas as funcionalidades da plataforma: Deal Rooms, Conexões Estratégicas, Painel Ouro e muito mais.\n\nMotivo da promoção: ${input.reason || "Promovido pelo Presidente do MMM"}\n\nBoas-vindas ao grupo mais seleto da plataforma! 🌟`;
         await db.insert(directMessages).values({
           senderId: ctx.user.id, // mensagem enviada pela presidente
           recipientId: input.userId,
@@ -62,7 +62,7 @@ export const presidentRouter = router({
           userId: input.userId,
           type: "gold_revoked",
           title: "Selo Ouro revogado",
-          body: `Seu Selo de Exclusividade Institucional Ouro foi revogado por uma Presidente do MMM. Motivo: ${input.reason}`,
+          body: `Seu Selo de Exclusividade Institucional Ouro foi revogado por um Presidente do MMM. Motivo: ${input.reason}`,
           actionUrl: "/dashboard",
         });
       } catch (_) { /* não bloquear se notificação falhar */ }

@@ -12,7 +12,6 @@ import {
   createAuditLog,
   createSecurityEvent,
   detectSessionAnomaly,
-  checkAutoLockThreshold,
 } from "../security";
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
@@ -183,11 +182,14 @@ class SDKServer {
       }
     }
 
-    // HARDENING: Verificar bloqueio automático por threshold de eventos críticos
-    const wasAutoLocked = await checkAutoLockThreshold(user.id, ipAddress).catch(() => false);
-    if (wasAutoLocked) {
-      throw ForbiddenError("Account automatically locked due to suspicious activity");
-    }
+    // O bloqueio automático NÃO é reavaliado aqui, de propósito.
+    //
+    // Ele conta eventos críticos da conta na última hora, e a contagem só muda
+    // quando um evento crítico nasce — momento em que `createSecurityEvent`
+    // (server/security.ts) chama a checagem. Reavaliar a cada requisição era um
+    // SELECT por requisição que, entre dois eventos críticos, devolvia sempre o
+    // mesmo resultado. A conta já bloqueada também não dependia dele: o
+    // `!user.isActive` acima recusa a requisição antes de chegar nesta linha.
 
     // Detectar anomalias de sessão (IP diferente, UA diferente) — não-bloqueante
     await detectSessionAnomaly(user.id, ipAddress, userAgent).catch(() => {});

@@ -148,7 +148,7 @@ export default function OpportunityDetail() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
-      <div className="border-b border-white/10 bg-[#060E1A]/95 backdrop-blur-xl sticky top-0 z-40">
+      <div className="border-b border-white/10 bg-[#151312]/95 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/opportunities">
             <button className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm">
@@ -405,7 +405,7 @@ export default function OpportunityDetail() {
       {/* Modal NDA */}
       {showNDAModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.85)" }}>
-          <div className="bg-[#1a1a2e] border border-amber-500/30 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+          <div className="bg-[#211e1b] border border-amber-500/30 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
                 <Lock size={18} className="text-amber-400" />

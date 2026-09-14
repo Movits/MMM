@@ -188,7 +188,7 @@ export default function NewOpportunity() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
-      <div className="border-b border-white/10 bg-[#060E1A]/95 backdrop-blur-xl sticky top-0 z-40">
+      <div className="border-b border-white/10 bg-[#151312]/95 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/opportunities")} className="text-white/50 hover:text-white transition-colors">
@@ -231,7 +231,7 @@ export default function NewOpportunity() {
                 <SelectTrigger className="bg-white/5 border-white/10 text-white">
                   <SelectValue placeholder={t("newOpportunity.typePlaceholder")} />
                 </SelectTrigger>
-                <SelectContent className="bg-[#0d1628] border-white/10 text-white">
+                <SelectContent className="bg-[#211e1b] border-white/10 text-white">
                   <SelectItem value="offer">{t("newOpportunity.typeOfferOption")}</SelectItem>
                   <SelectItem value="demand">{t("newOpportunity.typeDemandOption")}</SelectItem>
                   <SelectItem value="investment">{t("newOpportunity.typeInvestmentOption")}</SelectItem>
@@ -336,7 +336,7 @@ export default function NewOpportunity() {
                   <SelectTrigger className="bg-white/5 border-white/10 text-white">
                     <SelectValue placeholder={t("newOpportunity.selectPlaceholder")} />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0d1628] border-white/10 max-h-60 text-white">
+                  <SelectContent className="bg-[#211e1b] border-white/10 max-h-60 text-white">
                     {sortOptionsAlphabetically(SECTORS, i18n.language).map((s) => (
                       <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
                     ))}
@@ -349,7 +349,7 @@ export default function NewOpportunity() {
                   <SelectTrigger className="bg-white/5 border-white/10 text-white">
                     <SelectValue placeholder={t("newOpportunity.selectPlaceholder")} />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0d1628] border-white/10 max-h-60 text-white">
+                  <SelectContent className="bg-[#211e1b] border-white/10 max-h-60 text-white">
                     {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: country.name })), i18n.language).map((c) => (
                       <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
                     ))}

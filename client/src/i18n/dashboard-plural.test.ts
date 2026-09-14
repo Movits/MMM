@@ -86,7 +86,7 @@ describe("plural do Dashboard — russo e árabe não caem no português", () =>
     expect(t("dashboard.pendingInvites", { count: 2 })).toBe("دعوتان للرد عليهما");
     expect(t("dashboard.pendingInvites", { count: 21 })).toBe("21 دعوة للرد عليها");
     expect(t("dashboard.roomsOnPlatform", { count: 5 })).toBe("5 غرف في المنصة");
-    expect(t("dashboard.greetingTotal", { count: 2 })).toBe("عُثر على فرصتين متوافقتين لكِ");
+    expect(t("dashboard.greetingTotal", { count: 2 })).toBe("عُثر على فرصتين متوافقتين لك");
     expect(t("dashboard.newMatches", { count: 1 })).toBe("✨ تم العثور على تطابق جديد واحد!");
     expect(t("dashboard.newMatches", { count: 2 })).toBe("✨ تم العثور على تطابقين جديدين!");
     expect(t("dashboard.newMatches", { count: 5 })).toBe("✨ تم العثور على 5 تطابقات جديدة!");

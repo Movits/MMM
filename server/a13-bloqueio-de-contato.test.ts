@@ -160,7 +160,7 @@ vi.mock("./db", () => new Proxy({}, {
     });
     if (prop === "createNotification") return async () => {};
     if (prop === "expressInterest") return async () => ({ alreadyExists: false });
-    if (prop === "sendConnectionRequest") return async () => ({ alreadyExists: false });
+    if (prop === "sendConnectionRequest") return async () => ({ revelou: false, connectionId: 7, emAnalise: false });
     if (prop === "then" || prop === Symbol.toStringTag) return undefined;
     return async () => undefined;
   },
@@ -213,23 +213,33 @@ describe("A13 — mensagem direta e pedido de conexão passam pela mesma porta",
     expect(createAuditLog).toHaveBeenCalledWith(expect.objectContaining({ action: "CONTACT_EXCHANGE_BLOCKED" }));
   });
 
-  it("bilhete do pedido de conexão com telefone é recusado", async () => {
-    const caller = connectionsRouter.createCaller(ctx(1));
-    await expect(caller.send({ targetUserId: 2, message: "liga 11987654321" }))
-      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+  // O bilhete do pedido de conexão deixou de existir (12/09/2026, regra do
+  // interesse mútuo): o pedido é anônimo, e o detector A13 barra telefone e
+  // e-mail — não barra NOME. "Oi, aqui é a Ana da Vinícola X" atravessaria o
+  // anonimato inteiro numa linha de texto livre. Fechar o canal é mais forte do
+  // que filtrá-lo, então o que se trava aqui é que ele continue fechado.
+  it("o bilhete do pedido de conexão continua fechado, e a alça não é id de pessoa", () => {
+    const { readFileSync } = require("node:fs") as typeof import("node:fs");
+    const { join } = require("node:path") as typeof import("node:path");
+    const fonte = readFileSync(join(__dirname, "routers", "connections.ts"), "utf8");
+    const corpo = fonte.slice(fonte.indexOf("send: protectedProcedure"), fonte.indexOf("respond: protectedProcedure"));
+    expect(corpo).toContain("matchId: z.number().int()");
+    // O que não pode voltar é um CAMPO de texto livre na entrada (o `message:` de
+    // um TRPCError é outra coisa, e legítimo).
+    expect(corpo).not.toContain("message: z.string");
+    expect(corpo).not.toContain("targetUserId");
   });
 
-  it("pedido de conexão sem bilhete segue normal", async () => {
-    const caller = connectionsRouter.createCaller(ctx(1));
-    await expect(caller.send({ targetUserId: 2 })).resolves.toMatchObject({ success: true });
-    expect(createAuditLog).not.toHaveBeenCalled();
-  });
-
-  it("bilhete LIMPO passa pelo detector e segue — o caminho feliz executa a porta", async () => {
-    const caller = connectionsRouter.createCaller(ctx(1));
-    await expect(caller.send({ targetUserId: 2, message: "Adorei sua proposta da safra 2025-2026, vamos conversar por aqui?" }))
-      .resolves.toMatchObject({ success: true });
-    expect(createAuditLog).not.toHaveBeenCalled();
+  it("a resposta de send é a MESMA para pedido novo, repetido, recusado ou bloqueado", () => {
+    // Antes, linha existente virava CONFLICT distinguível — um oráculo que
+    // respondia "essa pessoa já te recusou" a quem perguntasse.
+    const { readFileSync } = require("node:fs") as typeof import("node:fs");
+    const { join } = require("node:path") as typeof import("node:path");
+    const fonte = readFileSync(join(__dirname, "routers", "connections.ts"), "utf8");
+    const corpo = fonte.slice(fonte.indexOf("send: protectedProcedure"), fonte.indexOf("respond: protectedProcedure"));
+    // A palavra pode aparecer em comentário explicando por que ela saiu; o que
+    // não pode voltar é o código do erro sendo lançado.
+    expect(corpo).not.toContain('code: "CONFLICT"');
   });
 
   it("o registro fora do Deal Room também identifica o alvo", async () => {
@@ -280,10 +290,20 @@ describe("A13 — os canais restantes passam pela mesma porta (pins de fonte)", 
     expect(fonte).toContain("[input.title, input.description, ...input.tags].join");
   });
 
-  it("a bio que circula nos matches é mascarada na consulta (db.ts)", () => {
+  it("a bio nem circula mais nos matches: deixou de ser lida (db.ts)", () => {
+    // A asserção anterior exigia que a bio saísse MASCARADA contra telefone e
+    // e-mail. Ela deixou de ser selecionada — proteção maior, não menor: o que
+    // não é lido não precisa ser mascarado. A máscara segue viva e em uso no
+    // resto do produto (Deal Room, oportunidades).
     const fonte = readFileSync(join(__dirname, "db.ts"), "utf8");
     const corpo = fonte.slice(fonte.indexOf("export async function getMatchesForUser"), fonte.indexOf("export async function dismissMatch"));
-    expect(corpo).toContain("mascararContatosEmTexto(linha.bio)");
+    expect(corpo).not.toContain("userProfiles.bio");
+    for (const proibida of ["displayName: userProfiles.displayName", "avatarUrl", "users.name", "users.company", "users.position"]) {
+      expect(corpo).not.toContain(proibida);
+    }
+    // O nome só existe na consulta atrás do portão do aceite — a forma crua
+    // acima é que está proibida, não a condicionada.
+    expect(corpo).toContain("CASE WHEN ${connections.status} = 'accepted'");
   });
 });
 

@@ -11,7 +11,7 @@ import PresidentPanel from "./PresidentPanel";
  * Agora o termo vai na consulta, com 300 ms de espera (uma consulta por
  * busca, não por tecla), a tela avisa quando a página não é a lista inteira,
  * e a lista anterior fica no lugar enquanto a nova viaja (keepPreviousData)
- * em vez de piscar "Nenhuma membra encontrada." a cada busca.
+ * em vez de piscar "Nenhum membro encontrado." a cada busca.
  *
  * O tRPC vira um dublê (molde de EnrichmentChat.test.tsx) que faz o papel do
  * React Query no que importa aqui: guarda a resposta por chave de consulta e
@@ -150,7 +150,7 @@ describe("PresidentPanel — Gestão Ouro busca no servidor", () => {
     expect(screen.queryByText(/Mostrando/)).not.toBeInTheDocument();
   });
 
-  it("enquanto a busca nova viaja, a lista anterior fica no lugar (keepPreviousData) — sem piscar 'Nenhuma membra encontrada.'", () => {
+  it("enquanto a busca nova viaja, a lista anterior fica no lugar (keepPreviousData) — sem piscar 'Nenhum membro encontrado.'", () => {
     duble.respostas[CHAVE_PRATA] = { users: usuarias, total: 2 };
     abrirAba(/gestão ouro/i);
     expect(screen.getByText("Ana Lima")).toBeInTheDocument();
@@ -162,7 +162,7 @@ describe("PresidentPanel — Gestão Ouro busca no servidor", () => {
     expect(chamadasComTermo().at(-1)?.input).toEqual({ role: "silver", search: "bia" });
     expect(screen.getByText("Ana Lima")).toBeInTheDocument();
     expect(screen.getByText("Bia Souza")).toBeInTheDocument();
-    expect(screen.queryByText("Nenhuma membra encontrada.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nenhum membro encontrado.")).not.toBeInTheDocument();
 
     // O servidor responde: só quem casou com o termo fica.
     act(() => {
@@ -182,7 +182,7 @@ describe("PresidentPanel — Gestão Ouro busca no servidor", () => {
       duble.respostas[CHAVE_PRATA_BIA] = { users: [], total: 0 };
       duble.loja.notificar();
     });
-    expect(screen.getByText("Nenhuma membra encontrada.")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum membro encontrado.")).toBeInTheDocument();
   });
 });
 
@@ -192,7 +192,7 @@ describe("PresidentPanel — Líderes usa a mesma busca", () => {
     abrirAba(/líderes/i);
     expect(screen.getByText(/Mostrando 2 de 9/)).toBeInTheDocument();
 
-    digitar(screen.getByPlaceholderText("Buscar membra por nome ou e-mail..."), "ana");
+    digitar(screen.getByPlaceholderText("Buscar membro por nome ou e-mail..."), "ana");
     esperar(299);
     expect(chamadasComTermo()).toEqual([]);
     esperar(1);

@@ -114,7 +114,7 @@ export default function IntelligentMatches() {
     <div className="mx-auto max-w-6xl">
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div><p className="text-xs font-semibold tracking-wide text-amber-300">{t("intelligentMatches.eyebrow")}</p><h1 className="mt-1 text-3xl font-bold md:text-4xl">{t("intelligentMatches.titulo")}</h1><p className="mt-2 max-w-2xl text-white/55">{t("intelligentMatches.subtitulo")}</p></div>
-        {authorized && <button disabled={recalculate.isPending} onClick={() => recalculate.mutate()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f5a623] px-5 py-3 font-bold text-[#08121f] disabled:opacity-50"><RefreshCw size={18} className={recalculate.isPending ? "animate-spin" : ""}/> {t("intelligentMatches.botaoAtualizar")}</button>}
+        {authorized && <button disabled={recalculate.isPending} onClick={() => recalculate.mutate()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#c98f70] px-5 py-3 font-bold text-[#1a120c] disabled:opacity-50"><RefreshCw size={18} className={recalculate.isPending ? "animate-spin" : ""}/> {t("intelligentMatches.botaoAtualizar")}</button>}
       </div>
       {/*
         Falha ao carregar o status NÃO pode virar tela de aceite. Sem isto,
@@ -148,14 +148,14 @@ export default function IntelligentMatches() {
           <button
             type="button"
             onClick={() => trocarModo("asset")}
-            className={`rounded-full px-4 py-2 text-sm transition-colors ${kind === "asset" ? "bg-emerald-400 font-bold text-[#08121f]" : "border border-white/15 text-white/65 hover:border-white/30"}`}
+            className={`rounded-full px-4 py-2 text-sm transition-colors ${kind === "asset" ? "bg-emerald-400 font-bold text-[#1a120c]" : "border border-white/15 text-white/65 hover:border-white/30"}`}
           >
             {t("intelligentMatches.abaPossui")}
           </button>
           <button
             type="button"
             onClick={() => trocarModo("need")}
-            className={`rounded-full px-4 py-2 text-sm transition-colors ${kind === "need" ? "bg-sky-300 font-bold text-[#08121f]" : "border border-white/15 text-white/65 hover:border-white/30"}`}
+            className={`rounded-full px-4 py-2 text-sm transition-colors ${kind === "need" ? "bg-sky-300 font-bold text-[#1a120c]" : "border border-white/15 text-white/65 hover:border-white/30"}`}
           >
             {t("intelligentMatches.abaProcura")}
           </button>
@@ -174,6 +174,14 @@ export default function IntelligentMatches() {
                 </strong>.</>}
         </p>
 
+        {/* Regra da demanda expressa (12/09/2026): quem registra um serviço
+            precisa saber que ele não casa "com quem poderia precisar" — só
+            com quem declarou precisar. Sem o aviso, a ausência de sugestão
+            pareceria defeito. */}
+        {kind === "asset" && (
+          <p className="mb-3 text-xs text-white/40">{t("intelligentMatches.avisoServico")}</p>
+        )}
+
         {/* Sem isto, a lista de contatos falhando virava um seletor vazio:
             parecia que a rede não tinha ninguém para registrar. */}
         {contatosFalharam && (
@@ -183,11 +191,11 @@ export default function IntelligentMatches() {
           <select
             value={contactId}
             onChange={event => setContactId(event.target.value)}
-            className="rounded-xl border border-white/15 bg-[#0b1725] px-3 py-3 text-white"
+            className="rounded-xl border border-white/15 bg-[#211e1b] px-3 py-3 text-white"
           >
-            <option className="bg-white text-[#2D3E50]" value="">{t("intelligentMatches.selecioneContato")}</option>
+            <option className="bg-white text-[#322C26]" value="">{t("intelligentMatches.selecioneContato")}</option>
             {contacts.map(contact => (
-              <option className="bg-white text-[#2D3E50]" key={contact.id} value={contact.id}>
+              <option className="bg-white text-[#322C26]" key={contact.id} value={contact.id}>
                 {contact.fullName}{contact.company ? ` (${contact.company})` : ""}
               </option>
             ))}
@@ -206,7 +214,7 @@ export default function IntelligentMatches() {
           />
           <button
             disabled={createAsset.isPending || createNeed.isPending}
-            className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 font-bold text-[#08121f] transition-colors disabled:opacity-50 ${kind === "asset" ? "bg-emerald-400 hover:bg-emerald-300" : "bg-sky-300 hover:bg-sky-200"}`}
+            className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 font-bold text-[#1a120c] transition-colors disabled:opacity-50 ${kind === "asset" ? "bg-emerald-400 hover:bg-emerald-300" : "bg-sky-300 hover:bg-sky-200"}`}
           >
             <Plus size={17}/> {kind === "asset" ? t("intelligentMatches.botaoAdicionarOferta") : t("intelligentMatches.botaoAdicionarNecessidade")}
           </button>
@@ -265,7 +273,7 @@ export default function IntelligentMatches() {
               <div className="flex flex-col justify-between gap-4 md:flex-row">
                 <div>
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-amber-300 px-3 py-1 text-sm font-bold text-[#08121f]">{t("intelligentMatches.percentualCompatibilidade", { score: match.matchScore })}</span>
+                    <span className="rounded-full bg-amber-300 px-3 py-1 text-sm font-bold text-[#1a120c]">{t("intelligentMatches.percentualCompatibilidade", { score: match.matchScore })}</span>
                     <span className={`rounded-full px-3 py-1 text-xs ${match.matchType === "mutual" ? "border border-emerald-400/50 bg-emerald-400/10 font-semibold text-emerald-300" : "border border-white/15 text-white/60"}`}>{seloDoMatch(match, t)}</span>
                   </div>
                   <h2 className="text-lg font-semibold">{match.contactA?.name ?? t("intelligentMatches.contatoAFallback")} <span className="text-white/35">→</span> {match.contactB?.name ?? t("intelligentMatches.contatoBFallback")}</h2>
@@ -274,7 +282,7 @@ export default function IntelligentMatches() {
                 </div>
                 {match.status === "pending" || match.status === "viewed" ? (
                   <div className="flex shrink-0 flex-wrap gap-2 self-start">
-                    <button onClick={() => updateStatus.mutate({ id: match.id, status: "accepted" })} className="rounded-lg bg-emerald-400 px-3 py-2 text-sm font-bold text-[#08121f]"><Check size={15} className="mr-1 inline"/> {t("intelligentMatches.botaoAceitar")}</button>
+                    <button onClick={() => updateStatus.mutate({ id: match.id, status: "accepted" })} className="rounded-lg bg-emerald-400 px-3 py-2 text-sm font-bold text-[#1a120c]"><Check size={15} className="mr-1 inline"/> {t("intelligentMatches.botaoAceitar")}</button>
                     <button onClick={() => updateStatus.mutate({ id: match.id, status: "dismissed" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65"><X size={15} className="mr-1 inline"/> {t("intelligentMatches.botaoDispensar")}</button>
                   </div>
                 ) : (

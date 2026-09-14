@@ -50,7 +50,7 @@ function SuggestionCard({ suggestion, busy, onConfirm, onIgnore }: {
   const pct = Math.round(suggestion.confidence * 100);
 
   return (
-    <div className="mt-2 p-3 rounded-xl bg-[#0a1628] border border-amber-500/20 text-sm">
+    <div className="mt-2 p-3 rounded-xl bg-[#211e1b] border border-amber-500/20 text-sm">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-amber-400 font-medium">{label}</span>
         <span className="text-xs text-white/30">{pct}% confiança</span>
@@ -60,7 +60,7 @@ function SuggestionCard({ suggestion, busy, onConfirm, onIgnore }: {
           <Input value={editValue} onChange={e => setEditValue(e.target.value)} maxLength={2000}
             className="bg-white/5 border-white/10 text-white text-sm h-8" />
           <Button size="sm" disabled={busy} onClick={() => onConfirm(suggestion.id, editValue)}
-            className="w-full bg-amber-500 hover:bg-amber-400 text-[#060e1a] font-bold h-8 text-xs">
+            className="w-full bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold h-8 text-xs">
             Salvar edição
           </Button>
         </div>
@@ -416,7 +416,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
   }
 
   return (
-    <div className="border-t border-amber-500/20 bg-[#060e1a]/50">
+    <div className="border-t border-amber-500/20 bg-[#151312]/50">
       {/* Header do chat */}
       <button onClick={() => setExpanded(v => !v)}
         className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-white/3 transition-colors">
@@ -475,7 +475,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
                 className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/25 text-sm h-9 focus:border-amber-500/50"
               />
               <Button size="sm" onClick={handleSend} disabled={!input.trim() || sendMut.isPending}
-                className="bg-amber-500 hover:bg-amber-400 text-[#060e1a] h-9 w-9 p-0 flex-shrink-0">
+                className="bg-amber-500 hover:bg-amber-400 text-[#151312] h-9 w-9 p-0 flex-shrink-0">
                 <Send size={14} />
               </Button>
             </div>

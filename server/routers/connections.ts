@@ -11,24 +11,115 @@ import { users } from "../../drizzle/schema";
 // ============================================================
 // CONEXÕES ENTRE USUÁRIOS
 // ============================================================
+
+/**
+ * A trilha da revelação: duas linhas, uma por parte.
+ *
+ * É a travessia NOMINAL entre duas donas — a partir daqui cada uma sabe o nome da
+ * outra —, do mesmo naipe do `GOLD_ACERVO_READ` do acervo Ouro, e pelo mesmo
+ * motivo: "quem passou a saber quem eu sou?" precisa ter resposta. Como a
+ * revelação é simétrica, a trilha também é: `audit_userId_idx` faz a busca por
+ * pessoa ser barata, e cada linha aponta a contraparte.
+ *
+ * Gravada só no instante em que o status vira `accepted`, nunca a cada leitura da
+ * lista — senão a trilha vira ruído e a consulta ganha escrita.
+ *
+ * `via` diz quem virou a chave: a destinatária aceitando, o segundo clique do
+ * interesse mútuo, ou o distribuidor aprovando um pedido que já era recíproco
+ * (routers/distribuicao.ts).
+ */
+export async function registrarRevelacao(
+  connectionId: number | null,
+  umLado: number,
+  outroLado: number,
+  via: "aceite" | "interesse_mutuo" | "distribuidor",
+) {
+  const { createAuditLog } = await import("../security");
+  const resourceId = connectionId === null ? undefined : String(connectionId);
+  for (const [quem, contraparte] of [[umLado, outroLado], [outroLado, umLado]] as const) {
+    await createAuditLog({
+      userId: quem,
+      action: "MATCH_IDENTITY_REVEALED",
+      resource: "connections",
+      resourceId,
+      details: { contraparte, via },
+      status: "success",
+      riskLevel: "medium",
+    });
+  }
+}
+
+/**
+ * O pedido novo nasce esperando o distribuidor. Aviso no sino de quem distribui
+ * (menos a própria solicitante: ninguém decide o próprio pedido); sem nenhum
+ * distribuidor ativo, a presidência é avisada de que há pedido esperando. O
+ * corpo não diz QUEM pediu nem para quem — a fila é que mostra, com auditoria.
+ * Falha no aviso não desfaz o pedido, que já está gravado.
+ */
+async function avisarQuemDistribui(solicitanteId: number) {
+  try {
+    const { idsDosDistribuidoresAtivos, idsDaPresidenciaAtiva, createNotification } = await import("../db");
+    const distribuidores = (await idsDosDistribuidoresAtivos()).filter(id => id !== solicitanteId);
+    const haDistribuidor = distribuidores.length > 0;
+    const destinatarios = haDistribuidor ? distribuidores : (await idsDaPresidenciaAtiva()).filter(id => id !== solicitanteId);
+    const aviso = haDistribuidor
+      ? {
+        title: "Pedido de interesse para analisar",
+        body: "Um pedido de interesse do Smart Match está esperando a sua conferência na fila de distribuição.",
+      }
+      : {
+        title: "Pedido de interesse esperando sem distribuidor",
+        body: "Um pedido de interesse do Smart Match ficou esperando e nenhum distribuidor está ativo. Conceda o poder de distribuição no Painel Ouro, aba Distribuição.",
+      };
+    for (const userId of destinatarios) {
+      await createNotification({ userId, type: "system", ...aviso, actionUrl: "/president" });
+    }
+  } catch (_) { /* o pedido já está gravado; o sino é acessório */ }
+}
+
 export const connectionsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     const { getConnectionsForUser } = await import("../db");
     return getConnectionsForUser(ctx.user.id);
   }),
 
+  // Demonstrar interesse pelo CARTÃO, não pela pessoa: a entrada é o `matchId`,
+  // que o navegador já recebia para dispensar. O `targetUserId` saiu porque ele
+  // era um id real aceito sem conferência nenhuma — qualquer conta podia pedir
+  // conexão a qualquer usuária e, com o `list` de antes, ler nome e empresa da
+  // base inteira. O bilhete também saiu: ele é texto livre e o bloqueio A13 barra
+  // telefone e e-mail, não nome, então atravessaria o anonimato numa linha.
   send: protectedProcedure
-    .input(z.object({
-      targetUserId: z.number().int(),
-      message: z.string().max(300).optional(),
-    }))
+    .input(z.object({ matchId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      // A13: o bilhete do pedido de conexão também é texto livre entre partes.
-      await exigirTextoSemContato(ctx.user.id, "connections.send", input.message, input.targetUserId);
-      const { sendConnectionRequest } = await import("../db");
-      const result = await sendConnectionRequest(ctx.user.id, input.targetUserId, input.message);
-      if (result.alreadyExists) throw new TRPCError({ code: "CONFLICT", message: "Pedido de conexão já enviado" });
-      return { success: true };
+      const { resolverAlvoDoMatch, sendConnectionRequest } = await import("../db");
+      const { createAuditLog } = await import("../security");
+      const alvo = await resolverAlvoDoMatch(ctx.user.id, input.matchId);
+      if (alvo == null) {
+        // Tentativa de agir por uma alça que não é desta usuária: registrar, para
+        // que varredura de `matchId` não seja silenciosa.
+        await createAuditLog({
+          userId: ctx.user.id, action: "MATCH_HANDLE_INVALID", resource: "connections.send",
+          resourceId: String(input.matchId), status: "blocked", riskLevel: "high",
+        });
+        throw new TRPCError({ code: "NOT_FOUND", message: "Match não encontrado" });
+      }
+      // Etapa 11 de novo, aqui: uma lista velha aberta no navegador não pode
+      // furar a revogação do termo feita depois que ela carregou.
+      const { usersComConsentimento } = await import("./consent");
+      const comTermo = await usersComConsentimento([alvo], "termo_smart_match");
+      if (!comTermo.has(alvo)) throw new TRPCError({ code: "NOT_FOUND", message: "Match não encontrado" });
+
+      const resultado = await sendConnectionRequest(ctx.user.id, alvo);
+      if (resultado.revelou) await registrarRevelacao(resultado.connectionId, ctx.user.id, alvo, "interesse_mutuo");
+      // Pedido novo: fica em análise até o distribuidor conferir e encaminhar.
+      // A destinatária não é avisada aqui — ela só fica sabendo se for encaminhado.
+      if (resultado.emAnalise) await avisarQuemDistribui(ctx.user.id);
+      // Resposta IGUAL em todos os casos que não são erro: pedido novo, pedido
+      // repetido, em análise, não encaminhado, recusado ou bloqueado. Antes, o
+      // `CONFLICT` distinguível dizia a quem perguntasse que aquela pessoa já
+      // tinha recusado.
+      return { success: true, revelou: resultado.revelou };
     }),
 
   respond: protectedProcedure
@@ -38,7 +129,10 @@ export const connectionsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { respondToConnection } = await import("../db");
-      await respondToConnection(input.connectionId, ctx.user.id, input.accept);
+      const resultado = await respondToConnection(input.connectionId, ctx.user.id, input.accept);
+      if (resultado.revelou && resultado.contraparte !== null) {
+        await registrarRevelacao(input.connectionId, ctx.user.id, resultado.contraparte, "aceite");
+      }
       return { success: true };
     }),
 

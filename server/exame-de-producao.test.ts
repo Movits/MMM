@@ -136,19 +136,62 @@ describe("Relatorio: o veredito só é 'produção saudável' sem nada reprovand
     expect(r.codigoDeSaida()).toBe(1);
     expect(r.resumo()).toContain("interrompido");
     expect(r.resumo()).not.toContain("produção saudável");
-    const ultima = r.linhas.at(-1);
-    expect(ultima.tipo).toBe("excecao");
-    expect(ultima.texto.startsWith(PREFIXO.excecao)).toBe(true);
-    expect(ultima.texto).toContain("ECONNREFUSED");
+    // A exceção ocupa mais de uma linha desde 12/09 (cabeçalho + pilha); quem
+    // carrega a mensagem é a primeira delas.
+    const daExcecao = r.linhas.filter(l => l.tipo === "excecao");
+    expect(daExcecao.length).toBeGreaterThan(0);
+    expect(daExcecao[0].texto.startsWith(PREFIXO.excecao)).toBe(true);
+    expect(daExcecao[0].texto).toContain("ECONNREFUSED");
+    expect(r.linhas.at(-1).tipo).toBe("excecao");
   });
 
-  it("exceção vence LIMITE no veredito, e a mensagem é cortada em 200 caracteres", () => {
+  it("exceção vence LIMITE no veredito", () => {
     const r = new Relatorio();
     r.limite("network.list");
     r.excecao("x".repeat(300));
     expect(r.resumo()).toContain("interrompido");
     expect(r.resumo()).not.toContain("incompleto");
-    expect(r.linhas.at(-1).nome).toHaveLength(200);
+  });
+
+  // Em 09/09 o exame parou em 58 OK dizendo só "interrompido por exceção", com a
+  // mensagem cortada em 200 caracteres e sem pilha nem contexto: não havia o que
+  // investigar. As três checagens abaixo são o que faltava naquele dia.
+  it("a exceção diz O QUE foi: tipo, mensagem inteira e código do driver", () => {
+    const r = new Relatorio();
+    const erro: Error & { code?: string } = new TypeError("a".repeat(300));
+    erro.code = "ECONNRESET";
+    r.excecao(erro);
+    const linha = r.linhas.find(l => l.tipo === "excecao")!;
+    expect(linha.nome).toContain("TypeError");
+    expect(linha.nome).toContain("[ECONNRESET]");
+    // A mensagem inteira, não um pedaço dela.
+    expect(linha.nome).toContain("a".repeat(300));
+  });
+
+  it("a exceção diz ONDE parou: a última checagem anunciada antes dela", () => {
+    const r = new Relatorio();
+    r.ok("site no ar", true);
+    r.ok("login da conta prata", true);
+    r.excecao(new Error("timeout"));
+    const linha = r.linhas.find(l => l.tipo === "excecao")!;
+    expect(linha.nome).toContain("parou depois de: login da conta prata");
+  });
+
+  it("exceção antes de qualquer checagem diz isso em vez de mentir um lugar", () => {
+    const r = new Relatorio();
+    r.excecao(new Error("falhou ao conectar"));
+    expect(r.linhas[0].nome).toContain("parou antes da primeira checagem");
+  });
+
+  it("a pilha vem junto, em linhas próprias e limitada", () => {
+    const r = new Relatorio();
+    r.ok("site no ar", true);
+    r.excecao(new Error("estourou"));
+    const daExcecao = r.linhas.filter(l => l.tipo === "excecao");
+    // Uma linha de cabeçalho e as demais de pilha; o corte evita despejar 80 quadros.
+    expect(daExcecao.length).toBeGreaterThan(1);
+    expect(daExcecao.length).toBeLessThanOrEqual(6);
+    expect(daExcecao[1].nome.trim().startsWith("at ")).toBe(true);
   });
 
   it("limpeza com erro reprova mesmo com todas as checagens OK", () => {
@@ -535,7 +578,7 @@ describe("limpeza, direção A: todo par do plano existe em drizzle/schema.ts", 
     expect(PLANO_DE_LIMPEZA.filter((p: any) => p.acao === "alertar").map((p: any) => `${p.tabela}.${p.coluna}`)).toEqual([
       "opportunity_interests.opportunityId", "saved_opportunities.opportunityId", "deal_rooms.opportunityId",
       "national_leaders.nominatedBy", "national_leaders.revokedBy", "president_validations.validatedBy",
-      "security_events.resolvedBy", "opportunities.moderatedBy", "gold_access_grants.grantedBy", "gold_access_grants.revokedBy",
+      "connections.moderatedBy", "security_events.resolvedBy", "opportunities.moderatedBy", "gold_access_grants.grantedBy", "gold_access_grants.revokedBy",
     ]);
   });
 
@@ -567,7 +610,8 @@ describe("limpeza, direção B: tabela nova com coluna de usuária (owner_id, us
     // Igualdade de propósito: subir é normal ao criar tabela; baixar exige explicar
     // qual coluna de usuária sumiu do parse.
     // 57: a etapa 13 somou nda_acceptances.userId (trilha de aceite do NDA).
-    expect(paresDeUsuariaNoSchema).toHaveLength(57);
+    // 58: o distribuidor do Smart Match somou connections.moderatedBy.
+    expect(paresDeUsuariaNoSchema).toHaveLength(58);
     expect(paresDeUsuariaNoSchema).toContainEqual({ tabela: "private_contacts", coluna: "ownerId" });
     expect(paresDeUsuariaNoSchema).toContainEqual({ tabela: "gold_access_grants", coluna: "revokedBy" });
     expect(paresDeUsuariaNoSchema).toContainEqual({ tabela: "nda_acceptances", coluna: "userId" });

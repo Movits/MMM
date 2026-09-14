@@ -76,7 +76,7 @@ export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
         </div>
       )}
 
-      <div className={`prose prose-invert prose-sm max-w-none overflow-y-auto rounded-2xl border border-white/10 bg-[#0b1725]/60 p-5 transition-all ${reading ? "max-h-none" : "max-h-64"}`}>
+      <div className={`prose prose-invert prose-sm max-w-none overflow-y-auto rounded-2xl border border-white/10 bg-[#211e1b]/60 p-5 transition-all ${reading ? "max-h-none" : "max-h-64"}`}>
         <Streamdown>{texto}</Streamdown>
       </div>
 
@@ -90,7 +90,7 @@ export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
         <button
           disabled={accept.isPending}
           onClick={() => accept.mutate({ type: "termo_smart_match" })}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f5a623] px-6 py-3 font-bold text-[#08121f] transition-colors hover:bg-[#e09520] disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#c98f70] px-6 py-3 font-bold text-[#1a120c] transition-colors hover:bg-[#b07a5c] disabled:opacity-50"
         >
           {accept.isPending ? <Loader2 className="animate-spin" size={17}/> : <ShieldCheck size={17}/>}
           {textoMudou ? "Aceitar a nova versão" : "Autorizar o cruzamento"}

@@ -178,22 +178,22 @@ describe("Modal de vincular — nenhum tipo vem pré-marcado", () => {
 });
 
 describe("Modal de vincular — a mensagem segue o que o servidor fez", () => {
-  it("created=true: 'vinculada'", () => {
+  it("created=true: 'criado'", () => {
     abrirModalDeVincular();
     buscar("bruna");
     fireEvent.click(screen.getByText("Bruna Lima"));
     act(() => { duble.opcoesDoVincular?.onSuccess?.({ id: "vinc-2", created: true }); });
 
-    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("vinculada"));
+    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("criado"));
   });
 
-  it("created=false: 'atualizado', e nunca 'vinculada'", () => {
+  it("created=false: 'atualizado', e nunca 'criado'", () => {
     abrirModalDeVincular();
     buscar("bruna");
     fireEvent.click(screen.getByText("Bruna Lima"));
     act(() => { duble.opcoesDoVincular?.onSuccess?.({ id: "vinc-1", created: false }); });
 
     expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("atualizado"));
-    expect(toast.success).not.toHaveBeenCalledWith(expect.stringContaining("vinculada"));
+    expect(toast.success).not.toHaveBeenCalledWith(expect.stringContaining("criado"));
   });
 });

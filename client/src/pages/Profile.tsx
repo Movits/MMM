@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BrandMark } from "@/components/BrandLogo";
+import { ExcluirMinhaConta } from "@/components/ExcluirMinhaConta";
 import { toast } from "sonner";
 import { exigeCnpj, formatCnpj, isValidCnpj, maskCnpj } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
@@ -106,7 +107,7 @@ function Section({
   icon, title, subtitle, children,
 }: { icon: React.ReactNode; title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[#0d1530] border border-white/8 rounded-2xl overflow-hidden">
+    <div className="bg-[#1b1714] border border-white/8 rounded-2xl overflow-hidden">
       <div className="px-6 pt-6 pb-4 border-b border-white/5">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
@@ -245,7 +246,7 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Navbar */}
-      <nav className="border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-40 bg-[#060e1a]/95 backdrop-blur-xl">
+      <nav className="border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-40 bg-[#151312]/95 backdrop-blur-xl">
         <Link href="/dashboard">
           <span className="flex items-center gap-2 text-white/50 hover:text-white transition-colors cursor-pointer text-sm">
             <ArrowLeft size={16} />
@@ -275,33 +276,34 @@ export default function Profile() {
         )}
       </nav>
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+      {/* Mesma largura padrão das outras telas de app — ver Network.tsx. */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-5">
 
         {/* Header do perfil */}
         <div className="flex items-center gap-4 mb-2">
           <div className="relative">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-[#060e1a] font-black text-2xl flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #f5a623, #ffd166)" }}>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-[#151312] font-black text-2xl flex-shrink-0"
+              style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }}>
               {(profile?.displayName || user?.name || "U")[0].toUpperCase()}
             </div>
             {/* Indicador de nível no avatar */}
             {user?.role === "president" && (
-              <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-purple-500 border-2 border-[#060e1a] flex items-center justify-center">
+              <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-purple-500 border-2 border-[#151312] flex items-center justify-center">
                 <Crown size={11} className="text-white" />
               </div>
             )}
             {user?.role === "gold" && (
-              <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-amber-400 border-2 border-[#060e1a] flex items-center justify-center">
-                <Star size={11} className="text-[#060e1a]" />
+              <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-amber-400 border-2 border-[#151312] flex items-center justify-center">
+                <Star size={11} className="text-[#151312]" />
               </div>
             )}
             {user?.role === "silver" && (
-              <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-slate-400 border-2 border-[#060e1a] flex items-center justify-center">
+              <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-slate-400 border-2 border-[#151312] flex items-center justify-center">
                 <Shield size={11} className="text-white" />
               </div>
             )}
             {user?.role === "bronze" && (
-              <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full border-2 border-[#060e1a] flex items-center justify-center" style={{ background: "#cd7f32" }}>
+              <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full border-2 border-[#151312] flex items-center justify-center" style={{ background: "#8e5a3f" }}>
                 <Shield size={11} className="text-white" />
               </div>
             )}
@@ -326,7 +328,7 @@ export default function Profile() {
                 </span>
               )}
               {user?.role === "bronze" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border" style={{ background: "rgba(205,127,50,0.15)", color: "#cd7f32", borderColor: "rgba(205,127,50,0.3)" }}>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border" style={{ background: "rgba(205,127,50,0.15)", color: "#8e5a3f", borderColor: "rgba(205,127,50,0.3)" }}>
                   <Shield size={10} /> Bronze
                 </span>
               )}
@@ -371,7 +373,7 @@ export default function Profile() {
                     if (next === "individual") setCompanyCnpj("");
                   }}>
                     <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"><SelectValue placeholder={t("profile.business.personTypePlaceholder")} /></SelectTrigger>
-                    <SelectContent className="bg-[#0d1530] border-white/10 text-white">
+                    <SelectContent className="bg-[#1b1714] border-white/10 text-white">
                       {sortOptionsAlphabetically([
                         { value: "individual", label: t("profile.business.individual") },
                         { value: "legal_entity", label: t("profile.business.legalEntity") },
@@ -401,7 +403,7 @@ export default function Profile() {
                     <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50">
                       <SelectValue placeholder="Selecione o país" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0d1530] border-white/10 text-white">
+                    <SelectContent className="bg-[#1b1714] border-white/10 text-white">
                       {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: country.name })), i18n.language).map(c => (
                         <SelectItem key={c.code} value={c.code} className="text-white hover:bg-white/10 focus:bg-white/10">{c.name}</SelectItem>
                       ))}
@@ -420,7 +422,7 @@ export default function Profile() {
                     <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50">
                       <SelectValue placeholder={t("profile.gender.placeholder")} />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0d1530] border-white/10 text-white">
+                    <SelectContent className="bg-[#1b1714] border-white/10 text-white">
                       {sortOptionsAlphabetically([
                         { value: "male", label: t("profile.gender.male") },
                         { value: "female", label: t("profile.gender.female") },
@@ -439,7 +441,7 @@ export default function Profile() {
                     <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.business.companySize")}</label>
                     <Select value={companySize} onValueChange={value => setCompanySize(value as typeof companySize)}>
                       <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50"><SelectValue placeholder={t("profile.business.companySizePlaceholder")} /></SelectTrigger>
-                      <SelectContent className="bg-[#0d1530] border-white/10 text-white">
+                      <SelectContent className="bg-[#1b1714] border-white/10 text-white">
                         {personType === "mei" ? (
                           <SelectItem value="mei" className="text-white">{t("profile.business.sizeMei")}</SelectItem>
                         ) : (
@@ -639,6 +641,10 @@ export default function Profile() {
             )
           )}
         </Section>
+
+        {/* Zona de risco: o caminho de saída da plataforma (não durante a edição,
+            para não competir com o botão de salvar) */}
+        {!editing && <ExcluirMinhaConta />}
 
         {/* Botão de salvar no rodapé (mobile) */}
         {editing && (
