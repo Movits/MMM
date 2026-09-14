@@ -109,7 +109,7 @@ scripts (`scripts/*.mjs`, `scripts/exame/*.mjs`, `.claude/hooks/*.mjs`) → `pnp
 `pnpm build`. Rode o mesmo antes da PR.
 
 **Servidor.** Lógica nova em `server/` ganha ou atualiza um `*.test.ts` ao lado
-(fora os dois `*.integracao.test.ts`). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
+(fora os `*.integracao.test.ts`). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
 `skipIf`; a suíte NUNCA lê `DATABASE_URL` (`server/test/setup-banco.ts` a troca por
 `DATABASE_URL_TESTES`, um banco descartável; sem ela o `*.integracao.test.ts` se pula),
 porque o `.env` de trabalho já apontou para produção e `pnpm test` chegou a promover
@@ -187,8 +187,9 @@ outra pessoa clica depois de um `not_forwarded` oculto para ela, nasce o pedido 
 (o par pode ter duas linhas; o cartão e a aba Conexões mostram a mesma, a mais recente
 visível, por `linhaMaisRecenteVisivelDoPar`). Sem
 distribuidor que possa decidir, o pedido FICA esperando e president/admin ativos
-recebem o aviso (contas Ouro não, como no aviso de oportunidade pendente): mesclar a
-fila só depois de conceder o poder em produção. Detalhes em docs/arquitetura/fluxos.md
+recebem o aviso (contas Ouro não, como no aviso de oportunidade pendente). A fila está
+na `main` desde a #113: enquanto ninguém tiver o poder concedido em produção, todo
+pedido novo espera. Detalhes em docs/arquitetura/fluxos.md
 e privacidade.md.
 
 **Mas Ouro NÃO é staff em tudo.** A única assimetria de papel no servidor é `isStaff`

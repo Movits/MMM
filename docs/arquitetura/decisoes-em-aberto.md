@@ -299,8 +299,14 @@ Perguntas:
    "nada" deixaria o cartão parado, e isso denunciaria a recusa).
 4. Com mais de um distribuidor, a fila é uma só. Atribuir por região/setor?
 
-Pendência técnica ligada: índice único no par de `connections` (exige colunas de
-par ordenado e backfill; hoje a trava contra dupla revelação é o status no WHERE).
+Pendência técnica ligada: índice único em `connections`, mas NÃO no par sem ordem.
+Desde a #115 o par pode ter duas linhas de propósito (o pedido `not_forwarded` de uma
+pessoa e, depois, o pedido novo da outra), e um índice único no par quebraria esse
+fluxo. O que cabe é único por direção (`requesterId`, `recipientId`): o código já não
+insere segunda linha da mesma pessoa no par (`sendConnectionRequest`), e o índice
+fecharia a corrida de dois cliques simultâneos dela. Exige migração (fora do
+congelamento de 16/09/2026) e conferir antes se há duplicatas antigas. Hoje a trava
+contra dupla revelação é o status no WHERE.
 
 ---
 
