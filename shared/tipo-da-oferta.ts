@@ -616,6 +616,20 @@ export function classificarOferta(rotulo: string, categoria?: string | null): Ti
   //    caminho por token não achou nada, porque o rótulo inteiro é um token só.
   //    Vem por último de propósito — não passa por cima de decisão nenhuma.
   if (servicoPorSubstring(rotulo)) return "servico";
+  // 7. A CATEGORIA decide o que o texto não decidiu. Isto já foi relatado como
+  //    defeito duas vezes, por revisores diferentes — "Cafeteira industrial" na
+  //    categoria "Consultoria" vira serviço e cai no portão, que é restrição —
+  //    e FICA ASSIM por decisão do time em 14/09. O motivo: a categoria é o
+  //    último recurso que faz "Direito tributário", "Planejamento patrimonial",
+  //    "Contratos" e "Campanhas" serem reconhecidos como serviço, que é o caso
+  //    central da regra da cliente. Tirar daqui quebra cinco testes, entre eles
+  //    o farol "'Direito tributário' [Serviços] × 'Compradores' [Serviços] não
+  //    casa" — o par que a #101 existe para barrar.
+  //
+  //    O que se faz no lugar: fechar LACUNA DE LÉXICO quando aparecer caso real
+  //    (foi assim que apartamento, casa, sala e loja entraram em IMOVEL), para
+  //    a cabeça decidir antes de chegar aqui. E a causa raiz — a categoria ser
+  //    texto livre — é dívida registrada no quadro, não conserto deste arquivo.
   return tipoPelaCategoria(categoria) ?? "outros";
 }
 
