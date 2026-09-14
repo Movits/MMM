@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classificarOferta, ehServico, ehServicoDeAssessoria, familiaDoServico, LISTAS_POR_TIPO, necessidadeGenericaNomeiaOServico, TIPOS_DA_OFERTA } from "@shared/tipo-da-oferta";
+import { classificarOferta, ehServico, ehServicoDeAssessoria, especialidadeDoServico, familiaDoServico, LISTAS_POR_TIPO, necessidadeGenericaNomeiaOServico, necessidadeNomeiaOServico, TIPOS_DA_OFERTA } from "@shared/tipo-da-oferta";
 
 /**
  * Regra da demanda expressa (12/09/2026) — a classificação que vem ANTES do
@@ -221,6 +221,18 @@ describe("Tipo da oferta — a ordem da decisão", () => {
   });
 });
 
+describe("Imóvel residencial e comercial — a cabeça decide antes da categoria", () => {
+  it("apartamento, casa, sala e loja são imóvel pela própria cabeça, mesmo com categoria dizendo outra coisa", () => {
+    expect(classificarOferta("Apartamento na praia")).toBe("imovel");
+    expect(classificarOferta("Apartamento na praia", "Serviços jurídicos")).toBe("imovel");
+    expect(classificarOferta("Casa em Cascais", "Consultoria")).toBe("imovel");
+    expect(classificarOferta("Sala comercial no centro")).toBe("imovel");
+    expect(classificarOferta("Loja de rua", "Serviços")).toBe("imovel");
+    // Rural continua ATIVO, como já era decidido: "Fazenda de café" produz.
+    expect(classificarOferta("Fazenda de café")).toBe("ativo");
+  });
+});
+
 describe("Família do serviço e necessidade genérica", () => {
   it("a família é o lema do primeiro substantivo de serviço; 'serviços' sozinho não é família", () => {
     expect(familiaDoServico("Consultoria jurídica")).toBe("consultoria");
@@ -250,6 +262,43 @@ describe("Família do serviço e necessidade genérica", () => {
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consulting")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Contabilidade para PMEs", null, "Contador")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Advocacia tributária", null, "Contador")).toBe(false);
+  });
+});
+
+describe("Especialidade do serviço e a necessidade que o nomeia (defeito relatado depois da #101)", () => {
+  it("a especialidade é o que sobra tirada a prestação, em lema: tributária e tributarista são a mesma", () => {
+    expect(especialidadeDoServico("Advocacia tributária")).toEqual(["tributario"]);
+    expect(especialidadeDoServico("Advogado tributarista")).toEqual(["tributario"]);
+    expect(especialidadeDoServico("Advogado de tributos")).toEqual(["tributario"]);
+    expect(especialidadeDoServico("Escritório de advocacia trabalhista")).toEqual(["trabalhista"]);
+    // Só nomeia a prestação, não o assunto.
+    expect(especialidadeDoServico("Consultoria jurídica")).toEqual([]);
+    expect(especialidadeDoServico("Mina de lítio")).toEqual([]);
+  });
+
+  it("a especialidade leva a CABEÇA junto: é ela que separa sell-side de buy-side", () => {
+    // A primeira versão desta regra tirava só o complemento da cabeça, e em
+    // "Sell-side advisory" a cabeça é "sell" — os dois lados da mesa casavam
+    // em 100. O teste de direcao-do-termo pegou; este guarda a causa.
+    expect(especialidadeDoServico("Sell-side advisory")).toEqual(["sell", "side"]);
+    expect(especialidadeDoServico("Buy-side advisory")).toEqual(["buy", "side"]);
+    expect(necessidadeNomeiaOServico("Sell-side advisory", null, "Buy-side advisory")).toBe(false);
+  });
+
+  it("mesma família e mesma especialidade: a necessidade nomeia o serviço, ainda que com outra flexão", () => {
+    expect(necessidadeNomeiaOServico("Advocacia tributária", null, "Advogado tributarista")).toBe(true);
+    expect(necessidadeNomeiaOServico("Advocacia tributária", null, "Advogado de tributos")).toBe(true);
+    expect(necessidadeNomeiaOServico("Consultoria tributária", null, "Consultor tributário")).toBe(true);
+    expect(necessidadeNomeiaOServico("Advocacia trabalhista", null, "Advogado trabalhista")).toBe(true);
+    // A necessidade genérica continua valendo (regra de 12/09, intacta).
+    expect(necessidadeNomeiaOServico("Advocacia tributária", null, "Advogado")).toBe(true);
+  });
+
+  it("outra especialidade na mesma família NÃO casa — é o que a spec da cliente veta", () => {
+    expect(necessidadeNomeiaOServico("Consultoria tributária", null, "Consultoria de marketing")).toBe(false);
+    expect(necessidadeNomeiaOServico("Advocacia trabalhista", null, "Advogado tributarista")).toBe(false);
+    expect(necessidadeNomeiaOServico("Advocacia tributária", null, "Contador")).toBe(false);
+    expect(necessidadeNomeiaOServico("Advocacia tributária", null, "Distribuidor para a África")).toBe(false);
   });
 });
 
