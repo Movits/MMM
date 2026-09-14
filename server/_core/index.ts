@@ -49,7 +49,24 @@ const globalLimiter = rateLimit({
   skip: (req) => {
     // Não limitar assets estáticos e HMR do Vite em dev
     const url = req.url || "";
-    return url.startsWith("/@") || url.startsWith("/node_modules") || url.endsWith(".hot-update.js");
+    if (url.startsWith("/@") || url.startsWith("/node_modules") || url.endsWith(".hot-update.js")) return true;
+    // Em DEV o Vite serve CADA módulo do próprio app como uma requisição HTTP
+    // separada, e são milhares (o build transforma ~5900 módulos). A lista
+    // acima cobria só `/@...` e `/node_modules/...`: os arquivos do app
+    // (`/client/src/**`) contavam no limite, e a PRIMEIRA abertura de qualquer
+    // tela estourava os 200/min — a página vinha pela metade e o navegador
+    // recebia {"error":"Muitas requisições. Tente novamente em breve."}.
+    // Isso inviabilizava o smoke manual que toda PR exige ("abrir cada tela
+    // afetada com pnpm dev, logado com o nível certo"). A intenção do skip já
+    // era essa; faltava alcance. Achado ao rodar a carga da planilha de ponta
+    // a ponta (F9) e tentar abrir o app logado.
+    //
+    // Em produção NADA muda: não há Vite (setupVite só roda em development),
+    // o cliente é um bundle pronto de dist/public, e o /api/trpc continua com
+    // o apiLimiter próprio de 100/min — que também segue valendo aqui, porque
+    // este skip deixa /api de fora.
+    if (process.env.NODE_ENV === "development" && !url.startsWith("/api/")) return true;
+    return false;
   },
 });
 
