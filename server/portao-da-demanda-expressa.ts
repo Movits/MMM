@@ -27,7 +27,7 @@
  * "servico".
  */
 import { tokensDoTermo } from "@shared/direcao-do-termo";
-import { ehServico, PALAVRAS_DE_SERVICO, TIPOS_DA_OFERTA, type TipoDaOferta } from "@shared/tipo-da-oferta";
+import { citacaoPedeServicoOferecido, ehServico, PALAVRAS_DE_SERVICO, PALAVRAS_VAZIAS_DA_CITACAO, servicoDoTermo, TIPOS_DA_OFERTA, type TipoDaOferta } from "@shared/tipo-da-oferta";
 
 /** Os nove tipos mais "nenhuma": o match que se apoia no que a pessoa PRECISA, não no que tem. */
 export const TIPOS_PARA_A_IA = [...TIPOS_DA_OFERTA.map(item => item.tipo), "nenhuma"] as const;
@@ -120,12 +120,8 @@ export function normalizarTipo(valor: unknown): TipoParaAIA {
   return "outros";
 }
 
-// Palavras que não provam nada numa citação: ligação, artigo, preposição.
-const PALAVRAS_VAZIAS = new Set([
-  "de", "da", "do", "das", "dos", "e", "a", "o", "as", "os", "um", "uma", "em", "no", "na", "nos", "nas",
-  "para", "por", "com", "que", "of", "the", "and", "for", "to", "in", "on", "with", "an", "y", "el",
-  "la", "los", "las", "en", "con", "del", "al",
-]);
+// Palavras que não provam nada numa citação: ligação, artigo, preposição (a mesma lista da localização da citação).
+const PALAVRAS_VAZIAS = PALAVRAS_VAZIAS_DA_CITACAO;
 
 /**
  * A citação está no texto-fonte? Conferência por palavras, não por texto
@@ -208,14 +204,37 @@ export function exigeCitacao(item: ItemComPortao, perfil?: PerfilNoPortao): bool
   return servicos.length === ofertas.length && !temNecessidadeDeclarada(perfil);
 }
 
+
+/**
+ * A citação conferida precisa se apoiar num serviço que o perfil OFERECE
+ * (defeito relatado em 13/09): o portão conferia que o trecho estava na
+ * oportunidade, mas não que ele pedia o serviço da pessoa — "consultoria em
+ * marketing" passava para quem oferece "Consultoria jurídica". Quando o trecho
+ * citado nomeia um serviço, algum serviço do perfil tem de atendê-lo
+ * (`citacaoPedeServicoOferecido`, que localiza a citação na fonte e completa a
+ * especialidade). Trecho sem palavra de serviço é paráfrase e fica com a IA,
+ * como antes; perfil sem serviço classificável também.
+ */
+export function citacaoAmarradaAoPerfil(citacao: unknown, fonte: string, perfil?: PerfilNoPortao): boolean {
+  if (typeof citacao !== "string" || !perfil) return true;
+  // Os serviços do perfil vêm de "O que tenho" E da área e da especialidade: a UI só grava
+  // ids fixos em "O que tenho", e a advogada que marcou "Canais comerciais" continua advogada.
+  const declaradas = lista(perfil.whatIHave);
+  const candidatas = [...declaradas, ...texto(perfil.activityArea), ...texto(perfil.primarySpecialty)];
+  const servicos = candidatas.filter(oferta => servicoDoTermo(oferta) !== null);
+  if (servicos.length === 0) return true;
+  const temOutraBase = declaradas.some(oferta => servicoDoTermo(oferta) === null);
+  return citacaoPedeServicoOferecido(citacao, fonte, servicos, temOutraBase);
+}
+
 /**
  * O portão: match apoiado em SERVIÇO só passa com a necessidade expressa
- * citada e conferida no texto que a pessoa escreveu; e oportunidade que
- * oferece um serviço só passa para quem declarou precisar de algo. Qualquer
- * outro tipo passa como antes.
+ * citada e conferida no texto que a pessoa escreveu, e apoiada num serviço que
+ * o perfil oferece; e oportunidade que oferece um serviço só passa para quem
+ * declarou precisar de algo. Qualquer outro tipo passa como antes.
  */
 export function passaNoPortao(item: ItemComPortao, fonte: string, perfil?: PerfilNoPortao, oportunidade?: OportunidadeNoPortao): boolean {
   if (perfil && oportunidade && oportunidadeOfereceServico(oportunidade) && !temNecessidadeDeclarada(perfil)) return false;
   if (!exigeCitacao(item, perfil)) return true;
-  return citacaoConfere(item.necessidadeExpressa, fonte);
+  return citacaoConfere(item.necessidadeExpressa, fonte) && citacaoAmarradaAoPerfil(item.necessidadeExpressa, fonte, perfil);
 }

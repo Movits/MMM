@@ -238,3 +238,80 @@ describe("matchesBloqueadosPelaDemandaExpressa — a leitura enxerga o portão",
     expect(selects).toBe(0);
   });
 });
+
+describe("satisfaz — serviço escrito de outro jeito e serviço diferente, a mesma regra do motor privado (defeitos a e c da #101, 13/09)", () => {
+  const umaVia = (have: string, need: string) =>
+    calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] }));
+
+  it("(a) a mesma coisa escrita de outro jeito libera o serviço: 'Advocacia tributária' × 'Advogado tributarista'", () => {
+    const pares: Array<[string, string]> = [
+      ["Advocacia tributária", "Advogado tributarista"],
+      ["Contabilidade tributária", "Contador tributário"],
+      ["Tax lawyer", "Advogado tributarista"],
+      ["Advocacia tributária", "Direito tributário"],
+      ["Consultoria tributária", "Assessoria tributária"],
+    ];
+    for (const [have, need] of pares) {
+      const r = umaVia(have, need);
+      expect(r.bloqueio, `${have} × ${need}`).toBeUndefined();
+      expect(r.complementarity, `${have} × ${need}`).toBe(60);
+    }
+  });
+
+  it("(c) serviço diferente continua bloqueado, mesmo com a palavra igual", () => {
+    const pares: Array<[string, string]> = [
+      ["Consultoria jurídica", "Consultoria em marketing"],
+      ["Consultoria jurídica", "Assessoria"],
+      ["Assessoria de imprensa", "Consultoria"],
+      ["Interpretação de exames laboratoriais", "Tradutor"],
+      ["Consultoria digital", "Consultoria em marketing digital"],
+    ];
+    for (const [have, need] of pares) {
+      const r = umaVia(have, need);
+      expect(r.bloqueio, `${have} × ${need}`).toBe("servico-sem-demanda-expressa");
+      expect(r.complementarity, `${have} × ${need}`).toBe(0);
+    }
+  });
+
+  it("a opção fixa 'consultoria' é decidida pela cabeça: marketing e tradução não atendem; advocacia e auditoria sim", () => {
+    for (const have of ["Marketing para advogados", "Tradução jurídica", "Marketing digital"]) {
+      expect(umaVia(have, "consultoria").bloqueio, have).toBe("servico-sem-demanda-expressa");
+    }
+    for (const have of ["Advocacia tributária", "Auditoria"]) {
+      expect(umaVia(have, "consultoria").complementarity, have).toBe(60);
+    }
+  });
+});
+
+describe("calculateCompatibilityScore — serviço com adjetivo de outro tipo não escapa do portão (revisão de 13/09)", () => {
+  it("'Consultoria financeira' só casa com quem declarou precisar dela", () => {
+    const presumido = calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria financeira"] }), perfil({ whatINeed: ["distribuidores"] }));
+    expect(presumido.bloqueio).toBe("servico-sem-demanda-expressa");
+    const declarado = calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria financeira"] }), perfil({ whatINeed: ["Consultor financeiro"] }));
+    expect(declarado.bloqueio).toBeUndefined();
+    expect(declarado.complementarity).toBe(60);
+  });
+});
+
+describe("calculateCompatibilityScore — revisão adversarial da correção (13/09)", () => {
+  it("'Jurídico' e 'Legal services' voltam a atender a opção fixa 'consultoria'; 'Assessoria de viagens' não", () => {
+    for (const have of ["Jurídico", "Legal services"]) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: ["consultoria"] })).complementarity, have).toBe(60);
+    }
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Assessoria de viagens"] }), perfil({ whatINeed: ["consultoria"] })).bloqueio).toBe("servico-sem-demanda-expressa");
+  });
+
+  it("serviço diferente escrito com 'para' ou com lema que colide continua bloqueado", () => {
+    for (const [have, need] of [["Advocacia tributária", "Advogado para divórcio"], ["Consultoria em segurança do trabalho", "Consultoria trabalhista"]] as Array<[string, string]>) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] })).bloqueio, `${have} × ${need}`).toBe("servico-sem-demanda-expressa");
+    }
+  });
+});
+
+describe("calculateCompatibilityScore — necessidade que coordena serviços diferentes (revisão de 13/09)", () => {
+  it("'Advogado e contador' libera quem oferece advocacia", () => {
+    const r = calculateCompatibilityScore(perfil({ whatIHave: ["Advocacia tributária"] }), perfil({ whatINeed: ["Advogado e contador"] }));
+    expect(r.bloqueio).toBeUndefined();
+    expect(r.complementarity).toBe(60);
+  });
+});

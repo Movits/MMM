@@ -96,9 +96,10 @@ semântica é permitida), mas precisa existir.
 
 | oferta | outro lado | resultado |
 |---|---|---|
-| serviços jurídicos tributários | procura "assessoria tributária para revisar a carga fiscal" | **match nos motores por IA** (`routers/matching.ts`), com a citação conferida; nos motores determinísticos (perfis e privado) só casa se a necessidade NOMEIA o serviço — mesmo slug/objeto/núcleo, a opção fixa "Consultoria" ou a necessidade genérica "Consultoria" diante de "Consultoria jurídica" |
+| serviços jurídicos tributários | procura "assessoria tributária para revisar a carga fiscal" | **match nos motores por IA** (`routers/matching.ts`), com a citação conferida; nos motores determinísticos (perfis e privado) só casa se a necessidade NOMEIA o serviço — mesmo slug/objeto/núcleo, o mesmo serviço escrito de outro jeito ("Advogado tributarista" diante de "Advocacia tributária"), a genérica da família ("Advogado") ou a opção fixa "Consultoria" |
 | serviços jurídicos tributários | indústria farmacêutica que procura "distribuidor para a África" | **sem match** em todos — toda indústria tem impostos, mas ninguém declarou precisar |
 | consultoria em internacionalização | empresa com operações internacionais que procura "investidor para a fábrica" | **sem match** em todos — operar fora não é procurar consultoria |
+| consultoria jurídica | procura "consultoria em marketing" | **sem match** em todos — a palavra é a mesma, o serviço não; na IA, a frase citada precisa pedir um serviço que o perfil oferece |
 
 Não contam como necessidade: setor ou atividade econômica, porte, localização, cargo,
 problemas típicos do segmento, obrigações legais, serviços "que seriam úteis",
@@ -117,6 +118,44 @@ título, das tags ou da descrição da oportunidade que declara a necessidade e
 palavra ausente) antes de exibir — e usa o classificador como piso: perfil que só tem
 serviço e nada em "preciso" exige citação seja qual for o tipo que o modelo escreveu.
 Prompt é pedido, a conferência é a garantia.
+
+Dois cuidados vieram da revisão da regra em produção (13/09 e 14/09/2026: a #124 e a
+correção por cima dela), e três revisões adversariais levaram à forma ESTRITA. A
+categoria digitada continua decidindo o tipo quando o texto não decide — decisão do time
+em 14/09; a categoria ser texto livre virou cartão próprio. **A mesma coisa escrita de
+outro jeito é a mesma necessidade:** família (o lema: advocacia, consultoria, assessoria,
+tradução...) e especialidade (lemas curados: tributário = tributarista = fiscal = tax =
+ICMS) iguais dão 100 no motor privado e satisfazem o de perfis; a necessidade que nomeia
+só a família ("Advogado" diante de "Advocacia tributária") vale 60. **Palavra igual não é serviço
+igual, e na dúvida não casa:** o motor só afirma equivalência do que entende. Palavra
+fora das listas precisa aparecer igual dos dois lados, e a oferta não pode ter palavra
+desconhecida a mais: "Consultoria em segurança do trabalho" não atende "Consultoria
+trabalhista", "Consultoria em seguros empresariais" não atende "Consultoria
+empresarial". Na IA, o portão só barra a citação que nomeia um serviço entendido e
+claramente diferente do que o perfil oferece ("consultoria em marketing" para
+"Consultoria jurídica"); o que o texto não entende fica com o modelo
+(`citacaoAmarradaAoPerfil`).
+
+Limites aceitos e decisões pendentes (revisão adversarial de 13/09/2026):
+- a categoria é texto livre e decide o tipo quando o texto não decide: "Cafeteira
+  industrial" [Consultoria] vira serviço e cai no portão (decisão do time em 14/09; a
+  causa raiz virou cartão próprio);
+- a especialidade escrita de outro jeito só é lida em pt, en e es; nos outros 7 idiomas
+  as listas reconhecem a família do serviço (#124), e a especialidade só casa escrita
+  igual;
+- "Consultoria jurídica" oferecida não atende a necessidade "Advogado" ("Legal
+  advisory" × "Lawyer" deixou de dar 100); o inverso, "Assessoria jurídica" pedida
+  diante de "Advocacia" oferecida, atende;
+- no motor privado, "Consultoria" digitada não é atendida por advocacia nem por
+  contabilidade; no de perfis, a opção fixa "Consultoria" é atendida pela família da
+  cabeça (advocacia, contabilidade, auditoria, mentoria, coaching);
+- a regra estrita troca match falso por falso negativo: o mesmo serviço escrito com
+  palavra que as listas não conhecem e só um lado usa ("Consultoria em exportação" ×
+  "Consultoria em comércio exterior", "Contador para projeto aprovado na Lei Rouanet")
+  não casa nos motores determinísticos, como antes da correção;
+- na IA, citação de finalidade sem especialidade reconhecida ("Buscamos consultoria para
+  aumentar vendas no Instagram"), negação ("já temos consultoria jurídica") e
+  autodescrição ("somos um escritório de advocacia") ficam com o modelo.
 
 ### 3. Nada que a IA extrair entra sozinho
 

@@ -211,8 +211,10 @@ Exceções deliberadas: `system.health` (responde `ok:false` com HTTP 503) e
 
 **Três motores de match convivem.** `server/match-service.ts` cruza contatos da mesma
 dona: `scoreMatch` aplica, nesta ordem, concorrentes → 0, slug exato → 100, mesmo
-objeto do termo → 100, mesmo núcleo → 100, necessidade genérica que nomeia a família do
-serviço → 100 (só para serviço), mesma categoria → 60 (não vale para serviço); o critério semântico
+objeto do termo → 100, mesmo núcleo → 100, o mesmo serviço escrito de outro jeito → 100
+(só para serviço: mesma família e mesma especialidade, `mesmaFamiliaEEspecialidade`),
+necessidade que nomeia só a família do serviço → 60 (`necessidadeGenericaNomeiaOServico`),
+mesma categoria → 60 (não vale para serviço); o critério semântico
 vale 45, abaixo do limiar 50, logo está desligado por construção e o texto não sai
 para embeddings. `server/matching.ts` cruza perfis de usuárias em 6 dimensões
 ponderadas, com LLM só no insight. `routers/profileMatches.ts` expõe esses matches no
@@ -224,7 +226,11 @@ par sustentado só por serviço sem demanda expressa dá zero, não é gravado e
 lista esconde a linha antiga (sem apagá-la, para a dispensa da dona sobreviver); nos dois
 prompts de `routers/matching.ts` o modelo classifica o item,
 cita o trecho da oportunidade que declara a necessidade e
-`server/portao-da-demanda-expressa.ts` confere a citação antes de exibir. Produtos,
+`server/portao-da-demanda-expressa.ts` confere a citação, e que ela pede um serviço que o
+perfil oferece, antes de exibir. A categoria digitada ainda decide o tipo quando o texto
+não decide (decisão do time em 14/09). Família de serviço é lema, não área,
+e a equivalência é ESTRITA: só casa o que as listas entendem (palavra desconhecida precisa
+aparecer igual dos dois lados; na IA, o que o texto não entende fica com o modelo). Produtos,
 ativos, investimento, conexões, tecnologia e imóveis não mudam.
 
 **`server/_core/` é a infraestrutura herdada do Manus** (o projeto nasceu na
@@ -320,8 +326,11 @@ vitrine no GitHub Pages. Depois de todo deploy:
   porque alguém poderia precisar; fazemos match porque alguém declarou que precisa").
   A IA não pode inferir o que ninguém declarou; essas informações só sobem a nota de um
   match que já passou pelo portão. A restrição é específica do tipo SERVIÇO — os outros
-  tipos seguem as regras de sempre. Ver `shared/tipo-da-oferta.ts` e
-  `server/portao-da-demanda-expressa.ts`.
+  tipos seguem as regras de sempre. Palavra igual não é serviço igual ("Consultoria
+  jurídica" não atende "Consultoria em marketing"), e a mesma coisa escrita de outro
+  jeito é a mesma necessidade ("Advogado tributarista" × "Advocacia tributária"). Os
+  limites aceitos da regra estão em `docs/arquitetura/README.md` §2c. Ver
+  `shared/tipo-da-oferta.ts` e `server/portao-da-demanda-expressa.ts`.
 - **Nada extraído por IA entra sozinho**: toda extração carrega origem e confiança
   e exige confirmação da usuária antes de virar dado. No enriquecimento, só
   sugestões com `confidence >= 0.7` viram pendência (`routers/enrichment.ts`);

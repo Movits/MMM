@@ -245,3 +245,109 @@ describe("O portão dispara nos 10 idiomas (defeito da #101)", () => {
     expect(scoreMatch(item(oferta, "Serviços"), item(necessidade, "Serviços")).score).toBe(0);
   });
 });
+
+describe("A mesma coisa escrita de outro jeito casa em 100; serviço diferente não (defeitos a e c da #101, 13/09)", () => {
+  it("(a) mesma família e mesma especialidade, com ou sem categoria: 'Advocacia tributária' × 'Advogado tributarista'", () => {
+    const pares: Array<[string, string]> = [
+      ["Advocacia tributária", "Advogado tributarista"],
+      ["Advogado tributarista", "Advocacia tributária"],
+      ["Contabilidade tributária", "Contador tributário"],
+      ["Tradução jurídica", "Tradutor jurídico"],
+      ["Advocacia previdenciária", "Advogado previdenciarista"],
+      ["Tax lawyer", "Advogado tributarista"],
+      ["Advocacia tributária", "Procuro advogado tributarista"],
+      ["Advocacia tributária", "Contratar advogado tributarista"],
+      ["Advocacia tributária em São Paulo", "Advogado tributarista"],
+      ["Advocacia tributária e trabalhista", "Advogado trabalhista"],
+      ["Consultoria jurídica tributária", "Consultoria tributária"],
+    ];
+    for (const [oferta, necessidade] of pares) {
+      for (const categoria of [null, "Jurídico", "Serviços"]) {
+        expect(scoreMatch(item(oferta, categoria), item(necessidade, categoria)).score, `${oferta} × ${necessidade} [${categoria}]`).toBe(100);
+      }
+    }
+  });
+
+  it("(c) outra especialidade, outro lema ou oferta genérica: zero com o bloqueio nomeado, com ou sem categoria", () => {
+    const pares: Array<[string, string]> = [
+      ["Consultoria jurídica", "Consultor de marketing"],
+      ["Consultoria jurídica", "Assessoria em marketing"],
+      ["Consultoria jurídica", "Assessoria"],
+      ["Consultoria em marketing", "Advisory"],
+      ["Assessoria de imprensa", "Consultoria"],
+      ["Assistência jurídica", "Suporte"],
+      ["Interpretação de exames laboratoriais", "Tradutor"],
+      ["Consultoria em marketing para advogados", "Consultoria jurídica"],
+      ["Consultoria para PMEs", "Consultoria jurídica para PMEs"],
+      ["Mentoria para mulheres", "Mentoria financeira para mulheres"],
+      ["Advocacia", "Advogado tributarista"],
+      ["Advocacia tributária", "Advogado trabalhista"],
+    ];
+    for (const [oferta, necessidade] of pares) {
+      for (const categoria of [null, "Serviços"]) {
+        const r = scoreMatch(item(oferta, categoria), item(necessidade, categoria));
+        expect(r.score, `${oferta} × ${necessidade} [${categoria}]`).toBe(0);
+        expect((r as { bloqueio?: string }).bloqueio, `${oferta} × ${necessidade}`).toBe("servico-sem-demanda-expressa");
+      }
+    }
+  });
+});
+
+describe("Serviço com adjetivo de outro tipo não escapa do portão (revisão de 13/09)", () => {
+  it("'Consultoria financeira' e 'Consultoria logística' não casam pela categoria; com a necessidade nomeada, casam", () => {
+    const r = scoreMatch(item("Consultoria financeira", "Consultoria"), item("Distribuidor para a África", "Consultoria"));
+    expect(r.score).toBe(0);
+    expect((r as { bloqueio?: string }).bloqueio).toBe("servico-sem-demanda-expressa");
+    expect(scoreMatch(item("Consultoria logística", "Logística"), item("Frete marítimo", "Logística")).score).toBe(0);
+    expect(scoreMatch(item("Consultoria financeira"), item("Consultor financeiro")).score).toBe(100);
+  });
+});
+
+describe("Necessidade que coordena serviços diferentes casa com cada um (revisão de 13/09)", () => {
+  it("'Advocacia tributária' e 'Contabilidade' × 'Advogado e contador' casam em 60, a nota da família (cada parte pedida só nomeia a família)", () => {
+    for (const categoria of [null, "Serviços"]) {
+      expect(scoreMatch(item("Advocacia tributária", categoria), item("Advogado e contador", categoria)).score, String(categoria)).toBe(60);
+      expect(scoreMatch(item("Contabilidade", categoria), item("Advogado e contador", categoria)).score, String(categoria)).toBe(60);
+    }
+  });
+});
+
+describe("Correção dos defeitos da #101 por cima da #124 — motor privado (14/09)", () => {
+  it("o que a regeneração apagaria volta: a especialidade escrita de outro jeito vale 100", () => {
+    const pares: Array<[string, string]> = [
+      ["Advocacia tributária", "Advogado tributarista em São Paulo"], ["Advocacia tributária", "Precisamos de advogado tributarista"],
+      ["Advocacia tributária", "Advogada tributarista experiente"], ["Advocacia tributária", "Advogado especializado em direito tributário"],
+      ["Advocacia tributária", "Advocacia jurídica tributária"], ["Tradução jurídica", "Tradutor jurídico"],
+      ["Consultoria em planejamento financeiro", "Consultoria financeira"], ["Advocacia tributária e trabalhista", "Advogado trabalhista"],
+    ];
+    for (const [oferta, necessidade] of pares) {
+      for (const categoria of [null, "Serviços"]) {
+        expect(scoreMatch(item(oferta, categoria), item(necessidade, categoria)), `${oferta} × ${necessidade} [${categoria}]`).toEqual({ score: 100, type: "exact" });
+      }
+    }
+  });
+
+  it("a necessidade que nomeia só a família vale 60 e fica no banco: adjetivo sozinho, lugar, serviços coordenados", () => {
+    const pares: Array<[string, string]> = [
+      ["Advocacia", "Jurídico"], ["Jurídico", "Advogado"], ["Contabilidade", "Contábil"],
+      ["Contabilidade", "Contador em Campinas/SP"], ["Tradução e interpretação", "Intérprete"], ["Advocacia tributária", "Advogado e contador"],
+    ];
+    for (const [oferta, necessidade] of pares) {
+      for (const categoria of [null, "Serviços"]) {
+        expect(scoreMatch(item(oferta, categoria), item(necessidade, categoria)), `${oferta} × ${necessidade} [${categoria}]`).toEqual({ score: 60, type: "category" });
+      }
+    }
+  });
+
+  it("serviço diferente escrito com 'para', idioma ou lema que colide fica em zero com o bloqueio", () => {
+    for (const [oferta, necessidade] of [
+      ["Advocacia tributária", "Advogado para divórcio"], ["Tradução de alemão", "Tradutor de japonês"],
+      ["Consultoria em segurança do trabalho", "Consultoria trabalhista"], ["Consultoria digital", "Consultoria em direito digital"],
+      ["Assessoria de imprensa", "Consultoria"], ["Interpretação de exames laboratoriais", "Tradutor"],
+    ] as Array<[string, string]>) {
+      const r = scoreMatch(item(oferta, "Serviços"), item(necessidade, "Serviços"));
+      expect(r.score, `${oferta} × ${necessidade}`).toBe(0);
+      expect((r as { bloqueio?: string }).bloqueio).toBe("servico-sem-demanda-expressa");
+    }
+  });
+});
