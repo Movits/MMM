@@ -880,6 +880,27 @@ export default function Dashboard() {
     if (!loading && isAuthenticated && profileQuery.data === null) navigate("/onboarding");
   }, [loading, isAuthenticated, profileQuery.data, navigate]);
 
+  // Quem pediu fica sabendo do aceite pelo sino: connections.respond (e o
+  // interesse mútuo em connections.send) manda um `interest_received` para a
+  // solicitante. O NotificationBell desta barra já relê os avisos a cada 30 s, e
+  // esta leitura divide o cache com ele (mesma consulta, sem polling próprio).
+  // Quando chega um aviso de interesse mais novo que o último visto, as duas
+  // listas que desenham o nome são relidas. Sem isto, o cartão de quem pediu
+  // seguia anônimo até o F5 ou até a aba voltar ao foco.
+  const avisosQuery = trpc.notifications.list.useQuery(undefined, { enabled: isAuthenticated, staleTime: 30_000 });
+  const ultimoAvisoDeInteresse = useRef<number | null>(null);
+  useEffect(() => {
+    if (!avisosQuery.data) return;
+    const maisNovo = avisosQuery.data.reduce((maior, aviso) => aviso.type === "interest_received" && aviso.id > maior ? aviso.id : maior, 0);
+    const anterior = ultimoAvisoDeInteresse.current;
+    ultimoAvisoDeInteresse.current = Math.max(anterior ?? 0, maisNovo);
+    // Na primeira leitura não há o que reler: as listas acabaram de carregar.
+    if (anterior !== null && maisNovo > anterior) {
+      connectionsQuery.refetch();
+      matchesQuery.refetch();
+    }
+  }, [avisosQuery.data]);
+
   const switchTab = (tab: typeof activeTab) => {
     if (tab === activeTab) return;
     setTabVisible(false);

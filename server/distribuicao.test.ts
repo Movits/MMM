@@ -310,7 +310,9 @@ describe("connections.send — o pedido novo espera o distribuidor", () => {
     expect(r).toEqual({ success: true, revelou: true });
     expect(acoes()).toEqual(["MATCH_IDENTITY_REVEALED", "MATCH_IDENTITY_REVEALED"]);
     expect(estado.auditorias.map(a => (a.details as { via: string }).via)).toEqual(["interesse_mutuo", "interesse_mutuo"]);
-    expect(avisos()).toEqual([]);
+    // O único aviso é o do aceite, para quem tinha pedido (o alvo 2), e nenhum vai
+    // para a fila. Detalhes em aceite-avisa-quem-pediu.test.ts.
+    expect(avisos().map(a => a.userId)).toEqual([2]);
   });
 
   it("sino fora do ar não desfaz o pedido: a resposta continua a mesma", async () => {

@@ -24,7 +24,7 @@ import Dashboard from "./Dashboard";
 
 const NOME_SECRETO = "Zoroastra Quindim";
 
-type Resposta = { data?: unknown; isLoading?: boolean; isError?: boolean; error?: unknown };
+type Resposta = { data?: unknown; isLoading?: boolean; isError?: boolean; error?: unknown; refetch?: () => unknown };
 
 const duble = vi.hoisted(() => {
   const respostas: Record<string, Resposta> = {};
@@ -242,5 +242,44 @@ describe("cartão de match — o passo do distribuidor", () => {
     expect(screen.queryByRole("button", { name: "Aceitar e revelar" })).not.toBeInTheDocument();
     expect(document.body.innerHTML).not.toContain("Zoroastra");
     expect(screen.getAllByText("Membro da rede").length).toBe(2);
+  });
+});
+
+// ── Quem pediu vê o aceite sem F5 ───────────────────────────────────────────
+// connections.respond avisa a solicitante com um `interest_received`, e o sino
+// (que relê os avisos a cada 30 s) divide o cache com o Dashboard. Aviso de
+// interesse NOVO relê as duas listas que desenham o nome; a primeira leitura e
+// aviso de outro tipo não relêem nada.
+describe("quem pediu vê o aceite sem F5", () => {
+  const aviso = (id: number, type: string) => ({
+    id, type, title: "Aviso", body: null, actionUrl: "/dashboard", isRead: true, createdAt: new Date(),
+  });
+
+  it("aviso de interesse novo relê conexões e matches; a primeira leitura e aviso de outro tipo, não", () => {
+    const releConexoes = vi.fn();
+    const releMatches = vi.fn();
+    duble.respostas["connections.list"] = { data: [], refetch: releConexoes };
+    duble.respostas["matches.list"] = {
+      data: [cartao({ connectionId: 7, connectionStatus: "pending", souDestinataria: false })],
+      refetch: releMatches,
+    };
+    duble.respostas["notifications.list"] = { data: [aviso(3, "interest_received")] };
+    const { rerender } = render(<Dashboard />);
+    // O aviso 3 já existia quando a página abriu: nada a reler.
+    expect(releConexoes).not.toHaveBeenCalled();
+    expect(releMatches).not.toHaveBeenCalled();
+
+    duble.respostas["notifications.list"] = { data: [aviso(4, "gold_granted"), aviso(3, "interest_received")] };
+    rerender(<Dashboard />);
+    expect(releConexoes).not.toHaveBeenCalled();
+    expect(releMatches).not.toHaveBeenCalled();
+
+    // O aceite chega pelo sino.
+    duble.respostas["notifications.list"] = {
+      data: [aviso(5, "interest_received"), aviso(4, "gold_granted"), aviso(3, "interest_received")],
+    };
+    rerender(<Dashboard />);
+    expect(releConexoes).toHaveBeenCalledTimes(1);
+    expect(releMatches).toHaveBeenCalledTimes(1);
   });
 });
