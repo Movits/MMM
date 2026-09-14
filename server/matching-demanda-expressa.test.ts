@@ -315,3 +315,16 @@ describe("calculateCompatibilityScore — necessidade que coordena serviços dif
     expect(r.complementarity).toBe(60);
   });
 });
+
+describe("calculateCompatibilityScore — 'Direito tributário' sem categoria é serviço (14/09)", () => {
+  it("perfil que só oferece 'Direito tributário' não vira match presumido, e atende 'Advogado tributarista'", () => {
+    const presumido = calculateCompatibilityScore(
+      perfil({ whatIHave: ["Direito tributário"], sector: "Jurídico" }),
+      perfil({ whatINeed: ["distribuidores"], sector: "Farmacêutico" }),
+    );
+    expect(presumido.bloqueio).toBe("servico-sem-demanda-expressa");
+    const declarado = calculateCompatibilityScore(perfil({ whatIHave: ["Direito tributário"] }), perfil({ whatINeed: ["Advogado tributarista"] }));
+    expect(declarado.bloqueio).toBeUndefined();
+    expect(declarado.complementarity).toBe(60);
+  });
+});

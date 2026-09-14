@@ -351,3 +351,10 @@ describe("Correção dos defeitos da #101 por cima da #124 — motor privado (14
     }
   });
 });
+
+describe("'Direito tributário' sem categoria também passa pelo portão (14/09)", () => {
+  it("casa em 100 com a necessidade que o nomeia", () => {
+    expect(scoreMatch(item("Direito tributário"), item("Advogado tributarista"))).toEqual({ score: 100, type: "exact" });
+    expect(scoreMatch(item("Direito do trabalho"), item("Advocacia trabalhista"))).toEqual({ score: 100, type: "exact" });
+  });
+});

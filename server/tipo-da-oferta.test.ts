@@ -91,7 +91,7 @@ describe("Tipo da oferta — os outros tipos", () => {
   });
 
   it("na dúvida é 'outros' — e 'outros' nunca é serviço", () => {
-    for (const rotulo of ["Café especial", "Terras raras", "Distribuidor na África", "Direito tributário", "Vinhos", "Cacau fino"]) {
+    for (const rotulo of ["Café especial", "Terras raras", "Distribuidor na África", "Vinhos", "Cacau fino"]) {
       expect(classificarOferta(rotulo)).toBe("outros");
       expect(ehServico(rotulo)).toBe(false);
     }
@@ -620,5 +620,19 @@ describe("Necessidade que coordena serviços diferentes (revisão de 13/09)", ()
     for (const [oferta, necessidade] of naoAtende) {
       expect(servicoAtendeNecessidade(oferta, necessidade), `${oferta} × ${necessidade}`).toBe(false);
     }
+  });
+});
+
+describe("'Direito' com área curada é serviço pelo texto (fecha o buraco registrado na #124, 14/09)", () => {
+  it("'Direito tributário' sem categoria é serviço; 'Direito' sem área curada, não", () => {
+    for (const rotulo of ["Direito tributário", "Direito do trabalho", "Direito de família", "Derecho laboral"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    }
+    for (const rotulo of ["Direito minerário", "Direito creditório", "Direitos minerários", "Direito real de uso", "Direito exclusivo de distribuição", "Lado direito"]) {
+      expect(ehServico(rotulo), rotulo).toBe(false);
+    }
+    expect(classificarOferta("Especialista em direito tributário")).toBe("servico");
+    expect(familiaDoServico("Direito do trabalho")).toBe("advocacia");
+    expect(servicoAtendeNecessidade("Direito imobiliário", "Advogado especialista em imóveis")).toBe(true);
   });
 });

@@ -38,6 +38,9 @@
  *      no meio ("Tax consulting", "Customs brokerage", "Real estate
  *      consulting"): em inglês o substantivo do serviço vem depois;
  *   3. composto fixo de duas palavras ("real estate", "venture capital");
+ *   3b. "Direito" seguido de área curada ("Direito tributário", "Direito do
+ *      trabalho") é a especialidade do advogado, serviço pelo texto; fora das
+ *      áreas curadas ("Direito minerário", "Direito creditório") segue a ordem;
  *   4. cabeça genérica "serviços"/"prestação": o complemento decide
  *      ("Serviços de logística" é logística, "Serviços de tradução" é serviço);
  *   5. a cabeça do termo, quando é palavra de um tipo ("Software de
@@ -140,13 +143,11 @@ const ASSESSORIA = [
  * "Legal" e "law" só valem na CABEÇA ("Legal advisory", "Law firm"): no meio
  * do termo, "legal" é adjetivo de qualquer coisa ("Cannabis legal").
  *
- * "direito" foi tentado aqui em 14/09 e NÃO entrou: "Direito tributário" sem
- * categoria cai em "outros" e escapa do portão, mas isso é decisão registrada
- * em teste ("na dúvida é outros"), e a palavra é ambígua em português ("lado
- * direito", "acesso direito"). Classificar como serviço o que não é sujeita o
- * item ao portão, que é restrição — erra para o lado de barrar match legítimo.
- * Fechar esse buraco pede um critério mais estreito (direito + especialidade
- * jurídica) e uma decisão de quem mantém a regra.
+ * "direito" não entra aqui: a palavra é ambígua em português ("lado direito",
+ * "acesso direito"). O buraco que isso deixava — "Direito tributário" sem
+ * categoria caía em "outros" e escapava do portão — fecha com o critério
+ * estreito: "Direito" só é serviço de advocacia seguido de ÁREA curada (ver
+ * `areaDoDireito` e o passo 3b de `classificarOferta`).
  */
 const ASSESSORIA_SO_NA_CABECA = ["legal", "law"];
 
@@ -660,6 +661,11 @@ function classificarPeloTexto(rotulo: string, categoria?: string | null): TipoDa
     const complemento = complementoDaCabeca(palavras, indice);
     return (complemento.length ? tipoNaoServico(complemento[0]) : null) ?? "servico";
   }
+  // 3b. "Direito" com área curada é advocacia pelo texto: "Direito tributário",
+  //     "Direito do trabalho". Sem isto, "Direito tributário" sem categoria caía
+  //     em "outros" e escapava do portão (buraco registrado na #124); "Direito
+  //     minerário" e "Direito creditório" seguem sem ser serviço.
+  if (areaDoDireito(palavras, indice)) return "servico";
   // 4. A cabeça manda.
   if (!CABECAS_NEUTRAS.has(cabeca)) {
     const pelaCabeca = TIPO_POR_CABECA.get(cabeca);
@@ -670,7 +676,7 @@ function classificarPeloTexto(rotulo: string, categoria?: string | null): TipoDa
     const complemento = complementoDaCabeca(palavras, indice);
     // A primeira palavra do complemento de outro tipo manda: "Empresa especializada em SOFTWARES jurídicos" é tecnologia.
     const primeiraDeOutroTipo = tipoNaoServico(complemento[0] ?? "") !== null;
-    if (!primeiraDeOutroTipo && complemento.some(palavra => SUBSTANTIVOS_DE_SERVICO.has(palavra) || ADJETIVOS_DE_SERVICO.has(palavra))) {
+    if (!primeiraDeOutroTipo && complemento.some((palavra, k) => SUBSTANTIVOS_DE_SERVICO.has(palavra) || ADJETIVOS_DE_SERVICO.has(palavra) || areaDoDireito(complemento, k) !== null)) {
       return "servico";
     }
   }
