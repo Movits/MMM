@@ -58,7 +58,11 @@ const fakeDb = {
   }),
 };
 vi.mock("./db", () => ({ exigirDb: async () => fakeDb as never, getDb: async () => fakeDb as never }));
-vi.mock("./storage", () => ({ storagePut: async () => ({ key: "k", url: "/k" }), storageDelete: async () => {} }));
+vi.mock("./storage", async importOriginal => ({
+  ...await importOriginal<typeof import("./storage")>(),
+  storagePut: async () => ({ key: "k", url: "/k" }),
+  storageDelete: async () => {},
+}));
 vi.mock("./_core/llm", () => ({ invokeLLM: async () => ({ choices: [] }) }));
 // As classes de erro vêm do módulo real: meeting-service faz instanceof nelas.
 vi.mock("./gemini", async importOriginal => ({
@@ -96,7 +100,7 @@ describe("marcarReunioesInterrompidas — o que está preso vira falha explicáv
     // Literal duplicado na tela seria o jeito de o código mudar de um lado só
     // e a caixa vermelha passar a mostrar "ERRO_INTERROMPIDO" cru.
     const tela = readFileSync(join(__dirname, "..", "client", "src", "pages", "Meetings.tsx"), "utf8");
-    expect(tela).toContain('import { CODIGO_ERRO_INTERROMPIDO } from "@shared/const"');
+    expect(tela).toMatch(/import \{[^}]*\bCODIGO_ERRO_INTERROMPIDO\b[^}]*\} from "@shared\/const"/);
     expect(tela).toContain("processingError === CODIGO_ERRO_INTERROMPIDO");
     expect(tela).toContain('t("meetings.processingInterrupted")');
   });

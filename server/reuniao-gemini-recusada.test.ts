@@ -21,7 +21,7 @@ const ambiente = vi.hoisted(() => ({ ENV: { llmApiKey: "chave-somente-para-teste
 vi.mock("./_core/env", () => ambiente);
 
 const atualizacoes: Array<Record<string, unknown>> = [];
-const reuniao = { id: "reuniao-1", ownerId: "dona-1", consentGranted: true, status: "pending" };
+const reuniao = { id: "reuniao-1", ownerId: "dona-1", consentGranted: true, status: "recording", updatedAt: 1_000 };
 const schema = await import("../drizzle/schema");
 vi.mock("./db", () => ({
   getDb: async () => null,
@@ -35,7 +35,8 @@ vi.mock("./db", () => ({
     delete: () => ({ where: async () => {} }),
   }),
 }));
-vi.mock("./storage", () => ({
+vi.mock("./storage", async importOriginal => ({
+  ...await importOriginal<typeof import("./storage")>(),
   storagePut: async () => ({ key: "k", url: "/manus-storage/k" }),
   storageDelete: async () => {},
   storageGetSignedUrl: async () => "https://assinada",

@@ -26,6 +26,11 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  *    sugestões órfãs: o status é relido antes das escritas, e o UPDATE final
  *    para 'ready' só vale se a linha ainda estiver viva — senão o que foi
  *    gravado sai (compensação).
+ * 6. A execução tem FICHA (reprocessamento de reunião com falha, 13/09): só
+ *    toma a reunião que espera áudio ('recording'), e releitura, 'ready' e
+ *    'failed' exigem 'processing' com o updated_at que ela gravou. Quem tomou
+ *    a reunião depois (reprocessamento novo, varredura de interrompidas) vence,
+ *    e a execução velha sai sem escrever nada.
  */
 
 const atualizacoes: Array<Record<string, unknown>> = [];
@@ -45,15 +50,25 @@ const leituras: Array<{ tabela: unknown } & Predicado> = [];
 const insercoes: Array<{ tabela: unknown; valores: Record<string, unknown>[] }> = [];
 const delecoes: Array<{ tabela: unknown } & Predicado> = [];
 const REUNIAO_DA_DONA = { sql: "(`meetings`.`id` = ? and `meetings`.`owner_id` = ?)", params: ["reuniao-1", "dona-1"] };
-const REUNIAO_DA_DONA_VIVA = { sql: "(`meetings`.`id` = ? and `meetings`.`owner_id` = ? and `meetings`.`status` <> ?)", params: ["reuniao-1", "dona-1", "deleted"] };
+// A falha da decodificação e a tomada só valem para a reunião que ainda espera áudio.
+const REUNIAO_DA_DONA_ESPERANDO_AUDIO = { sql: "(`meetings`.`id` = ? and `meetings`.`owner_id` = ? and `meetings`.`status` = ?)", params: ["reuniao-1", "dona-1", "recording"] };
+// 'ready' e 'failed' só valem para a reunião ainda DESTA execução: 'processing' + a ficha.
+const REUNIAO_DA_DONA_COM_FICHA = (ficha: unknown) => ({
+  sql: "(`meetings`.`id` = ? and `meetings`.`owner_id` = ? and `meetings`.`status` = ? and `meetings`.`updated_at` = ?)",
+  params: ["reuniao-1", "dona-1", "processing", ficha],
+});
 const derivadaDaReuniaoDaDona = (tabela: string) => ({ sql: `(\`${tabela}\`.\`meeting_id\` = ? and \`${tabela}\`.\`owner_id\` = ?)`, params: ["reuniao-1", "dona-1"] });
-const reuniao = { id: "reuniao-1", ownerId: "dona-1", consentGranted: true, status: "pending" };
-// O que cada SELECT em `meetings` devolve, em ordem (a primeira leitura é a da
-// entrada; a segunda, a releitura antes das escritas). Vazio: a reunião viva.
-const reunioesPorLeitura: Array<Record<string, unknown>[]> = [];
-// Linhas afetadas que o fake responde a todo UPDATE (o mysql2 devolve
-// [ResultSetHeader, campos]).
-let linhasAfetadasNoUpdate = 1;
+const reuniao = { id: "reuniao-1", ownerId: "dona-1", consentGranted: true, status: "recording", updatedAt: 1_000 };
+// A linha viva da reunião: todo UPDATE aceito em `meetings` é aplicado nela, e
+// a releitura devolve o status e o updated_at que a execução gravou.
+let reuniaoNoBanco: Record<string, unknown> = { ...reuniao };
+// O que cada SELECT em `meetings` devolve, em ordem (1ª: entrada; 2ª: releitura
+// antes das escritas; 3ª: releitura depois de um 'ready' com 0 linhas). `null`
+// ou fila vazia: a linha viva acima.
+const reunioesPorLeitura: Array<Record<string, unknown>[] | null> = [];
+// Linhas afetadas que o fake responde a cada UPDATE, em ordem (o mysql2 devolve
+// [ResultSetHeader, campos]). Fila vazia: 1.
+const linhasAfetadasPorUpdate: number[] = [];
 // Tabela cujo INSERT o banco recusa, e com qual erro.
 let recusarInsert: ((tabela: unknown) => Error | null) | null = null;
 let respostaDaIA: { entities: unknown[]; contacts: unknown[] } = { entities: [], contacts: [] };
@@ -66,12 +81,14 @@ vi.mock("./db", () => ({
   exigirDb: async () => ({
     select: () => ({ from: (tabela: unknown) => ({ where: (condicao?: SQL) => {
       leituras.push({ tabela, ...renderizar(condicao) });
-      const linhas = tabela === schema.meetings ? (reunioesPorLeitura.shift() ?? [reuniao]) : [];
+      const linhas = tabela === schema.meetings ? (reunioesPorLeitura.shift() ?? [{ ...reuniaoNoBanco }]) : [];
       return { limit: async () => linhas, then: (resolver: (valor: unknown) => unknown) => resolver(linhas) };
     } }) }),
-    update: () => ({ set: (valores: Record<string, unknown>) => ({ where: async (condicao?: SQL) => {
+    update: (tabela: unknown) => ({ set: (valores: Record<string, unknown>) => ({ where: async (condicao?: SQL) => {
       atualizacoes.push(valores); escopos.push(renderizar(condicao));
-      return [{ affectedRows: linhasAfetadasNoUpdate }];
+      const afetadas = linhasAfetadasPorUpdate.shift() ?? 1;
+      if (afetadas && tabela === schema.meetings) Object.assign(reuniaoNoBanco, valores);
+      return [{ affectedRows: afetadas }];
     } }) }),
     insert: (tabela: unknown) => ({ values: async (valores: Record<string, unknown> | Record<string, unknown>[]) => {
       const erro = recusarInsert?.(tabela);
@@ -83,9 +100,11 @@ vi.mock("./db", () => ({
 }));
 const storagePut = vi.fn(async () => ({ key: "k", url: "/manus-storage/k" }));
 const storageDelete = vi.fn(async () => {});
-vi.mock("./storage", () => ({
+vi.mock("./storage", async importOriginal => ({
+  ...await importOriginal<typeof import("./storage")>(),
   storagePut: (...args: unknown[]) => storagePut(...(args as [])),
   storageDelete: (...args: unknown[]) => storageDelete(...(args as [])),
+  storageGetBytes: async () => { throw new Error("o envio original nunca lê o áudio de volta do bucket"); },
   storageGetSignedUrl: async () => "https://assinada",
 }));
 let falhaDoGemini: Error | null = null;
@@ -107,7 +126,7 @@ vi.mock("./_core/llm", () => ({
   },
 }));
 
-const { decodeMeetingAudio, processMeetingRecording, LIMITE_SUGESTAO, LIMITE_VALOR_NORMALIZADO } = await import("./meeting-service");
+const { decodeMeetingAudio, processMeetingRecording, LIMITE_SUGESTAO, LIMITE_VALOR_NORMALIZADO, ReuniaoForaDoEstado, ReuniaoTomadaPorOutraExecucao } = await import("./meeting-service");
 const { MENSAGEM_ERRO_DE_CONSULTA } = await import("./banco-indisponivel");
 const { GeminiCotaEsgotadaError, GeminiRecusouChamadaError } = await import("./gemini");
 
@@ -120,11 +139,14 @@ const ana = { fullName: "Ana Souza", jobTitle: "Diretora", company: "Vinhos do S
 const tabelasInseridas = () => insercoes.map(operacao => operacao.tabela);
 const tabelasApagadas = () => delecoes.map(operacao => operacao.tabela);
 const leiturasDe = (tabela: unknown) => leituras.filter(operacao => operacao.tabela === tabela).map(({ sql, params }) => ({ sql, params }));
+// A ficha que a execução gravou ao tomar a reunião.
+const fichaGravada = () => atualizacoes.find(a => a.status === "processing")?.updatedAt;
 
 beforeEach(() => {
   atualizacoes.length = 0; escopos.length = 0; leituras.length = 0; insercoes.length = 0; delecoes.length = 0;
   reunioesPorLeitura.length = 0;
-  linhasAfetadasNoUpdate = 1;
+  linhasAfetadasPorUpdate.length = 0;
+  reuniaoNoBanco = { ...reuniao };
   recusarInsert = null;
   respostaDaIA = { entities: [], contacts: [] };
   falhaDaIA = null;
@@ -163,10 +185,11 @@ describe("processMeetingRecording — áudio recusado vira reunião com falha, n
     expect(storagePut).not.toHaveBeenCalled();
     expect(atualizacoes).toHaveLength(1);
     expect(atualizacoes[0]).toMatchObject({ status: "failed", processingError: "Arquivo de áudio inválido." });
-    // A falha é gravada NA reunião DA dona, e só se ela ainda estiver viva:
-    // id + owner_id + status <> 'deleted', todos em AND. O fake ignora o
+    // A falha é gravada NA reunião DA dona, e só se ela ainda espera áudio:
+    // id + owner_id + status = 'recording', todos em AND. Um reenvio com áudio
+    // ruim não rebaixa reunião pronta nem ressuscita excluída. O fake ignora o
     // predicado, então ele é conferido renderizado.
-    expect(escopos[0]).toEqual(REUNIAO_DA_DONA_VIVA);
+    expect(escopos[0]).toEqual(REUNIAO_DA_DONA_ESPERANDO_AUDIO);
     // e a leitura de entrada já era da reunião DA dona
     expect(leiturasDe(schema.meetings)).toEqual([REUNIAO_DA_DONA]);
   });
@@ -184,18 +207,35 @@ describe("processMeetingRecording — áudio recusado vira reunião com falha, n
     await expect(processMeetingRecording(entradaValida)).resolves.toMatchObject({ transcript: "transcrição" });
     expect(storagePut).toHaveBeenCalledTimes(1);
     expect(atualizacoes.map(a => a.status)).toEqual(["processing", "ready"]);
-    // 'processing' vai para a reunião da dona; 'ready' só para a linha VIVA
-    // (id + owner_id + status <> 'deleted', em AND).
-    expect(escopos).toEqual([REUNIAO_DA_DONA, REUNIAO_DA_DONA_VIVA]);
+    // A tomada só vale para a reunião da dona que espera áudio; o 'ready', só
+    // para a que ainda é desta execução: 'processing' + a ficha gravada na tomada.
+    const ficha = fichaGravada();
+    expect(Number(ficha)).toBeGreaterThan(reuniao.updatedAt);
+    expect(escopos).toEqual([REUNIAO_DA_DONA_ESPERANDO_AUDIO, REUNIAO_DA_DONA_COM_FICHA(ficha)]);
     // As duas leituras de meetings (entrada e releitura antes das escritas)
     // são da reunião DA dona.
     expect(leiturasDe(schema.meetings)).toEqual([REUNIAO_DA_DONA, REUNIAO_DA_DONA]);
   });
 
-  it("o 'ready' LIMPA processing_error: reunião marcada pela varredura de interrompidas e concluída depois não fica pronta com ERRO_INTERROMPIDO", async () => {
+  it("o 'ready' grava processing_error null: reunião pronta nunca carrega motivo de falha", async () => {
     await processMeetingRecording(entradaValida);
     const pronta = atualizacoes.find(a => a.status === "ready")!;
     expect(pronta).toHaveProperty("processingError", null);
+  });
+
+  it("reunião que já recebeu áudio (a tomada afeta 0 linhas): ReuniaoForaDoEstado antes do upload e da IA", async () => {
+    linhasAfetadasPorUpdate.push(0);
+    await expect(processMeetingRecording(entradaValida)).rejects.toBeInstanceOf(ReuniaoForaDoEstado);
+    expect(storagePut).not.toHaveBeenCalled();
+    expect(insercoes).toEqual([]);
+    expect(atualizacoes.map(a => a.status)).toEqual(["processing"]);
+    expect(escopos).toEqual([REUNIAO_DA_DONA_ESPERANDO_AUDIO]);
+  });
+
+  it("a gravação nasce com o prazo de 30 dias contado da tomada", async () => {
+    await processMeetingRecording(entradaValida);
+    const [gravacao] = insercoes.find(operacao => operacao.tabela === schema.meetingRecordings)!.valores;
+    expect(gravacao.expiresAt).toBe(Number(fichaGravada()) + 30 * 24 * 60 * 60 * 1000);
   });
 });
 
@@ -262,11 +302,11 @@ describe("processMeetingRecording — processing_error é texto para a dona, nun
     expect(String(falha?.processingError)).not.toContain("overloaded");
   });
 
-  it("marcarFalha não ressuscita reunião excluída: o WHERE exige a linha viva, da dona, tudo em AND", async () => {
+  it("a falha só é gravada na reunião ainda desta execução: id, owner_id, 'processing' e a ficha, tudo em AND (não ressuscita excluída nem sobrescreve quem a tomou depois)", async () => {
     falhaDaIA = new Error("qualquer");
     await expect(processMeetingRecording(entradaValida)).rejects.toThrow();
     const posicaoDaFalha = atualizacoes.findIndex(a => a.status === "failed");
-    expect(escopos[posicaoDaFalha]).toEqual(REUNIAO_DA_DONA_VIVA);
+    expect(escopos[posicaoDaFalha]).toEqual(REUNIAO_DA_DONA_COM_FICHA(fichaGravada()));
   });
 });
 
@@ -344,6 +384,18 @@ describe("processMeetingRecording — o que a IA devolve cabe nas colunas", () =
     await expect(processMeetingRecording(entradaValida)).resolves.toBeTruthy();
     expect(tabelasInseridas()).not.toContain(schema.meetingContactSuggestions);
   });
+
+  it("confidence que não é número ('alta', NaN) vira '0.000': o decimal(4,3) recusaria 'NaN', de novo a cada reprocessamento", async () => {
+    respostaDaIA = {
+      entities: [{ type: "person", value: "Ana", normalizedValue: null, confidence: "alta" }],
+      contacts: [{ ...ana, confidence: Number.NaN }],
+    };
+    await expect(processMeetingRecording(entradaValida)).resolves.toBeTruthy();
+    const [entidade] = insercoes.find(operacao => operacao.tabela === schema.meetingEntities)!.valores;
+    const [sugestao] = insercoes.find(operacao => operacao.tabela === schema.meetingContactSuggestions)!.valores;
+    expect(entidade.confidence).toBe("0.000");
+    expect(sugestao.confidence).toBe("0.000");
+  });
 });
 
 describe("processMeetingRecording — excluída no meio, a reunião não deixa órfãos", () => {
@@ -380,15 +432,27 @@ describe("processMeetingRecording — excluída no meio, a reunião não deixa �
     expect(tabelasInseridas()).not.toContain(schema.meetingContactSuggestions);
   });
 
-  it("'failed' na releitura NÃO aborta: só a exclusão descarta o trabalho", async () => {
-    reunioesPorLeitura.push([reuniao], [{ ...reuniao, status: "failed" }]);
-    await expect(processMeetingRecording(entradaValida)).resolves.toBeTruthy();
-    expect(tabelasInseridas()).toContain(schema.meetingTranscripts);
+  it("'failed' na releitura com outra ficha (a varredura deu a reunião como interrompida): a execução sai sem gravar transcrição, sem 'failed' e sem apagar nada — a reunião segue reprocessável", async () => {
+    reunioesPorLeitura.push(null, [{ ...reuniao, status: "failed", processingError: "ERRO_INTERROMPIDO", updatedAt: 9_999_999_999_999 }]);
+    await expect(processMeetingRecording(entradaValida)).rejects.toBeInstanceOf(ReuniaoTomadaPorOutraExecucao);
+    expect(tabelasInseridas()).toEqual([schema.meetingRecordings]);
+    expect(delecoes).toEqual([]);
+    expect(atualizacoes.map(a => a.status)).toEqual(["processing"]);
+  });
+
+  it("'processing' na releitura com OUTRA ficha (um reprocessamento tomou a reunião): também sai sem escrever", async () => {
+    reunioesPorLeitura.push(null, [{ ...reuniao, status: "processing", updatedAt: 9_999_999_999_999 }]);
+    await expect(processMeetingRecording(entradaValida)).rejects.toBeInstanceOf(ReuniaoTomadaPorOutraExecucao);
+    expect(tabelasInseridas()).toEqual([schema.meetingRecordings]);
+    expect(atualizacoes.map(a => a.status)).toEqual(["processing"]);
   });
 
   it("UPDATE final para 'ready' sem linha afetada: a exclusão venceu entre a releitura e o fim — o que foi gravado sai, com meeting_id + owner_id", async () => {
     respostaDaIA = { entities: [{ type: "person", value: "Ana", normalizedValue: null, confidence: 0.9 }], contacts: [ana] };
-    linhasAfetadasNoUpdate = 0;
+    // A tomada passa; o 'ready' não afeta linha; e a releitura depois dele não
+    // acha a reunião: a exclusão venceu.
+    linhasAfetadasPorUpdate.push(1, 0);
+    reunioesPorLeitura.push(null, null, []);
 
     await expect(processMeetingRecording(entradaValida)).rejects.toThrow("Reunião excluída durante o processamento.");
 
@@ -407,9 +471,36 @@ describe("processMeetingRecording — excluída no meio, a reunião não deixa �
     expect(delecoes).toHaveLength(Object.keys(derivadas).length);
     // …e a gravação que a compensação lê para apagar o arquivo é a da dona.
     expect(leiturasDe(schema.meetingRecordings)).toEqual([derivadaDaReuniaoDaDona("meeting_recordings")]);
-    // O 'ready' só pode valer para linha viva: id + owner_id + status <> 'deleted'.
+    // O 'ready' só pode valer para a reunião ainda desta execução.
     const posicaoDoReady = atualizacoes.findIndex(a => a.status === "ready");
-    expect(escopos[posicaoDoReady]).toEqual(REUNIAO_DA_DONA_VIVA);
+    expect(escopos[posicaoDoReady]).toEqual(REUNIAO_DA_DONA_COM_FICHA(fichaGravada()));
+    expect(atualizacoes.map(a => a.status)).not.toContain("failed");
+  });
+
+  it("UPDATE final para 'ready' sem linha afetada e reunião VIVA com outra ficha: nada é apagado, nem o áudio, e não há 'failed' — quem tomou a reunião limpa antes de gravar", async () => {
+    respostaDaIA = { entities: [], contacts: [ana] };
+    linhasAfetadasPorUpdate.push(1, 0);
+    reunioesPorLeitura.push(null, null, [{ ...reuniao, status: "processing", updatedAt: 9_999_999_999_999 }]);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await expect(processMeetingRecording(entradaValida)).rejects.toBeInstanceOf(ReuniaoTomadaPorOutraExecucao);
+
+    expect(delecoes).toEqual([]);
+    expect(storageDelete).not.toHaveBeenCalled();
+    expect(atualizacoes.map(a => a.status)).toEqual(["processing", "ready"]);
+  });
+
+  it("UPDATE final para 'ready' sem linha afetada e a releitura acha a reunião ainda 'deleted' (a exclusão não terminou): compensa como exclusão, não como 'outra execução'", async () => {
+    respostaDaIA = { entities: [{ type: "person", value: "Ana", normalizedValue: null, confidence: 0.9 }], contacts: [ana] };
+    linhasAfetadasPorUpdate.push(1, 0);
+    reunioesPorLeitura.push(null, null, [{ ...reuniao, status: "deleted" }]);
+
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow("Reunião excluída durante o processamento.");
+
+    expect(tabelasApagadas()).toEqual([
+      schema.meetingContactSuggestions, schema.meetingEntities, schema.meetingTranscripts,
+      schema.meetingTranscriptTranslations, schema.meetingRecordings,
+    ]);
     expect(atualizacoes.map(a => a.status)).not.toContain("failed");
   });
 });
