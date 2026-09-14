@@ -644,9 +644,10 @@ export function pesoApurado(a: UserProfile, b: UserProfile): number {
   // é boolean com default `false` no schema, então "não marquei nada" e "não
   // procuro investimento" chegam iguais e caem no ramo de 60 pontos. Só conta
   // como apurado quando existe declaração POSITIVA dos dois lados — capacidade
-  // preenchida ou procura assumida.
+  // preenchida ou procura assumida. "none" é o valor inicial do onboarding, não
+  // declaração: a mesma exclusão de `capacidadeDeclarada` no score.
   const declarouInvestimento = (perfil: UserProfile) =>
-    !!perfil.investmentCapacity || perfil.lookingForInvestment === true;
+    (!!perfil.investmentCapacity && perfil.investmentCapacity !== "none") || perfil.lookingForInvestment === true;
   if (declarouInvestimento(a) && declarouInvestimento(b)) peso += PESOS_DO_SCORE.investimento;
 
   return peso;

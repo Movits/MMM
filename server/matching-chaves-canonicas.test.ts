@@ -470,6 +470,16 @@ describe("perfil sem informação não gera match", () => {
       .toBe(PESOS.investimento);
   });
 
+  it('"none" em investmentCapacity é o valor inicial do onboarding, não declaração', () => {
+    expect(motor.pesoApurado(perfil({ investmentCapacity: "none" }), perfil({ investmentCapacity: "none" }))).toBe(0);
+    expect(motor.pesoApurado(perfil({ investmentCapacity: "none" }), perfil({ investmentCapacity: "50k_200k" }))).toBe(0);
+    // Quem deixou "none" mas assumiu que procura investimento declarou, sim.
+    expect(motor.pesoApurado(
+      perfil({ investmentCapacity: "none", lookingForInvestment: true }),
+      perfil({ investmentCapacity: "50k_200k" }),
+    )).toBe(PESOS.investimento);
+  });
+
   it("cada dimensão soma exatamente o seu peso da fórmula", () => {
     const casos: [Partial<UserProfile>, Partial<UserProfile>, number][] = [
       [{ whatIHave: ["tecnologia"] }, { whatINeed: ["tecnologia"] }, PESOS.complementaridade],
