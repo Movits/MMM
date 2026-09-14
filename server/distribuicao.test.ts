@@ -566,17 +566,25 @@ describe("distribuicao.decidir — efeitos", () => {
     expect(String(avisos()[0].title)).toMatch(/não encaminhado/i);
   });
 
-  it("não encaminhar pedido RECÍPROCO: as duas pediram, as duas veem 'não encaminhado' e as duas são avisadas — sem o motivo", async () => {
+  it("não encaminhar pedido RECÍPROCO: as duas são avisadas, sem o motivo e com o MESMO aviso de um pedido feito sozinha", async () => {
+    // Um texto próprio do caso recíproco ("as duas partes") contaria a cada uma que
+    // a outra também clicou, sem encaminhamento nenhum. Privacidade vence: o aviso
+    // é um só, e nenhuma pessoa distingue o seu caso do outro.
+    await caller().decidir({ connectionId: 7, aprovar: false, nota: "Setores sem relação" });
+    const { userId: _sozinha, ...avisoDeQuemPediuSozinha } = avisos()[0];
+
+    estado.chamadas = [];
+    estado.auditorias = [];
     estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: new Date() };
     await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "Setores sem relação" }))
       .resolves.toEqual({ success: true, statusFinal: "not_forwarded", reciprocado: true });
 
     expect(acoes()).toEqual(["MATCH_REVIEW_REJECTED"]);
     expect(avisos().map(a => a.userId).sort()).toEqual([2, 3]);
+    for (const { userId: _quem, ...aviso } of avisos()) expect(aviso).toEqual(avisoDeQuemPediuSozinha);
     for (const aviso of avisos()) {
       expect(`${aviso.title} ${aviso.body}`).not.toContain("Setores sem relação");
-      // A frase "a outra pessoa não foi avisada" seria falsa aqui.
-      expect(String(aviso.body)).not.toMatch(/não foi avisada/);
+      expect(`${aviso.title} ${aviso.body}`).not.toMatch(/duas partes|duas pessoas|também|não foi avisada/i);
     }
   });
 

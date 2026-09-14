@@ -228,22 +228,22 @@ export const distribuicaoRouter = router({
               actionUrl: "/dashboard",
             });
           }
-        } else if (reciprocado) {
-          for (const userId of [pedido.requesterId, pedido.recipientId]) {
+        } else {
+          // Não encaminhado: o MESMO aviso para cada pessoa que clicou, tenha sido um
+          // clique ou dois. Um texto próprio do caso recíproco ("as duas partes")
+          // contaria a cada uma que a outra também clicou, sem encaminhamento
+          // nenhum; e uma frase só do caso solitário ("a outra pessoa não foi
+          // avisada") contaria o mesmo pela ausência. Privacidade vence (revisão da
+          // #115, 14/09/2026).
+          const quemClicou = reciprocado ? [pedido.requesterId, pedido.recipientId] : [pedido.requesterId];
+          for (const userId of quemClicou) {
             await createNotification({
               userId, type: "system",
               title: "Interesse não encaminhado",
-              body: "O distribuidor conferiu o interesse demonstrado pelas duas partes e não o encaminhou desta vez.",
+              body: "O distribuidor conferiu o seu pedido de interesse e não o encaminhou desta vez. Seu nome não foi revelado à outra pessoa.",
               actionUrl: "/dashboard",
             });
           }
-        } else {
-          await createNotification({
-            userId: pedido.requesterId, type: "system",
-            title: "Interesse não encaminhado",
-            body: "O distribuidor conferiu o seu pedido de interesse e não o encaminhou desta vez. A outra pessoa não foi avisada.",
-            actionUrl: "/dashboard",
-          });
         }
       } catch (_) { /* a decisão já está gravada; o sino é acessório */ }
 

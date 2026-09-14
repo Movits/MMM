@@ -92,7 +92,7 @@ confere o par e só então encaminha. Máquina de estados de `connections.status
 | `in_review` A→B | `in_review` + `reciprocatedAt` | B clicando em A, sem pedido dela no par | `id AND status = 'in_review' AND reciprocatedAt IS NULL` | nenhum; resposta idêntica |
 | `in_review` | `pending` | distribuidor (`distribuicao.decidir`, encaminhar) | `id AND status = 'in_review' AND reciprocatedAt IS NULL` + termo, conta ativa e portão da demanda expressa | `interest_received` a B; `system` a A; `MATCH_REVIEW_APPROVED` |
 | `in_review` + `reciprocatedAt` | `accepted` | distribuidor (encaminhar) | `id AND status = 'in_review' AND reciprocatedAt IS NOT NULL` + as mesmas travas | 2× `MATCH_IDENTITY_REVEALED` (`via: distribuidor`); aviso aos dois |
-| `in_review` | `not_forwarded` | distribuidor (não encaminhar, com nota) | `id AND status = 'in_review'` | `system` a A (e a B, se ela também clicou), sem o motivo; B que não clicou não é avisada; `MATCH_REVIEW_REJECTED` |
+| `in_review` | `not_forwarded` | distribuidor (não encaminhar, com nota) | `id AND status = 'in_review'` | `system` a A (e a B, se ela também clicou), sem o motivo e com o mesmo texto nos dois casos; B que não clicou não é avisada; `MATCH_REVIEW_REJECTED` |
 | `pending` | `accepted` / `declined` | destinatária (`connections.respond`) | `id AND recipientId = ela AND status = 'pending'` | revelação só com 1 linha afetada |
 | `pending` A→B | `accepted` | B por `send` | `id AND status = 'pending'` | `via: interesse_mutuo` |
 | `not_forwarded` A→B, sem `reciprocatedAt` | + linha nova B→A `in_review` | B clicando em A | nenhuma linha de B no par | aviso a quem distribui (menos as partes); o par passa a ter duas linhas |

@@ -357,7 +357,8 @@ duas, as duas veem "em análise", e a aprovação vira `accepted` de uma vez, co
 duas linhas de `MATCH_IDENTITY_REVEALED` (`via: "distribuidor"`). A projeção não diz
 quem clicou primeiro: nessas linhas `souDestinataria` sai falso e, na lista de
 conexões, a data (e a ordem) é a do clique de quem consulta. Se o distribuidor não
-encaminhar, as duas veem "não encaminhado" e as duas recebem o aviso. O desfecho
+encaminhar, as duas veem "não encaminhado" e as duas recebem o aviso, com o mesmo
+texto de um pedido feito sozinha: nada nele conta que a outra também clicou. O desfecho
 sai do banco no instante da escrita: um clique que chega enquanto o distribuidor
 decide não gera `pending` com `reciprocatedAt` preenchido.
 
