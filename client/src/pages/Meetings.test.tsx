@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import i18n from "@/i18n";
 import Meetings from "./Meetings";
 
 /**
@@ -24,7 +25,7 @@ import Meetings from "./Meetings";
  * de fora porque não é o que se prova aqui.
  */
 
-type Opcoes = { onSuccess?: (data: unknown, vars: unknown) => void; onError?: (erro: unknown, vars: unknown) => void };
+type Opcoes = { onSuccess?: (data: unknown, vars: unknown) => void; onError?: (erro: unknown, vars: unknown) => void; onSettled?: () => void };
 
 // vi.mock é içado para o topo do arquivo; o que as fábricas usam precisa
 // nascer em vi.hoisted, senão é lido antes de existir.
@@ -42,7 +43,7 @@ const duble = vi.hoisted(() => {
     registrar,
     list: vi.fn(),
     get: vi.fn(),
-    utils: { meetings: { list: { invalidate: vi.fn() }, get: { invalidate: vi.fn() } } },
+    utils: { meetings: { list: { invalidate: vi.fn() }, get: { invalidate: vi.fn(), setData: vi.fn() } } },
   };
 });
 
@@ -61,6 +62,7 @@ vi.mock("@/lib/trpc", () => ({
       decideContactSuggestion: duble.registrar("decideContactSuggestion"),
       translateTranscript: duble.registrar("translateTranscript"),
       delete: duble.registrar("delete"),
+      reprocess: duble.registrar("reprocess"),
     },
   },
 }));
@@ -116,11 +118,12 @@ const REUNIAO = {
 };
 
 /** Monta a lista com uma reunião e abre o detalhe dela. */
-function abrirDetalhe(reuniao: Partial<typeof REUNIAO> = {}) {
+type Detalhe = { transcript: unknown; suggestions: unknown[]; recording: unknown; recordingExpired: boolean };
+function abrirDetalhe(reuniao: Partial<typeof REUNIAO> = {}, detalhe: Partial<Detalhe> = {}) {
   const meeting = { ...REUNIAO, ...reuniao };
   duble.list.mockReturnValue({ data: [meeting], isLoading: false });
   duble.get.mockReturnValue({
-    data: { meeting, transcript: null, entities: [], suggestions: [], recording: null, recordingExpired: false },
+    data: { meeting, transcript: null, entities: [], suggestions: [], recording: null, recordingExpired: false, ...detalhe },
     isLoading: false,
   });
   render(<Meetings />);
@@ -223,5 +226,227 @@ describe("Detalhe da reunião — a falha é explicada no idioma da dona", () =>
   it("sem mensagem, a caixa usa o texto de reserva", () => {
     abrirDetalhe({ status: "failed", processingError: null });
     expect(screen.getByText(/O processamento não foi concluído/)).toBeInTheDocument();
+  });
+});
+
+const DIA = 24 * 60 * 60 * 1000;
+const gravacao = (expiraEm: number) => ({ url: "/manus-storage/meetings/dona/r/rec.webm", mimeType: "audio/webm", durationSeconds: 95, sizeBytes: 2048, expiresAt: expiraEm });
+const botaoReprocessar = () => screen.queryByRole("button", { name: /Reprocessar/ });
+const sugestaoPendente = { id: "s1", fullName: "Ana Souza", jobTitle: null, company: null, email: null, status: "pending" };
+
+describe("Gravação — envio que falha", () => {
+  it("a lista é relida quando o envio falha: a reunião 'failed' aparece ao voltar, e com ela o Reprocessar", () => {
+    duble.list.mockReturnValue({ data: [], isLoading: false });
+    render(<Meetings />);
+    act(() => { duble.mutacoes.submitRecording.opcoes.onError?.({ message: "O limite de uso gratuito do serviço de IA foi atingido." }, {}); });
+    expect(toast.error).toHaveBeenCalledWith("O limite de uso gratuito do serviço de IA foi atingido.");
+    expect(duble.utils.meetings.list.invalidate).toHaveBeenCalled();
+  });
+});
+
+describe("Detalhe da reunião — reprocessar a reunião que falhou", () => {
+  it("com áudio guardado: a dica diz até quando ele fica e que o resultado anterior é substituído, e o botão pede o reprocessamento com o id", () => {
+    const meeting = abrirDetalhe({ status: "failed", processingError: "Não foi possível transcrever o áudio." }, { recording: gravacao(Date.now() + 20 * DIA) });
+    expect(screen.getByText(/continua guardado até .*substitui a transcrição/)).toBeInTheDocument();
+    fireEvent.click(botaoReprocessar()!);
+    expect(duble.mutacoes.reprocess.mutate).toHaveBeenCalledWith({ meetingId: meeting.id });
+  });
+
+  it("sem áudio guardado: nenhum botão, e o texto manda gravar ou enviar de novo", () => {
+    abrirDetalhe({ status: "failed", processingError: "Arquivo de áudio inválido." });
+    expect(botaoReprocessar()).not.toBeInTheDocument();
+    expect(screen.getByText(/não está guardado, então não há o que reprocessar/)).toBeInTheDocument();
+  });
+
+  it("áudio que vence em menos de 15 minutos: nenhum botão, e o texto não finge que o áudio sumiu", () => {
+    abrirDetalhe({ status: "failed" }, { recording: gravacao(Date.now() + 10 * 60 * 1000) });
+    expect(botaoReprocessar()).not.toBeInTheDocument();
+    expect(screen.getByText(/Não é possível reprocessar esta reunião/)).toBeInTheDocument();
+    expect(screen.queryByText(/não está guardado/)).not.toBeInTheDocument();
+  });
+
+  it.each(["ready", "processing"])("reunião %s não oferece reprocessar", status => {
+    abrirDetalhe({ status }, { recording: gravacao(Date.now() + 20 * DIA) });
+    expect(botaoReprocessar()).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["CONFLICT", /não está com falha ou já está sendo processada/],
+    ["PRECONDITION_FAILED", /Não é possível reprocessar esta reunião/],
+    ["TOO_MANY_REQUESTS", /Muitas tentativas de reprocessar/],
+    ["INTERNAL_SERVER_ERROR", /Não foi possível reprocessar a reunião/],
+  ])("recusa %s vira a frase traduzida, não a mensagem crua do servidor", (code, frase) => {
+    abrirDetalhe({ status: "failed" }, { recording: gravacao(Date.now() + 20 * DIA) });
+    act(() => { duble.mutacoes.reprocess.opcoes.onError?.({ message: "mensagem do servidor", data: { code } }, { meetingId: REUNIAO.id }); });
+    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(frase));
+    expect(toast.error).not.toHaveBeenCalledWith("mensagem do servidor");
+  });
+
+  it("pedido aceito: a tela vira 'processing' na hora, sem esperar a releitura", () => {
+    abrirDetalhe({ status: "failed" }, { recording: gravacao(Date.now() + 20 * DIA) });
+    act(() => { duble.mutacoes.reprocess.opcoes.onSuccess?.({ status: "processing" }, { meetingId: REUNIAO.id }); });
+    expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/Reprocessamento iniciado/));
+    expect(duble.utils.meetings.get.setData).toHaveBeenCalledTimes(1);
+    const [chave, atualizar] = duble.utils.meetings.get.setData.mock.calls[0] as [unknown, (anterior: unknown) => { meeting: Record<string, unknown> } | undefined];
+    expect(chave).toEqual({ meetingId: REUNIAO.id });
+    expect(atualizar({ meeting: { ...REUNIAO, status: "failed", processingError: "x" } })?.meeting).toMatchObject({ status: "processing", processingError: null });
+    expect(atualizar(undefined)).toBeUndefined();
+  });
+
+  it("o áudio sumiu do bucket: o motivo sai traduzido, sem a dica de 'continua guardado' e sem o botão", () => {
+    abrirDetalhe({ status: "failed", processingError: "O áudio guardado desta reunião não foi encontrado." }, { recording: gravacao(Date.now() + 20 * DIA) });
+    expect(botaoReprocessar()).not.toBeInTheDocument();
+    expect(screen.queryByText(/continua guardado até/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Não é possível reprocessar esta reunião/)).toBeInTheDocument();
+  });
+
+  it("…e em inglês o motivo aparece traduzido, não em português", async () => {
+    await i18n.changeLanguage("en");
+    try {
+      abrirDetalhe({ status: "failed", processingError: "O áudio guardado desta reunião não foi encontrado." }, { recording: gravacao(Date.now() + 20 * DIA) });
+      expect(screen.getByText("This meeting's stored audio was not found.")).toBeInTheDocument();
+      expect(screen.queryByText("O áudio guardado desta reunião não foi encontrado.")).not.toBeInTheDocument();
+    } finally {
+      await i18n.changeLanguage("pt-BR");
+    }
+  });
+
+  it("aceito ou recusado, a tela relê a reunião e a lista", () => {
+    abrirDetalhe({ status: "failed" }, { recording: gravacao(Date.now() + 20 * DIA) });
+    act(() => { duble.mutacoes.reprocess.opcoes.onSettled?.(); });
+    expect(duble.utils.meetings.get.invalidate).toHaveBeenCalledWith({ meetingId: REUNIAO.id });
+    expect(duble.utils.meetings.list.invalidate).toHaveBeenCalled();
+  });
+
+  it("sem transcrição e com o áudio vencido: não diz que 'a transcrição continua aqui' nem que houve gravação apagada", () => {
+    abrirDetalhe({ status: "failed" }, { recordingExpired: true });
+    expect(screen.queryByText(/A transcrição continua aqui/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/foi apagada/)).not.toBeInTheDocument();
+    expect(screen.getByText(/O áudio fica guardado por no máximo 30 dias/)).toBeInTheDocument();
+  });
+});
+
+describe("Detalhe da reunião — enquanto processa", () => {
+  const abaContatos = () => screen.getByRole("button", { name: /Contatos/ });
+
+  it("mostra a faixa de processamento e pausa as decisões sobre as sugestões da tentativa anterior", () => {
+    abrirDetalhe({ status: "processing" }, { suggestions: [sugestaoPendente] });
+    expect(screen.getByRole("status")).toHaveTextContent("Transcrevendo e analisando a reunião");
+    fireEvent.click(abaContatos());
+    expect(screen.getByText("Ana Souza")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Criar contato/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/Disponível quando o processamento terminar/)).toBeInTheDocument();
+  });
+
+  it("com a reunião pronta, as decisões voltam", () => {
+    abrirDetalhe({ status: "ready" }, { suggestions: [sugestaoPendente] });
+    fireEvent.click(abaContatos());
+    expect(screen.getByRole("button", { name: /Criar contato/ })).toBeInTheDocument();
+  });
+
+  it("detalhe e lista só consultam sozinhos enquanto há reunião processando", () => {
+    abrirDetalhe({ status: "failed" });
+    const detalhe = duble.get.mock.calls[0][1] as { refetchInterval: (consulta: unknown) => number | false };
+    expect(detalhe.refetchInterval({ state: { data: { meeting: { status: "processing" } } } })).toBe(5000);
+    expect(detalhe.refetchInterval({ state: { data: { meeting: { status: "failed" } } } })).toBe(false);
+    expect(detalhe.refetchInterval({ state: { data: undefined } })).toBe(false);
+    const lista = duble.list.mock.calls[0][1] as { refetchInterval: (consulta: unknown) => number | false };
+    expect(lista.refetchInterval({ state: { data: [{ status: "ready" }, { status: "processing" }] } })).toBe(10000);
+    expect(lista.refetchInterval({ state: { data: [{ status: "ready" }] } })).toBe(false);
+  });
+
+  it.each([
+    ["ready", "success", "Reunião processada. Revise a transcrição e as sugestões."],
+    ["failed", "error", "Não foi possível processar a reunião."],
+  ] as const)("quando o processamento termina em %s, a tela avisa", (fim, tipo, frase) => {
+    const meeting = { ...REUNIAO, status: "processing" };
+    const detalheCom = (status: string) => ({
+      data: { meeting: { ...meeting, status }, transcript: null, entities: [], suggestions: [], recording: null, recordingExpired: false },
+      isLoading: false,
+    });
+    duble.list.mockReturnValue({ data: [meeting], isLoading: false });
+    duble.get.mockReturnValue(detalheCom("processing"));
+    const { rerender } = render(<Meetings />);
+    fireEvent.click(screen.getByRole("button", { name: /Reunião com a vinícola/ }));
+    expect(toast[tipo]).not.toHaveBeenCalled();
+
+    duble.get.mockReturnValue(detalheCom(fim));
+    rerender(<Meetings />);
+
+    expect(toast[tipo]).toHaveBeenCalledWith(frase);
+  });
+
+  it.each(["ready", "failed"])("abrir uma reunião %s não dispara aviso de término: só a troca a partir de 'processing' avisa", status => {
+    abrirDetalhe({ status });
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("na lista, uma consulta periódica que falha não troca as reuniões pela tela de erro", () => {
+    duble.list.mockReturnValue({
+      data: [{ ...REUNIAO, status: "processing" }], isLoading: false, isError: true,
+      error: { message: MENSAGEM, data: { code: "INTERNAL_SERVER_ERROR" } }, refetch: vi.fn(),
+    });
+    render(<Meetings />);
+    expect(screen.getByRole("button", { name: /Reunião com a vinícola/ })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("reunião excluída em outro lugar (NOT_FOUND) enquanto processava: a tela diz que não existe e para de consultar e de tentar", () => {
+    const meeting = { ...REUNIAO, status: "processing" };
+    duble.list.mockReturnValue({ data: [meeting], isLoading: false });
+    duble.get.mockReturnValue({
+      data: { meeting, transcript: null, entities: [], suggestions: [], recording: null, recordingExpired: false },
+      isLoading: false, isError: true, error: { message: "Reunião não encontrada.", data: { code: "NOT_FOUND" } }, refetch: vi.fn(),
+    });
+    render(<Meetings />);
+    fireEvent.click(screen.getByRole("button", { name: /Reunião com a vinícola/ }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Reunião não encontrada.");
+    expect(screen.queryByText(/Transcrevendo e analisando/)).not.toBeInTheDocument();
+
+    const opcoes = duble.get.mock.calls[0][1] as { refetchInterval: (consulta: unknown) => number | false; retry: (tentativas: number, erro: unknown) => boolean };
+    const naoEncontrada = { data: { code: "NOT_FOUND" } };
+    expect(opcoes.refetchInterval({ state: { data: { meeting: { status: "processing" } }, error: naoEncontrada } })).toBe(false);
+    expect(opcoes.retry(0, naoEncontrada)).toBe(false);
+    expect(opcoes.retry(0, { data: { code: "INTERNAL_SERVER_ERROR" } })).toBe(true);
+    expect(opcoes.retry(3, { data: { code: "INTERNAL_SERVER_ERROR" } })).toBe(false);
+  });
+
+  it("uma consulta periódica que falha não troca a reunião pela tela de erro", () => {
+    const meeting = { ...REUNIAO, status: "processing" };
+    duble.list.mockReturnValue({ data: [meeting], isLoading: false });
+    duble.get.mockReturnValue({
+      data: { meeting, transcript: null, entities: [], suggestions: [], recording: null, recordingExpired: false },
+      isLoading: false, isError: true, error: { message: MENSAGEM, data: { code: "INTERNAL_SERVER_ERROR" } }, refetch: vi.fn(),
+    });
+    render(<Meetings />);
+    fireEvent.click(screen.getByRole("button", { name: /Reunião com a vinícola/ }));
+    expect(screen.getByRole("heading", { name: "Reunião com a vinícola" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("em processamento, a transcrição da tentativa anterior não é mandada traduzir", async () => {
+    await i18n.changeLanguage("en");
+    try {
+      abrirDetalhe({ status: "processing" }, { transcript: { id: "t1", transcript: "Fala da reunião.", language: "pt" } });
+      expect(duble.mutacoes.translateTranscript.mutate).not.toHaveBeenCalled();
+    } finally {
+      await i18n.changeLanguage("pt-BR");
+    }
+  });
+
+  it("…e com a reunião pronta, a tradução automática segue como antes", async () => {
+    await i18n.changeLanguage("en");
+    try {
+      abrirDetalhe({ status: "ready" }, { transcript: { id: "t1", transcript: "Fala da reunião.", language: "pt" } });
+      expect(duble.mutacoes.translateTranscript.mutate).toHaveBeenCalledWith({ meetingId: REUNIAO.id, language: "en" }, expect.anything());
+      // A resposta é aplicada pelo callback do próprio pedido, que só vale para o
+      // último; no hook não há onSuccess que aplique uma resposta atrasada.
+      const [, opcoesDoPedido] = duble.mutacoes.translateTranscript.mutate.mock.calls[0] as [unknown, { onSuccess?: unknown }];
+      expect(opcoesDoPedido.onSuccess).toBeInstanceOf(Function);
+      expect(duble.mutacoes.translateTranscript.opcoes.onSuccess).toBeUndefined();
+    } finally {
+      await i18n.changeLanguage("pt-BR");
+    }
   });
 });

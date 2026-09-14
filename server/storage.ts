@@ -20,7 +20,7 @@
 // agora exige sessão e posse antes de assinar o download.
 
 import crypto from "node:crypto";
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, type GetObjectCommandOutput } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 type StorageConfig = {
@@ -114,6 +114,65 @@ export async function storageDelete(relKey: string): Promise<void> {
   await getClient(config).send(
     new DeleteObjectCommand({ Bucket: config.bucket, Key: key }),
   );
+}
+
+/** O objeto não existe no bucket (NoSuchKey, ou só 404 em provedor que não manda o código). */
+export class ObjetoAusenteNoStorageError extends Error {
+  constructor(chave: string) {
+    super(`Objeto ausente no storage: ${chave}`);
+    this.name = "ObjetoAusenteNoStorageError";
+  }
+}
+
+/** O objeto é maior que o limite de quem o pediu. */
+export class ObjetoGrandeDemaisError extends Error {
+  constructor(tamanho: number, limite: number) {
+    super(`Objeto de ${tamanho} bytes acima do limite de ${limite} bytes.`);
+    this.name = "ObjetoGrandeDemaisError";
+  }
+}
+
+function ehObjetoAusente(erro: unknown): boolean {
+  const e = erro as { name?: unknown; Code?: unknown; $metadata?: { httpStatusCode?: unknown } } | null | undefined;
+  return e?.name === "NoSuchKey" || e?.Code === "NoSuchKey" || e?.$metadata?.httpStatusCode === 404;
+}
+
+/** Prazo da leitura de bytes: 10 MB de um bucket saudável chegam em poucos segundos. */
+const PRAZO_DA_LEITURA_MS = 30_000;
+
+/**
+ * Lê os BYTES de um objeto do bucket — hoje, para reprocessar uma reunião a
+ * partir do áudio guardado. Diferente de storageGet, que só monta a URL do
+ * proxy, e de storageGetSignedUrl, que entrega a leitura ao navegador.
+ *
+ * Com prazo: o S3Client é criado sem timeout, e um bucket travado prenderia o
+ * reprocessamento em segundo plano até a varredura de interrompidas. Com teto
+ * de tamanho: acima do limite o corpo nem é lido (sai pelo ContentLength), e o
+ * tamanho é reconferido depois de ler, para provedor que não manda o cabeçalho.
+ */
+export async function storageGetBytes(relKey: string, limiteBytes: number, prazoMs = PRAZO_DA_LEITURA_MS): Promise<Buffer> {
+  const config = getStorageConfig();
+  const key = normalizeKey(relKey);
+  let resposta: GetObjectCommandOutput;
+  try {
+    resposta = await getClient(config).send(
+      new GetObjectCommand({ Bucket: config.bucket, Key: key }),
+      { abortSignal: AbortSignal.timeout(prazoMs) },
+    );
+  } catch (erro) {
+    if (ehObjetoAusente(erro)) throw new ObjetoAusenteNoStorageError(key);
+    throw erro;
+  }
+  const corpo = resposta.Body;
+  if (typeof resposta.ContentLength === "number" && resposta.ContentLength > limiteBytes) {
+    (corpo as { destroy?: () => void } | undefined)?.destroy?.();
+    throw new ObjetoGrandeDemaisError(resposta.ContentLength, limiteBytes);
+  }
+  if (!corpo) throw new Error(`O storage devolveu o objeto sem conteúdo: ${key}`);
+  const bytes = Buffer.from(await corpo.transformToByteArray());
+  if (!bytes.length) throw new Error(`O storage devolveu o objeto sem conteúdo: ${key}`);
+  if (bytes.length > limiteBytes) throw new ObjetoGrandeDemaisError(bytes.length, limiteBytes);
+  return bytes;
 }
 
 /**
