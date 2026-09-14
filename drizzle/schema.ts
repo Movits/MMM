@@ -95,10 +95,15 @@ export const userProfiles = mysqlTable("user_profiles", {
   // --- Campos do sistema de matching (MMM original) ---
   primarySpecialty: varchar("primarySpecialty", { length: 100 }),
   secondarySpecialties: jsonCompat("secondarySpecialties"),
+  // LEGADO: duplicam jobTitle/company. Ninguém mais grava aqui; a leitura só as
+  // usa quando jobTitle/company estão vazios (server/perfil-consolidado.ts).
+  // Saem na etapa 2 da consolidação, depois de copiadas.
   currentRole: varchar("currentRole", { length: 200 }),
   currentCompany: varchar("currentCompany", { length: 200 }),
   sector: varchar("sector", { length: 100 }),
   seekingTypes: jsonCompat("seekingTypes"),
+  shortTermGoal: text("shortTermGoal"),   // Objetivo de curto prazo (próximos 12 meses)
+  longTermGoal: text("longTermGoal"),     // Objetivo de longo prazo (3–5 anos)
   businessInterests: jsonCompat("businessInterests"),
   preferredCompanySize: varchar("preferredCompanySize", { length: 50 }),
   openToRemote: boolean("openToRemote").default(false),

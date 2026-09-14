@@ -49,7 +49,7 @@ const INTEREST_SECTORS = [
 interface FormData {
   displayName: string; age: number | null; city: string; country: string; bio: string;
   primarySpecialty: string; primarySpecialties: string[]; customSpecialty: string; secondarySpecialties: string[]; experienceYears: number | null;
-  educationLevel: string; currentRole: string; currentCompany: string;
+  educationLevel: string;
   seekingTypes: string[]; shortTermGoal: string; longTermGoal: string;
   sector: string; businessInterests: string[]; preferredCompanySize: string;
   openToRemote: boolean; availableForTravel: boolean;
@@ -72,7 +72,7 @@ interface FormData {
 const INITIAL: FormData = {
   displayName: "", age: null, city: "", country: "BR", bio: "",
   primarySpecialty: "", primarySpecialties: [], customSpecialty: "", secondarySpecialties: [], experienceYears: null,
-  educationLevel: "", currentRole: "", currentCompany: "",
+  educationLevel: "",
   seekingTypes: [], shortTermGoal: "", longTermGoal: "",
   sector: "", businessInterests: [], preferredCompanySize: "",
   openToRemote: false, availableForTravel: false,
@@ -440,10 +440,11 @@ export default function Onboarding() {
       primarySpecialty: selectedSpecialties[0], secondarySpecialties: selectedSpecialties.slice(1),
       experienceYears: form.experienceYears ?? undefined,
       educationLevel: form.educationLevel as "high_school" | "bachelor" | "master" | "phd" | "other" | undefined,
-      currentRole: form.currentRole, currentCompany: form.currentCompany,
       // seekingTypes nunca era enviado: o campo alimenta a dimensao "objetivos",
       // que vale 30% do score de match, e ficava vazio para todo mundo.
       seekingTypes: form.seekingTypes,
+      shortTermGoal: form.shortTermGoal.trim() || undefined,
+      longTermGoal: form.longTermGoal.trim() || undefined,
       sector: form.sector === OTHER_SECTOR_LABEL && form.customSector.trim() ? form.customSector.trim() : form.sector,
       businessInterests: form.businessInterests,
       preferredCompanySize: form.preferredCompanySize as "startup" | "small" | "medium" | "large" | "any" | undefined,
@@ -646,9 +647,11 @@ export default function Onboarding() {
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <TextInput label={t("onboarding.fields.currentRole")} value={form.currentRole} onChange={v => set("currentRole", v)}
+                  {/* Cargo e empresa gravam em jobTitle/company, os mesmos campos da
+                      tela de Perfil (consolidação das colunas duplicadas). */}
+                  <TextInput label={t("onboarding.fields.currentRole")} value={form.jobTitle} onChange={v => set("jobTitle", v)}
                     placeholder={t("onboarding.fields.currentRolePlaceholder")}/>
-                  <TextInput label={t("onboarding.fields.currentCompany")} value={form.currentCompany} onChange={v => set("currentCompany", v)}
+                  <TextInput label={t("onboarding.fields.currentCompany")} value={form.company} onChange={v => set("company", v)}
                     placeholder={t("onboarding.fields.currentCompanyPlaceholder")}/>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -685,10 +688,10 @@ export default function Onboarding() {
                     </div>
                   </button>
                 </div>
-                {/* Metas de curto/longo prazo ficam ocultas por enquanto: não
-                    existem colunas para elas e o texto digitado era descartado
-                    em silêncio. Voltam quando o schema ganhar os campos
-                    (tarefa de consolidação do cadastro). */}
+                <TextareaInput label={t("onboarding.fields.shortTermGoal")} value={form.shortTermGoal} onChange={v => set("shortTermGoal", v)}
+                  placeholder={t("onboarding.fields.shortTermGoalPlaceholder")} hint={t("onboarding.fields.shortTermGoalHint")}/>
+                <TextareaInput label={t("onboarding.fields.longTermGoal")} value={form.longTermGoal} onChange={v => set("longTermGoal", v)}
+                  placeholder={t("onboarding.fields.longTermGoalPlaceholder")} hint={t("onboarding.fields.longTermGoalHint")}/>
                 <div>
                   <TextareaInput label={t("onboarding.fields.currentResources")} value={form.currentResources} onChange={v => set("currentResources", v)}
                     placeholder={t("onboarding.fields.currentResourcesPlaceholder")} hint={t("onboarding.fields.currentResourcesHint")}/>
@@ -881,7 +884,7 @@ export default function Onboarding() {
                     { label: t("onboarding.review.location"), value: `${form.city}, ${form.country}`, icon: "📍" },
                     ...(form.gender ? [{ label: t("profile.gender.label"), value: t(`profile.gender.${form.gender === "prefer_not_to_say" ? "preferNotToSay" : form.gender}`), icon: "⚥" }] : []),
                     { label: t("onboarding.review.specialty"), value: normalizePrimarySpecialties(form.primarySpecialties, form.customSpecialty).map(k => t("onboarding.specialties." + k, { defaultValue: k })).join(", "), icon: "⚡" },
-                    { label: t("onboarding.misc.company"), value: form.company || form.currentCompany || "-", icon: "🏢" },
+                    { label: t("onboarding.misc.company"), value: form.company || "-", icon: "🏢" },
                     { label: t("onboarding.review.seeking"), value: form.seekingTypes.slice(0, 2).map(k => t("onboarding.seeking." + k, { defaultValue: k })).join(", ") + (form.seekingTypes.length > 2 ? "..." : ""), icon: "🎯" },
                     ...(form.currentResources ? [{ label: t("onboarding.fields.currentResources"), value: form.currentResources, icon: "✦" }] : []),
                     { label: t("onboarding.review.sector"), value: form.sector, icon: "🌐" },

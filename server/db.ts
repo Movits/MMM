@@ -25,6 +25,7 @@ import { slugifyMatchTag } from "./match-service";
 import { normalizar } from "@shared/direcao-do-termo";
 import { BancoIndisponivel } from "./banco-indisponivel";
 import { condicaoDeStatusNasListas } from "./oportunidade-acesso";
+import { consolidarPerfil } from "./perfil-consolidado";
 import { contextoParaOferecer } from "./contexto-oferecido";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -118,7 +119,9 @@ export async function updateUser(id: number, data: Partial<InsertUser>) {
 export async function getUserProfile(userId: number) {
   const db = await exigirDb();
   const rows = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
-  return rows[0] ?? null;
+  // Cargo e empresa saem da coluna que fica, com a antiga só tapando buraco
+  // (etapa 1 da consolidação das colunas duplicadas).
+  return rows[0] ? consolidarPerfil(rows[0]) : null;
 }
 
 // Os mesmos 10 campos da antiga saveUserProfile (matching.ts), que ficou órfã
@@ -383,8 +386,10 @@ function projecaoParaAnalise(
     isVerified: conta.isVerified,
     onboardingCompleted: conta.onboardingCompleted,
     displayName: perfil.displayName,
-    company: sql<string | null>`COALESCE(${perfil.company}, ${conta.company})`,
-    jobTitle: sql<string | null>`COALESCE(${perfil.jobTitle}, ${conta.position})`,
+    // A coluna antiga do perfil (preenchida pelo Onboarding até a consolidação)
+    // vem antes da conta: sem ela, quem só respondeu o Onboarding saía sem cargo.
+    company: sql<string | null>`COALESCE(${perfil.company}, ${perfil.currentCompany}, ${conta.company})`,
+    jobTitle: sql<string | null>`COALESCE(${perfil.jobTitle}, ${perfil.currentRole}, ${conta.position})`,
     city: perfil.city,
     country: sql<string | null>`COALESCE(${perfil.country}, ${conta.country})`,
     sector: perfil.sector,

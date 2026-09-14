@@ -1180,7 +1180,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1">
                         <h2 className="text-xl font-black">{profile.displayName}</h2>
-                        <div className="text-white/40 text-sm">{profile.currentRole}{profile.currentRole && profile.city && " · "}{profile.city}</div>
+                        <div className="text-white/40 text-sm">{profile.jobTitle}{profile.jobTitle && profile.city && " · "}{profile.city}</div>
                         <div className="text-xs text-white/25 mt-0.5">{optionLabel(t, profile.primarySpecialty)}</div>
                       </div>
                         <div className="text-right">
