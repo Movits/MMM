@@ -8,7 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 import { SmartMatchConsent } from "@/components/SmartMatchConsent";
 import { analisarTermo } from "@shared/direcao-do-termo";
-import { familiaDoServico } from "@shared/tipo-da-oferta";
+import { familiaDoServico, necessidadeGenericaNomeiaOServico } from "@shared/tipo-da-oferta";
 
 type EntryKind = "asset" | "need";
 
@@ -31,10 +31,13 @@ export function seloDoMatch(match: { matchType: string; matchedAssets: ItemDoMat
   // termos na linha de baixo desmentem — o mesmo motivo pelo qual "Tag exata"
   // deixou de ser dito para todo match exato.
   if (match.matchType === "category") {
-    const porFamilia = match.matchedAssets.some(ativo => {
+    // A mesma pergunta que o motor fez ("Assessoria jurídica" diante de "Advocacia" vale 60 sem a mesma palavra de
+    // família), e a família igual dos dois lados, como antes.
+    const porFamilia = match.matchedAssets.some(ativo => match.matchedNeeds.some(necessidade => {
+      if (necessidadeGenericaNomeiaOServico(ativo.label, ativo.category, necessidade.label)) return true;
       const familia = familiaDoServico(ativo.label, ativo.category);
-      return familia !== null && match.matchedNeeds.some(necessidade => familiaDoServico(necessidade.label, necessidade.category) === familia);
-    });
+      return familia !== null && familiaDoServico(necessidade.label, necessidade.category) === familia;
+    }));
     return t(porFamilia ? "intelligentMatches.seloFamilia" : "intelligentMatches.seloCategoria");
   }
   if (match.matchType !== "exact") return t("intelligentMatches.seloSignificados");

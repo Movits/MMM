@@ -54,3 +54,11 @@ describe("seloDoMatch", () => {
     }, t)).toBe("seloOfertaProcura");
   });
 });
+
+
+describe("seloDoMatch — a mesma pergunta que o motor fez (14/09)", () => {
+  it("apoio que nomeia a profissão e profissional coordenado, sem categoria: diz família", () => {
+    expect(seloDoMatch({ matchType: "category", matchedAssets: [item("Advocacia tributária")], matchedNeeds: [item("Assessoria jurídica")] }, t)).toBe("seloFamilia");
+    expect(seloDoMatch({ matchType: "category", matchedAssets: [item("Advogado e contador")], matchedNeeds: [item("Contador")] }, t)).toBe("seloFamilia");
+  });
+});

@@ -358,3 +358,25 @@ describe("'Direito tributário' sem categoria também passa pelo portão (14/09)
     expect(scoreMatch(item("Direito do trabalho"), item("Advocacia trabalhista"))).toEqual({ score: 100, type: "exact" });
   });
 });
+
+
+describe("Revisão adversarial da correção empilhada sobre a #124 — notas do motor privado (14/09)", () => {
+  it("o mesmo serviço escrito de outro jeito vale 100; a necessidade que nomeia só a família, 60", () => {
+    expect(scoreMatch(item("Tradutora-intérprete de Libras"), item("Intérprete de Libras"))).toEqual({ score: 100, type: "exact" });
+    expect(scoreMatch(item("Property lawyer"), item("Advogado imobiliário"))).toEqual({ score: 100, type: "exact" });
+    expect(scoreMatch(item("Advocacia tributária"), item("Assessoria jurídica tributária"))).toEqual({ score: 100, type: "exact" });
+    expect(scoreMatch(item("Advogada consultora"), item("Advogada"))).toEqual({ score: 60, type: "category" });
+    expect(scoreMatch(item("律师"), item("Advogado"))).toEqual({ score: 60, type: "category" });
+    expect(scoreMatch(item("Advocacia trabalhista"), item("Assessoria jurídica e tributária"))).toEqual({ score: 60, type: "category" });
+  });
+
+  it("serviço diferente fica abaixo do corte e a linha não é gravada", () => {
+    for (const [oferta, necessidade] of [
+      ["Consultoria trabalhista", "Consultoria para segurança do trabalho"], ["Traduction juridique", "Avocat"],
+      ["Advocacia de família", "Advogado para pensão por morte"], ["Consultoria em gestão", "Consultoria em gestão pública"],
+      ["Consultoria jurídica", "Consultoria de seleção"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)).score, `${oferta} × ${necessidade}`).toBeLessThan(50);
+    }
+  });
+});

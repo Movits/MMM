@@ -212,7 +212,8 @@ Exceções deliberadas: `system.health` (responde `ok:false` com HTTP 503) e
 **Três motores de match convivem.** `server/match-service.ts` cruza contatos da mesma
 dona: `scoreMatch` aplica, nesta ordem, concorrentes → 0, slug exato → 100, mesmo
 objeto do termo → 100, mesmo núcleo → 100, o mesmo serviço escrito de outro jeito → 100
-(só para serviço: mesma família e mesma especialidade, `mesmaFamiliaEEspecialidade`),
+(só para serviço: a mesma especialidade na mesma família, entre consultoria e assessoria ou no
+apoio que nomeia a profissão, `mesmaFamiliaEEspecialidade`),
 necessidade que nomeia só a família do serviço → 60 (`necessidadeGenericaNomeiaOServico`),
 mesma categoria → 60 (não vale para serviço); o critério semântico
 vale 45, abaixo do limiar 50, logo está desligado por construção e o texto não sai

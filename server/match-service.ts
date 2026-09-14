@@ -124,8 +124,10 @@ export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore 
   // especialidade acabou de consertar.
   if (ofertaEhServico && necessidadeGenericaNomeiaOServico(asset.label, asset.category, need.label)) return { score: 60, type: "category" as const };
 
-  // Segue barrado o que o pedido veta: outra família, outra especialidade na
-  // mesma família, e a categoria em comum — nada acima olha para a categoria.
+  // Segue barrado o que o pedido veta: outra família (salvo consultoria e
+  // assessoria com a mesma especialidade, e o apoio que nomeia a profissão —
+  // ver `comoAtende`), outra especialidade na mesma família, e a categoria em
+  // comum — nada acima olha para a categoria.
 
   const categoriaAsset = slugifyMatchTag(asset.category ?? "");
   const categoriaNeed = slugifyMatchTag(need.category ?? "");

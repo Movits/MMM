@@ -328,3 +328,14 @@ describe("calculateCompatibilityScore — 'Direito tributário' sem categoria é
     expect(declarado.complementarity).toBe(60);
   });
 });
+
+
+describe("calculateCompatibilityScore — revisão adversarial da correção empilhada (14/09)", () => {
+  it("em chinês a oferta atende a necessidade genérica da família; serviço diferente segue bloqueado", () => {
+    const zh = calculateCompatibilityScore(perfil({ whatIHave: ["律师"] }), perfil({ whatINeed: ["Advogado"] }));
+    expect(zh.bloqueio).toBeUndefined();
+    expect(zh.complementarity).toBe(60);
+    const diferente = calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria trabalhista"] }), perfil({ whatINeed: ["Consultoria para segurança do trabalho"] }));
+    expect(diferente.bloqueio).toBe("servico-sem-demanda-expressa");
+  });
+});

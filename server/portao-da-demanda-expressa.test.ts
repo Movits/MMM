@@ -419,3 +419,26 @@ describe("Portão da IA — revisão adversarial da correção (13/09)", () => {
     expect(citando("Advogado tributarista | para planejamento de holding", "Advogado tributarista para planejamento de holding", oferece("Advocacia tributária"))).toBe(true);
   });
 });
+
+
+describe("Portão da IA — revisão adversarial da correção empilhada sobre a #124 (14/09)", () => {
+  const citando = (descricao: string, citacao: string, perfil: Record<string, unknown>) =>
+    passaNoPortao({ tipoDaOferta: "servico", necessidadeExpressa: citacao }, textoEscritoPelaPessoa("Oportunidade", [], descricao), { whatINeed: [], ...perfil });
+  const oferece = (...ofertas: string[]) => ({ whatIHave: ofertas });
+
+  it("pedido da família com palavra que as listas não leem fica com o modelo", () => {
+    expect(citando("Precisamos de um advogado também.", "Precisamos de um advogado também", oferece("Advocacia tributária"))).toBe(true);
+    expect(citando("We need a lawyer who speaks Portuguese.", "We need a lawyer", oferece("Tax lawyer"))).toBe(true);
+    expect(citando("Nous cherchons un avocat pour notre filiale au Brésil.", "Nous cherchons un avocat", oferece("Tax lawyer"))).toBe(true);
+    expect(citando("Precisamos de um advogado para a nossa empresa.", "Precisamos de um advogado para a nossa empresa", oferece("Advocacia tributária"))).toBe(true);
+    expect(citando("Precisamos de um advogado e buscamos parceiros comerciais.", "Precisamos de um advogado", oferece("Advocacia empresarial"))).toBe(true);
+    expect(citando("Marketing agency requires a lawyer.", "Marketing agency requires a lawyer", oferece("Tax lawyer"))).toBe(true);
+    expect(citando("Precisamos de um advogado para montar a holding.", "Precisamos de um advogado", oferece("Consultoria jurídica"))).toBe(true);
+  });
+
+  it("outro serviço entendido continua barrado", () => {
+    expect(citando("Precisamos de consultoria em marketing jurídico.", "consultoria em marketing jurídico", oferece("Consultoria jurídica"))).toBe(false);
+    expect(citando("Precisamos de consultoria em marketing e buscamos parceiros.", "consultoria em marketing", oferece("Consultoria jurídica"))).toBe(false);
+    expect(citando("Buscamos consultoria em e-commerce.", "consultoria em e-commerce", oferece("Consultoria jurídica"))).toBe(false);
+  });
+});

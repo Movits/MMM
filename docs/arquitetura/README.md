@@ -125,8 +125,10 @@ categoria digitada continua decidindo o tipo quando o texto não decide — deci
 em 14/09; a categoria ser texto livre virou cartão próprio. **A mesma coisa escrita de
 outro jeito é a mesma necessidade:** família (o lema: advocacia, consultoria, assessoria,
 tradução...) e especialidade (lemas curados: tributário = tributarista = fiscal = tax =
-ICMS) iguais dão 100 no motor privado e satisfazem o de perfis; a necessidade que nomeia
-só a família ("Advogado" diante de "Advocacia tributária") vale 60. **Palavra igual não é serviço
+ICMS) iguais dão 100 no motor privado e satisfazem o de perfis — também entre consultoria e
+assessoria e no apoio que nomeia a profissão ("Assessoria jurídica tributária" diante de
+"Advocacia tributária"); a necessidade que nomeia só a família ("Advogado" diante de
+"Advocacia tributária") vale 60. **Palavra igual não é serviço
 igual, e na dúvida não casa:** o motor só afirma equivalência do que entende. Palavra
 fora das listas precisa aparecer igual dos dois lados, e a oferta não pode ter palavra
 desconhecida a mais: "Consultoria em segurança do trabalho" não atende "Consultoria
@@ -143,9 +145,15 @@ Limites aceitos e decisões pendentes (revisão adversarial de 13/09/2026):
 - a especialidade escrita de outro jeito só é lida em pt, en e es; nos outros 7 idiomas
   as listas reconhecem a família do serviço (#124), e a especialidade só casa escrita
   igual;
-- "Consultoria jurídica" oferecida não atende a necessidade "Advogado" ("Legal
-  advisory" × "Lawyer" deixou de dar 100); o inverso, "Assessoria jurídica" pedida
-  diante de "Advocacia" oferecida, atende;
+- "Consultoria jurídica" oferecida não atende a necessidade "Advogado" nos motores
+  determinísticos ("Legal advisory" × "Lawyer" deixou de dar 100); na IA, fica com o
+  modelo. O inverso, "Assessoria jurídica" pedida diante de "Advocacia" oferecida, atende
+  com a nota da família;
+- advocacia empresarial, societária e de contratos são áreas distintas para a regra
+  ("Advocacia corporativa" é societária; fora da advocacia, corporativo é empresarial) —
+  decisão pendente do time;
+- em chinês e japonês só a família é lida: a oferta atende a necessidade genérica escrita
+  em outro idioma ("律师" × "Advogado"), e nenhuma especialidade;
 - no motor privado, "Consultoria" digitada não é atendida por advocacia nem por
   contabilidade; no de perfis, a opção fixa "Consultoria" é atendida pela família da
   cabeça (advocacia, contabilidade, auditoria, mentoria, coaching);
@@ -154,8 +162,12 @@ Limites aceitos e decisões pendentes (revisão adversarial de 13/09/2026):
   "Consultoria em comércio exterior", "Contador para projeto aprovado na Lei Rouanet")
   não casa nos motores determinísticos, como antes da correção;
 - na IA, citação de finalidade sem especialidade reconhecida ("Buscamos consultoria para
-  aumentar vendas no Instagram"), negação ("já temos consultoria jurídica") e
-  autodescrição ("somos um escritório de advocacia") ficam com o modelo.
+  aumentar vendas no Instagram"), especialidade que as listas não leem ("advogado de
+  LGPD"), negação ("já temos consultoria jurídica") e autodescrição ("somos um escritório
+  de advocacia") ficam com o modelo; só o assunto desconhecido de consultoria ou
+  assessoria ("consultoria em e-commerce") barra diante de especialidade reconhecida, e a
+  descrição estruturada com dois-pontos ("Precisamos de consultoria: marketing digital")
+  ainda escapa.
 
 ### 3. Nada que a IA extrair entra sozinho
 

@@ -612,12 +612,18 @@ const AREAS_DO_DIREITO = new Set([
   "sucessorio", "sucessoria", "bancario", "bancaria", "eleitoral", "constitucional", "medico",
 ]);
 const AREAS_DO_DIREITO_PELO_GENITIVO = new Set(["trabalho", "familia", "consumidor", "saude"]);
+/** Áreas que também qualificam o próprio direito como ativo: "Direito digital DE transmissão do filme". */
+const AREAS_QUE_QUALIFICAM_O_ATIVO = new Set(["digital", "internacional"]);
 
 /** A área do direito que faz de "Direito X" um serviço, ou null. */
 function areaDoDireito(palavras: string[], indice: number): string | null {
   if (!CABECAS_DO_DIREITO.has(palavras[indice] ?? "")) return null;
   const seguinte = palavras[indice + 1];
-  if (seguinte && AREAS_DO_DIREITO.has(seguinte)) return seguinte;
+  if (seguinte && AREAS_DO_DIREITO.has(seguinte)) {
+    // "Direito digital DE transmissão", "Direito internacional SOBRE a marca": o direito é o ativo (revisão de 14/09).
+    const objeto = palavras[indice + 2] ?? "";
+    return AREAS_QUE_QUALIFICAM_O_ATIVO.has(seguinte) && (GENITIVOS.has(objeto) || objeto === "sobre") ? null : seguinte;
+  }
   const depois = palavras[indice + 2];
   if (seguinte && GENITIVOS.has(seguinte) && depois && AREAS_DO_DIREITO_PELO_GENITIVO.has(depois)) return depois;
   return null;
@@ -776,7 +782,8 @@ const PALAVRAS_SEM_ESPECIALIDADE = new Set([
   "area", "areas", "urgente", "urgentes", "urgentemente", "experiente", "experientes", "qualificado", "qualificada", "qualificados",
   "qualificadas", "bom", "boa", "bons", "boas", "confiavel", "confiaveis", "nosso", "nossa", "nossos", "nossas",
   "meu", "minha", "seu", "sua", "um", "uma", "algum", "alguma", "queria",
-  "publico", "publica", "confianca", "online", "selecao",
+  // "público" e "seleção" não: nomeiam área ("gestão pública") e serviço ("consultoria de seleção").
+  "confianca", "online",
   "senior", "junior", "pleno", "bilingue", "trilingue", "altamente", "freelancer", "autonomo", "autonoma",
   "inscrito", "inscrita", "registrado", "registrada", "habilitado", "habilitada", "oab", "crc", "crea",
   "indicacao", "indicacoes", "contratacao", "contratacoes",
@@ -806,21 +813,36 @@ const LEMAS_DE_ESPECIALIDADE: Record<string, readonly string[]> = {
   previdenciario: ["previdenciario", "previdenciaria", "previdenciarios", "previdenciarias", "previdenciarista", "previdenciaristas", "previdencia"],
   criminal: ["criminal", "criminais", "criminalista", "criminalistas", "penal", "penais", "penalista", "penalistas", "penales"],
   civil: ["civil", "civel", "civeis", "civis", "civiles", "civilista", "civilistas"],
-  imobiliario: ["imobiliario", "imobiliaria", "imobiliarios", "imobiliarias", "inmobiliario", "inmobiliaria", "inmobiliarios", "imovel", "imoveis"],
+  imobiliario: ["imobiliario", "imobiliaria", "imobiliarios", "imobiliarias", "inmobiliario", "inmobiliaria", "inmobiliarios", "imovel", "imoveis", "property", "properties"],
   ambiental: ["ambiental", "ambientais", "ambientales", "ambientalista", "ambientalistas", "environmental", "environment"],
   empresarial: ["empresarial", "empresariais", "empresa", "empresas", "mercantil", "mercantis"],
-  familia: ["familia", "familias", "familiar", "familiares", "family", "divorcio", "divorcios", "inventario", "inventarios", "partilha", "partilhas", "pensao"],
+  familia: ["familia", "familias", "familiar", "familiares", "family", "divorcio", "divorcios", "partilha", "partilhas"],
   imigracao: ["imigracao", "imigratorio", "imigratoria", "migratorio", "migratoria", "immigration", "inmigracion"],
   financeiro: ["financeiro", "financeira", "financeiros", "financeiras", "financas", "financial", "finance", "financiero", "financiera", "finanzas"],
   juramentado: ["juramentado", "juramentada", "juramentados", "juramentadas", "sworn"],
   contratual: ["contratual", "contratuais", "contrato", "contratos", "contract", "contracts", "contractual"],
   digital: ["digital", "digitais", "digitales"],
   internacional: ["internacional", "internacionais", "international", "internacionales"],
-};const LEMA_DA_ESPECIALIDADE = new Map<string, string>(
+  tecnico: ["tecnico", "tecnica", "tecnicos", "tecnicas", "technical"],
+};
+
+const LEMA_DA_ESPECIALIDADE = new Map<string, string>(
   Object.entries(LEMAS_DE_ESPECIALIDADE).flatMap(([lema, palavras]) => palavras.map(palavra => [palavra, lema] as const)),
 );
 /** Áreas que, junto de "corporativo", dizem que ele é só o público (empresas): "Advocacia tributária corporativa". */
 const AREAS_CONTENCIOSAS = new Set(["tributario", "trabalhista", "criminal", "previdenciario", "civil", "familia", "imobiliario", "ambiental", "imigracao"]);
+
+/**
+ * Palavras que só são de família na advocacia: "Advogado para inventário", "para
+ * pensão alimentícia". Fora dela são outra coisa — "Auditoria de inventário" é
+ * estoque, "Consultoria em inventário de emissões" é carbono — e por isso não
+ * estão em LEMAS_DE_ESPECIALIDADE (revisão de 14/09).
+ */
+const FAMILIA_SO_NA_ADVOCACIA = new Set(["inventario", "inventarios", "pensao", "pensoes"]);
+const COMPLEMENTO_DA_PENSAO = new Set(["alimenticia", "alimenticias", "alimentar", "alimentares"]);
+/** "Holding FAMILIAR", "empresa FAMILIAR", "FAMILY business": o tipo da empresa, não a área de família. */
+const FAMILIAR = new Set(["familiar", "familiares", "family"]);
+const EMPRESAS_FAMILIARES = new Set(["holding", "holdings", "empresa", "empresas", "negocio", "negocios", "business", "businesses", "company", "companies"]);
 
 /**
  * Palavras de atividade que não mudam o serviço QUANDO há uma especialidade
@@ -832,7 +854,7 @@ const PALAVRAS_DE_ATIVIDADE = new Set([
   "planejamento", "gestao", "questao", "questoes", "obrigacao", "obrigacoes", "demonstracao", "demonstracoes",
   "processo", "processos", "acao", "acoes", "contencioso", "rotina", "rotinas", "departamento", "setor", "setores",
   "regularizacao", "consultivo", "consultiva", "controle", "analise", "revisao", "assunto", "assuntos", "demanda",
-  "demandas", "caso", "casos", "problema", "problemas", "causa", "causas", "planning", "management",
+  "demandas", "caso", "casos", "problema", "problemas", "causa", "causas", "defesa", "planning", "management",
 ]);
 
 /** Plurais que não terminam só em -s: exportações, gerais, papéis, embalagens, exportadores. */
@@ -965,9 +987,32 @@ function comprimentoDaCidade(palavras: string[], indice: number): number {
  *     o substantivo de serviço colado DEPOIS, que é a cabeça de fato — mas
  *     empréstimos colados a um serviço em português ("Consultoria SEO",
  *     "Consultoria marketing digital") não trocam a família;
+ *   - dois profissionais colados ("Advogado consultor", "Tradutora-intérprete")
+ *     e adjetivo de profissão posposto em outro idioma ("Traduction juridique"):
+ *     a cabeça;
  *   - senão, a própria cabeça, substantivo ou adjetivo ("Jurídico").
  */
 const EMPRESTIMOS_POSPOSTOS = new Set(["compliance", "seo", "branding", "valuation", "diligence", "marketing", "design"]);
+
+/**
+ * Adjetivo de profissão que o francês, o alemão, o russo, o hindi e o árabe põem
+ * DEPOIS do serviço ("Traduction juridique", "Audit comptable", "محاسب قانوني").
+ * Nas listas é palavra de serviço comum; aqui qualifica e não troca a família
+ * (revisão de 14/09).
+ */
+const ADJETIVOS_DE_PROFISSAO_POSPOSTOS = new Set([
+  "juridique", "juridiques", "juristisch", "juristische", "comptable", "comptables",
+  "юридический", "юридические", "бухгалтерский", "कानूनी", "قانوني",
+]);
+
+/**
+ * Quem presta, não a prestação: "advogado", "tradutora", "intérprete",
+ * "consultant". Dois colados são dois serviços sem conjunção ("Tradutora-intérprete
+ * de Libras", "Advogado consultor"), e não o composto inglês, cuja primeira
+ * palavra é a atividade ("Marketing consultant").
+ */
+const SUFIXO_DE_PROFISSIONAL = new RegExp("(?:or|ora|ores|oras|ado|ada|ados|adas|ista|istas|ete|etes|eiro|eira|eiros|eiras|eto|eta|etos|etas|er|ers|ant|ants)$");
+const ehProfissional = (palavra: string) => ehSubstantivoDeServico(palavra) && SUFIXO_DE_PROFISSIONAL.test(palavra);
 
 function nucleoDoServico(palavras: string[]): { indice: number; familia: string } | null {
   const inicio = inicioDoServico(palavras);
@@ -987,8 +1032,10 @@ function nucleoDoServico(palavras: string[]): { indice: number; familia: string 
   let fim = palavras.findIndex((palavra, i) => i > inicio && (FRONTEIRAS.has(palavra) || CONJUNCOES.has(palavra)));
   if (fim < 0) fim = palavras.length;
   const cabecaEhServico = ehSubstantivoDeServico(cabeca);
+  // Dois profissionais colados são dois serviços: a família é a da cabeça, e `partesDoServico` separa o segundo.
+  if (ehProfissional(cabeca) && ehProfissional(palavras[inicio + 1] ?? "")) return { indice: inicio, familia: familiaDaPalavra(cabeca) };
   for (let i = fim - 1; i > inicio; i -= 1) {
-    if (cabecaEhServico && EMPRESTIMOS_POSPOSTOS.has(palavras[i])) continue;
+    if (cabecaEhServico && (EMPRESTIMOS_POSPOSTOS.has(palavras[i]) || ADJETIVOS_DE_PROFISSAO_POSPOSTOS.has(palavras[i]))) continue;
     if (ehSubstantivoDeServico(palavras[i])) return { indice: i, familia: familiaDaPalavra(palavras[i]) };
   }
   if (cabecaEhServico) return { indice: inicio, familia: familiaDaPalavra(cabeca) };
@@ -1002,18 +1049,32 @@ function nucleoDoServico(palavras: string[]): { indice: number; familia: string 
  *   - lemas: o que qualifica o serviço, reconhecido ou não;
  *   - conhecidos: os lemas que as listas reconhecem (curados, idioma, outro serviço);
  *   - servicos: OUTRO serviço nomeado por substantivo ("marketing" em "Consultoria de marketing jurídico");
- *   - publico: público-alvo ou finalidade ("para MEI", "para divórcio").
+ *   - publico: público-alvo ou finalidade ("para MEI", "para divórcio");
+ *   - publicoEspecifico: o público sem o destinatário genérico ("para a nossa
+ *     EMPRESA", "holding FAMILIAR"), que é o que o portão da IA lê;
+ *   - assunto: lemas desconhecidos que vieram como assunto ("consultoria EM e-commerce").
  */
 export type EspecialidadeDoServico = {
   lemas: ReadonlySet<string>;
   conhecidos: ReadonlySet<string>;
   servicos: ReadonlySet<string>;
   publico: ReadonlySet<string>;
+  publicoEspecifico: ReadonlySet<string>;
+  assunto: ReadonlySet<string>;
 };
 export type ServicoNomeado = { familia: string; especialidades: readonly EspecialidadeDoServico[] };
 
-type Alternativa = { lemas: Set<string>; conhecidos: Set<string>; servicos: Set<string>; publico: Set<string>; atividade: Set<string>; corporativo: boolean };
-const novaAlternativa = (): Alternativa => ({ lemas: new Set(), conhecidos: new Set(), servicos: new Set(), publico: new Set(), atividade: new Set(), corporativo: false });
+type Alternativa = {
+  lemas: Set<string>; conhecidos: Set<string>; servicos: Set<string>; publico: Set<string>; publicoEspecifico: Set<string>;
+  assunto: Set<string>; atividade: Set<string>; corporativo: boolean;
+};
+const novaAlternativa = (): Alternativa => ({
+  lemas: new Set(), conhecidos: new Set(), servicos: new Set(), publico: new Set(), publicoEspecifico: new Set(),
+  assunto: new Set(), atividade: new Set(), corporativo: false,
+});
+
+/** Destinatário genérico: no público, não diz qual especialidade se pede ("advogado para a nossa EMPRESA"). */
+const DESTINATARIOS_GENERICOS = new Set(["empresa", "empresas", "familiar", "familiares", "family", "trabalho", "contrato", "contratos", "contract", "contracts"]);
 
 const pulaNoServico = (palavra: string) =>
   MARCADORES_FRACOS.has(palavra) || ARTIGOS.has(palavra) || GENERICAS_DEMAIS.has(palavra) || PALAVRAS_SEM_ESPECIALIDADE.has(palavra) || QUALIFICA_O_ASSUNTO.has(palavra) || ESPECIALISTA.has(palavra);
@@ -1021,6 +1082,7 @@ const pulaNoServico = (palavra: string) =>
 function especialidadesDoServico(palavras: string[], nucleo: { indice: number; familia: string }): EspecialidadeDoServico[] {
   const alternativas = [novaAlternativa()];
   let noPublico = false;
+  let noAssunto = false;
   for (let i = inicioDoServico(palavras); i < palavras.length; i += 1) {
     const palavra = palavras[i];
     const atual = alternativas[alternativas.length - 1];
@@ -1033,9 +1095,12 @@ function especialidadesDoServico(palavras: string[], nucleo: { indice: number; f
     if (PREPOSICOES.has(palavra)) {
       const anterior = palavras[i - 1] ?? "";
       const seguinte = palavras[i + 1] ?? "";
-      if (QUALIFICA_O_ASSUNTO.has(anterior)) noPublico = false; // "com foco EM", "voltada PARA", "dedicada AO"
-      else if ((palavra === "com" || palavra === "with") && QUALIFICA_O_ASSUNTO.has(seguinte)) continue;
+      if (QUALIFICA_O_ASSUNTO.has(anterior)) { // "com foco EM", "voltada PARA", "dedicada AO"
+        noPublico = false;
+        noAssunto = true;
+      } else if ((palavra === "com" || palavra === "with") && QUALIFICA_O_ASSUNTO.has(seguinte)) continue;
       else if (!PREPOSICOES_DE_ASSUNTO.has(palavra)) noPublico = true;
+      else if (i > nucleo.indice && !noPublico) noAssunto = true;
       continue;
     }
     const cidade = comprimentoDaCidade(palavras, i);
@@ -1062,10 +1127,18 @@ function especialidadesDoServico(palavras: string[], nucleo: { indice: number; f
       lema = idioma;
       conhecido = true;
     } else if (CORPORATIVO.has(palavra)) {
-      // "corporativo" só é societário na advocacia, e só sem outra área ("Advocacia tributária corporativa" é tributária).
-      conhecido = nucleo.familia === "advocacia";
-      lema = conhecido ? "societario" : semGeneroNemNumero(palavra);
-      if (conhecido && !noPublico) atual.corporativo = true;
+      // "corporativo" é societário na advocacia, e só sem outra área ("Advocacia tributária corporativa" é tributária);
+      // fora dela é empresarial ("Corporate training" = "Treinamento empresarial", revisão de 14/09).
+      conhecido = true;
+      lema = nucleo.familia === "advocacia" ? "societario" : "empresarial";
+      if (lema === "societario" && !noPublico) atual.corporativo = true;
+    } else if (FAMILIA_SO_NA_ADVOCACIA.has(palavra) && nucleo.familia === "advocacia") {
+      lema = "familia";
+      conhecido = true;
+      if (COMPLEMENTO_DA_PENSAO.has(palavras[i + 1] ?? "")) i += 1; // "pensão ALIMENTÍCIA"
+    } else if (FAMILIAR.has(palavra) && (EMPRESAS_FAMILIARES.has(palavras[i - 1] ?? "") || EMPRESAS_FAMILIARES.has(palavras[i + 1] ?? ""))) {
+      lema = semGeneroNemNumero(palavra);
+      conhecido = false;
     } else {
       conhecido = lemaCurado(palavra) !== undefined || SUBSTANTIVOS_DE_SERVICO.has(palavra) || ADJETIVOS_DE_SERVICO.has(palavra);
       lema = lemaDaEspecialidade(palavra);
@@ -1073,15 +1146,24 @@ function especialidadesDoServico(palavras: string[], nucleo: { indice: number; f
     if (lema === nucleo.familia) continue;
     if (noPublico) {
       atual.publico.add(lema);
+      if (!DESTINATARIOS_GENERICOS.has(palavra)) atual.publicoEspecifico.add(lema);
       continue;
     }
+    const comoAssunto = noAssunto || i < nucleo.indice;
     if (!conhecido && PALAVRAS_DE_ATIVIDADE.has(palavra)) {
       atual.atividade.add(lema);
+      if (comoAssunto) atual.assunto.add(lema);
       continue;
     }
     atual.lemas.add(lema);
     if (conhecido) atual.conhecidos.add(lema);
-    if (ehSubstantivoDeServico(palavra)) atual.servicos.add(lema);
+    else if (comoAssunto) atual.assunto.add(lema);
+    // Outro serviço na oferta: o substantivo ("Consultoria de MARKETING jurídico") e o adjetivo de outra família
+    // ("Consultoria PUBLICITÁRIA imobiliária"). Não contam "jurídico" e "contábil", que nomeiam a profissão
+    // ("Consultoria jurídica tributária"), nem o adjetivo de profissão posposto ("Traduction JURIDIQUE").
+    const substantivo = ehSubstantivoDeServico(palavra) && !(i > nucleo.indice && ADJETIVOS_DE_PROFISSAO_POSPOSTOS.has(palavra));
+    const adjetivoDeOutraFamilia = ADJETIVOS_DE_SERVICO.has(palavra) && !PROFISSOES_PELO_ADJETIVO.has(lema);
+    if (substantivo || adjetivoDeOutraFamilia) atual.servicos.add(lema);
   }
   const prontas: EspecialidadeDoServico[] = [];
   for (const alternativa of alternativas) {
@@ -1092,7 +1174,10 @@ function especialidadesDoServico(palavras: string[], nucleo: { indice: number; f
       alternativa.conhecidos.delete("societario");
     }
     if (alternativa.lemas.size > 0 || alternativa.publico.size > 0) {
-      prontas.push({ lemas: alternativa.lemas, conhecidos: alternativa.conhecidos, servicos: alternativa.servicos, publico: alternativa.publico });
+      prontas.push({
+        lemas: alternativa.lemas, conhecidos: alternativa.conhecidos, servicos: alternativa.servicos,
+        publico: alternativa.publico, publicoEspecifico: alternativa.publicoEspecifico, assunto: alternativa.assunto,
+      });
     }
   }
   return prontas;
@@ -1193,6 +1278,11 @@ function partesDoServico(rotulo: string): string[] {
       noPublico = false;
       continue;
     }
+    // Dois profissionais colados, sem conjunção: "Tradutora-intérprete de Libras", "Advogado consultor tributário".
+    if (!noPublico && !noAssunto && atual.length > 0 && ehProfissional(palavra) && ehProfissional(atual[atual.length - 1])) {
+      partes.push([palavra]);
+      continue;
+    }
     if (PREPOSICOES.has(palavra)) {
       if (!PREPOSICOES_DE_ASSUNTO.has(palavra)) noPublico = true;
       else if (atual.some(ehSubstantivoDeServico)) noAssunto = true;
@@ -1229,7 +1319,6 @@ function servicosDoRotulo(rotulo: string): ServicoNomeado[] {
 const LEMAS_DE_ATIVIDADE = new Set(Array.from(PALAVRAS_DE_ATIVIDADE).map(semGeneroNemNumero));
 const desconhecidosDe = (especialidade: EspecialidadeDoServico) => Array.from(especialidade.lemas).filter(lema => !especialidade.conhecidos.has(lema));
 const ehGenerico = (servico: ServicoNomeado) => servico.especialidades.length === 0;
-const semEspecialidade = (servico: ServicoNomeado) => servico.especialidades.every(especialidade => especialidade.lemas.size === 0);
 
 /**
  * A especialidade oferecida cobre a pedida? Todo lema pedido está na oferta; o
@@ -1246,19 +1335,20 @@ function cobre(oferecida: EspecialidadeDoServico, pedida: EspecialidadeDoServico
 /**
  * Pedido só com público ou finalidade ("Contador para MEI", "Advogado para
  * divórcio"): não é a genérica da família. Todo lema dele, tirando as palavras
- * de atividade, precisa estar na oferta — na especialidade ou no público.
+ * de atividade ("para REVISÃO tributária", "para DEFESA criminal"), precisa
+ * estar na oferta — na especialidade ou no público —, também ao lado de uma
+ * especialidade curada: "para SEGURANÇA do trabalho" não é trabalhista, "para
+ * AVIAÇÃO civil" não é engenharia civil (revisão de 14/09). Serviço nomeado no
+ * público ("para ADVOGADOS") só casa com o público da oferta: "Consultoria
+ * jurídica" não é consultoria para advogados.
  */
 const LEMAS_CURADOS = new Set(Object.keys(LEMAS_DE_ESPECIALIDADE));
 const lemaCuradoOuIdioma = (lema: string) => LEMAS_CURADOS.has(lema) || lema.startsWith("idioma:");
 
 function cobrePublico(oferecida: EspecialidadeDoServico, pedida: EspecialidadeDoServico): boolean {
-  const naOferta = new Set([...Array.from(oferecida.lemas), ...Array.from(oferecida.publico)]);
-  const semAtividade = Array.from(pedida.publico).filter(lema => !LEMAS_DE_ATIVIDADE.has(lema));
-  // Com especialidade curada no público ("para defesa CRIMINAL", "para revisão TRIBUTÁRIA"), ela decide;
-  // sem ela, todas as palavras precisam estar na oferta ("para agências de marketing" não é "em marketing").
-  const curados = semAtividade.filter(lemaCuradoOuIdioma);
-  const exigidos = curados.length > 0 ? curados : semAtividade;
-  return exigidos.length > 0 && exigidos.every(lema => naOferta.has(lema));
+  const exigidos = Array.from(pedida.publico).filter(lema => !LEMAS_DE_ATIVIDADE.has(lema));
+  return exigidos.length > 0
+    && exigidos.every(lema => oferecida.publico.has(lema) || (!FAMILIAS_CONHECIDAS.has(lema) && oferecida.lemas.has(lema)));
 }
 
 function atendeEspecialidades(oferecido: ServicoNomeado, pedido: ServicoNomeado): boolean {
@@ -1280,7 +1370,6 @@ const ASSESSORIAS_QUE_NAO_ACONSELHAM = new Set(
     "esportiva", "esportivo", "esportivas", "esportivos", "press", "midia", "midias", "cobranca", "viagem", "viagens",
     "redes", "corrida", "corridas", "fitness", "musculacao", "maratona"].map(lemaDaEspecialidade),
 );
-const CONSULTORIAS_QUE_NAO_ACONSELHAM = new Set(["viagem", "viagens"].map(lemaDaEspecialidade));
 /** Lemas que provam aconselhamento: "Assessoria jurídica em cobrança" continua assessoria. */
 const LEMAS_DE_ACONSELHAMENTO = new Set([...Array.from(FAMILIAS_DE_ASSESSORIA), ...Array.from(AREAS_CONTENCIOSAS), "societario", "empresarial"]);
 
@@ -1334,14 +1423,24 @@ function comoAtende(oferta: string, categoriaDaOferta: string | null | undefined
   const pedidos = servicosDoRotulo(necessidade);
   if (pedidos.length === 0) return null;
   const oferecidos = servicosDoRotulo(oferta);
+  // Chinês e japonês: a oferta só tem a família, lida por substring ("律师"), e atende a necessidade genérica dela.
+  const familiaSemEspaco = oferecidos.length === 0 ? servicoPorSubstring(oferta) : null;
+  if (familiaSemEspaco) oferecidos.push({ familia: familiaSemEspaco, especialidades: [] });
   let melhor: ComoAtende | null = null;
   for (const pedido of pedidos) {
+    // Cada alternativa por si: em "Assessoria jurídica e tributária" diante de "Advocacia trabalhista", só a parte
+    // "jurídica" é atendida, e ela nomeia a profissão — vale a família, não a especialidade que ninguém atendeu.
+    const alternativas = ehGenerico(pedido)
+      ? [pedido]
+      : pedido.especialidades.map(especialidade => ({ familia: pedido.familia, especialidades: [especialidade] }));
     for (const oferecido of oferecidos) {
-      if (!umServicoAtende(oferecido, pedido)) continue;
-      const soAFamilia = pedido.especialidades.every(especialidade =>
-        especialidade.publico.size === 0 && Array.from(especialidade.lemas).every(lema => lema === oferecido.familia));
-      if (!soAFamilia) return "especifico";
-      melhor = "familia";
+      for (const alternativa of alternativas) {
+        if (!umServicoAtende(oferecido, alternativa)) continue;
+        const soAFamilia = alternativa.especialidades.every(especialidade =>
+          especialidade.publico.size === 0 && Array.from(especialidade.lemas).every(lema => lema === oferecido.familia));
+        if (!soAFamilia) return "especifico";
+        melhor = "familia";
+      }
     }
   }
   return melhor;
@@ -1400,11 +1499,11 @@ export function ehServicoDeAssessoria(rotulo: string, categoria?: string | null)
       return servico.especialidades.some(especialidade => Array.from(especialidade.conhecidos).some(lema => PROFISSOES_PELO_ADJETIVO.has(lema)));
     }
     if (!FAMILIAS_DE_ASSESSORIA.has(servico.familia)) return false;
-    const lista = servico.familia === "consultoria" ? CONSULTORIAS_QUE_NAO_ACONSELHAM
-      : servico.familia === "assessoria" || servico.familia === "coaching" ? ASSESSORIAS_QUE_NAO_ACONSELHAM : null;
-    if (!lista) return true;
+    // Consultoria de qualquer assunto conta ("Consultoria de viagens"): a opção fixa nomeia a família, e a
+    // necessidade que nomeia só a família vale (decisão da #124).
+    if (servico.familia !== "assessoria" && servico.familia !== "coaching") return true;
     const comEspecialidade = servico.especialidades.filter(especialidade => especialidade.lemas.size > 0);
-    return comEspecialidade.length === 0 || comEspecialidade.some(especialidade => !naoAconselha(especialidade, lista));
+    return comEspecialidade.length === 0 || comEspecialidade.some(especialidade => !naoAconselha(especialidade, ASSESSORIAS_QUE_NAO_ACONSELHAM));
   });
 }
 
@@ -1430,29 +1529,52 @@ type VereditoDoPortao = "atende" | "neutro" | "nao";
 function compararConhecidos(oferecido: ServicoNomeado, pedido: ServicoNomeado, ignorar: string | null): VereditoDoPortao {
   if (ehGenerico(pedido)) return "atende";
   // O que o pedido exige e as listas reconhecem: a especialidade e, sem ela, a especialidade curada do
-  // público ("advogado para DIVÓRCIO", "para recuperar créditos de ICMS").
+  // público ("advogado para DIVÓRCIO", "para recuperar créditos de ICMS"). Do público só conta o específico:
+  // "para a nossa EMPRESA" e "holding FAMILIAR" não pedem advocacia empresarial nem de família (revisão de 14/09).
   const pedidas = pedido.especialidades.map(especialidade => [
     ...Array.from(especialidade.conhecidos),
-    ...(especialidade.lemas.size === 0 ? Array.from(especialidade.publico).filter(lemaCuradoOuIdioma) : []),
+    ...(especialidade.lemas.size === 0 ? Array.from(especialidade.publicoEspecifico).filter(lemaCuradoOuIdioma) : []),
   ].filter(lema => lema !== ignorar));
   if (pedidas.every(pedida => pedida.length === 0)) {
-    // Especialidade que as listas não leem, diante de oferta com especialidade reconhecida e sem nada em
-    // comum, é outro serviço ("consultoria em e-commerce" para "Consultoria jurídica"). O resto fica com a IA.
+    // Especialidade que as listas não leem fica com a IA: "advogado também", "lawyer urgently", "avocat pour
+    // notre filiale". Só barra o ASSUNTO desconhecido de consultoria ou assessoria, diante de oferta com
+    // especialidade reconhecida e sem nada em comum — ali o assunto é o serviço: "consultoria em e-commerce"
+    // para "Consultoria jurídica".
     const ofertaReconhecida = oferecido.especialidades.some(especialidade => especialidade.conhecidos.size > 0);
-    const pedidoComEspecialidade = pedido.especialidades.some(especialidade => especialidade.lemas.size > 0);
+    const assuntoDesconhecido = FAMILIAS_DE_APOIO.has(pedido.familia) && pedido.especialidades.some(especialidade => especialidade.assunto.size > 0);
     const emComum = pedido.especialidades.some(pedida => Array.from(pedida.lemas).some(lema =>
       oferecido.especialidades.some(oferecida => oferecida.lemas.has(lema) || oferecida.publico.has(lema))));
-    return ignorar === null && ofertaReconhecida && pedidoComEspecialidade && !emComum ? "nao" : "neutro";
+    return ignorar === null && ofertaReconhecida && assuntoDesconhecido && !emComum ? "nao" : "neutro";
   }
   if (oferecido.especialidades.every(especialidade => especialidade.conhecidos.size === 0)) return ehGenerico(oferecido) ? "atende" : "neutro";
+  let idiomaQueAOfertaNaoDiz = false;
   for (const pedida of pedidas) {
-    if (pedida.length === 0) return "neutro";
-    const cobre = oferecido.especialidades.some(oferecida => pedida.every(lema => oferecida.conhecidos.has(lema) || oferecida.publico.has(lema)));
-    // Pedido mais específico que a oferta no mesmo serviço: "consultoria em marketing digital" para "Consultoria em marketing".
-    const maisEspecifico = oferecido.especialidades.some(oferecida => oferecida.conhecidos.size > 0 && Array.from(oferecida.conhecidos).every(lema => pedida.includes(lema)));
+    // Alternativa sem nada reconhecido não salva a que foi lida: "consultoria em marketing E redes sociais".
+    if (pedida.length === 0) continue;
+    // Idioma pedido diante de oferta que não diz idioma ("tradutor de INGLÊS" para "Tradução juramentada"):
+    // são dimensões diferentes, e fica com a IA.
+    const soIdioma = pedida.every(lema => lema.startsWith("idioma:"));
+    if (soIdioma && oferecido.especialidades.every(oferecida => !Array.from(oferecida.conhecidos).some(lema => lema.startsWith("idioma:")))) {
+      idiomaQueAOfertaNaoDiz = true;
+      continue;
+    }
+    // A oferta cobre o pedido sem nomear outro serviço que ele não pede ("Consultoria de MARKETING jurídico").
+    const cobre = oferecido.especialidades.some(oferecida =>
+      pedida.every(lema => oferecida.conhecidos.has(lema) || oferecida.publico.has(lema))
+      && Array.from(oferecida.servicos).every(lema => pedida.includes(lema)));
+    // Pedido mais específico que a oferta no mesmo serviço ("consultoria em marketing digital" para "Consultoria em
+    // marketing"), desde que a oferta não tenha palavra que as listas não leem ("Consultoria em TRANSFORMAÇÃO
+    // digital") e o que o pedido tem a mais não seja OUTRO serviço nomeado antes do da oferta: "consultoria em
+    // MARKETING jurídico" é marketing; "consultoria jurídica de DESIGN de marca" é jurídica, sobre design.
+    const maisEspecifico = oferecido.especialidades.some(oferecida => {
+      if (oferecida.conhecidos.size === 0 || desconhecidosDe(oferecida).length > 0) return false;
+      if (!Array.from(oferecida.conhecidos).every(lema => pedida.includes(lema))) return false;
+      const ultimoDaOferta = Math.max(...pedida.map((lema, k) => (oferecida.conhecidos.has(lema) ? k : -1)));
+      return pedida.every((lema, k) => oferecida.conhecidos.has(lema) || !FAMILIAS_CONHECIDAS.has(lema) || k > ultimoDaOferta);
+    });
     if (cobre || maisEspecifico) return "atende";
   }
-  return "nao";
+  return idiomaQueAOfertaNaoDiz ? "neutro" : "nao";
 }
 
 const FAMILIAS_CONHECIDAS = new Set(Object.keys(FAMILIAS));
@@ -1472,6 +1594,11 @@ function vereditoDoPedido(pedido: ServicoNomeado, oferecidos: readonly ServicoNo
       // "suporte em MARKETING", "consultoria em COMPLIANCE": o pedido nomeia o serviço da oferta.
       const comparado = compararConhecidos(oferecido, pedido, oferecido.familia);
       veredito = comparado === "neutro" ? "atende" : comparado;
+    } else if (PROFISSOES_PELO_ADJETIVO.has(pedido.familia) && FAMILIAS_DE_APOIO.has(oferecido.familia)
+      && oferecido.especialidades.some(especialidade => especialidade.lemas.has(pedido.familia))) {
+      // "Precisamos de um advogado" para quem oferece "Consultoria jurídica": consultoria jurídica é trabalho de
+      // advogado (Lei 8.906/94, art. 1º, II). Nos motores determinísticos não casa; na IA fica com o modelo.
+      veredito = "neutro";
     } else if (FAMILIAS_DE_APOIO.has(pedido.familia) && FAMILIAS_DE_ASSESSORIA.has(oferecido.familia)) {
       // Apoio genérico ("suporte para obter a autorização") diante de assessoria fica com a IA, salvo se o
       // pedido nomeia OUTRO serviço ("consultoria em MARKETING") ou especialidade que a oferta não tem.
@@ -1485,7 +1612,14 @@ function vereditoDoPedido(pedido: ServicoNomeado, oferecidos: readonly ServicoNo
   return melhor;
 }
 
-const ehMarcaDePedido = (palavra: string) => MARCADORES_FRACOS.has(palavra) || VERBOS_DE_NECESSIDADE.has(palavra);
+/** Verbos de pedido que só a IA precisa ler, para tirar a autodescrição da frente: "Marketing agency REQUIRES a lawyer". */
+const VERBOS_DE_PEDIDO_NA_IA = new Set([
+  "requer", "requerem", "demanda", "demandam", "solicita", "solicitam", "exige", "exigem",
+  "requires", "require", "seeks", "seek", "seeking", "hiring", "hires", "requiere", "requieren",
+]);
+const ehMarcaDePedido = (palavra: string) => MARCADORES_FRACOS.has(palavra) || VERBOS_DE_NECESSIDADE.has(palavra) || VERBOS_DE_PEDIDO_NA_IA.has(palavra);
+/** Pronome relativo: abre outra oração, que já não é o pedido ("advogado QUE nos ajude", "lawyer WHO speaks"). */
+const ABRE_ORACAO = new Set(["que", "who", "which", "that", "qui", "quien", "quienes"]);
 const nomeiaServicoEm = (item: readonly string[], k: number) =>
   ehSubstantivoDeServico(item[k]) || areaDoDireito(item as string[], k) !== null || (ADJETIVOS_DE_SERVICO.has(item[k]) && k > 0 && CABECAS_NEUTRAS.has(item[k - 1]));
 /** Antes do substantivo, só entra no pedido o que qualifica serviço de fato: "TAX lawyer", "LEGAL support", "escritório contábil". */
@@ -1657,7 +1791,9 @@ export function citacaoPedeServicoOferecido(citacao: string, fonte: string, serv
       let conteudo = 0;
       for (let k = fim + 1; k < tokens.length && !fimAntes[k]; k += 1) {
         if (quebraAntes[k] && abreOutroServico(tokens, k)) break;
-        if (CONJUNCOES.has(tokens[k]) && abreOutroServico(tokens, k + 1)) break;
+        // Conjunção que abre outro serviço ou outra oração ("e BUSCAMOS parceiros") e pronome relativo encerram o pedido.
+        if (CONJUNCOES.has(tokens[k]) && (abreOutroServico(tokens, k + 1) || ehMarcaDePedido(tokens[k + 1] ?? ""))) break;
+        if (ABRE_ORACAO.has(tokens[k])) break;
         if (ehConteudo(tokens[k]) && ++conteudo > 6) break;
         ate = k;
       }

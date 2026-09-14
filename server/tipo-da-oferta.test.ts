@@ -636,3 +636,82 @@ describe("'Direito' com área curada é serviço pelo texto (fecha o buraco regi
     expect(servicoAtendeNecessidade("Direito imobiliário", "Advogado especialista em imóveis")).toBe(true);
   });
 });
+
+
+describe("Revisão adversarial da correção empilhada sobre a #124 (14/09)", () => {
+  it("dois profissionais colados e adjetivo de profissão posposto não trocam a família", () => {
+    expect(familiaDoServico("Tradutora-intérprete de Libras")).toBe("traducao");
+    expect(familiaDoServico("Advogado consultor")).toBe("advocacia");
+    expect(familiaDoServico("Traduction juridique")).toBe("traducao");
+    expect(familiaDoServico("Audit comptable")).toBe("auditoria");
+    expect(familiaDoServico("محاسب قانوني")).toBe("contabilidade");
+    expect(familiaDoServico("Comptable")).toBe("contabilidade");
+    expect(familiaDoServico("Marketing consulting")).toBe("consultoria");
+  });
+
+  it("o mesmo serviço volta a casar", () => {
+    for (const [oferta, necessidade] of [
+      ["Tradutora-intérprete de Libras", "Intérprete de Libras"], ["Tradutora-intérprete de Libras", "Tradutora de Libras"],
+      ["Advogada consultora", "Advogada"], ["Advogado consultor tributário", "Advogado tributarista"], ["Contadora auditora", "Contadora"],
+      ["Traduction juridique", "Traducteur"], ["Audit comptable", "Auditeur"], ["محاسب قانوني", "محاسب"], ["律师", "Advogado"], ["会计", "Contador"],
+      ["Property lawyer", "Advogado imobiliário"], ["Corporate training", "Treinamento corporativo"], ["Consultoria empresarial", "Consultoria corporativa"],
+      ["Advocacia tributária corporativa", "Advogado tributarista"], ["Advocacia criminal", "Advogado para defesa criminal"],
+      ["Advogados e consultores tributários", "Advogado tributarista"], ["Consultoria marketing digital", "Consultoria em marketing digital"],
+      ["Advocacia de família", "Advogado para inventário"], ["Advocacia de família", "Advogado para pensão alimentícia"],
+    ] as Array<[string, string]>) {
+      expect(servicoAtendeNecessidade(oferta, necessidade), `${oferta} × ${necessidade}`).toBe(true);
+    }
+  });
+
+  it("serviço diferente continua sem casar", () => {
+    for (const [oferta, necessidade] of [
+      ["Traduction juridique", "Avocat"], ["Marketing juridique", "Avocat"], ["محاسب قانوني", "محامي"], ["Audit comptable", "Comptable"],
+      ["律师", "Advogado tributarista"],
+      ["Consultoria trabalhista", "Consultoria para segurança do trabalho"], ["Consultoria jurídica", "Consultoria para advogados"],
+      ["Engenharia civil", "Engenheiro para aviação civil"], ["Consultoria empresarial", "Consultoria para seguros empresariais"],
+      ["Advocacia de família", "Advogado para pensão por morte"], ["Auditoria de inventário", "Auditoria familiar"],
+      ["Consultoria em inventário", "Consultoria familiar"], ["Consultoria em gestão", "Consultoria em gestão pública"],
+      ["Consultoria em gestão pública", "Consultoria em gestão"], ["Consultoria jurídica", "Consultoria de seleção"],
+      ["Consultoria publicitária imobiliária", "Consultoria imobiliária"], ["Advocacia tributária", "Advogado para processos"],
+    ] as Array<[string, string]>) {
+      expect(servicoAtendeNecessidade(oferta, necessidade), `${oferta} × ${necessidade}`).toBe(false);
+    }
+  });
+
+  it("'Direito digital' seguido do objeto é o ativo, não o serviço", () => {
+    for (const rotulo of ["Direito digital de transmissão do filme", "Direito internacional de distribuição da marca", "Direito digital sobre o catálogo musical"]) {
+      expect(ehServico(rotulo), rotulo).toBe(false);
+    }
+    expect(ehServico("Direito digital")).toBe(true);
+    expect(ehServico("Direito internacional")).toBe(true);
+  });
+
+  it("no trecho da IA: outro serviço entendido barra; o que as listas não leem fica com o modelo", () => {
+    expect(trechoNomeiaServicoAtendido("consultoria em marketing jurídico", ["Consultoria jurídica"])).toBe("nao-atende");
+    expect(trechoNomeiaServicoAtendido("consultoria jurídica", ["Consultoria de marketing jurídico"])).toBe("nao-atende");
+    expect(trechoNomeiaServicoAtendido("consultoria em marketing digital", ["Consultoria em transformação digital"])).toBe("nao-atende");
+    expect(trechoNomeiaServicoAtendido("consultoria em marketing digital", ["Consultoria em marketing"])).toBe("atende");
+    expect(trechoNomeiaServicoAtendido("consultoria em e-commerce", ["Consultoria jurídica"])).toBe("nao-atende");
+    expect(trechoNomeiaServicoAtendido("consultoria em marketing digital e redes sociais", ["Consultoria jurídica"])).toBe("nao-atende");
+    for (const trecho of ["advogado também", "lawyer urgently", "law firm", "advogado para a nossa empresa", "advogado de LGPD", "avocat pour notre filiale"]) {
+      expect(trechoNomeiaServicoAtendido(trecho, ["Advocacia tributária"]), trecho).not.toBe("nao-atende");
+    }
+  });
+});
+
+
+describe("Reverificação dos consertos da correção empilhada (14/09)", () => {
+  it("no trecho da IA: 'técnica' é especialidade, o serviço como assunto da profissão passa, idioma e 'holding familiar' ficam com o modelo", () => {
+    expect(trechoNomeiaServicoAtendido("assistência técnica para as máquinas", ["Advocacia tributária"])).toBe("nao-atende");
+    expect(trechoNomeiaServicoAtendido("consultoria jurídica de design de marca", ["Consultoria jurídica"])).toBe("atende");
+    expect(trechoNomeiaServicoAtendido("consultoria em design digital", ["Consultoria digital"])).toBe("nao-atende");
+    expect(trechoNomeiaServicoAtendido("tradutor de inglês para documentos do visto", ["Tradução juramentada"])).not.toBe("nao-atende");
+    expect(trechoNomeiaServicoAtendido("advogado holding familiar", ["Advocacia societária"])).not.toBe("nao-atende");
+  });
+
+  it("empresa familiar não é a área de família", () => {
+    expect(servicoAtendeNecessidade("Consultoria em empresas familiares", "Consultoria familiar")).toBe(false);
+    expect(servicoAtendeNecessidade("Advocacia de família", "Advogado de família")).toBe(true);
+    expect(servicoAtendeNecessidade("Family lawyer", "Advogado de família")).toBe(true);
+  });
+});
