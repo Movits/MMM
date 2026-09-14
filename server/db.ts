@@ -933,9 +933,11 @@ function linhasAfetadas(resultado: unknown) {
  * o navegador (connections.send não distingue):
  * - a outra parte já tinha pedido e o pedido está `pending` (encaminhado) →
  *   interesse mútuo, vira `accepted`;
+ * - já existe pedido desta pessoa, em qualquer estado → nada, mesmo com a linha da
+ *   outra parte em análise (ela é oculta para quem clica: ver o comentário no
+ *   ramo);
  * - a outra parte já tinha pedido e o pedido está `in_review` → grava só
  *   `reciprocatedAt`: a aprovação do distribuidor já revela os dois nomes;
- * - já existe pedido desta pessoa, em qualquer estado → nada;
  * - a outra parte pediu e o distribuidor NÃO encaminhou → para quem clica essa
  *   linha não existe (pedidoVisivelPara). Devolver "nada" deixaria o cartão igual
  *   depois do clique — o único clique válido sem efeito visível, que denunciaria
@@ -980,6 +982,13 @@ export async function sendConnectionRequest(requesterId: number, recipientId: nu
       if (linhasAfetadas(resultado) === 1) return { revelou: true, connectionId: invertida.id, emAnalise: false };
       continue;
     }
+    // Quem já tem pedido no par não escreve mais nada — e isto vem ANTES do ramo
+    // `in_review`. A linha invertida em análise só convive com um pedido desta
+    // pessoa quando o dela foi `not_forwarded` e a outra clicou depois: essa linha
+    // nova é oculta para quem clica, e gravar `reciprocatedAt` nela a faria
+    // aparecer — a pessoa descobriria, repetindo o clique pela API (na tela o
+    // botão fica desabilitado), que a outra pediu por ela sem encaminhamento.
+    if (minha) return neutro(minha.id);
     if (invertida?.status === "in_review" && invertida.reciprocatedAt === null) {
       const [resultado] = await db.update(connections)
         .set({ reciprocatedAt: new Date() })
@@ -987,7 +996,6 @@ export async function sendConnectionRequest(requesterId: number, recipientId: nu
       if (linhasAfetadas(resultado) === 1) return neutro(invertida.id);
       continue;
     }
-    if (minha) return neutro(minha.id);
     const recusaOculta = invertida?.status === "not_forwarded" && invertida.reciprocatedAt === null;
     if (invertida && !recusaOculta) return neutro(invertida.id);
 

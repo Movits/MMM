@@ -89,7 +89,7 @@ confere o par e só então encaminha. Máquina de estados de `connections.status
 | De | Para | Quem | Trava (WHERE) | Efeitos |
 |---|---|---|---|---|
 | — | `in_review` | solicitante (`connections.send`) | posse do `matchId` + termo do alvo | aviso aos distribuidores ativos (ou à presidência, se não houver nenhum) |
-| `in_review` A→B | `in_review` + `reciprocatedAt` | B clicando em A | `id AND status = 'in_review' AND reciprocatedAt IS NULL` | nenhum; resposta idêntica |
+| `in_review` A→B | `in_review` + `reciprocatedAt` | B clicando em A, sem pedido dela no par | `id AND status = 'in_review' AND reciprocatedAt IS NULL` | nenhum; resposta idêntica |
 | `in_review` | `pending` | distribuidor (`distribuicao.decidir`, encaminhar) | `id AND status = 'in_review' AND reciprocatedAt IS NULL` + termo, conta ativa e portão da demanda expressa | `interest_received` a B; `system` a A; `MATCH_REVIEW_APPROVED` |
 | `in_review` + `reciprocatedAt` | `accepted` | distribuidor (encaminhar) | `id AND status = 'in_review' AND reciprocatedAt IS NOT NULL` + as mesmas travas | 2× `MATCH_IDENTITY_REVEALED` (`via: distribuidor`); aviso aos dois |
 | `in_review` | `not_forwarded` | distribuidor (não encaminhar, com nota) | `id AND status = 'in_review'` | `system` a A (e a B, se ela também clicou), sem o motivo; B que não clicou não é avisada; `MATCH_REVIEW_REJECTED` |

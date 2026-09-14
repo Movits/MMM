@@ -176,6 +176,32 @@ describe("sendConnectionRequest — o pedido nasce em análise", () => {
     expect(r).toEqual({ revelou: false, connectionId: 7, emAnalise: false });
   });
 
+  it("re-clique pela API: meu pedido não encaminhado + o pedido novo da outra parte em análise (oculto para mim): nada é escrito e a resposta é a de um pedido meu repetido", async () => {
+    // Se o ramo in_review viesse antes do `minha`, gravaria reciprocatedAt na linha
+    // da outra parte e ela passaria a aparecer para quem clica: a pessoa
+    // descobriria que a outra pediu por ela sem o distribuidor encaminhar.
+    estado.linhas = [[9, 2, "in_review", null], [7, 1, "not_forwarded", null]];
+    const comALinhaOculta = await db.sendConnectionRequest(1, 2);
+    expect(escritas()).toEqual([]);
+
+    estado.consultas = [];
+    estado.linhas = [[7, 1, "not_forwarded", null]];
+    const soOMeuPedido = await db.sendConnectionRequest(1, 2);
+    expect(escritas()).toEqual([]);
+
+    expect(comALinhaOculta).toEqual(soOMeuPedido);
+    expect(comALinhaOculta).toEqual({ revelou: false, connectionId: 7, emAnalise: false });
+  });
+
+  it("meu pedido não encaminhado + o pedido da outra parte ENCAMINHADO (pending, visível para mim): o clique é o interesse mútuo", async () => {
+    // A linha pending a destinatária vê (pedidoVisivelPara só esconde in_review e
+    // not_forwarded): aceitar por aqui não revela nada que a tela não mostre.
+    estado.linhas = [[9, 2, "pending", null], [7, 1, "not_forwarded", null]];
+    const r = await db.sendConnectionRequest(1, 2);
+    expect(updates().map(u => u.params.slice(-3))).toEqual([["accepted", 9, "pending"]]);
+    expect(r).toEqual({ revelou: true, connectionId: 9, emAnalise: false });
+  });
+
   it.each(["declined", "accepted", "blocked"])("a outra parte pediu e o pedido está %s: nada é escrito", async (status) => {
     estado.linhas = [[7, 2, status, null]];
     const r = await db.sendConnectionRequest(1, 2);
