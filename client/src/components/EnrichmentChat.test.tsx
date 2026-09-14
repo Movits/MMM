@@ -45,6 +45,9 @@ const duble = vi.hoisted(() => {
         list: { invalidate: vi.fn() },
         assetsNeeds: { invalidate: vi.fn() },
       },
+      contexts: {
+        listByContact: { invalidate: vi.fn() },
+      },
     },
   };
 });
@@ -62,6 +65,7 @@ vi.mock("@/lib/trpc", () => ({
       confirmSuggestion: duble.registrar("confirmSuggestion"),
       ignoreSuggestion: duble.registrar("ignoreSuggestion"),
       completeSession: duble.registrar("completeSession"),
+      createSuggestedContext: duble.registrar("createSuggestedContext"),
     },
   },
 }));
@@ -96,6 +100,92 @@ beforeEach(() => {
   duble.utils.network.list.invalidate.mockReset();
   duble.utils.network.assetsNeeds.invalidate.mockReset();
   vi.mocked(toast.info).mockReset();
+});
+
+/**
+ * "Criar o contexto X?" — acompanhamento da revisão da PR #88. O servidor não
+ * cria contexto a partir da resposta: quando "como se conheceram" não casa com
+ * nenhum, ele devolve o nome e a tela pergunta. Só "Criar" chama o servidor.
+ */
+describe("EnrichmentChat — oferta de criar o contexto", () => {
+  const perguntaComoConheceu = { id: "h1", role: "assistant", content: "Como vocês se conheceram?", suggestions: [] };
+  const cartaoHowMet = { id: "sug-h", fieldType: "how_met", suggestedValue: "Feira de Milão", confidence: 0.9, status: "pending" as const };
+  const pedidoHowMet = { id: "h2", role: "assistant", content: "Confirma: Feira de Milão?", suggestions: [cartaoHowMet] };
+  const oferta = () => screen.queryByText("Criar o contexto “Feira de Milão”?");
+  const botaoCriar = () => screen.queryByRole("button", { name: "Criar" });
+  const botaoAgoraNao = () => screen.queryByRole("button", { name: "Agora não" });
+
+  function confirmarComResposta(extra: Record<string, unknown>) {
+    montar([perguntaComoConheceu, pedidoHowMet]);
+    fireEvent.click(botaoConfirmar()!);
+    act(() => duble.mutacoes.confirmSuggestion.opcoes.onSuccess?.({ ...proximaPergunta, ...extra }, { suggestionId: "sug-h" }));
+  }
+
+  beforeEach(() => {
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
+    duble.utils.contexts.listByContact.invalidate.mockReset();
+  });
+
+  it("contexto inexistente: o servidor devolve o nome e a pergunta aparece, sem nada criado", () => {
+    confirmarComResposta({ contextoParaCriar: "Feira de Milão" });
+
+    expect(oferta()).toBeInTheDocument();
+    expect(botaoCriar()).toBeInTheDocument();
+    expect(botaoAgoraNao()).toBeInTheDocument();
+    expect(duble.mutacoes.createSuggestedContext.mutate).not.toHaveBeenCalled();
+  });
+
+  it("contexto existente (sem contextoParaCriar na resposta): nenhuma pergunta", () => {
+    confirmarComResposta({});
+
+    expect(screen.queryByText(/Criar o contexto/)).not.toBeInTheDocument();
+    expect(botaoCriar()).not.toBeInTheDocument();
+  });
+
+  it("confirmação: 'Criar' manda só o id da sugestão; no sucesso a pergunta some e os contextos do contato são refeitos", () => {
+    confirmarComResposta({ contextoParaCriar: "Feira de Milão" });
+
+    fireEvent.click(botaoCriar()!);
+    expect(duble.mutacoes.createSuggestedContext.mutate).toHaveBeenCalledWith({ suggestionId: "sug-h" });
+    // Até o servidor responder, a pergunta continua na tela.
+    expect(oferta()).toBeInTheDocument();
+
+    act(() => duble.mutacoes.createSuggestedContext.opcoes.onSuccess?.({ resultado: "criado", contextoId: "ctx-novo", nome: "Feira de Milão" }, { suggestionId: "sug-h" }));
+
+    expect(oferta()).not.toBeInTheDocument();
+    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("criado"));
+    expect(duble.utils.contexts.listByContact.invalidate).toHaveBeenCalledWith({ contactId: 42 });
+  });
+
+  it("recusa: 'Agora não' fecha a pergunta e não chama o servidor", () => {
+    confirmarComResposta({ contextoParaCriar: "Feira de Milão" });
+
+    fireEvent.click(botaoAgoraNao()!);
+
+    expect(oferta()).not.toBeInTheDocument();
+    expect(duble.mutacoes.createSuggestedContext.mutate).not.toHaveBeenCalled();
+  });
+
+  it("oferta que não vale mais (NOT_FOUND): a pergunta fecha com aviso", () => {
+    confirmarComResposta({ contextoParaCriar: "Feira de Milão" });
+    fireEvent.click(botaoCriar()!);
+
+    act(() => duble.mutacoes.createSuggestedContext.opcoes.onError?.({ message: "CONTEXT_OFFER_NOT_AVAILABLE", data: { code: "NOT_FOUND" } }, { suggestionId: "sug-h" }));
+
+    expect(oferta()).not.toBeInTheDocument();
+    expect(toast.info).toHaveBeenCalled();
+  });
+
+  it("erro qualquer ao criar: a pergunta fica para tentar de novo", () => {
+    confirmarComResposta({ contextoParaCriar: "Feira de Milão" });
+    fireEvent.click(botaoCriar()!);
+
+    act(() => duble.mutacoes.createSuggestedContext.opcoes.onError?.(erroGenerico, { suggestionId: "sug-h" }));
+
+    expect(oferta()).toBeInTheDocument();
+    expect(toast.error).toHaveBeenCalled();
+  });
 });
 
 describe("EnrichmentChat — cartão pendente", () => {

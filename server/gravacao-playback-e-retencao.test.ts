@@ -19,7 +19,8 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  */
 
 const storageDelete = vi.fn(async () => {});
-vi.mock("./storage", () => ({
+vi.mock("./storage", async importOriginal => ({
+  ...await importOriginal<typeof import("./storage")>(),
   storagePut: async () => ({ key: "k", url: "/manus-storage/k" }),
   storageDelete: (...args: unknown[]) => storageDelete(...(args as [string])),
 }));
