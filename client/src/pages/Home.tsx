@@ -5,6 +5,9 @@ import { useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/i18n";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { trpc } from "@/lib/trpc";
+// Ícone da seção Meu Network Inteligente. Import próprio, fora do bloco de ícones
+// abaixo, para não encostar na linha que a PR #117 (Hero) altera.
+import { Mic } from "lucide-react";
 import { montarPracasDoGlobo, type Ligacao, type Praca } from "@/lib/pracas-do-globo";
 import {
   Briefcase, HandCoins, GraduationCap, Handshake, Rocket, Lightbulb,
@@ -540,9 +543,9 @@ export default function Home() {
             <span className="text-[10px] uppercase tracking-wider bg-[#c98f70]/10 text-[#c98f70] border border-[#c98f70]/20 px-2 py-0.5 rounded-full font-semibold">{t("nav.beta")}</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/50">
-            <button onClick={() => scrollTo('como-funciona')} className="hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.howItWorks")}</button>
-            <button onClick={() => scrollTo('oportunidades')} className="hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.opportunities")}</button>
-            <button onClick={() => scrollTo('seguranca')} className="hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.security")}</button>
+            <button onClick={() => scrollTo('como-funciona')} className="whitespace-nowrap hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.howItWorks")}</button>
+            <button onClick={() => scrollTo('oportunidades')} className="whitespace-nowrap hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.opportunities")}</button>
+            <button onClick={() => scrollTo('network-inteligente')} className="whitespace-nowrap hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.smartNetwork")}</button>
           </div>
           {/* Mobile hamburger button */}
           <button
@@ -584,7 +587,7 @@ export default function Home() {
         <div className={`flex flex-col items-center justify-center h-full gap-8 transition-all duration-300 ${mobileMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'}`}>
           <button onClick={() => scrollTo('como-funciona')} className="text-2xl font-bold text-white hover:text-[#c98f70] transition-colors duration-200 bg-transparent border-none cursor-pointer">{t("nav.howItWorks")}</button>
           <button onClick={() => scrollTo('oportunidades')} className="text-2xl font-bold text-white hover:text-[#c98f70] transition-colors duration-200 bg-transparent border-none cursor-pointer">{t("nav.opportunities")}</button>
-          <button onClick={() => scrollTo('seguranca')} className="text-2xl font-bold text-white hover:text-[#c98f70] transition-colors duration-200 bg-transparent border-none cursor-pointer">{t("nav.security")}</button>
+          <button onClick={() => scrollTo('network-inteligente')} className="text-2xl font-bold text-white hover:text-[#c98f70] transition-colors duration-200 bg-transparent border-none cursor-pointer text-center px-6">{t("nav.smartNetwork")}</button>
           <LanguageSelector />
           <div className="w-16 h-px bg-white/15 my-2" />
           {isAuthenticated ? (
@@ -866,31 +869,57 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── SEGURANÇA ─── */}
-      <section id="seguranca" className="py-28 relative border-t border-white/[0.04]">
+      {/* ─── MEU NETWORK INTELIGENTE ───
+          Substitui a antiga seção "Segurança" (13/09/2026). Era só propaganda: os
+          mecanismos reais (limite de requisições, bloqueio de login, CSP, SIVC)
+          continuam no servidor, e o card "criptografia ponta a ponta" prometia o
+          que não existe. A seção apresenta o recurso da área logada; o CTA leva
+          quem não tem conta ao cadastro de sempre e quem já entrou ao painel
+          Meu Network Inteligente (/meu-network-inteligente). */}
+      <section id="network-inteligente" className="py-28 relative border-t border-white/[0.04]">
         <div className="relative container mx-auto px-6">
-          <div className="max-w-4xl mx-auto text-center">
-            <SectionLabel>{t("nav.security")}</SectionLabel>
-            <h2 className="text-4xl font-extrabold text-white mb-2">
-              {t("security.title")}
+          <div className="max-w-5xl mx-auto text-center">
+            <SectionLabel>{t("smartNetwork.label")}</SectionLabel>
+            <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-5 tracking-tight text-balance max-w-4xl mx-auto">
+              {t("smartNetwork.title")}
             </h2>
-            <p className="text-[#c98f70] text-lg font-semibold mb-12">{t("security.subtitle")}</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <p className="text-base md:text-lg text-white/50 max-w-2xl mx-auto mb-6 leading-relaxed">
+              {t("smartNetwork.subtitle")}
+            </p>
+            <p className="text-xl md:text-2xl font-bold leading-snug bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent mb-12 text-balance max-w-3xl mx-auto">
+              {t("smartNetwork.impact")}
+            </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-start">
               {[
-                { Icon: Lock, label: t("security.encryption.title"), desc: t("security.encryption.desc") },
-                { Icon: ShieldCheck, label: t("security.rateLimit.title"), desc: t("security.rateLimit.desc") },
-                { Icon: BadgeCheck, label: t("security.verification.title"), desc: t("security.verification.desc") },
-                { Icon: KeyRound, label: t("security.control.title"), desc: t("security.control.desc") },
-              ].map((item, i) => (
-                <div key={i} className="p-6 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] text-center hover:border-white/15 transition-colors duration-300">
-                  <div className="w-10 h-10 mx-auto rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center mb-3">
-                    <item.Icon className="w-4.5 h-4.5 text-[#c98f70]" />
+                { num: "01", Icon: Mic, key: "record" },
+                { num: "02", Icon: BrainCircuit, key: "organize" },
+                { num: "03", Icon: Handshake, key: "discover" },
+                { num: "04", Icon: HandCoins, key: "value" },
+              ].map((card) => (
+                <div key={card.key} className="h-full p-6 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] hover:border-[#c98f70]/30 transition-colors duration-300">
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="w-10 h-10 rounded-2xl bg-[#c98f70]/10 border border-[#c98f70]/25 flex items-center justify-center">
+                      <card.Icon className="w-5 h-5 text-[#c98f70]" aria-hidden="true" />
+                    </div>
+                    <span className="text-white/15 font-extrabold text-sm tracking-widest" aria-hidden="true">{card.num}</span>
                   </div>
-                  <div className="font-bold text-white text-sm">{item.label}</div>
-                  <div className="text-xs text-white/35 mt-1.5 leading-relaxed">{item.desc}</div>
+                  <h3 className="font-extrabold text-white text-sm tracking-wide mb-2 leading-snug">{t(`smartNetwork.${card.key}.title`)}</h3>
+                  <p className="text-sm text-white/45 leading-relaxed">{t(`smartNetwork.${card.key}.desc`)}</p>
                 </div>
               ))}
             </div>
+            <p className="text-2xl md:text-4xl font-extrabold text-white mt-16 mb-5 tracking-tight text-balance max-w-3xl mx-auto">
+              {t("smartNetwork.closingQuestion")}
+            </p>
+            <p className="text-base md:text-lg text-white/55 max-w-2xl mx-auto mb-10 leading-relaxed">
+              {t("smartNetwork.closingLine")}
+            </p>
+            <Link href={isAuthenticated ? "/meu-network-inteligente" : "/register"}>
+              <button className="group bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-8 py-4 rounded-2xl text-base text-balance transition-all duration-200 active:scale-[0.97] inline-flex items-center justify-center gap-2.5">
+                {t("smartNetwork.cta")}
+                <ArrowRight className="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:translate-x-1" />
+              </button>
+            </Link>
           </div>
         </div>
       </section>

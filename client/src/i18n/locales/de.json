@@ -2,7 +2,7 @@
   "nav": {
     "howItWorks": "Wie es funktioniert",
     "opportunities": "Möglichkeiten",
-    "security": "Sicherheit",
+    "smartNetwork": "Intelligentes Netzwerk",
     "login": "Anmelden",
     "startFree": "Konto erstellen",
     "myDashboard": "Mein Dashboard",
@@ -90,25 +90,30 @@
     },
     "match": "Übereinstimmung"
   },
-  "security": {
-    "title": "Deine Sicherheit ist unsere Priorität",
-    "subtitle": "Vertrauen und Schutz in jeder Verbindung",
-    "encryption": {
-      "title": "End-to-End-Verschlüsselung",
-      "desc": "Deine Daten sind immer geschützt."
+  "smartNetwork": {
+    "label": "Mein intelligentes Netzwerk",
+    "title": "Erinnern Sie sich an alle Chancen in Ihrem eigenen Netzwerk?",
+    "subtitle": "Jedes Meeting kann eine künftige Chance verbergen. Unsere Intelligenz erfasst, ordnet und verbindet den Wert der Beziehungen, die Sie aufgebaut haben.",
+    "impact": "Sie kennen mehr Chancen, als Sie sich merken können.",
+    "record": {
+      "title": "AUFNEHMEN STATT VERGESSEN",
+      "desc": "Nehmen Sie Meetings von bis zu 10 Minuten kostenlos auf, lassen Sie sie transkribieren und machen Sie Gespräche zu strategischem Wissen."
     },
-    "verification": {
-      "title": "Verifizierte Profile",
-      "desc": "Wir sorgen für eine vertrauenswürdige Gemeinschaft."
+    "organize": {
+      "title": "DIE KI ORDNET FÜR SIE",
+      "desc": "Die Intelligenz erkennt aus dem Gespräch Wer ich bin, Was ich habe und Was ich brauche — und zeigt, was noch fehlt."
     },
-    "control": {
-      "title": "Volle Kontrolle",
-      "desc": "Du entscheidest, mit wem du dich verbindest."
+    "discover": {
+      "title": "ENTDECKEN SIE GESCHÄFTE IN IHREM EIGENEN NETZWERK",
+      "desc": "Die Intelligenz gleicht Bedürfnisse und Chancen zwischen den Menschen ab, die Sie bereits kennen, und macht Verbindungen sichtbar, die sonst unbemerkt blieben."
     },
-    "rateLimit": {
-      "title": "Ratenbegrenzung",
-      "desc": "Schutz vor Angriffen"
-    }
+    "value": {
+      "title": "LASSEN SIE IHR NETZWERK WERT SCHAFFEN",
+      "desc": "Stellen Sie Kontakte anonymisiert für Chancen im Netzwerk bereit und beteiligen Sie sich an Vermittlungen, wenn Ihre Verbindungen zu neuen Geschäften beitragen."
+    },
+    "closingQuestion": "Wie viele Geschäfte stecken heute zwischen den Menschen, die Sie bereits kennen?",
+    "closingLine": "Machen Sie aus Meetings Wissen. Aus Wissen Intelligenz. Aus Intelligenz Verbindungen. Und aus Verbindungen Geschäfte.",
+    "cta": "MEIN INTELLIGENTES NETZWERK AKTIVIEREN"
   },
   "cta": {
     "title": "Bereit, dein Netzwerk zu erweitern?",
@@ -1504,6 +1509,62 @@
     "revogadaEmData": "· widerrufen am {{data}}",
     "termoMudouAviso": "· die Vereinbarung wurde danach geändert"
   },
+  "networkPanel": {
+    "eyebrow": "IHR PRIVATES NETZWERK",
+    "title": "Mein intelligentes Netzwerk",
+    "subtitle": "Sie haben ein wertvolles Netzwerk aufgebaut. Unsere Intelligenz hilft Ihnen, den Wert darin nicht zu vergessen.",
+    "loading": "Wird geladen…",
+    "meetings": "Meine Meetings",
+    "meetingsDetail": "Transkribiert: {{transcritas}}",
+    "contacts": "Meine Kontakte",
+    "contactsDetail": "Standardmäßig privat",
+    "incomplete": "Unvollständige Angaben",
+    "incompleteDetail": "Kontakte mit fehlenden Daten",
+    "internalMatches": "Interne Matches",
+    "internalMatchesDetail": "Neu: {{novos}}",
+    "internalMatchesNoConsent": "Aktivieren Sie Intelligente Verbindungen, um sie zu sehen",
+    "minutesTitle": "Meeting-Minuten",
+    "minutesUsed": "In gespeicherten Meetings",
+    "minutesUsedHelp": "Gesamtdauer der transkribierten Meetings, die noch in Ihrem Konto sind.",
+    "minutesLimit": "Kostenloses Limit pro Meeting",
+    "minutesLimitHelp": "Gilt für jede Aufnahme und jede hochgeladene Audiodatei.",
+    "minutesValue": "{{minutos}} Min.",
+    "moreTime": "Brauchen Sie mehr Zeit? Erweitern Sie Ihre Meeting-Minuten.",
+    "moreTimeUnavailable": "Mehr Minuten per Monatsabo sind noch nicht verfügbar. Vorerst kann jedes Meeting bis zu {{minutos}} Minuten dauern.",
+    "actionsTitle": "Hier anfangen",
+    "actionRecord": "Meeting aufnehmen oder hochladen",
+    "actionRecordDesc": "Bis zu {{minutos}} Minuten pro Meeting, mit Transkript und Vorschlägen für die genannten Kontakte.",
+    "consentNotice": "Vor der Aufnahme sind Sie dafür verantwortlich, die Zustimmung aller Beteiligten einzuholen und die geltenden Datenschutzregeln einzuhalten.",
+    "actionContacts": "Meine Kontakte ordnen",
+    "actionContactsDesc": "Ihre private Kontaktbasis. Ein Kontakt wird weder Mitglied noch erhält er ein Profil auf der Plattform.",
+    "actionSearch": "Mein Netzwerk durchsuchen",
+    "actionSearchDesc": "Fragen Sie mit Ihren eigenen Worten, etwa „Wen kenne ich in der Pharmabranche?“. Die Suche betrifft nur Ihr Netzwerk.",
+    "actionMatches": "Chancen in meinem Netzwerk",
+    "actionMatchesDesc": "Geschäftsvorschläge zwischen den Kontakten, die Sie bereits haben.",
+    "incompleteTitle": "Kontakte mit fehlenden Angaben",
+    "alert": "Es fehlen wichtige Angaben, damit dieser Kontakt für Ihr intelligentes Netzwerk nützlicher wird.",
+    "alertLabel": "Fehlende Angaben",
+    "missing": "Es fehlt:",
+    "complete": "Angaben ergänzen",
+    "incompleteMore": "{{mostrados}} von {{total}} angezeigt.",
+    "seeAllContacts": "Alle Kontakte ansehen",
+    "incompleteEmpty": "Bei allen Ihren Kontakten sind Wer ich bin, Was ich habe und Was ich brauche ausgefüllt.",
+    "noContacts": "Sie haben noch keine Kontakte. Nehmen Sie ein Meeting auf oder legen Sie Ihren ersten Kontakt an.",
+    "dashboardCard": "Meetings, Kontakte, fehlende Angaben und Chancen in Ihrem privaten Netzwerk.",
+    "open": "Öffnen",
+    "whoAmI": "Wer ich bin",
+    "statusMissing": "FEHLT",
+    "fields": {
+      "nome": "Name oder Firmenname",
+      "telefone": "Telefon",
+      "email": "E-Mail",
+      "tenho": "Was ich habe",
+      "preciso": "Was ich brauche"
+    },
+    "completeByText": "Per Text ergänzen",
+    "completeHint": "Antworten Sie dem Assistenten unten: Er speichert nur, was Sie bestätigen. Telefon und E-Mail können Sie auch unter Bearbeiten eingeben.",
+    "contactNotFound": "Dieser Kontakt wurde in Ihrem Netzwerk nicht gefunden."
+  },
   "inactivityGuard": {
     "warningTitle_one": "⏰ Sitzung läuft in {{count}} Minute ab",
     "warningTitle_other": "⏰ Sitzung läuft in {{count}} Minuten ab",
@@ -1545,7 +1606,9 @@
       "memory": "KI-Gedächtnis",
       "memoryDesc": "Fragen Sie Ihren Verlauf",
       "intelligentMatches": "Intelligente Verbindungen",
-      "intelligentMatchesDesc": "Vorschläge zwischen Ihren Kontakten"
+      "intelligentMatchesDesc": "Vorschläge zwischen Ihren Kontakten",
+      "smartNetwork": "Mein intelligentes Netzwerk",
+      "smartNetworkDesc": "Meetings, Kontakte und Chancen in Ihrem Netzwerk"
     }
   },
   "conta": {

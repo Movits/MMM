@@ -2,7 +2,7 @@
   "nav": {
     "howItWorks": "仕組み",
     "opportunities": "機会",
-    "security": "セキュリティ",
+    "smartNetwork": "マイ・インテリジェント・ネットワーク",
     "login": "ログイン",
     "startFree": "アカウントを作成",
     "myDashboard": "マイダッシュボード",
@@ -90,25 +90,30 @@
     },
     "match": "マッチ度"
   },
-  "security": {
-    "title": "あなたの安全は私たちの最優先事項です",
-    "subtitle": "信頼とプライバシーのために構築されたプラットフォーム",
-    "encryption": {
-      "title": "エンドツーエンド暗号化",
-      "desc": "あなたのデータは常に保護されています。"
+  "smartNetwork": {
+    "label": "マイ・インテリジェント・ネットワーク",
+    "title": "自分のネットワークにあるすべての機会を覚えていますか？",
+    "subtitle": "どの会議にも、未来の機会が隠れているかもしれません。私たちのインテリジェンスが、あなたが築いた関係の価値を記録し、整理し、つなげます。",
+    "impact": "あなたは、思い出せる以上の機会を知っています。",
+    "record": {
+      "title": "録音して、忘れない",
+      "desc": "10分までの会議を無料で録音・文字起こしし、会話を戦略的な記憶に変えましょう。"
     },
-    "verification": {
-      "title": "厳格なプロファイル認証",
-      "desc": "本物のつながりのみを保証します。"
+    "organize": {
+      "title": "AIが整理します",
+      "desc": "会話から「私は誰か」「持っているもの」「必要なもの」を見つけ出し — まだ足りない情報も示します。"
     },
-    "control": {
-      "title": "あなたのプライバシーを完全に管理",
-      "desc": "誰と何を共有するかを決定します。"
+    "discover": {
+      "title": "自分のネットワークで商機を見つける",
+      "desc": "すでに知っている人たちのニーズと機会を照らし合わせ、見過ごされていたかもしれないつながりを明らかにします。"
     },
-    "rateLimit": {
-      "title": "レート制限",
-      "desc": "攻撃からの保護"
-    }
+    "value": {
+      "title": "ネットワークを価値に変える",
+      "desc": "連絡先を匿名でネットワークの機会に提供し、あなたのつながりが新しいビジネスにつながったときは仲介に参加できます。"
+    },
+    "closingQuestion": "すでに知っている人たちの間に、今どれだけの商機が隠れているでしょうか？",
+    "closingLine": "会議を記憶に。記憶をインテリジェンスに。インテリジェンスをつながりに。そして、つながりをビジネスに。",
+    "cta": "マイ・インテリジェント・ネットワークを有効にする"
   },
   "cta": {
     "title": "あなたの未来を形作る準備はできていますか？",
@@ -1504,6 +1509,62 @@
     "revogadaEmData": "· {{data}}に取り消し",
     "termoMudouAviso": "· その後、条項が変更されました"
   },
+  "networkPanel": {
+    "eyebrow": "あなたの非公開ネットワーク",
+    "title": "マイ・インテリジェント・ネットワーク",
+    "subtitle": "あなたは価値あるネットワークを築いてきました。私たちのインテリジェンスが、その価値を忘れないようお手伝いします。",
+    "loading": "読み込み中…",
+    "meetings": "マイミーティング",
+    "meetingsDetail": "文字起こし済み：{{transcritas}}",
+    "contacts": "マイ連絡先",
+    "contactsDetail": "初期設定で非公開",
+    "incomplete": "不足している情報",
+    "incompleteDetail": "情報が足りない連絡先",
+    "internalMatches": "内部マッチ",
+    "internalMatchesDetail": "新着：{{novos}}",
+    "internalMatchesNoConsent": "スマートコネクションを有効にすると表示されます",
+    "minutesTitle": "ミーティングの分数",
+    "minutesUsed": "保存中のミーティング",
+    "minutesUsedHelp": "アカウントに残っている文字起こし済みミーティングの合計時間です。",
+    "minutesLimit": "1回あたりの無料上限",
+    "minutesLimitHelp": "録音とアップロードした音声ファイルのそれぞれに適用されます。",
+    "minutesValue": "{{minutos}}分",
+    "moreTime": "もっと時間が必要ですか？ミーティングの分数を増やしましょう。",
+    "moreTimeUnavailable": "月額プランで分数を増やす機能はまだ利用できません。現在、各ミーティングは最大{{minutos}}分です。",
+    "actionsTitle": "ここから始める",
+    "actionRecord": "ミーティングを録音・アップロード",
+    "actionRecordDesc": "1回あたり最大{{minutos}}分。文字起こしと、話に出た連絡先の提案付き。",
+    "consentNotice": "録音の前に、参加者全員の同意を得て、適用されるプライバシー規則を守る責任はあなたにあります。",
+    "actionContacts": "連絡先を整理する",
+    "actionContactsDesc": "あなたの非公開の連絡先です。連絡先がメンバーになったり、プラットフォーム上にプロフィールが作られたりすることはありません。",
+    "actionSearch": "ネットワークを検索",
+    "actionSearchDesc": "「製薬業界に知り合いはいる？」のように、自分の言葉で質問できます。検索対象はあなたのネットワークだけです。",
+    "actionMatches": "ネットワーク内の機会",
+    "actionMatchesDesc": "すでにある連絡先どうしのビジネス提案です。",
+    "incompleteTitle": "情報が不足している連絡先",
+    "alert": "この連絡先をあなたのインテリジェント・ネットワークでもっと役立てるための重要な情報が不足しています。",
+    "alertLabel": "不足している情報",
+    "missing": "不足：",
+    "complete": "情報を補う",
+    "incompleteMore": "{{total}}件中{{mostrados}}件を表示。",
+    "seeAllContacts": "すべての連絡先を見る",
+    "incompleteEmpty": "すべての連絡先で「私は誰か」「持っているもの」「必要なもの」が入力済みです。",
+    "noContacts": "まだ連絡先がありません。ミーティングを録音するか、最初の連絡先を追加してください。",
+    "dashboardCard": "非公開ネットワークのミーティング、連絡先、不足情報、機会。",
+    "open": "開く",
+    "whoAmI": "私は誰か",
+    "statusMissing": "不足",
+    "fields": {
+      "nome": "氏名または会社名",
+      "telefone": "電話番号",
+      "email": "メールアドレス",
+      "tenho": "持っているもの",
+      "preciso": "必要なもの"
+    },
+    "completeByText": "テキストで補う",
+    "completeHint": "下のアシスタントに答えてください。確認した内容だけが保存されます。電話番号とメールアドレスは「編集」でも入力できます。",
+    "contactNotFound": "この連絡先はあなたのネットワークに見つかりません。"
+  },
   "inactivityGuard": {
     "warningTitle_one": "⏰ セッションは{{count}}分後に終了します",
     "warningTitle_other": "⏰ セッションは{{count}}分後に終了します",
@@ -1545,7 +1606,9 @@
       "memory": "AI メモリー",
       "memoryDesc": "あなたの履歴に質問する",
       "intelligentMatches": "スマートコネクション",
-      "intelligentMatchesDesc": "連絡先どうしのマッチング提案"
+      "intelligentMatchesDesc": "連絡先どうしのマッチング提案",
+      "smartNetwork": "マイ・インテリジェント・ネットワーク",
+      "smartNetworkDesc": "ネットワークのミーティング・連絡先・機会"
     }
   },
   "conta": {

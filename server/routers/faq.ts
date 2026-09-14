@@ -40,7 +40,8 @@ Informações sobre a plataforma:
 - NDA: Termo de Confidencialidade que protege todas as informações trocadas na Deal Room
 - Oportunidades: propostas de sociedade, investimento, mentoria, parceria, projetos e vagas publicadas por membros
 - A plataforma usa IA para fazer match entre perfis e oportunidades
-- Segurança: criptografia de ponta a ponta, verificação de identidade (SIVC), sistema de confiança com índice de confiabilidade
+- Segurança: acesso com login, bloqueio automático de tentativas de acesso suspeitas, verificação de identidade (SIVC) e sistema de confiança com índice de confiabilidade. Não afirme que existe criptografia de ponta a ponta: ela não existe
+- Meu Network Inteligente: a pessoa grava ou envia reuniões de até 10 minutos gratuitamente; a IA transcreve e sugere os contatos citados, que ficam na rede particular dela, privados; a plataforma cruza o que cada contato tem e procura para mostrar oportunidades entre pessoas que ela já conhece. Não prometa planos pagos, minutos extras, comissão nem compartilhamento de contatos com a rede: ainda não existem
 - Conexões Estratégicas: rede de contatos exclusiva para membros Ouro
 - Líderes Nacionais: membros nomeados por Ouro para representar a plataforma em suas regiões
 - Plataforma disponível em 10 idiomas

@@ -2,7 +2,7 @@
   "nav": {
     "howItWorks": "Cómo Funciona",
     "opportunities": "Oportunidades",
-    "security": "Seguridad",
+    "smartNetwork": "Mi Network Inteligente",
     "login": "Iniciar Sesión",
     "startFree": "Crear cuenta",
     "myDashboard": "Mi Panel →",
@@ -90,25 +90,30 @@
     },
     "match": "compatibilidad"
   },
-  "security": {
-    "title": "Tu seguridad es nuestra prioridad",
-    "subtitle": "Garantizamos un entorno seguro y confiable para todos nuestros usuarios.",
-    "encryption": {
-      "title": "Cifrado avanzado",
-      "desc": "Tus datos están protegidos con la más alta tecnología de cifrado."
+  "smartNetwork": {
+    "label": "Mi Network Inteligente",
+    "title": "¿Recuerdas todas las oportunidades que existen en tu propia red?",
+    "subtitle": "Cada reunión puede esconder una oportunidad futura. Nuestra inteligencia registra, organiza y conecta el valor de las relaciones que has construido.",
+    "impact": "Conoces más oportunidades de las que puedes recordar.",
+    "record": {
+      "title": "GRABA Y NO OLVIDES",
+      "desc": "Graba y transcribe gratis reuniones de hasta 10 minutos y convierte conversaciones en memoria estratégica."
     },
-    "verification": {
-      "title": "Verificación rigurosa",
-      "desc": "Todos los perfiles son verificados para garantizar la autenticidad y calidad de la comunidad."
+    "organize": {
+      "title": "LA IA LO ORGANIZA POR TI",
+      "desc": "La inteligencia identifica Quién Soy, Qué Tengo y Qué Necesito a partir de la conversación — y muestra lo que aún falta descubrir."
     },
-    "control": {
-      "title": "Control total",
-      "desc": "Tienes control total sobre tu información y con quién te conectas."
+    "discover": {
+      "title": "DESCUBRE NEGOCIOS EN TU PROPIA RED",
+      "desc": "La inteligencia cruza necesidades y oportunidades entre las personas que ya conoces y revela conexiones que podrían pasar desapercibidas."
     },
-    "rateLimit": {
-      "title": "Límite de velocidad",
-      "desc": "Protección contra ataques"
-    }
+    "value": {
+      "title": "HAZ QUE TU RED GENERE VALOR",
+      "desc": "Pon contactos a disposición de forma anónima para oportunidades de la red y participa en las intermediaciones cuando tus conexiones contribuyan a nuevos negocios."
+    },
+    "closingQuestion": "¿Cuántos negocios están escondidos hoy entre las personas que ya conoces?",
+    "closingLine": "Convierte reuniones en memoria. Memoria en inteligencia. Inteligencia en conexiones. Y conexiones en negocios.",
+    "cta": "ACTIVAR MI NETWORK INTELIGENTE"
   },
   "cta": {
     "title": "¿Listo para transformar tu futuro?",
@@ -1504,6 +1509,62 @@
     "revogadaEmData": "· revocada el {{data}}",
     "termoMudouAviso": "· el acuerdo cambió después de eso"
   },
+  "networkPanel": {
+    "eyebrow": "TU RED PARTICULAR",
+    "title": "Mi Network Inteligente",
+    "subtitle": "Has construido una red valiosa. Nuestra inteligencia te ayuda a no olvidar el valor que hay en ella.",
+    "loading": "Cargando…",
+    "meetings": "Mis reuniones",
+    "meetingsDetail": "Transcritas: {{transcritas}}",
+    "contacts": "Mis contactos",
+    "contactsDetail": "Privados por defecto",
+    "incomplete": "Información incompleta",
+    "incompleteDetail": "Contactos con datos faltantes",
+    "internalMatches": "Matches internos",
+    "internalMatchesDetail": "Nuevos: {{novos}}",
+    "internalMatchesNoConsent": "Activa las Conexiones Inteligentes para verlos",
+    "minutesTitle": "Minutos de reunión",
+    "minutesUsed": "En las reuniones guardadas",
+    "minutesUsedHelp": "Suma de la duración de las reuniones transcritas que siguen en tu cuenta.",
+    "minutesLimit": "Límite gratuito por reunión",
+    "minutesLimitHelp": "Se aplica a cada grabación y a cada audio enviado.",
+    "minutesValue": "{{minutos}} min",
+    "moreTime": "¿Necesitas más tiempo? Amplía tus minutos de reunión.",
+    "moreTimeUnavailable": "La ampliación de minutos con mensualidad todavía no está disponible. Por ahora, cada reunión puede durar hasta {{minutos}} minutos.",
+    "actionsTitle": "Empieza aquí",
+    "actionRecord": "Grabar o enviar una reunión",
+    "actionRecordDesc": "Hasta {{minutos}} minutos por reunión, con transcripción y sugerencia de los contactos mencionados.",
+    "consentNotice": "Antes de grabar, eres responsable de obtener el consentimiento de todas las personas participantes y de cumplir las normas de privacidad aplicables.",
+    "actionContacts": "Organizar mis contactos",
+    "actionContactsDesc": "Tu base particular de contactos. Un contacto no se convierte en miembro ni obtiene un perfil en la plataforma.",
+    "actionSearch": "Buscar en mi network",
+    "actionSearchDesc": "Pregunta con tus palabras, como \"¿A quién conozco en el sector farmacéutico?\". La búsqueda mira solo tu red.",
+    "actionMatches": "Oportunidades en mi red",
+    "actionMatchesDesc": "Sugerencias de negocio entre los contactos que ya tienes.",
+    "incompleteTitle": "Contactos con información faltante",
+    "alert": "Falta información importante para que este contacto sea más útil para tu Network Inteligente.",
+    "alertLabel": "Información faltante",
+    "missing": "Falta:",
+    "complete": "Completar información",
+    "incompleteMore": "Mostrando {{mostrados}} de {{total}}.",
+    "seeAllContacts": "Ver todos los contactos",
+    "incompleteEmpty": "Todos tus contactos tienen Quién Soy, Qué Tengo y Qué Necesito completos.",
+    "noContacts": "Todavía no tienes contactos. Graba una reunión o registra tu primer contacto.",
+    "dashboardCard": "Reuniones, contactos, información faltante y oportunidades de tu red particular.",
+    "open": "Abrir",
+    "whoAmI": "Quién Soy",
+    "statusMissing": "FALTA",
+    "fields": {
+      "nome": "Nombre o razón social",
+      "telefone": "Teléfono",
+      "email": "Correo electrónico",
+      "tenho": "Qué Tengo",
+      "preciso": "Qué Necesito"
+    },
+    "completeByText": "Completar por texto",
+    "completeHint": "Responde al asistente de abajo: solo guarda lo que confirmes. El teléfono y el correo también se pueden escribir en Editar.",
+    "contactNotFound": "Este contacto no se encontró en tu red."
+  },
   "inactivityGuard": {
     "warningTitle_one": "⏰ La sesión expira en {{count}} minuto",
     "warningTitle_other": "⏰ La sesión expira en {{count}} minutos",
@@ -1545,7 +1606,9 @@
       "memory": "Memoria IA",
       "memoryDesc": "Pregunta a tu historial",
       "intelligentMatches": "Conexiones Inteligentes",
-      "intelligentMatchesDesc": "Sugerencias entre tus contactos"
+      "intelligentMatchesDesc": "Sugerencias entre tus contactos",
+      "smartNetwork": "Mi Network Inteligente",
+      "smartNetworkDesc": "Reuniones, contactos y oportunidades de tu red"
     }
   },
   "conta": {

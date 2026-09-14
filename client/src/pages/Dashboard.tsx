@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Briefcase, ShieldCheck, Users, User, MapPin, Mic, Brain, Sparkles, Crown,
-  Menu as MenuIcon, ChevronDown, LogOut,
+  Menu as MenuIcon, ChevronDown, LogOut, Network,
 } from "lucide-react";
 
 // ─── Animated Score Ring ─────────────────────────────────────────────────────
@@ -984,6 +984,22 @@ export default function Dashboard() {
             <StatCard key={s.label} {...s} index={i} />
           ))}
         </div>
+
+        {/* ─── MEU NETWORK INTELIGENTE ───
+            Entrada do painel da rede particular (pedido do Nicolas, 13/09/2026).
+            Só o atalho: os números moram no painel, com a consulta dele, e o
+            Dashboard não ganha mais uma chamada ao servidor. */}
+        <Link href="/meu-network-inteligente"
+          className="mb-8 flex items-center gap-4 rounded-2xl border border-[#c98f70]/25 bg-[#c98f70]/[0.06] p-5 transition-colors duration-200 hover:border-[#c98f70]/45">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#c98f70]/30 bg-[#c98f70]/15">
+            <Network className="h-5 w-5 text-[#c98f70]" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold text-white">{t("networkPanel.title")}</span>
+            <span className="mt-0.5 block text-sm text-white/50">{t("networkPanel.dashboardCard")}</span>
+          </span>
+          <span className="shrink-0 text-sm font-semibold text-[#c98f70]">{t("networkPanel.open")}</span>
+        </Link>
 
         {/* ─── TABS ─── */}
         <div className="flex gap-1 mb-6 bg-white/4 rounded-xl p-1 w-fit border border-white/5 flex-wrap">
