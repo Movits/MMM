@@ -212,3 +212,23 @@ describe("Serviço × necessidade declarada com outra flexão — casa (defeito 
     }
   });
 });
+
+/**
+ * Quarto ponto do mesmo relato de 13/09: a regra só existia em português,
+ * inglês e espanhol. Nos outros 7 idiomas nada era classificado como serviço,
+ * então o portão NUNCA disparava — a regra da cliente simplesmente não valia
+ * para quem escreve neles, e um serviço casava por categoria como antes da #101.
+ */
+describe("O portão dispara nos 10 idiomas (defeito da #101)", () => {
+  it.each([
+    ["de", "Steuerberatung", "Maschinen"],
+    ["fr", "Conseil fiscal", "Machines"],
+    ["ru", "Налоговый консалтинг", "Покупатели"],
+    ["hi", "कर परामर्श", "खरीदार"],
+    ["ar", "استشارات ضريبية", "مشترون"],
+    ["zh", "税务咨询", "买家"],
+    ["ja", "税務コンサルティング", "買い手"],
+  ])("%s: serviço × necessidade presumida de mesma categoria não casa", (_idioma, oferta, necessidade) => {
+    expect(scoreMatch(item(oferta, "Serviços"), item(necessidade, "Serviços")).score).toBe(0);
+  });
+});
