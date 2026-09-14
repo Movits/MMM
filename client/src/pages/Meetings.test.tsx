@@ -449,4 +449,34 @@ describe("Detalhe da reunião — enquanto processa", () => {
       await i18n.changeLanguage("pt-BR");
     }
   });
+
+  it("transcrição trocada: a tradução anterior sai da tela antes do pedido novo, e se ele falhar não sobra tradução de outro texto", async () => {
+    await i18n.changeLanguage("en");
+    try {
+      const meeting = { ...REUNIAO, status: "ready" };
+      const detalheCom = (transcricao: { id: string; transcript: string }) => ({
+        data: { meeting, transcript: { ...transcricao, language: "pt" }, entities: [], suggestions: [], recording: null, recordingExpired: false },
+        isLoading: false,
+      });
+      duble.list.mockReturnValue({ data: [meeting], isLoading: false });
+      duble.get.mockReturnValue(detalheCom({ id: "t1", transcript: "Fala antiga." }));
+      const { rerender } = render(<Meetings />);
+      fireEvent.click(screen.getByRole("button", { name: /Reunião com a vinícola/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Transcri/ }));
+
+      const [, primeiroPedido] = duble.mutacoes.translateTranscript.mutate.mock.calls[0] as [unknown, { onSuccess: (resultado: { text: string }) => void }];
+      act(() => { primeiroPedido.onSuccess({ text: "Old talk, translated." }); });
+      expect(screen.getByText("Old talk, translated.")).toBeInTheDocument();
+
+      // Um reprocessamento trocou a transcrição; o pedido novo sai e ainda não respondeu.
+      duble.get.mockReturnValue(detalheCom({ id: "t2", transcript: "Fala nova." }));
+      rerender(<Meetings />);
+
+      expect(duble.mutacoes.translateTranscript.mutate).toHaveBeenCalledTimes(2);
+      expect(screen.queryByText("Old talk, translated.")).not.toBeInTheDocument();
+      expect(screen.getByText("Fala nova.")).toBeInTheDocument();
+    } finally {
+      await i18n.changeLanguage("pt-BR");
+    }
+  });
 });

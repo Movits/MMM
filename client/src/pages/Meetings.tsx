@@ -363,6 +363,9 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
   const processandoAgora = data?.meeting.status === "processing";
   useEffect(() => {
     if (!data?.transcript || translationLanguage === "pt-BR" || processandoAgora) { setTranslatedText(null); return; }
+    // A tradução anterior sai antes do pedido novo: se ele falhar (cota, prazo),
+    // a tela mostra a transcrição original, não a tradução de outro texto.
+    setTranslatedText(null);
     translateTranscript.mutate(
       { meetingId, language: translationLanguage as "en" | "es" | "fr" | "de" | "ar" | "zh" | "hi" | "ja" | "ru" },
       { onSuccess: result => setTranslatedText(result.text) },
