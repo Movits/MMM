@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { normalizar, tokensDoTermo } from "@shared/direcao-do-termo";
 import { classificarOferta, ehServico, ehServicoDeAssessoria, especialidadeDoServico, familiaDoServico, LISTAS_POR_TIPO, necessidadeGenericaNomeiaOServico, necessidadeNomeiaOServico, TIPOS_DA_OFERTA } from "@shared/tipo-da-oferta";
 
 /**
@@ -25,9 +26,17 @@ describe("Tipo da oferta — as listas", () => {
     }
   });
 
-  it("as listas estão normalizadas: minúsculas, sem acento, sem espaço", () => {
+  it("as listas estão normalizadas: cada palavra é igual ao que normalizar() devolve, e não tem espaço", () => {
+    // Era /^[a-z0-9]+$/, que só valia enquanto o léxico fosse latino. Com
+    // russo, híndi e árabe (cobertura de idiomas, 14/09) o ASCII deixou de ser
+    // a invariante — e a de verdade é mais forte: a palavra da lista tem de ser
+    // EXATAMENTE o que a tokenização produz, em qualquer escrita. Uma entrada
+    // com maiúscula, acento latino ou espaço nunca casaria e falha aqui.
     for (const [, palavras] of LISTAS_POR_TIPO) {
-      for (const palavra of palavras) expect(palavra).toMatch(/^[a-z0-9]+$/);
+      for (const palavra of palavras) {
+        expect(normalizar(palavra), palavra).toBe(palavra);
+        expect(tokensDoTermo(palavra), palavra).toHaveLength(1);
+      }
     }
   });
 });
@@ -262,6 +271,39 @@ describe("Família do serviço e necessidade genérica", () => {
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consulting")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Contabilidade para PMEs", null, "Contador")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Advocacia tributária", null, "Contador")).toBe(false);
+  });
+});
+
+describe("Cobertura de idiomas — a regra existia só em pt, en e es (defeito relatado depois da #101)", () => {
+  it.each([
+    ["pt", "Consultoria tributária", "consultoria"],
+    ["en", "Tax consulting", "consultoria"],
+    ["es", "Consultoría fiscal", "consultoria"],
+    ["de", "Steuerberatung", "contabilidade"],
+    ["de", "Rechtsberatung für Unternehmen", "advocacia"],
+    ["fr", "Conseil fiscal", "consultoria"],
+    ["fr", "Avocat fiscaliste", "advocacia"],
+    ["ru", "Налоговый консалтинг", "consultoria"],
+    ["ru", "Юридические услуги", "advocacia"],
+    ["hi", "कर परामर्श", "consultoria"],
+    ["hi", "कानूनी सलाहकार", "advocacia"],
+    ["ar", "استشارات ضريبية", "consultoria"],
+    ["ar", "خدمات محاماة", "advocacia"],
+    // Chinês e japonês não separam palavra por espaço: aqui quem reconhece é
+    // SERVICOS_SEM_ESPACO, por substring.
+    ["zh", "税务咨询", "consultoria"],
+    ["zh", "法律服务", "advocacia"],
+    ["ja", "税務コンサルティング", "consultoria"],
+    ["ja", "弁護士事務所", "advocacia"],
+  ])("%s: %s é serviço da família %s", (_idioma, rotulo, familia) => {
+    expect(classificarOferta(rotulo)).toBe("servico");
+    expect(familiaDoServico(rotulo)).toBe(familia);
+  });
+
+  it("e o que NÃO é serviço nesses idiomas continua não sendo — errar para cá barraria match legítimo", () => {
+    for (const rotulo of ["Maschinen", "Оборудование", "मशीनरी", "آلات صناعية", "工业机械", "産業機械", "不動産"]) {
+      expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
+    }
   });
 });
 

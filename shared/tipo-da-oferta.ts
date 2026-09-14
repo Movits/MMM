@@ -55,7 +55,7 @@
  * modificador ou outro item, e tratá-lo como tipo apagava o match por
  * categoria que esses itens tinham (revisões adversariais de 12/09).
  */
-import { ARTIGOS, GENITIVOS, MARCADORES_FRACOS, tokensDoTermo } from "./direcao-do-termo";
+import { ARTIGOS, GENITIVOS, MARCADORES_FRACOS, normalizar, tokensDoTermo } from "./direcao-do-termo";
 
 export type TipoDaOferta =
   | "servico"
@@ -112,11 +112,37 @@ const ASSESSORIA = [
   "asesoria", "asesorias", "asesor", "asesora", "asesores", "asesoras",
   "abogacia", "abogado", "abogada", "abogados", "abogadas",
   "contabilidad", "contable", "contables",
+  // de — a normalização já tirou o trema ("Übersetzung" vira "ubersetzung"),
+  // então as formas aqui são as normalizadas.
+  "beratung", "beratungen", "berater", "beraterin", "unternehmensberatung",
+  "rechtsberatung", "rechtsanwalt", "rechtsanwalte", "anwalt", "anwalte", "anwaltin",
+  "juristisch", "juristische", "buchhaltung", "buchfuhrung", "buchhalter",
+  "steuerberatung", "steuerberater", "wirtschaftsprufung", "wirtschaftsprufer",
+  // fr
+  "conseil", "conseils", "consultante", "avocat", "avocats", "avocate",
+  "juridique", "juridiques", "comptabilite", "comptable", "comptables", "auditeur", "auditeurs",
+  // ru
+  "консалтинг", "консультация", "консультации", "консультирование", "консультант",
+  "юридический", "юридические", "юрист", "адвокат",
+  "бухгалтерия", "бухгалтерский", "бухгалтер", "аудит", "аудитор",
+  "наставничество", "менторство",
+  // hi
+  "परामर्श", "सलाहकार", "कानूनी", "वकील", "अधिवक्ता", "लेखांकन", "लेखाकार", "अंकेक्षण",
+  // ar
+  "استشارات", "استشارة", "استشاري", "محاماة", "محامي", "قانوني", "محاسبة", "محاسب", "تدقيق", "مدقق",
 ];
 
 /**
  * "Legal" e "law" só valem na CABEÇA ("Legal advisory", "Law firm"): no meio
  * do termo, "legal" é adjetivo de qualquer coisa ("Cannabis legal").
+ *
+ * "direito" foi tentado aqui em 14/09 e NÃO entrou: "Direito tributário" sem
+ * categoria cai em "outros" e escapa do portão, mas isso é decisão registrada
+ * em teste ("na dúvida é outros"), e a palavra é ambígua em português ("lado
+ * direito", "acesso direito"). Classificar como serviço o que não é sujeita o
+ * item ao portão, que é restrição — erra para o lado de barrar match legítimo.
+ * Fechar esse buraco pede um critério mais estreito (direito + especialidade
+ * jurídica) e uma decisão de quem mantém a regra.
  */
 const ASSESSORIA_SO_NA_CABECA = ["legal", "law"];
 
@@ -161,6 +187,24 @@ const OUTROS_SERVICOS = [
   "corretaje", "corredor", "corredora", "corredores",
   "reclutamiento", "tercerizacion",
   "mantenimiento", "soporte",
+  // de
+  "werbung", "ubersetzung", "ubersetzungen", "ubersetzer", "dolmetschen", "dolmetscher",
+  "schulung", "schulungen", "weiterbildung", "architektur", "architekt",
+  "ingenieurwesen", "ingenieur", "wartung", "instandhaltung",
+  "personalvermittlung", "makler", "vermittlung",
+  // fr
+  "publicite", "traduction", "traductions", "traducteur", "traducteurs",
+  "architecte", "architectes", "courtage", "courtier", "courtiers", "recrutement", "mentorat",
+  // ru
+  "маркетинг", "реклама", "переводчик", "обучение", "тренинг", "тренинги",
+  "дизайн", "дизайнер", "архитектура", "архитектор", "инжиниринг", "инженер",
+  "обслуживание", "техобслуживание", "рекрутинг", "брокер", "брокерские", "посредничество",
+  // hi
+  "विपणन", "मार्केटिंग", "अनुवाद", "अनुवादक", "प्रशिक्षण", "डिजाइन",
+  "वास्तुकला", "वास्तुकार", "इंजीनियरिंग", "अभियांत्रिकी", "रखरखाव", "भर्ती", "दलाली", "दलाल",
+  // ar
+  "تسويق", "ترجمة", "مترجم", "تدريب", "تصميم", "مصمم", "عمارة", "هندسة", "مهندس",
+  "صيانة", "توظيف", "وساطة", "وسيط",
 ];
 
 /**
@@ -204,25 +248,66 @@ const SUBSTANTIVOS_DE_SERVICO = new Set(
  * "Advocacia tributária" possuído). Palavra fora do mapa é a própria família.
  */
 const FAMILIAS: Record<string, readonly string[]> = {
-  advocacia: ["advocacia", "advogado", "advogada", "advogados", "advogadas", "juridico", "juridica", "juridicos", "juridicas", "lawyer", "lawyers", "attorney", "attorneys", "law", "legal", "abogacia", "abogado", "abogada", "abogados", "abogadas"],
-  consultoria: ["consultoria", "consultorias", "consultor", "consultora", "consultores", "consultoras", "assessoria", "assessorias", "assessor", "assessora", "assessores", "assessoras", "consulting", "consultancy", "consultant", "consultants", "advisory", "advisor", "advisors", "adviser", "advisers", "asesoria", "asesorias", "asesor", "asesora", "asesores", "asesoras"],
-  contabilidade: ["contabilidade", "contabil", "contabeis", "contador", "contadora", "contadores", "contadoras", "accounting", "accountant", "accountants", "bookkeeping", "contabilidad", "contable", "contables"],
-  auditoria: ["auditoria", "auditorias", "auditor", "auditora", "auditores", "auditoras", "audit", "auditing", "audits"],
-  mentoria: ["mentoria", "mentorias", "mentor", "mentora", "mentores", "mentoras", "coaching", "coach", "mentoring", "mentorship"],
-  marketing: ["marketing", "publicidade", "propaganda", "advertising", "publicidad"],
-  design: ["design", "designer", "designers", "diseno", "disenador", "disenadora", "disenadores"],
-  arquitetura: ["arquitetura", "arquiteto", "arquiteta", "arquitetos", "arquitetas", "architecture", "architect", "architects", "arquitectura", "arquitecto", "arquitecta", "arquitectos"],
-  engenharia: ["engenharia", "engineering", "ingenieria"],
-  treinamento: ["treinamento", "treinamentos", "capacitacao", "capacitacoes", "curso", "cursos", "palestra", "palestras", "training", "trainings", "capacitacion", "formacion", "entrenamiento"],
-  traducao: ["traducao", "traducoes", "tradutor", "tradutora", "tradutores", "tradutoras", "interpretacao", "interprete", "interpretes", "translation", "translations", "translator", "translators", "interpreting", "interpreter", "interpreters", "traduccion", "traducciones", "traductor", "traductora", "traductores"],
+  advocacia: ["advocacia", "advogado", "advogada", "advogados", "advogadas", "juridico", "juridica", "juridicos", "juridicas", "lawyer", "lawyers", "attorney", "attorneys", "law", "legal", "abogacia", "abogado", "abogada", "abogados", "abogadas", "rechtsberatung", "rechtsanwalt", "rechtsanwalte", "anwalt", "anwalte", "anwaltin", "juristisch", "juristische", "avocat", "avocats", "avocate", "juridique", "juridiques", "юридический", "юридические", "юрист", "адвокат", "कानूनी", "वकील", "अधिवक्ता", "محاماة", "محامي", "قانوني"],
+  consultoria: ["consultoria", "consultorias", "consultor", "consultora", "consultores", "consultoras", "assessoria", "assessorias", "assessor", "assessora", "assessores", "assessoras", "consulting", "consultancy", "consultant", "consultants", "advisory", "advisor", "advisors", "adviser", "advisers", "asesoria", "asesorias", "asesor", "asesora", "asesores", "asesoras", "beratung", "beratungen", "berater", "beraterin", "unternehmensberatung", "conseil", "conseils", "consultante", "консалтинг", "консультация", "консультации", "консультирование", "консультант", "परामर्श", "सलाहकार", "استشارات", "استشارة", "استشاري"],
+  contabilidade: ["contabilidade", "contabil", "contabeis", "contador", "contadora", "contadores", "contadoras", "accounting", "accountant", "accountants", "bookkeeping", "contabilidad", "contable", "contables", "buchhaltung", "buchfuhrung", "buchhalter", "steuerberatung", "steuerberater", "comptabilite", "comptable", "comptables", "бухгалтерия", "бухгалтерский", "бухгалтер", "लेखांकन", "लेखाकार", "محاسبة", "محاسب"],
+  auditoria: ["auditoria", "auditorias", "auditor", "auditora", "auditores", "auditoras", "audit", "auditing", "audits", "wirtschaftsprufung", "wirtschaftsprufer", "auditeur", "auditeurs", "аудит", "аудитор", "अंकेक्षण", "تدقيق", "مدقق"],
+  mentoria: ["mentoria", "mentorias", "mentor", "mentora", "mentores", "mentoras", "coaching", "coach", "mentoring", "mentorship", "наставничество", "менторство", "mentorat"],
+  marketing: ["marketing", "publicidade", "propaganda", "advertising", "publicidad", "werbung", "publicite", "маркетинг", "реклама", "विपणन", "मार्केटिंग", "تسويق"],
+  design: ["design", "designer", "designers", "diseno", "disenador", "disenadora", "disenadores", "дизайн", "дизайнер", "डिजाइन", "تصميم", "مصمم"],
+  arquitetura: ["arquitetura", "arquiteto", "arquiteta", "arquitetos", "arquitetas", "architecture", "architect", "architects", "arquitectura", "arquitecto", "arquitecta", "arquitectos", "architektur", "architekt", "architecte", "architectes", "архитектура", "архитектор", "वास्तुकला", "वास्तुकार", "عمارة"],
+  engenharia: ["engenharia", "engineering", "ingenieria", "ingenieurwesen", "ingenieur", "инжиниринг", "инженер", "इंजीनियरिंग", "अभियांत्रिकी", "هندسة", "مهندس"],
+  treinamento: ["treinamento", "treinamentos", "capacitacao", "capacitacoes", "curso", "cursos", "palestra", "palestras", "training", "trainings", "capacitacion", "formacion", "entrenamiento", "schulung", "schulungen", "weiterbildung", "обучение", "тренинг", "тренинги", "प्रशिक्षण", "تدريب"],
+  traducao: ["traducao", "traducoes", "tradutor", "tradutora", "tradutores", "tradutoras", "interpretacao", "interprete", "interpretes", "translation", "translations", "translator", "translators", "interpreting", "interpreter", "interpreters", "traduccion", "traducciones", "traductor", "traductora", "traductores", "ubersetzung", "ubersetzungen", "ubersetzer", "dolmetschen", "dolmetscher", "traduction", "traductions", "traducteur", "traducteurs", "переводчик", "अनुवाद", "अनुवादक", "ترجمة", "مترجم"],
   despachante: ["despachante", "despachantes", "desembaraco"],
-  corretagem: ["corretagem", "corretor", "corretora", "corretores", "corretoras", "brokerage", "broker", "brokers", "corretaje", "corredor", "corredora", "corredores"],
-  recrutamento: ["recrutamento", "headhunting", "headhunter", "headhunters", "recruitment", "recruiting", "reclutamiento"],
+  corretagem: ["corretagem", "corretor", "corretora", "corretores", "corretoras", "brokerage", "broker", "brokers", "corretaje", "corredor", "corredora", "corredores", "makler", "courtage", "courtier", "courtiers", "брокер", "брокерские", "दलाली", "दलाल", "وساطة", "وسيط"],
+  recrutamento: ["recrutamento", "headhunting", "headhunter", "headhunters", "recruitment", "recruiting", "reclutamiento", "personalvermittlung", "recrutement", "рекрутинг", "भर्ती", "توظيف"],
   terceirizacao: ["terceirizacao", "outsourcing", "tercerizacion"],
-  manutencao: ["manutencao", "maintenance", "mantenimiento"],
+  manutencao: ["manutencao", "maintenance", "mantenimiento", "wartung", "instandhaltung", "обслуживание", "техобслуживание", "रखरखाव", "صيانة"],
   suporte: ["suporte", "assistencia", "atendimento", "support", "assistance", "soporte"],
-  agenciamento: ["agenciamento", "intermediacao"],
+  agenciamento: ["agenciamento", "intermediacao", "vermittlung", "посредничество"],
 };
+/**
+ * Chinês e japonês não separam palavras por espaço, então a classificação por
+ * TOKEN não enxerga nada: "税务咨询" (consultoria tributária) chega como uma
+ * palavra só e caía em "outros" — o portão da demanda expressa nunca disparava
+ * nesses dois idiomas, e a regra da cliente simplesmente não existia para
+ * quem escreve neles (defeito relatado depois da #101).
+ *
+ * Aqui o casamento é por SUBSTRING, que é como se reconhece vocabulário
+ * fechado em escrita sem fronteira de palavra. A lista é curta e conservadora
+ * de propósito: termo que também é palavra comum fora de serviço (支持/サポート
+ * "suporte", 工程 "obra") ficou de fora, porque classificar como serviço por
+ * engano SUJEITA o item ao portão — erra para o lado de barrar match legítimo.
+ * Faltar termo aqui só mantém o que já havia.
+ *
+ * Ordenado do mais longo para o mais curto: "建築設計" tem de ganhar de "設計".
+ */
+const SERVICOS_SEM_ESPACO: Array<[string, string]> = ([
+  // zh
+  ["市场营销", "marketing"], ["建筑设计", "arquitetura"],
+  ["咨询", "consultoria"], ["諮詢", "consultoria"], ["顾问", "consultoria"],
+  ["律师", "advocacia"], ["法律", "advocacia"],
+  ["会计", "contabilidade"], ["审计", "auditoria"],
+  ["营销", "marketing"], ["广告", "marketing"],
+  ["翻译", "traducao"], ["培训", "treinamento"], ["设计", "design"],
+  ["维护", "manutencao"], ["招聘", "recrutamento"], ["经纪", "corretagem"],
+  // ja
+  ["コンサルティング", "consultoria"], ["マーケティング", "marketing"],
+  ["メンテナンス", "manutencao"], ["人材紹介", "recrutamento"], ["建築設計", "arquitetura"],
+  ["コンサル", "consultoria"], ["弁護士", "advocacia"], ["法務", "advocacia"],
+  ["監査", "auditoria"], ["翻訳", "traducao"], ["通訳", "traducao"],
+  ["研修", "treinamento"], ["デザイン", "design"], ["設計", "design"],
+  ["保守", "manutencao"], ["採用", "recrutamento"], ["仲介", "corretagem"],
+] as Array<[string, string]>).sort((a, b) => b[0].length - a[0].length);
+
+/** A família do serviço nomeado por substring, ou null — ver SERVICOS_SEM_ESPACO. */
+function servicoPorSubstring(rotulo: string): string | null {
+  const texto = normalizar(rotulo);
+  for (const [termo, familia] of SERVICOS_SEM_ESPACO) if (texto.includes(termo)) return familia;
+  return null;
+}
+
 const FAMILIA_DA_PALAVRA = new Map<string, string>(
   Object.entries(FAMILIAS).flatMap(([familia, palavras]) => palavras.map(palavra => [palavra, familia] as const)),
 );
@@ -527,6 +612,10 @@ export function classificarOferta(rotulo: string, categoria?: string | null): Ti
   if (CABECAS_NEUTRAS.has(cabeca) && complementoDaCabeca(palavras, indice).some(palavra => SUBSTANTIVOS_DE_SERVICO.has(palavra) || ADJETIVOS_DE_SERVICO.has(palavra))) {
     return "servico";
   }
+  // 6. Escrita sem fronteira de palavra (chinês, japonês): a esta altura o
+  //    caminho por token não achou nada, porque o rótulo inteiro é um token só.
+  //    Vem por último de propósito — não passa por cima de decisão nenhuma.
+  if (servicoPorSubstring(rotulo)) return "servico";
   return tipoPelaCategoria(categoria) ?? "outros";
 }
 
@@ -540,7 +629,7 @@ export function classificarOferta(rotulo: string, categoria?: string | null): Ti
 export function familiaDoServico(rotulo: string, categoria?: string | null): string | null {
   if (!ehServico(rotulo, categoria)) return null;
   const palavra = tokensDoTermo(rotulo).find(p => (SUBSTANTIVOS_DE_SERVICO.has(p) || ADJETIVOS_DE_SERVICO.has(p)) && !GENERICAS_DEMAIS.has(p));
-  return palavra ? familiaDaPalavra(palavra) : null;
+  return palavra ? familiaDaPalavra(palavra) : servicoPorSubstring(rotulo);
 }
 
 /**
