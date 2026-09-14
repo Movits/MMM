@@ -909,7 +909,7 @@ export default function Home() {
             </p>
             <div className="flex justify-center gap-10 mt-8">
               <div className="text-center">
-                <div className="text-2xl font-extrabold" style={{ color: "#8e5a3f" }}>{stats?.bronze ?? 0}</div>
+                <div className="text-2xl font-extrabold" style={{ color: "#c98f70" }}>{stats?.bronze ?? 0}</div>
                 <div className="text-xs text-white/35 mt-1">Bronze</div>
               </div>
               <div className="text-center">
@@ -927,9 +927,9 @@ export default function Home() {
             {/* BRONZE */}
             <div className="p-8 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] transition-all duration-300 hover:border-[#8e5a3f]/30">
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-5 border" style={{ background: "rgba(205,127,50,0.08)", borderColor: "rgba(205,127,50,0.25)" }}>
-                <BadgeCheck className="w-5 h-5" style={{ color: "#8e5a3f" }} />
+                <BadgeCheck className="w-5 h-5" style={{ color: "#c98f70" }} />
               </div>
-              <h3 className="text-lg font-extrabold mb-3" style={{ color: "#8e5a3f" }}>{t("governance.bronze.title")}</h3>
+              <h3 className="text-lg font-extrabold mb-3" style={{ color: "#c98f70" }}>{t("governance.bronze.title")}</h3>
               <p className="text-white/40 text-sm leading-relaxed mb-5">
                 {t("governance.bronze.desc")}
               </p>
