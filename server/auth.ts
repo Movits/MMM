@@ -174,9 +174,21 @@ export async function loginUser(params: {
     ? user.name.trim()
     : (user.email ? user.email.split("@")[0] : "usuario");
 
+  // Mesma cautela do safeName, que faltava aqui: `??` só cai no fallback com
+  // null/undefined, e o .env.example traz `VITE_APP_ID=` — vazio. O dotenv
+  // entrega string VAZIA, que não é nullish, então o appId ia vazio no JWT.
+  // Do outro lado, sdk.verifySession exige isNonEmptyString(appId) e recusava
+  // a sessão a cada requisição, registrando "[Auth] Session payload missing
+  // required fields": a pessoa logava, a sessão era criada no banco, e no
+  // request seguinte ela já estava deslogada. Ou seja, quem seguiu o README
+  // ("cp .env.example .env" e preencher as variáveis) não conseguia ficar
+  // logado em dev. Achado ao abrir o app logado para conferir a carga da
+  // planilha de ponta a ponta (F9).
+  const safeAppId = process.env.VITE_APP_ID?.trim() || "mmm-os";
+
   const token = await new jose.SignJWT({
     openId: user.openId,                          // campo esperado pelo sdk.verifySession
-    appId: process.env.VITE_APP_ID ?? "mmm-os",  // campo esperado pelo sdk.verifySession
+    appId: safeAppId,                             // NUNCA vazio — sdk exige isNonEmptyString
     name: safeName,                               // NUNCA vazio — sdk exige isNonEmptyString
     sessionToken,                                  // para validação no banco (validateSessionToken)
   })
