@@ -33,11 +33,12 @@ function arquivosDeTela(dir: string, encontrados: string[] = []): string[] {
   return encontrados;
 }
 
-/** Linhas de comentário não são código: `// t("x.y")` não desenha nada. */
+/** Linhas de comentário não são código: `// t("x.y")` não desenha nada. Remove comentários inline também. */
 function semComentarios(conteudo: string): string {
   return conteudo
     .split(/\r?\n/)
     .filter(linha => !/^\s*(\/\/|\*|\/\*)/.test(linha))
+    .map(linha => linha.replace(/\/\/.*$/, "")) // Remove comentários inline
     .join("\n");
 }
 

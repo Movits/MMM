@@ -60,7 +60,9 @@ const perfilDona = {
   investmentCapacity: null, lookingForInvestment: false, investmentAmountSeeking: null,
   country: "Brasil", city: "Brasília", openToRemote: true,
 };
-// Complementar à dona em tudo: pontua ~73, acima dos limiares de 40 e de 70.
+// Complementar à dona em tudo: pontua ~73, acima dos limiares de 50 e de 70.
+// Pesos das 6 dimensões: complementaridade 30%, setor 20%, investimento 20%,
+// especialidade 15%, valores 10%, localização 5%. Limiar de suficiência: 50.
 const candidata = (userId: number) => ({
   ...perfilDona, userId,
   primarySpecialty: "vendas", secondarySpecialties: ["marketing"],
@@ -140,6 +142,34 @@ describe("Matches do Dashboard — a cota do insight de IA", () => {
 // A trava de revogação NA LEITURA vive no caminho que o Dashboard chama de
 // verdade (routers/profileMatches.ts) e é coberta em etapa8-niveis.test.ts —
 // a duplicata sem chamadores que morava aqui foi aposentada na etapa 8.
+
+describe("Matches do Dashboard — limiar de 50 para dados suficientes", () => {
+  it("bloqueia matches com score < 50 (fronteira inferior)", async () => {
+    const scoreAbaixo50 = {
+      userId: 2, primarySpecialty: "tech", secondarySpecialties: ["finance"],
+      sector: "Tecnologia", seekingTypes: ["investor"], values: ["stability"],
+      whatIHave: ["rede-investidores"], whatINeed: ["talentos"],
+      investmentCapacity: null, lookingForInvestment: false, investmentAmountSeeking: null,
+      country: "EUA", city: "São Francisco", openToRemote: false,
+    };
+    filas.push([perfilDona], [scoreAbaixo50], []);
+
+    const criados = await motor.generateMatchesForUser(1);
+
+    expect(criados).toBe(0);
+    expect(upserts).toHaveLength(0);
+  });
+
+  it("aceita matches com score >= 50 (fronteira superior)", async () => {
+    const scoreAcima50 = candidata(2);
+    filas.push([perfilDona], [scoreAcima50], []);
+
+    const criados = await motor.generateMatchesForUser(1);
+
+    expect(criados).toBe(1);
+    expect(upserts).toHaveLength(1);
+  });
+});
 
 describe("Matches do Dashboard — setor normalizado para a chave canônica", () => {
   it("rótulos do mesmo setor em idiomas diferentes casam", () => {

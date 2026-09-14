@@ -23,7 +23,7 @@ export function AutorizacaoAcervoOuro() {
   const { t } = useTranslation();
   const [aberto, setAberto] = useState(false);
   const utils = trpc.useUtils();
-  const { data, isLoading } = trpc.consent.status.useQuery({ type: "termo_acesso_ouro" });
+  const { data, isLoading, isError } = trpc.consent.status.useQuery({ type: "termo_acesso_ouro" });
 
   const autorizar = trpc.consent.accept.useMutation({
     onSuccess: () => {
@@ -37,6 +37,15 @@ export function AutorizacaoAcervoOuro() {
     return (
       <div className="mt-3 flex items-center gap-2 text-xs text-white/40">
         <Loader2 className="animate-spin" size={13} /> {t("network.ouroCarregando")}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-400/25 bg-red-400/5 px-3 py-2.5">
+        <div className="text-red-300 mt-0.5">⚠️</div>
+        <p className="text-xs text-red-200/80">{t("network.ouroFalhaToast")}</p>
       </div>
     );
   }

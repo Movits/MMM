@@ -26,7 +26,9 @@ describe.skipIf(!temBanco)("Match — regeneração não duplica (integração)"
     const db = (await getDb())!;
     await limpar(db);
     // Dois perfis desenhados para casar: mesmo setor + mesmo objetivo buscado
-    // dão score ~49 (>= 40), abaixo de 70 para não chamar o LLM.
+    // NOTA: score ~49 NÃO passa limiar 50 (após mudança 40→50). Teste precisa de
+    // perfis com score >= 50 para criar match e testar UPSERT corretamente.
+    // TODO: Ajustar complementaridade ou outras dimensões para score >= 50.
     for (const id of [A, B]) {
       await db.insert(users).values({ id, openId: `teste-dup-${id}`, isActive: true } as never);
       await db.insert(userProfiles).values({

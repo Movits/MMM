@@ -81,7 +81,7 @@ export const matchingRouter = router({
           // precisar" dele. A regra da demanda expressa é o contrário disso, e
           // vale só para serviço — os outros tipos seguem com sinônimos e
           // setores relacionados.
-          content: `Você é o motor de matchmaking semântico da plataforma MMM. Analise o perfil da usuária e as oportunidades disponíveis. Retorne um JSON com os índices das oportunidades mais compatíveis e o score de compatibilidade (0-100) para cada uma. Para produtos, ativos, investimento, conexões, tecnologia e imóveis, considere sinônimos, setores relacionados e a sinergia entre "O que tenho" e "O que preciso". Retorne apenas as oportunidades com score >= 40. Máximo de 10 resultados.
+          content: `Você é o motor de matchmaking semântico da plataforma MMM. Analise o perfil da usuária e as oportunidades disponíveis. Retorne um JSON com os índices das oportunidades mais compatíveis e o score de compatibilidade (0-100) para cada uma. Para produtos, ativos, investimento, conexões, tecnologia e imóveis, considere sinônimos, setores relacionados e a sinergia entre "O que tenho" e "O que preciso". Retorne apenas as oportunidades com score >= 40 (motor semântico de oportunidades; Dashboard usa >= 50). Máximo de 10 resultados.
 
 ${REGRA_DA_DEMANDA_EXPRESSA}`,
         },
@@ -126,6 +126,9 @@ ${REGRA_DA_DEMANDA_EXPRESSA}`,
     try { parsed = JSON.parse(content); } catch { parsed = { matches: [] }; }
 
     return parsed.matches
+      // Motor semântico de oportunidades: filtra com score >= 40
+      // (diferente do motor de Dashboard que agora usa >= 50 para dados suficientes).
+      // Dois motores independentes podem ter limiares diferentes conforme seu contexto.
       .filter((m) => m.index >= 0 && m.index < activeOpps.length && m.score >= 40)
       // O portão: match apoiado em SERVIÇO só entra com a necessidade expressa
       // citada e conferida no texto da própria oportunidade — a nota não
