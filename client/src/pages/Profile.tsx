@@ -232,7 +232,10 @@ export default function Profile() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-transparent text-white flex items-center justify-center">
-        <div className="space-y-4 w-full max-w-2xl px-6">
+        {/* A mesma largura da tela carregada (logo abaixo): em max-w-2xl a página
+            abria numa coluna estreita e pulava para a largura cheia quando o
+            perfil chegava. */}
+        <div className="space-y-4 w-full max-w-6xl px-4 sm:px-6">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 bg-white/5 rounded-2xl" />)}
         </div>
       </div>
