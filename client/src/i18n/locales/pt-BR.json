@@ -55,32 +55,39 @@
     }
   },
   "opportunities": {
-    "title": "Que tipo de oportunidade você busca?",
-    "subtitle": "A plataforma conecta pessoas em diferentes momentos e objetivos",
-    "society": {
-      "label": "Sociedade",
-      "desc": "Encontre sócios com perfil complementar ao seu"
+    "title": "Até onde o seu próximo negócio pode chegar?",
+    "subtitle": "Conecte-se às pessoas certas para vender, expandir, investir e transformar oportunidades em negócios — no Brasil e no mundo.",
+    "reach": {
+      "city": "Na sua cidade",
+      "state": "Em outro estado",
+      "country": "Em outro país",
+      "markets": "Em novos mercados"
     },
-    "investment": {
-      "label": "Investimento",
-      "desc": "Conecte-se com investidores alinhados ao seu setor"
+    "internationalize": {
+      "label": "Internacionalize seu negócio",
+      "desc": "Encontre conexões estratégicas para entrar em novos países, acessar mercados e expandir além das fronteiras."
     },
-    "mentorship": {
-      "label": "Mentoria",
-      "desc": "Aprenda com quem já percorreu o caminho que você quer trilhar"
+    "sellProducts": {
+      "label": "Venda seus produtos",
+      "desc": "Conecte sua empresa a potenciais compradores, distribuidores, representantes e parceiros comerciais."
     },
-    "partnership": {
-      "label": "Parceria",
-      "desc": "Forme parcerias estratégicas para projetos e negócios"
+    "sellServices": {
+      "label": "Venda seus serviços",
+      "desc": "Apresente sua expertise a quem realmente precisa dela. Conecte sua oferta a demandas reais e compatíveis."
     },
-    "projects": {
-      "label": "Projetos",
-      "desc": "Junte-se a projetos inovadores que precisam do seu talento"
+    "findInvestment": {
+      "label": "Encontre investimentos",
+      "desc": "Aproxime empresas e projetos de investidores com interesses, setores e objetivos compatíveis."
     },
-    "jobs": {
-      "label": "Emprego",
-      "desc": "Oportunidades de trabalho curadas pelo seu perfil real"
-    }
+    "partnerships": {
+      "label": "Construa parcerias estratégicas",
+      "desc": "Encontre sócios, parceiros e empresas complementares para criar novos negócios e acelerar projetos."
+    },
+    "findOpportunities": {
+      "label": "Encontre oportunidades",
+      "desc": "Descubra projetos, demandas e conexões compatíveis com aquilo que você tem a oferecer ou está buscando."
+    },
+    "closing": "Você diz onde quer chegar. Nossa inteligência encontra quem pode ajudar você a chegar lá."
   },
   "testimonials": {
     "title": "O que estão dizendo",

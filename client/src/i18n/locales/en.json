@@ -55,32 +55,39 @@
     }
   },
   "opportunities": {
-    "title": "What kind of opportunity are you looking for?",
-    "subtitle": "The platform connects people at different stages and goals",
-    "society": {
-      "label": "Partnership",
-      "desc": "Find co-founders with a complementary profile"
+    "title": "How far can your next deal go?",
+    "subtitle": "Connect with the right people to sell, expand, invest and turn opportunities into business — in Brazil and around the world.",
+    "reach": {
+      "city": "In your city",
+      "state": "In another state",
+      "country": "In another country",
+      "markets": "In new markets"
     },
-    "investment": {
-      "label": "Investment",
-      "desc": "Connect with investors aligned with your sector"
+    "internationalize": {
+      "label": "Take your business global",
+      "desc": "Find strategic connections to enter new countries, access markets and expand beyond borders."
     },
-    "mentorship": {
-      "label": "Mentorship",
-      "desc": "Learn from those who have walked the path you want to take"
+    "sellProducts": {
+      "label": "Sell your products",
+      "desc": "Connect your company with potential buyers, distributors, sales representatives and trade partners."
     },
-    "partnership": {
-      "label": "Collaboration",
-      "desc": "Form strategic partnerships for projects and businesses"
+    "sellServices": {
+      "label": "Sell your services",
+      "desc": "Put your expertise in front of the people who truly need it. Connect your offer to real, compatible demand."
     },
-    "projects": {
-      "label": "Projects",
-      "desc": "Join innovative projects that need your talent"
+    "findInvestment": {
+      "label": "Find investment",
+      "desc": "Bring companies and projects together with investors whose interests, sectors and goals match."
     },
-    "jobs": {
-      "label": "Jobs",
-      "desc": "Work opportunities curated by your real profile"
-    }
+    "partnerships": {
+      "label": "Build strategic partnerships",
+      "desc": "Find co-founders, partners and complementary companies to create new businesses and accelerate projects."
+    },
+    "findOpportunities": {
+      "label": "Find opportunities",
+      "desc": "Discover projects, needs and connections that match what you have to offer or what you are looking for."
+    },
+    "closing": "You say where you want to go. Our intelligence finds who can help you get there."
   },
   "testimonials": {
     "title": "What people are saying",

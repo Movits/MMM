@@ -55,32 +55,39 @@
     }
   },
   "opportunities": {
-    "title": "Opportunités faites pour vous",
-    "subtitle": "Découvrez un monde de possibilités adaptées à vos ambitions.",
-    "society": {
-      "label": "Impact Social",
-      "desc": "Contribuez à des causes qui vous passionnent."
+    "title": "Jusqu'où votre prochaine affaire peut-elle aller ?",
+    "subtitle": "Connectez-vous aux bonnes personnes pour vendre, vous développer, investir et transformer les opportunités en affaires — au Brésil et dans le monde entier.",
+    "reach": {
+      "city": "Dans votre ville",
+      "state": "Dans une autre région",
+      "country": "Dans un autre pays",
+      "markets": "Sur de nouveaux marchés"
     },
-    "investment": {
-      "label": "Investissement",
-      "desc": "Trouvez des investisseurs ou des projets à financer."
+    "internationalize": {
+      "label": "Internationalisez votre entreprise",
+      "desc": "Trouvez des connexions stratégiques pour entrer dans de nouveaux pays, accéder à de nouveaux marchés et vous développer au-delà des frontières."
     },
-    "mentorship": {
-      "label": "Mentorats",
-      "desc": "Guide ou soyez guidé par des experts."
+    "sellProducts": {
+      "label": "Vendez vos produits",
+      "desc": "Connectez votre entreprise à des acheteurs potentiels, des distributeurs, des représentants et des partenaires commerciaux."
     },
-    "partnership": {
-      "label": "Partenariats",
-      "desc": "Formez des alliances stratégiques pour la croissance."
+    "sellServices": {
+      "label": "Vendez vos services",
+      "desc": "Présentez votre expertise à ceux qui en ont vraiment besoin. Reliez votre offre à des demandes réelles et compatibles."
     },
-    "projects": {
-      "label": "Projets Collaboratifs",
-      "desc": "Lancez et développez des initiatives ensemble."
+    "findInvestment": {
+      "label": "Trouvez des investissements",
+      "desc": "Rapprochez entreprises et projets d'investisseurs aux intérêts, secteurs et objectifs compatibles."
     },
-    "jobs": {
-      "label": "Carrières",
-      "desc": "Découvrez des postes de direction exclusifs."
-    }
+    "partnerships": {
+      "label": "Construisez des partenariats stratégiques",
+      "desc": "Trouvez des associés, des partenaires et des entreprises complémentaires pour créer de nouvelles affaires et accélérer vos projets."
+    },
+    "findOpportunities": {
+      "label": "Trouvez des opportunités",
+      "desc": "Découvrez des projets, des demandes et des connexions compatibles avec ce que vous avez à offrir ou ce que vous recherchez."
+    },
+    "closing": "Vous dites où vous voulez aller. Notre intelligence trouve qui peut vous aider à y arriver."
   },
   "testimonials": {
     "title": "Ce que nos membres disent",

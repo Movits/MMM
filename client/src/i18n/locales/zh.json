@@ -55,32 +55,39 @@
     }
   },
   "opportunities": {
-    "title": "无限机会",
-    "subtitle": "找到您需要的一切，超越自我。",
-    "society": {
-      "label": "社会影响",
-      "desc": "通过有意义的项目为更美好的世界做出贡献。"
+    "title": "您的下一笔生意能走多远？",
+    "subtitle": "与合适的人建立联系，去销售、拓展、投资，把机会变成生意 — 在巴西，也在全世界。",
+    "reach": {
+      "city": "在您的城市",
+      "state": "在其他地区",
+      "country": "在其他国家",
+      "markets": "在新的市场"
     },
-    "investment": {
-      "label": "投资",
-      "desc": "寻找投资者或投资机会。"
+    "internationalize": {
+      "label": "让您的业务走向国际",
+      "desc": "找到战略性人脉，进入新的国家、打开市场，把业务拓展到国界之外。"
     },
-    "mentorship": {
-      "label": "导师制",
-      "desc": "接受或提供成功指导。"
+    "sellProducts": {
+      "label": "销售您的产品",
+      "desc": "将您的公司与潜在买家、经销商、代理商和贸易伙伴连接起来。"
     },
-    "partnership": {
-      "label": "合作伙伴关系",
-      "desc": "建立战略联盟并进行合作。"
+    "sellServices": {
+      "label": "销售您的服务",
+      "desc": "把您的专业能力展示给真正需要的人。让您的服务对接真实且匹配的需求。"
     },
-    "projects": {
-      "label": "项目",
-      "desc": "发现并参与创新项目。"
+    "findInvestment": {
+      "label": "获得投资",
+      "desc": "让企业和项目与兴趣、行业和目标相匹配的投资者走到一起。"
     },
-    "jobs": {
-      "label": "专属职位",
-      "desc": "获得领导职位和高影响力工作。"
-    }
+    "partnerships": {
+      "label": "建立战略合作",
+      "desc": "寻找合伙人、合作伙伴和互补企业，共同创造新业务、加速项目进展。"
+    },
+    "findOpportunities": {
+      "label": "寻找机会",
+      "desc": "发现与您能提供或正在寻找的内容相匹配的项目、需求和人脉。"
+    },
+    "closing": "您说出想去哪里。我们的智能系统为您找到能帮您到达那里的人。"
   },
   "testimonials": {
     "title": "我们的会员怎么说",

@@ -55,32 +55,39 @@
     }
   },
   "opportunities": {
-    "title": "Un mundo de posibilidades para ti",
-    "subtitle": "Explora las diversas oportunidades que MMM ofrece para tu desarrollo.",
-    "society": {
-      "label": "Impacto social",
-      "desc": "Conéctate para generar un impacto positivo en la sociedad."
+    "title": "¿Hasta dónde puede llegar tu próximo negocio?",
+    "subtitle": "Conéctate con las personas adecuadas para vender, expandirte, invertir y convertir oportunidades en negocios — en Brasil y en el mundo.",
+    "reach": {
+      "city": "En tu ciudad",
+      "state": "En otro estado",
+      "country": "En otro país",
+      "markets": "En nuevos mercados"
     },
-    "investment": {
-      "label": "Inversión y finanzas",
-      "desc": "Encuentra inversores u oportunidades de inversión."
+    "internationalize": {
+      "label": "Internacionaliza tu negocio",
+      "desc": "Encuentra conexiones estratégicas para entrar en nuevos países, acceder a mercados y expandirte más allá de las fronteras."
     },
-    "mentorship": {
-      "label": "Mentoría y desarrollo",
-      "desc": "Recibe u ofrece mentoría para acelerar carreras."
+    "sellProducts": {
+      "label": "Vende tus productos",
+      "desc": "Conecta tu empresa con potenciales compradores, distribuidores, representantes y socios comerciales."
     },
-    "partnership": {
-      "label": "Alianzas estratégicas",
-      "desc": "Forma alianzas poderosas para proyectos y negocios."
+    "sellServices": {
+      "label": "Vende tus servicios",
+      "desc": "Presenta tu experiencia a quien realmente la necesita. Conecta tu oferta con demandas reales y compatibles."
     },
-    "projects": {
-      "label": "Proyectos colaborativos",
-      "desc": "Trabaja en proyectos innovadores con otros líderes."
+    "findInvestment": {
+      "label": "Encuentra inversión",
+      "desc": "Acerca empresas y proyectos a inversores con intereses, sectores y objetivos compatibles."
     },
-    "jobs": {
-      "label": "Oportunidades de carrera",
-      "desc": "Descubre y comparte vacantes de alto nivel."
-    }
+    "partnerships": {
+      "label": "Construye alianzas estratégicas",
+      "desc": "Encuentra socios, aliados y empresas complementarias para crear nuevos negocios y acelerar proyectos."
+    },
+    "findOpportunities": {
+      "label": "Encuentra oportunidades",
+      "desc": "Descubre proyectos, demandas y conexiones compatibles con lo que tienes para ofrecer o estás buscando."
+    },
+    "closing": "Tú dices adónde quieres llegar. Nuestra inteligencia encuentra a quien puede ayudarte a llegar allí."
   },
   "testimonials": {
     "title": "Lo que dicen nuestros líderes",

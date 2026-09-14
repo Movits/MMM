@@ -7,7 +7,8 @@ import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { trpc } from "@/lib/trpc";
 import { montarPracasDoGlobo, type Ligacao, type Praca } from "@/lib/pracas-do-globo";
 import {
-  Briefcase, HandCoins, GraduationCap, Handshake, Rocket, Lightbulb,
+  Package, BriefcaseBusiness, HandCoins, Handshake, Radar,
+  MapPin, MapIcon, Plane, Earth,
   Lock, ShieldCheck, BadgeCheck, KeyRound,
   UserRound, BrainCircuit, Zap, Sparkles, ArrowRight, ChevronDown, Star, Send, Globe,
 } from "lucide-react";
@@ -493,12 +494,21 @@ export default function Home() {
   ];
 
   const opportunityTypes = [
-    { Icon: Briefcase, key: "society" },
-    { Icon: HandCoins, key: "investment" },
-    { Icon: GraduationCap, key: "mentorship" },
-    { Icon: Handshake, key: "partnership" },
-    { Icon: Rocket, key: "projects" },
-    { Icon: Lightbulb, key: "jobs" },
+    { Icon: Globe, key: "internationalize" },
+    { Icon: Package, key: "sellProducts" },
+    { Icon: BriefcaseBusiness, key: "sellServices" },
+    { Icon: HandCoins, key: "findInvestment" },
+    { Icon: Handshake, key: "partnerships" },
+    { Icon: Radar, key: "findOpportunities" },
+  ];
+
+  // Até onde o negócio chega, da cidade ao mercado ainda sem acesso. MapIcon e
+  // não Map: o nome do ícone esconderia o Map do JavaScript neste arquivo.
+  const reachSteps = [
+    { Icon: MapPin, key: "city" },
+    { Icon: MapIcon, key: "state" },
+    { Icon: Plane, key: "country" },
+    { Icon: Earth, key: "markets" },
   ];
 
   return (
@@ -906,36 +916,101 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── TIPOS DE OPORTUNIDADE ─── */}
+      {/* ─── OPORTUNIDADES ─── */}
       <section id="oportunidades" className="py-28 relative border-t border-white/[0.04]">
         <div className="relative container mx-auto px-6">
-          <div ref={oppsRef} className="relative text-center mb-16">
+          <div ref={oppsRef} className="relative text-center mb-12">
             <SectionLabel>{t("nav.opportunities")}</SectionLabel>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-white">
+            <h2 className="text-4xl md:text-5xl font-extrabold text-white text-balance max-w-3xl mx-auto">
               {t("opportunities.title")}
             </h2>
-            <p className="text-white/40 mt-4 max-w-xl mx-auto">{t("opportunities.subtitle")}</p>
+            <p className="text-white/55 md:text-lg mt-5 max-w-2xl mx-auto leading-relaxed text-balance">{t("opportunities.subtitle")}</p>
           </div>
-          <div className="relative grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+
+          {/* Alcance: responde ao título sem parágrafo institucional. Quatro
+              marcos numa linha, da própria cidade ao mercado novo, acendendo da
+              esquerda para a direita (da direita para a esquerda em árabe, por
+              isso os rtl: na linha). O último marco leva o ouro rosé: é ali que
+              o título aponta. Os círculos são opacos para a linha passar POR
+              TRÁS deles, como uma rota ligando escalas. */}
+          <div className="relative max-w-2xl mx-auto mb-14">
+            <span aria-hidden="true"
+              className="absolute top-[18px] left-[12.5%] right-[12.5%] h-px bg-gradient-to-r rtl:bg-gradient-to-l from-white/10 via-[#c98f70]/40 to-[#c98f70] origin-left rtl:origin-right"
+              style={{
+                transform: oppsInView ? "scaleX(1)" : "scaleX(0)",
+                transition: "transform 1.1s cubic-bezier(0.23,1,0.32,1) 0.15s",
+              }} />
+            <ol className="relative grid grid-cols-4">
+              {reachSteps.map((passo, i) => {
+                const destino = i === reachSteps.length - 1;
+                return (
+                  <li key={passo.key} className="relative flex flex-col items-center gap-2.5 px-1 text-center"
+                    style={{
+                      opacity: oppsInView ? 1 : 0,
+                      transform: oppsInView ? "translateY(0)" : "translateY(12px)",
+                      transition: `all 0.6s cubic-bezier(0.23,1,0.32,1) ${0.15 + i * 0.22}s`,
+                    }}>
+                    <span aria-hidden="true"
+                      className={`w-9 h-9 rounded-full bg-[#211e1b] border flex items-center justify-center ${destino ? "border-[#c98f70]/60 shadow-[0_0_24px_rgba(201,143,112,0.35)]" : "border-white/10"}`}>
+                      <passo.Icon className={`w-4 h-4 ${destino ? "text-[#c98f70]" : "text-white/50"}`} />
+                    </span>
+                    {/* A sombra na cor do fundo separa o rótulo do contorno do
+                        planeta, que gira atrás e cruza esta linha. */}
+                    <span className={`text-xs sm:text-sm leading-snug text-balance [text-shadow:0_1px_10px_rgba(21,19,18,0.95)] ${destino ? "font-semibold text-[#efcba8]" : "text-white/65"}`}>
+                      {t(`opportunities.reach.${passo.key}`)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+
+          {/* Uma coluna no celular, com o ícone ao lado do texto para os seis
+              cartões não virarem uma torre; duas no tablet; três no desktop.
+              Os textos são frases inteiras, por isso o corpo subiu de xs/sm
+              para sm/base — no tamanho antigo não eram legíveis no celular. */}
+          <div className="relative grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
             {opportunityTypes.map((opp, i) => (
-              <div key={i}
-                className="group p-6 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] hover:border-[#c98f70]/30 hover:bg-[#c98f70]/[0.03] transition-all duration-300 cursor-default"
+              <div key={opp.key}
+                className="group flex items-start gap-4 sm:flex-col sm:gap-0 h-full p-6 md:p-7 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] hover:border-[#c98f70]/30 hover:bg-[#c98f70]/[0.03] transition-all duration-300 cursor-default"
                 style={{
                   opacity: oppsInView ? 1 : 0,
                   transform: oppsInView ? "scale(1)" : "scale(0.95)",
                   transition: `all 0.6s cubic-bezier(0.23,1,0.32,1) ${i * 0.08}s`,
                 }}>
-                <div className="w-11 h-11 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center mb-4 group-hover:border-[#c98f70]/30 transition-colors duration-300">
+                <div className="w-11 h-11 shrink-0 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center sm:mb-5 group-hover:border-[#c98f70]/30 transition-colors duration-300">
                   <opp.Icon className="w-5 h-5 text-white/50 group-hover:text-[#c98f70] transition-colors duration-300" />
                 </div>
-                <div className="font-bold text-white mb-1 text-sm">
-                  {t(`opportunities.${opp.key}.label`)}
-                </div>
-                <div className="text-xs text-white/35 leading-relaxed">
-                  {t(`opportunities.${opp.key}.desc`)}
+                <div className="min-w-0">
+                  <h3 className="font-bold text-white text-base md:text-lg leading-snug mb-1.5">
+                    {t(`opportunities.${opp.key}.label`)}
+                  </h3>
+                  <p className="text-sm text-white/45 leading-relaxed">
+                    {t(`opportunities.${opp.key}.desc`)}
+                  </p>
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Fechamento no mesmo molde do de "Como funciona": frase no gradiente
+              ouro rosé e o MESMO botão (mesmo Link, mesma rota, mesmas classes,
+              mesma chave hero.cta). Não é CTA novo nem rota nova. */}
+          <div className="max-w-3xl mx-auto mt-16 text-center"
+            style={{
+              opacity: oppsInView ? 1 : 0,
+              transform: oppsInView ? "translateY(0)" : "translateY(40px)",
+              transition: "all 0.7s cubic-bezier(0.23,1,0.32,1) 0.55s",
+            }}>
+            <p className="text-2xl md:text-3xl font-extrabold leading-snug text-balance bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+              {t("opportunities.closing")}
+            </p>
+            <Link href={isAuthenticated ? "/dashboard" : "/register"}>
+              <button className="group mt-8 bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-9 py-4 rounded-2xl text-lg text-balance transition-all duration-200 active:scale-[0.97] inline-flex items-center gap-2.5">
+                {t("hero.cta")}
+                <ArrowRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
+              </button>
+            </Link>
           </div>
         </div>
       </section>

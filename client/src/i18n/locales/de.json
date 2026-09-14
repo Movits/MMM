@@ -55,32 +55,39 @@
     }
   },
   "opportunities": {
-    "title": "Entdecke grenzenlose Möglichkeiten",
-    "subtitle": "Dein Weg zum Erfolg beginnt hier",
-    "society": {
-      "label": "Gesellschaftliche Wirkung",
-      "desc": "Projekte, die die Welt verändern."
+    "title": "Wie weit kann Ihr nächstes Geschäft gehen?",
+    "subtitle": "Vernetzen Sie sich mit den richtigen Menschen, um zu verkaufen, zu expandieren, zu investieren und Chancen in Geschäfte zu verwandeln — in Brasilien und weltweit.",
+    "reach": {
+      "city": "In Ihrer Stadt",
+      "state": "In einem anderen Bundesland",
+      "country": "In einem anderen Land",
+      "markets": "In neuen Märkten"
     },
-    "investment": {
-      "label": "Investitionsmöglichkeiten",
-      "desc": "Finde oder biete Kapital für innovative Ideen."
+    "internationalize": {
+      "label": "Internationalisieren Sie Ihr Unternehmen",
+      "desc": "Finden Sie strategische Kontakte, um in neue Länder einzutreten, Märkte zu erschließen und über Grenzen hinaus zu wachsen."
     },
-    "mentorship": {
-      "label": "Mentoring & Coaching",
-      "desc": "Lerne von den Besten und teile dein Wissen."
+    "sellProducts": {
+      "label": "Verkaufen Sie Ihre Produkte",
+      "desc": "Verbinden Sie Ihr Unternehmen mit potenziellen Käufern, Händlern, Vertretern und Handelspartnern."
     },
-    "partnership": {
-      "label": "Strategische Partnerschaften",
-      "desc": "Schließe dich mit anderen Führungskräften zusammen."
+    "sellServices": {
+      "label": "Verkaufen Sie Ihre Dienstleistungen",
+      "desc": "Zeigen Sie Ihre Expertise denen, die sie wirklich brauchen. Verbinden Sie Ihr Angebot mit echter, passender Nachfrage."
     },
-    "projects": {
-      "label": "Kollaborative Projekte",
-      "desc": "Gemeinsam Großes erreichen."
+    "findInvestment": {
+      "label": "Finden Sie Investitionen",
+      "desc": "Bringen Sie Unternehmen und Projekte mit Investoren zusammen, deren Interessen, Branchen und Ziele passen."
     },
-    "jobs": {
-      "label": "Karrierechancen",
-      "desc": "Finde deine Traumposition oder den perfekten Kandidaten."
-    }
+    "partnerships": {
+      "label": "Bauen Sie strategische Partnerschaften auf",
+      "desc": "Finden Sie Teilhaber, Partner und ergänzende Unternehmen, um neue Geschäfte zu schaffen und Projekte zu beschleunigen."
+    },
+    "findOpportunities": {
+      "label": "Finden Sie Chancen",
+      "desc": "Entdecken Sie Projekte, Bedarfe und Kontakte, die zu dem passen, was Sie anbieten oder suchen."
+    },
+    "closing": "Sie sagen, wohin Sie wollen. Unsere Intelligenz findet, wer Ihnen helfen kann, dorthin zu kommen."
   },
   "testimonials": {
     "title": "Was unsere Mitglieder sagen",
