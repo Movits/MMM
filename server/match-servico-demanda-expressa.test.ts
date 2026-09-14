@@ -53,15 +53,28 @@ describe("Serviço × necessidade que o NOMEIA — casa em 100", () => {
     expect(scoreMatch(item("Prestação de serviços de contabilidade"), item("Contabilidade")).score).toBe(100);
   });
 
-  it("a necessidade genérica que nomeia a família do serviço é demanda expressa: 'Consultoria' × 'Consultoria jurídica'", () => {
-    expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Consultoria", "Serviços")).score).toBe(100);
-    expect(scoreMatch(item("Empresa de consultoria"), item("Procura consultoria")).score).toBe(100);
+  it("a necessidade genérica que nomeia a família do serviço é demanda expressa, e vale 60 — não 100", () => {
+    // Valia 100 até 13/09, e era o terceiro defeito do relato sobre a #101:
+    // "Consultoria" procurado dava 100 para consultoria tributária, de
+    // marketing E de segurança do trabalho, empatado com quem tivesse pedido
+    // exatamente aquilo. 100 é a nota de quem tem a MESMA coisa. O par
+    // CONTINUA existindo, acima do corte de 50 — derrubar para 0 repetiria o
+    // defeito que a regra da especialidade consertou.
+    expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Consultoria", "Serviços"))).toEqual({ score: 60, type: "category" });
+    expect(scoreMatch(item("Empresa de consultoria"), item("Procura consultoria")).score).toBe(60);
     // Outra especialidade pedida é outra necessidade; outra família também.
     expect(scoreMatch(item("Consultoria jurídica"), item("Consultoria em marketing")).score).toBe(0);
     expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Advocacia", "Serviços")).score).toBe(0);
     // A família junta as flexões: "Advogado" procurado × "Advocacia tributária" possuído.
-    expect(scoreMatch(item("Advocacia tributária", "Jurídico"), item("Advogado", "Jurídico")).score).toBe(100);
-    expect(scoreMatch(item("Serviços jurídicos tributários"), item("Advogada")).score).toBe(100);
+    expect(scoreMatch(item("Advocacia tributária", "Jurídico"), item("Advogado", "Jurídico")).score).toBe(60);
+    expect(scoreMatch(item("Serviços jurídicos tributários"), item("Advogada")).score).toBe(60);
+  });
+
+  it("mas a necessidade que nomeia a ESPECIALIDADE, e não só a família, segue valendo 100", () => {
+    // A separação das duas notas é o conserto do defeito 3: pedir "Advogado"
+    // é pedir a família; pedir "Advogado tributarista" é pedir este serviço.
+    expect(scoreMatch(item("Advocacia tributária", "Jurídico"), item("Advogado tributarista", "Jurídico"))).toEqual({ score: 100, type: "exact" });
+    expect(scoreMatch(item("Consultoria tributária"), item("Consultor tributário")).score).toBe(100);
   });
 
   it("item coordenado ('Mina e consultoria mineral') fica com a mina e segue nos 60 por categoria", () => {

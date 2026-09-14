@@ -695,7 +695,20 @@ const mesmoConjunto = (a: string[], b: string[]) => {
  * categoria em comum — nada aqui olha para a categoria.
  */
 export function necessidadeNomeiaOServico(oferta: string, categoriaDaOferta: string | null | undefined, necessidade: string): boolean {
-  if (necessidadeGenericaNomeiaOServico(oferta, categoriaDaOferta, necessidade)) return true;
+  return necessidadeGenericaNomeiaOServico(oferta, categoriaDaOferta, necessidade)
+    || mesmaFamiliaEEspecialidade(oferta, categoriaDaOferta, necessidade);
+}
+
+/**
+ * A necessidade nomeia ESTE serviço, não só a família dele: mesma família E
+ * mesma especialidade ("Advogado tributarista" × "Advocacia tributária").
+ *
+ * Separado de `necessidadeGenericaNomeiaOServico` porque as duas valem notas
+ * diferentes no motor privado. Quem escreveu "Advogado tributarista" pediu
+ * exatamente o que está sendo oferecido; quem escreveu só "Advogado" pediu a
+ * família, e receber um tributarista é um bom palpite, não a mesma coisa.
+ */
+export function mesmaFamiliaEEspecialidade(oferta: string, categoriaDaOferta: string | null | undefined, necessidade: string): boolean {
   const familia = familiaDoServico(oferta, categoriaDaOferta);
   if (!familia || familiaDoServico(necessidade) !== familia) return false;
   return mesmoConjunto(especialidadeDoServico(oferta, categoriaDaOferta), especialidadeDoServico(necessidade));
