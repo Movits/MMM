@@ -8,8 +8,8 @@
 // kind = "how_met" e contextoCriado = true. Nunca o nome/texto do contexto.
 //
 // Em caso de dúvida sobre um registro (vínculo extra, participante, mídia,
-// reunião ligada, dono divergente), ele NUNCA é apagado — vai para a lista de
-// revisão manual do relatório.
+// reunião ligada, dono divergente, contexto ou vínculo editado pela dona), ele
+// NUNCA é apagado — vai para a lista de revisão manual do relatório.
 //
 // Uso (rode sempre o dry-run primeiro: ele mostra o banco alvo):
 //   DATABASE_URL='mysql://...' npx tsx scripts/limpar-contextos-how-met.ts

@@ -1,4 +1,4 @@
-import { and, eq, ne, notExists } from "drizzle-orm";
+import { and, eq, isNull, ne, not, notExists, or, sql } from "drizzle-orm";
 import { contactContexts, contextMedia, contextParticipants, contexts, enrichmentSuggestions, meetings } from "../drizzle/schema";
 import type { getDb, UndoSnapshot } from "./db";
 
@@ -103,6 +103,33 @@ export function decidirModo(argv: string[], databaseUrl: string | undefined): De
 }
 
 /**
+ * A forma exata da linha que o defeito gravava (`git show db6066d^:server/db.ts`,
+ * aplicarRespostaAoContato): só o nome, os campos opcionais nulos e
+ * updated_at = created_at. A dona edita o contexto pela Linha do Tempo
+ * (updateContext, que sempre muda updated_at) e o vínculo ao ligar o mesmo
+ * contato de novo (linkContactToContext). Linha fora dessa forma recebeu algo
+ * da dona e não pode sumir num --executar: vai para revisão manual.
+ *
+ * As condições são avaliadas no banco (IS NULL e igualdade entre colunas):
+ * o texto livre dos campos nunca chega ao script.
+ */
+function contextoIntocado() {
+  return and(
+    eq(contexts.updatedAt, contexts.createdAt),
+    isNull(contexts.contextTypeId), isNull(contexts.description), isNull(contexts.eventDate),
+    isNull(contexts.city), isNull(contexts.country), isNull(contexts.notes),
+  )!;
+}
+
+function vinculoIntocado() {
+  return and(
+    eq(contactContexts.updatedAt, contactContexts.createdAt),
+    isNull(contactContexts.eventDate), isNull(contactContexts.city),
+    isNull(contactContexts.country), isNull(contactContexts.notes),
+  )!;
+}
+
+/**
  * Lê enrichment_suggestions (field_type = how_met) e devolve, por contextId
  * candidato, a sugestão-fonte usada para reconhecê-lo. Um mesmo contexto pode
  * ser citado por mais de uma sugestão (nova pergunta reaplicada); mantém a
@@ -150,6 +177,7 @@ export async function limparContextosHowMet(
   for (const [contextId, info] of Array.from(brutos.entries())) {
     const [ctx] = await db.select({
       id: contexts.id, ownerId: contexts.ownerId, isCustom: contexts.isCustom, createdAt: contexts.createdAt,
+      intocado: sql<number>`case when ${contextoIntocado()} then 1 else 0 end`.mapWith(Number),
     }).from(contexts).where(eq(contexts.id, contextId)).limit(1);
 
     if (!ctx) { jaAusentes++; continue; } // já removido (manualmente ou execução anterior) — idempotente
@@ -162,15 +190,25 @@ export async function limparContextosHowMet(
       revisaoManual.push({ contextId, sugestaoId: info.sugestaoId, motivo: "contexto não é isCustom — não é o padrão do contexto criado pelo chat" });
       continue;
     }
+    if (ctx.intocado !== 1) {
+      revisaoManual.push({ contextId, sugestaoId: info.sugestaoId, motivo: "contexto editado depois de criado (updated_at ≠ created_at ou campo opcional preenchido)" });
+      continue;
+    }
 
-    const vinculos = await db.select({ id: contactContexts.id })
-      .from(contactContexts).where(eq(contactContexts.contextId, contextId));
+    const vinculos = await db.select({
+      id: contactContexts.id,
+      intocado: sql<number>`case when ${vinculoIntocado()} then 1 else 0 end`.mapWith(Number),
+    }).from(contactContexts).where(eq(contactContexts.contextId, contextId));
     if (vinculos.length > 1) {
       revisaoManual.push({ contextId, sugestaoId: info.sugestaoId, motivo: `contexto tem ${vinculos.length} vínculos — pode estar em uso além do que o bug criou` });
       continue;
     }
     if (vinculos.length === 1 && vinculos[0].id !== info.vinculoId) {
       revisaoManual.push({ contextId, sugestaoId: info.sugestaoId, motivo: "o único vínculo existente não é o vínculo registrado no snapshot" });
+      continue;
+    }
+    if (vinculos.length === 1 && vinculos[0].intocado !== 1) {
+      revisaoManual.push({ contextId, sugestaoId: info.sugestaoId, motivo: "vínculo do snapshot editado depois de criado (updated_at ≠ created_at ou campo opcional preenchido)" });
       continue;
     }
 
@@ -198,7 +236,7 @@ export async function limparContextosHowMet(
     candidatos.push({
       contextId, ownerId: info.ownerId, criadoEm: ctx.createdAt,
       sugestaoId: info.sugestaoId, vinculoId: info.vinculoId,
-      motivo: "undo_snapshot how_met com contextoCriado=true; sem vínculo extra, participante, mídia ou reunião — nenhum uso além do que o bug criou",
+      motivo: "undo_snapshot how_met com contextoCriado=true; contexto e vínculo sem edição; sem vínculo extra, participante, mídia ou reunião — nenhum uso além do que o bug criou",
     });
   }
 
@@ -210,18 +248,20 @@ export async function limparContextosHowMet(
     for (const cand of candidatos) {
       try {
         // A investigação acima pode estar velha quando a exclusão chega: a dona
-        // pode ter vinculado alguém, anexado uma foto ou marcado uma reunião no
-        // meio. Por isso a checagem de uso é repetida DENTRO do próprio DELETE
-        // (NOT EXISTS), na mesma instrução que apaga. O contexto sai primeiro
-        // porque é esse DELETE que decide; o vínculo do snapshot sai depois, na
-        // mesma transação: se ele falhar, o rollback devolve o contexto, e nunca
-        // sobra meio caminho.
+        // pode ter vinculado alguém, anexado uma foto, marcado uma reunião ou
+        // editado o contexto ou o vínculo no meio. Por isso as checagens de uso
+        // e de edição são repetidas DENTRO do próprio DELETE, na mesma instrução
+        // que apaga: o vínculo do snapshot só é tolerado enquanto intocado. O
+        // contexto sai primeiro porque é esse DELETE que decide; o vínculo do
+        // snapshot sai depois, na mesma transação: se ele falhar, o rollback
+        // devolve o contexto, e nunca sobra meio caminho.
         const apagou = await db.transaction(async (tx) => {
           const [r] = await tx.delete(contexts).where(and(
             eq(contexts.id, cand.contextId), eq(contexts.ownerId, cand.ownerId), eq(contexts.isCustom, true),
+            contextoIntocado(),
             notExists(tx.select({ id: contactContexts.id }).from(contactContexts).where(and(
               eq(contactContexts.contextId, cand.contextId),
-              cand.vinculoId ? ne(contactContexts.id, cand.vinculoId) : undefined,
+              cand.vinculoId ? or(ne(contactContexts.id, cand.vinculoId), not(vinculoIntocado())) : undefined,
             ))),
             notExists(tx.select({ id: contextParticipants.id }).from(contextParticipants)
               .where(eq(contextParticipants.contextId, cand.contextId))),
@@ -241,9 +281,9 @@ export async function limparContextosHowMet(
         if (apagou) {
           removidos.push(cand.contextId);
         } else {
-          // Sumiu (outra execução, remoção manual) ou passou a ter uso entre a
-          // investigação e a exclusão. Não é erro, e nada foi tocado.
-          ignoradosNaExecucao.push({ contextId: cand.contextId, motivo: "não apagado: sumiu ou passou a ter uso (vínculo, participante, mídia ou reunião) depois da investigação" });
+          // Sumiu (outra execução, remoção manual), passou a ter uso ou foi
+          // editado entre a investigação e a exclusão. Não é erro, e nada foi tocado.
+          ignoradosNaExecucao.push({ contextId: cand.contextId, motivo: "não apagado: sumiu, passou a ter uso (vínculo, participante, mídia ou reunião) ou foi editado depois da investigação" });
         }
       } catch (e) {
         erros.push({ contextId: cand.contextId, erro: e instanceof Error ? e.message : String(e) });

@@ -51,9 +51,13 @@ const DONA = "dona-1";
 // Linha de enrichment_suggestions no select parcial {id, ownerId, undoSnapshot}.
 const linhaSugestao = (id: string, ownerId: string, undoSnapshot: unknown) => [id, ownerId, undoSnapshot];
 
-// Linha de contexts no select parcial {id, ownerId, isCustom, createdAt} — sem o nome.
-const linhaContexto = (id: string, ownerId: string, isCustom: boolean, criadoEm = 1000) =>
-  [id, ownerId, isCustom ? 1 : 0, criadoEm];
+// Linha de contexts no select parcial {id, ownerId, isCustom, createdAt, intocado} — sem o nome.
+// `intocado` é o `case when` que o banco avalia (1 = a forma que o defeito gravava).
+const linhaContexto = (id: string, ownerId: string, isCustom: boolean, criadoEm = 1000, intocado = true) =>
+  [id, ownerId, isCustom ? 1 : 0, criadoEm, intocado ? 1 : 0];
+
+// Linha de contact_contexts no select parcial {id, intocado}.
+const linhaVinculo = (id: string, intocado = true) => [id, intocado ? 1 : 0];
 
 const snapshotBug = (contextoId: string | null, vinculoId: string | null = "vinc-1") => ({
   kind: "how_met" as const,
@@ -77,7 +81,7 @@ describe("identificação — só o undo_snapshot decide, nunca o nome/texto", (
     estado.respostas = [
       [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1"))], // enrichment_suggestions
       [linhaContexto("ctx-1", DONA, true)], // contexts
-      [["vinc-1"]],  // contact_contexts (o vínculo do próprio snapshot)
+      [linhaVinculo("vinc-1")],  // contact_contexts (o vínculo do próprio snapshot)
       [],            // context_participants
       [],            // context_media
       [],            // meetings
@@ -159,7 +163,7 @@ describe("o relatório não carrega o texto do contexto", () => {
     estado.respostas = [
       [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1"))],
       [linhaContexto("ctx-1", DONA, true)],
-      [["vinc-1"]],
+      [linhaVinculo("vinc-1")],
       [],
       [],
       [],
@@ -170,6 +174,17 @@ describe("o relatório não carrega o texto do contexto", () => {
     const selectContexto = sqlDe("from `contexts`")!;
     expect(selectContexto.sql).not.toContain("`name`");
     expect(Object.keys(r.candidatos[0])).not.toContain("nome");
+
+    // A edição é lida como 0/1 calculado no banco: os campos de texto livre só
+    // aparecem dentro de "is null", nunca como coluna devolvida ao script.
+    const selectVinculo = sqlDe("from `contact_contexts`")!;
+    for (const [consulta, tabela] of [[selectContexto, "contexts"], [selectVinculo, "contact_contexts"]] as const) {
+      expect(consulta.sql).toMatch(/case when \(.+\) then 1 else 0 end from/);
+      const semTestesDeNulo = consulta.sql.replace(new RegExp(`\`${tabela}\`\\.\`\\w+\` is null`, "g"), "");
+      for (const coluna of ["description", "event_date", "city", "country", "notes"]) {
+        expect(semTestesDeNulo).not.toContain(`\`${coluna}\``);
+      }
+    }
   });
 });
 
@@ -178,7 +193,7 @@ describe("proteção contra falso positivo — qualquer dúvida vai para revisã
     estado.respostas = [
       [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1"))],
       [linhaContexto("ctx-1", DONA, true)],
-      [["vinc-1"], ["vinc-2"]], // dois vínculos
+      [linhaVinculo("vinc-1"), linhaVinculo("vinc-2")], // dois vínculos
     ];
 
     const r = await limparContextosHowMet(await db(), "dry_run");
@@ -193,7 +208,7 @@ describe("proteção contra falso positivo — qualquer dúvida vai para revisã
     estado.respostas = [
       [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1", "vinc-1"))],
       [linhaContexto("ctx-1", DONA, true)],
-      [["vinc-outro"]],
+      [linhaVinculo("vinc-outro")],
     ];
 
     const r = await limparContextosHowMet(await db(), "dry_run");
@@ -207,7 +222,7 @@ describe("proteção contra falso positivo — qualquer dúvida vai para revisã
     estado.respostas = [
       [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1"))],
       [linhaContexto("ctx-1", DONA, true)],
-      [["vinc-1"]],
+      [linhaVinculo("vinc-1")],
       [["part-1"]], // participante
     ];
 
@@ -221,7 +236,7 @@ describe("proteção contra falso positivo — qualquer dúvida vai para revisã
     estado.respostas = [
       [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1"))],
       [linhaContexto("ctx-1", DONA, true)],
-      [["vinc-1"]],
+      [linhaVinculo("vinc-1")],
       [],
       [["media-1"]], // mídia
     ];
@@ -236,7 +251,7 @@ describe("proteção contra falso positivo — qualquer dúvida vai para revisã
     estado.respostas = [
       [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1"))],
       [linhaContexto("ctx-1", DONA, true)],
-      [["vinc-1"]],
+      [linhaVinculo("vinc-1")],
       [],
       [],
       [["reuniao-1"]], // reunião
@@ -271,6 +286,51 @@ describe("proteção contra falso positivo — qualquer dúvida vai para revisã
     expect(r.candidatos).toHaveLength(0);
     expect(r.revisaoManual[0].motivo).toMatch(/isCustom/);
   });
+
+  it("contexto editado pela dona depois de criado (a Linha do Tempo muda updated_at): revisão manual, nem em executar é apagado", async () => {
+    estado.respostas = [
+      [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1", "vinc-1"))],
+      [linhaContexto("ctx-1", DONA, true, 1000, false)], // o case when do banco deu 0
+      // O resto da fila é o de um candidato apto: sem a checagem de edição, seria apagado.
+      [linhaVinculo("vinc-1")],
+      [],
+      [],
+      [],
+      { affectedRows: 1 },
+      { affectedRows: 1 },
+    ];
+
+    const r = await limparContextosHowMet(await db(), "executar");
+
+    expect(r.candidatos).toHaveLength(0);
+    expect(r.removidos).toHaveLength(0);
+    expect(r.revisaoManual).toHaveLength(1);
+    expect(r.revisaoManual[0]).toMatchObject({ contextId: "ctx-1", sugestaoId: "sug-1" });
+    expect(r.revisaoManual[0].motivo).toMatch(/contexto editado/);
+    expect(estado.consultas.some(c => c.sql.startsWith("delete"))).toBe(false);
+  });
+
+  it("vínculo do snapshot editado (ligar o mesmo contato de novo grava data, cidade ou notas): revisão manual, nem em executar é apagado", async () => {
+    estado.respostas = [
+      [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1", "vinc-1"))],
+      [linhaContexto("ctx-1", DONA, true)],
+      [linhaVinculo("vinc-1", false)], // é o vínculo do snapshot, mas o case when do banco deu 0
+      [],
+      [],
+      [],
+      { affectedRows: 1 },
+      { affectedRows: 1 },
+    ];
+
+    const r = await limparContextosHowMet(await db(), "executar");
+
+    expect(r.candidatos).toHaveLength(0);
+    expect(r.removidos).toHaveLength(0);
+    expect(r.revisaoManual).toHaveLength(1);
+    expect(r.revisaoManual[0]).toMatchObject({ contextId: "ctx-1", sugestaoId: "sug-1" });
+    expect(r.revisaoManual[0].motivo).toMatch(/vínculo do snapshot editado/);
+    expect(estado.consultas.some(c => c.sql.startsWith("delete"))).toBe(false);
+  });
 });
 
 describe("execução real — checagem de uso e exclusão na mesma instrução, dentro de transação", () => {
@@ -278,7 +338,7 @@ describe("execução real — checagem de uso e exclusão na mesma instrução, 
     estado.respostas = [
       [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1", "vinc-1"))],
       [linhaContexto("ctx-1", DONA, true)],
-      [["vinc-1"]],
+      [linhaVinculo("vinc-1")],
       [],
       [],
       [],
@@ -315,6 +375,34 @@ describe("execução real — checagem de uso e exclusão na mesma instrução, 
     expect(iContexto).toBeLessThan(iVinculo);
     expect(iVinculo).toBeLessThan(iCommit);
     expect(ordem).not.toContain("rollback");
+  });
+
+  it("o DELETE repete a checagem de edição: só apaga o contexto intocado, e o vínculo do snapshot só é tolerado enquanto intocado", async () => {
+    estado.respostas = [
+      [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1", "vinc-1"))],
+      [linhaContexto("ctx-1", DONA, true)],
+      [linhaVinculo("vinc-1")],
+      [],
+      [],
+      [],
+      { affectedRows: 1 },
+      { affectedRows: 1 },
+    ];
+
+    await limparContextosHowMet(await db(), "executar");
+
+    const delContexto = sqlDe("delete from `contexts`")!.sql;
+    const intocado = (tabela: string, colunas: string[]) =>
+      `(\`${tabela}\`.\`updated_at\` = \`${tabela}\`.\`created_at\`` +
+      colunas.map(c => ` and \`${tabela}\`.\`${c}\` is null`).join("") + ")";
+    const contextoIntocado = intocado("contexts", ["context_type_id", "description", "event_date", "city", "country", "notes"]);
+    const vinculoIntocado = intocado("contact_contexts", ["event_date", "city", "country", "notes"]);
+
+    // A forma intocada do contexto vale para a própria linha apagada, fora dos NOT EXISTS.
+    expect(delContexto).toContain(contextoIntocado);
+    expect(delContexto.indexOf(contextoIntocado)).toBeLessThan(delContexto.indexOf("not exists"));
+    // Vínculo diferente do snapshot, ou o do snapshot já editado, impede a exclusão.
+    expect(delContexto).toContain(`(\`contact_contexts\`.\`id\` <> ? or not ${vinculoIntocado})`);
   });
 
   it("candidato sem vínculo (vinculoId null no snapshot): QUALQUER vínculo impede, e contact_contexts não é apagado", async () => {
@@ -354,7 +442,7 @@ describe("execução real — checagem de uso e exclusão na mesma instrução, 
     estado.respostas = [
       [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1"))],
       [linhaContexto("ctx-1", DONA, true)],
-      [["vinc-1"], ["vinc-2"]], // dois vínculos → revisão manual
+      [linhaVinculo("vinc-1"), linhaVinculo("vinc-2")], // dois vínculos → revisão manual
     ];
 
     const r = await limparContextosHowMet(await db(), "executar");
@@ -368,7 +456,7 @@ describe("execução real — checagem de uso e exclusão na mesma instrução, 
     estado.respostas = [
       [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1", "vinc-1"))],
       [linhaContexto("ctx-1", DONA, true)],
-      [["vinc-1"]],
+      [linhaVinculo("vinc-1")],
       [],
       [],
       [],
@@ -389,7 +477,7 @@ describe("execução real — checagem de uso e exclusão na mesma instrução, 
     estado.respostas = [
       [linhaSugestao("sug-1", DONA, snapshotBug("ctx-1", "vinc-1"))],
       [linhaContexto("ctx-1", DONA, true)],
-      [["vinc-1"]],
+      [linhaVinculo("vinc-1")],
       [],
       [],
       [],
