@@ -22,12 +22,16 @@
  * em "preciso"/"busca" exige citação seja qual for o tipo que o modelo
  * escreveu; tipo irreconhecível com serviço no perfil também exige. E a regra
  * vale nos dois sentidos: oportunidade que OFERECE um serviço só casa com
- * perfil que declarou precisar de algo. Para produtos, ativos, investimento,
+ * perfil que declarou algo que possa ser aquele serviço (até 14/09 bastava
+ * declarar qualquer coisa). Para produtos, ativos, investimento,
  * conexões, tecnologia e imóveis nada muda: o portão só atua no tipo
  * "servico".
  */
-import { tokensDoTermo } from "@shared/direcao-do-termo";
-import { citacaoPedeServicoOferecido, ehServico, PALAVRAS_DE_SERVICO, PALAVRAS_VAZIAS_DA_CITACAO, servicoDoTermo, TIPOS_DA_OFERTA, type TipoDaOferta } from "@shared/tipo-da-oferta";
+import { nomeiamAMesmaCoisa, slugDoTermo, tokensDoTermo } from "@shared/direcao-do-termo";
+import {
+  citacaoPedeServicoOferecido, classificarOferta, ehServico, ehServicoDeAssessoria, familiaDoServico, necessidadeNomeiaOServico,
+  PALAVRAS_DE_SERVICO, PALAVRAS_VAZIAS_DA_CITACAO, servicoDoTermo, TIPOS_DA_OFERTA, trechoNomeiaServicoAtendido, type TipoDaOferta,
+} from "@shared/tipo-da-oferta";
 
 /** Os nove tipos mais "nenhuma": o match que se apoia no que a pessoa PRECISA, não no que tem. */
 export const TIPOS_PARA_A_IA = [...TIPOS_DA_OFERTA.map(item => item.tipo), "nenhuma"] as const;
@@ -186,6 +190,67 @@ export function oportunidadeOfereceServico(oportunidade: OportunidadeNoPortao): 
   return oportunidade.type === "offer" && typeof oportunidade.title === "string" && ehServico(oportunidade.title);
 }
 
+// ─── Oportunidade que oferece serviço × o que o perfil declarou (14/09) ───────
+//
+// Até 14/09 bastava o perfil ter declarado QUALQUER coisa: "Consultoria
+// tributária" oferecida passava para quem só procurava distribuidores, desde que
+// o modelo casasse. Agora ao menos uma declaração tem de poder pedir aquele
+// serviço. O critério é o da IA, não o dos motores determinísticos: só barra o
+// que o texto ENTENDE e que claramente não é o serviço — contraparte comercial,
+// capital, produto, imóvel, ou outro serviço nomeado. O que o texto não entende
+// ("aprovação na Anvisa", "tecnologia para rastreabilidade") fica com o modelo,
+// que recebeu a regra da demanda expressa no prompt.
+
+/** Ids fixos de "O que preciso" que pedem quem TEM a mercadoria, o canal ou o capital: serviço nenhum os entrega. */
+const NECESSIDADES_QUE_SERVICO_NAO_ENTREGA = new Set(["fornecedores", "compradores", "distribuidores", "investidores", "financiamento", "parceiros"]);
+/** Os mesmos que a opção "Logística" atende no motor de perfis (HAVE_SATISFIES_NEED em matching.ts). */
+const NECESSIDADES_DA_LOGISTICA = new Set(["distribuidores", "fornecedores"]);
+const FAMILIAS_DA_LOGISTICA = new Set(["logistica", "transporte", "frete", "armazenagem"]);
+/** Em texto livre, quem procura distribuidor, comprador ou fornecedor procura quem tem a mercadoria ou o canal. */
+const PAPEIS_DE_COMERCIO = new Set([
+  "distribuidor", "distribuidora", "distribuidores", "distribuidoras", "fornecedor", "fornecedora", "fornecedores", "fornecedoras",
+  "comprador", "compradora", "compradores", "compradoras", "importador", "importadora", "importadores", "importadoras",
+  "exportador", "exportadora", "exportadores", "exportadoras", "revendedor", "revendedora", "revendedores", "revendedoras",
+  "investidor", "investidora", "investidores", "investidoras",
+  "distributor", "distributors", "supplier", "suppliers", "buyer", "buyers", "importer", "importers", "exporter", "exporters",
+  "reseller", "resellers", "investor", "investors", "proveedor", "proveedores", "inversor", "inversores",
+]);
+/** O que um serviço não entrega, pelo tipo que o classificador dá à necessidade: "Galpão em Santos", "Capital de giro". */
+const TIPOS_QUE_SERVICO_NAO_ENTREGA = new Set<TipoDaOferta>(["produto", "investimento", "imovel"]);
+/** "Busca" do onboarding: só "mentor" pede um serviço, e só o de mentoria. */
+const FAMILIAS_DO_MENTOR = new Set(["mentoria", "coaching"]);
+
+type PedeOServico = "pede" | "talvez" | "nao";
+
+function necessidadePedeOServico(servico: string, necessidade: string): PedeOServico {
+  const chave = tokensDoTermo(necessidade).join(" ");
+  if (chave === "consultoria") return ehServicoDeAssessoria(servico) ? "pede" : "nao";
+  if (NECESSIDADES_QUE_SERVICO_NAO_ENTREGA.has(chave)) {
+    const logistica = FAMILIAS_DA_LOGISTICA.has(familiaDoServico(servico) ?? "");
+    return logistica && NECESSIDADES_DA_LOGISTICA.has(chave) ? "talvez" : "nao";
+  }
+  if (slugDoTermo(necessidade) === slugDoTermo(servico) || nomeiamAMesmaCoisa(servico, necessidade)) return "pede";
+  if (necessidadeNomeiaOServico(servico, null, necessidade)) return "pede";
+  // A necessidade nomeia OUTRO serviço que o texto entende ("consultoria em marketing" para "Consultoria jurídica").
+  // Serviço oferecido sem família lida ("Planejamento tributário") não tem com o que comparar: fica com o modelo.
+  if (servicoDoTermo(servico) !== null && trechoNomeiaServicoAtendido(necessidade, [servico]) === "nao-atende") return "nao";
+  if (ehServico(necessidade)) return "talvez";
+  if (tokensDoTermo(necessidade).some(palavra => PAPEIS_DE_COMERCIO.has(palavra))) return "nao";
+  return TIPOS_QUE_SERVICO_NAO_ENTREGA.has(classificarOferta(necessidade)) ? "nao" : "talvez";
+}
+
+/**
+ * O perfil declarou algo que pode ser ESTE serviço? Uma declaração basta. "Busco
+ * investimento" sozinho não pede serviço nenhum, e das buscas do onboarding só
+ * "mentor" pede — a mentoria.
+ */
+export function perfilDeclarouPrecisarDoServico(perfil: PerfilNoPortao, servico: string): boolean {
+  if (lista(perfil.whatINeed).some(necessidade => necessidadePedeOServico(servico, necessidade) !== "nao")) return true;
+  return lista(perfil.seekingTypes).some(busca => (busca === "mentor"
+    ? FAMILIAS_DO_MENTOR.has(familiaDoServico(servico) ?? "")
+    : !["strategic_partner", "investor", "team", "job"].includes(busca) && necessidadePedeOServico(servico, busca) !== "nao"));
+}
+
 /**
  * Este match exige a citação da necessidade expressa? Sim quando o modelo
  * disse que se apoia em serviço — e também, pelo piso determinístico, quando
@@ -231,10 +296,11 @@ export function citacaoAmarradaAoPerfil(citacao: unknown, fonte: string, perfil?
  * O portão: match apoiado em SERVIÇO só passa com a necessidade expressa
  * citada e conferida no texto que a pessoa escreveu, e apoiada num serviço que
  * o perfil oferece; e oportunidade que oferece um serviço só passa para quem
- * declarou precisar de algo. Qualquer outro tipo passa como antes.
+ * declarou algo que pode ser aquele serviço (`perfilDeclarouPrecisarDoServico`).
+ * Qualquer outro tipo passa como antes.
  */
 export function passaNoPortao(item: ItemComPortao, fonte: string, perfil?: PerfilNoPortao, oportunidade?: OportunidadeNoPortao): boolean {
-  if (perfil && oportunidade && oportunidadeOfereceServico(oportunidade) && !temNecessidadeDeclarada(perfil)) return false;
+  if (perfil && oportunidade && oportunidadeOfereceServico(oportunidade) && !perfilDeclarouPrecisarDoServico(perfil, oportunidade.title as string)) return false;
   if (!exigeCitacao(item, perfil)) return true;
   return citacaoConfere(item.necessidadeExpressa, fonte) && citacaoAmarradaAoPerfil(item.necessidadeExpressa, fonte, perfil);
 }

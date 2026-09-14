@@ -138,6 +138,33 @@ claramente diferente do que o perfil oferece ("consultoria em marketing" para
 "Consultoria jurídica"); o que o texto não entende fica com o modelo
 (`citacaoAmarradaAoPerfil`).
 
+Três lacunas medidas depois da #127 foram fechadas em 14/09/2026, com uma decisão de
+produto junto:
+- **Logística é serviço** (decisão do Nicolas, 14/09): logística, transporte, frete e
+  armazenagem passam pelo portão, inclusive a opção fixa "Logística" de *o que tenho*,
+  que segue atendendo quem declarou "Distribuidores" ou "Fornecedores". O bem físico
+  continua sendo o bem: "Galpão logístico" e "Armazém" são imóvel, "Frota" é ativo,
+  "Armazenamento" (dado, energia) é ativo. Consequência na rede de teste: "Armazenagem
+  refrigerada" deixa de casar pela categoria com quem procura "Galpão alfandegado".
+- **O classificador passa a ler** saúde (médico, clínica, fisioterapia, psicologia,
+  enfermagem, odontologia, nutricionista, veterinária), "Tributarista", "Planejamento
+  tributário", "Recuperação de créditos tributários", perícia, BPO, "Desenvolvimento de
+  software", branding, "Social media", "Comércio exterior" e "Projeto arquitetônico" — que
+  caíam em "outros" e casavam em 60 pela categoria digitada. Os adjetivos ("Equipamento
+  médico", "Material odontológico") não arrastam produto para serviço. Os que não têm
+  palavra de serviço (planejamento, desenvolvimento, projeto técnico, comércio exterior)
+  são reconhecidos para serem barrados, mas não ganham família: casam só por slug, objeto
+  ou núcleo.
+- **No motor de perfis, a especialidade e a área de atuação contam como oferta** quando
+  *o que tenho* está vazio — a mesma leitura que o portão da IA já fazia. A tela de
+  cadastro não tem opção de serviço em *o que tenho*, então a advogada põe o serviço na
+  especialidade, e o par passava pelas seis dimensões ("Advocacia tributária" na
+  especialidade × farmacêutica que procura distribuidores dava 57 e era gravado).
+- **Na IA, oportunidade que oferece serviço exige declaração que possa ser ele**, não só
+  "alguma declaração" (`perfilDeclarouPrecisarDoServico`): contraparte comercial
+  (distribuidores, compradores, fornecedores, investidores, parceiros), capital, produto,
+  imóvel e outro serviço nomeado barram; o que o texto não entende fica com o modelo.
+
 Limites aceitos e decisões pendentes (revisão adversarial de 13/09/2026):
 - a categoria é texto livre e decide o tipo quando o texto não decide: "Cafeteira
   industrial" [Consultoria] vira serviço e cai no portão (decisão do time em 14/09; a

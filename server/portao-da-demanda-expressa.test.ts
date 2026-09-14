@@ -12,7 +12,7 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  * serviço sem citação conferida não sai da tela nem vira alerta, seja qual
  * for a nota. Os outros tipos passam como antes.
  */
-const { citacaoAmarradaAoPerfil, citacaoConfere, cortarEmPalavra, exigeCitacao, normalizarTipo, passaNoPortao, reconhecerTipo, REGRA_DA_DEMANDA_EXPRESSA, textoEscritoPelaPessoa, TIPOS_PARA_A_IA } = await import("./portao-da-demanda-expressa");
+const { citacaoAmarradaAoPerfil, citacaoConfere, cortarEmPalavra, exigeCitacao, normalizarTipo, passaNoPortao, perfilDeclarouPrecisarDoServico, reconhecerTipo, REGRA_DA_DEMANDA_EXPRESSA, textoEscritoPelaPessoa, TIPOS_PARA_A_IA } = await import("./portao-da-demanda-expressa");
 
 describe("normalizarTipo — a grafia do modelo vira o enum", () => {
   it("aceita variações e sinônimos", () => {
@@ -440,5 +440,55 @@ describe("Portão da IA — revisão adversarial da correção empilhada sobre a
     expect(citando("Precisamos de consultoria em marketing jurídico.", "consultoria em marketing jurídico", oferece("Consultoria jurídica"))).toBe(false);
     expect(citando("Precisamos de consultoria em marketing e buscamos parceiros.", "consultoria em marketing", oferece("Consultoria jurídica"))).toBe(false);
     expect(citando("Buscamos consultoria em e-commerce.", "consultoria em e-commerce", oferece("Consultoria jurídica"))).toBe(false);
+  });
+});
+
+describe("passaNoPortao — oportunidade que oferece serviço exige declaração que possa ser ELE (lacuna depois da #127, 14/09)", () => {
+  // Até aqui bastava o perfil ter declarado qualquer coisa: "Consultoria
+  // tributária" oferecida passava para quem só procurava distribuidores, com o
+  // modelo dizendo "nenhuma".
+  const fonte = "Consultoria tributária para indústrias | revisão de tributos e recuperação de créditos";
+  const semApoio = { tipoDaOferta: "nenhuma", necessidadeExpressa: "" };
+  const oferta = (title: string) => ({ type: "offer", title });
+  const tributaria = oferta("Consultoria tributária");
+
+  it("o defeito medido: distribuidores, compradores, investidores e capital não pedem serviço", () => {
+    for (const necessidade of ["distribuidores", "compradores", "investidores", "financiamento", "parceiros", "Distribuidor para a África", "Compradores na Europa", "Galpão em Santos", "Capital de giro"]) {
+      expect(passaNoPortao(semApoio, fonte, { whatIHave: ["fazenda"], whatINeed: [necessidade] }, tributaria), necessidade).toBe(false);
+    }
+    expect(passaNoPortao(semApoio, fonte, { whatIHave: ["fazenda"], lookingForInvestment: true }, tributaria)).toBe(false);
+    expect(passaNoPortao(semApoio, fonte, { whatIHave: ["fazenda"], seekingTypes: ["investor", "strategic_partner"] }, tributaria)).toBe(false);
+  });
+
+  it("outro serviço que o texto entende não é este", () => {
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["Consultoria em marketing"] }, tributaria)).toBe(false);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["Transporte de cargas"] }, tributaria)).toBe(false);
+  });
+
+  it("a declaração que nomeia o serviço, ou a opção fixa que ele atende, passa", () => {
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["consultoria"] }, tributaria)).toBe(true);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["Consultor tributário"] }, tributaria)).toBe(true);
+    // Basta uma declaração: distribuidores E consultoria.
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["distribuidores", "consultoria"] }, tributaria)).toBe(true);
+  });
+
+  it("o que o texto não entende fica com o modelo, como antes (a regra está no prompt)", () => {
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["Aprovação do registro na Anvisa"] }, oferta("Consultoria regulatória"))).toBe(true);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["Planejamento tributário"] }, tributaria)).toBe(true);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["Suporte para obter autorização regulatória"] }, oferta("Consultoria regulatória"))).toBe(true);
+  });
+
+  it("a opção fixa 'consultoria' é da assessoria; 'mentor' é da mentoria; logística atende distribuidores", () => {
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["consultoria"] }, oferta("Tradução juramentada"))).toBe(false);
+    expect(passaNoPortao(semApoio, fonte, { seekingTypes: ["mentor"] }, oferta("Mentoria para fundadoras"))).toBe(true);
+    expect(passaNoPortao(semApoio, fonte, { seekingTypes: ["mentor"] }, tributaria)).toBe(false);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["distribuidores"] }, oferta("Transporte rodoviário de cargas"))).toBe(true);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["compradores"] }, oferta("Transporte rodoviário de cargas"))).toBe(false);
+  });
+
+  it("não mexe no que não é oferta de serviço", () => {
+    expect(perfilDeclarouPrecisarDoServico({ whatINeed: ["distribuidores"] }, "Consultoria tributária")).toBe(false);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["distribuidores"] }, { type: "demand", title: "Consultoria tributária" })).toBe(true);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["distribuidores"] }, oferta("Café especial da Bahia"))).toBe(true);
   });
 });

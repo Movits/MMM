@@ -23,12 +23,15 @@
  * serviço apaga um match legítimo por categoria; classificar errado como outra
  * coisa deixa passar um presumido. Entre os dois, a lista de serviço só tem
  * palavra que nomeia inequivocamente uma prestação profissional. Logística,
- * transporte, frete e armazenagem ficam de fora de propósito: no vocabulário
- * da plataforma são capacidades operacionais ("Armazenagem refrigerada" é o
- * exemplo de "o que possui" na própria tela; "Logística" é opção de "O que
- * tenho" no onboarding), não prestação de serviço profissional. Papéis de
- * comércio (fornecedor, distribuidor, representante) também não: são quem TEM
- * a mercadoria, e o núcleo do termo já os atravessa até ela.
+ * transporte, frete e armazenagem SÃO serviço, por decisão do Nicolas em
+ * 14/09/2026 ("Logística conta como serviço sim"): até ali ficavam de fora
+ * como capacidade operacional, e quem oferecia frete casava por categoria com
+ * qualquer um que tivesse "Logística" na ficha. O que continua fora é o bem
+ * físico — "Armazém", "Galpão" e "Frota" são imóvel e ativo, e
+ * "Armazenamento" e "storage" também, porque são dados e energia antes de
+ * serem logística. Papéis de comércio (fornecedor, distribuidor,
+ * representante) também não: são quem TEM a mercadoria, e o núcleo do termo
+ * já os atravessa até ela.
  *
  * Ordem da decisão, e por quê (ver `classificarOferta`):
  *   1. composto em inglês cuja última palavra é de outro tipo ("Marketing
@@ -172,6 +175,31 @@ const OUTROS_SERVICOS = [
   // "instalacao" fica de fora: "Instalação portuária" é a instalação física.
   "manutencao", "suporte", "assistencia", "atendimento",
   "agenciamento", "intermediacao",
+  // Logística (decisão de 14/09, ver o topo). "logística" e "logístico" são
+  // também adjetivo de imóvel ("Galpão logístico", "Centro logístico",
+  // "Condomínio logístico"): ficam em ADJETIVOS_DE_SERVICO, como "jurídico".
+  "logistica", "logisticas", "logistico", "logisticos",
+  "transporte", "transportes", "transportadora", "transportadoras", "transportador", "transportadores",
+  "frete", "fretes", "armazenagem",
+  // Saúde. "médico", "veterinário" e "odontológico" são também adjetivo de
+  // produto ("Equipamento médico", "Material odontológico"): ficam em
+  // ADJETIVOS_DE_SERVICO, que só decide na cabeça ou atrás de cabeça neutra.
+  // "terapia" e "nutrição" ficam de fora: "Terapia gênica" é biotecnologia e
+  // "Nutrição animal" é ração; quem presta, "terapeuta" e "nutricionista", entra.
+  "medicina", "medico", "medica", "medicos", "medicas", "clinica", "clinicas",
+  "odontologia", "odontologico", "odontologica", "odontologicos", "odontologicas", "odontologo", "odontologa", "dentista", "dentistas",
+  "fisioterapia", "fisioterapeuta", "fisioterapeutas",
+  "psicologia", "psicologo", "psicologa", "psicologos", "psicologas", "psicoterapia", "psicoterapeuta", "psicoterapeutas",
+  "psiquiatria", "psiquiatra", "psiquiatras",
+  "enfermagem", "enfermeiro", "enfermeira", "enfermeiros", "enfermeiras",
+  "nutricionista", "nutricionistas", "terapeuta", "terapeutas",
+  "fonoaudiologia", "fonoaudiologo", "fonoaudiologa", "fonoaudiologos", "fonoaudiologas",
+  "veterinaria", "veterinario", "veterinarias", "veterinarios",
+  // Perícia, BPO, marca e texto; e quem programa ("desenvolvedor" fica de fora:
+  // é também a incorporadora, "Desenvolvedora imobiliária").
+  "pericia", "pericias", "perito", "perita", "peritos", "peritas", "bpo",
+  "branding", "copywriting", "copywriter", "copywriters",
+  "programador", "programadora", "programadores", "programadoras", "comex",
   // en
   "service", "services",
   "advertising",
@@ -183,6 +211,16 @@ const OUTROS_SERVICOS = [
   "brokerage", "broker", "brokers",
   "recruitment", "recruiting",
   "maintenance", "support", "assistance",
+  // "storage" fica de fora: é também dado ("Cloud storage") e energia.
+  "logistics", "transport", "transportation", "freight",
+  // "medicine" fica de fora (é o remédio), e "medical" e "veterinary" também: na
+  // cabeça de um composto inglês nomeiam o produto ("Medical supplies").
+  "doctor", "doctors", "physician", "physicians", "clinic", "clinics",
+  "dentist", "dentists", "dentistry", "physiotherapy", "physiotherapist", "physiotherapists",
+  "psychology", "psychologist", "psychologists", "psychotherapy", "psychotherapist", "psychotherapists",
+  "psychiatry", "psychiatrist", "psychiatrists", "nursing", "nurse", "nurses",
+  "nutritionist", "nutritionists", "dietitian", "dietitians", "therapist", "therapists",
+  "veterinarian", "veterinarians", "programmer", "programmers",
   // es
   "servicio", "servicios",
   "publicidad",
@@ -196,24 +234,37 @@ const OUTROS_SERVICOS = [
   "corretaje",
   "reclutamiento", "tercerizacion",
   "mantenimiento", "soporte",
+  "flete", "fletes", "almacenaje",
+  "enfermeria", "enfermero", "enfermera", "enfermeros", "enfermeras",
   // de
   "werbung", "ubersetzung", "ubersetzungen", "ubersetzer", "dolmetschen", "dolmetscher",
   "schulung", "schulungen", "weiterbildung", "architektur", "architekt",
   "ingenieurwesen", "ingenieur", "wartung", "instandhaltung",
   "personalvermittlung", "makler", "vermittlung",
+  "logistik", "spedition", "arzt", "arztin", "arzte", "zahnarzt", "zahnarztin", "tierarzt",
+  "physiotherapie", "physiotherapeut", "psychologe", "psychologin", "psychotherapie", "psychotherapeut",
+  "ernahrungsberater",
   // fr
   "publicite", "traduction", "traductions", "traducteur", "traducteurs",
   "architecte", "architectes", "courtage", "courtier", "courtiers", "recrutement", "mentorat",
+  "logistique", "fret", "transporteur", "transporteurs", "medecin", "medecins", "dentiste", "dentistes",
+  "kinesitherapie", "kinesitherapeute", "psychologue", "psychologues", "psychotherapeute",
+  "infirmier", "infirmiere", "infirmiers", "infirmieres", "nutritionniste", "orthophoniste", "veterinaire",
   // ru
   "маркетинг", "реклама", "переводчик", "обучение", "тренинг", "тренинги",
   "дизайн", "дизайнер", "архитектура", "архитектор", "инжиниринг", "инженер",
   "обслуживание", "техобслуживание", "рекрутинг", "брокер", "брокерские", "посредничество",
+  "логистика", "перевозка", "перевозки", "грузоперевозки", "экспедирование",
+  "врач", "врачи", "стоматолог", "стоматология", "физиотерапия", "физиотерапевт",
+  "психолог", "психологи", "психотерапия", "психотерапевт", "психиатр", "медсестра", "диетолог",
   // hi
   "विपणन", "मार्केटिंग", "अनुवाद", "अनुवादक", "प्रशिक्षण", "डिजाइन",
   "वास्तुकला", "वास्तुकार", "इंजीनियरिंग", "अभियांत्रिकी", "रखरखाव", "भर्ती", "दलाली", "दलाल",
+  "लॉजिस्टिक्स", "परिवहन", "चिकित्सक", "डॉक्टर", "फिजियोथेरेपी", "मनोवैज्ञानिक", "नर्स",
   // ar
   "تسويق", "ترجمة", "مترجم", "تدريب", "تصميم", "مصمم", "عمارة", "هندسة", "مهندس",
   "صيانة", "توظيف", "وساطة", "وسيط",
+  "لوجستية", "لوجستيات", "طبيب", "طبيبة", "ممرض", "ممرضة",
 ];
 
 /**
@@ -225,6 +276,10 @@ const ADJETIVOS_DE_SERVICO = new Set([
   "juridico", "juridica", "juridicos", "juridicas", "contabil", "contabeis", "contable", "contables", "legal", "legales",
   // "publicitário" é adjetivo em "Material publicitário", "Espaço publicitário" (revisão de 13/09)
   "publicitario", "publicitaria", "publicitarios", "publicitarias",
+  // "Galpão logístico", "Equipamento médico", "Material odontológico", "Produtos veterinários" (14/09)
+  "logistica", "logisticas", "logistico", "logisticos",
+  "medico", "medica", "medicos", "medicas", "odontologico", "odontologica", "odontologicos", "odontologicas",
+  "veterinaria", "veterinario", "veterinarias", "veterinarios", "veterinaire",
 ]);
 
 /**
@@ -291,6 +346,27 @@ const FAMILIAS: Record<string, readonly string[]> = {
   atendimento: ["atendimento"],
   agenciamento: ["agenciamento"],
   intermediacao: ["intermediacao", "vermittlung", "посредничество"],
+  // 14/09: logística e saúde. Lema, não área, como as de cima: frete não é
+  // transporte, psicologia não é psiquiatria, clínica não é medicina.
+  logistica: ["logistica", "logisticas", "logistico", "logisticos", "logistics", "logistik", "logistique", "логистика", "लॉजिस्टिक्स", "لوجستية", "لوجستيات"],
+  transporte: ["transporte", "transportes", "transportadora", "transportadoras", "transportador", "transportadores", "transport", "transportation", "transporteur", "transporteurs", "перевозка", "перевозки", "грузоперевозки", "परिवहन"],
+  frete: ["frete", "fretes", "freight", "flete", "fletes", "fret", "spedition", "экспедирование"],
+  armazenagem: ["armazenagem", "almacenaje"],
+  medicina: ["medicina", "medico", "medica", "medicos", "medicas", "doctor", "doctors", "physician", "physicians", "arzt", "arztin", "arzte", "medecin", "medecins", "врач", "врачи", "चिकित्सक", "डॉक्टर", "طبيب", "طبيبة"],
+  clinica: ["clinica", "clinicas", "clinic", "clinics"],
+  odontologia: ["odontologia", "odontologico", "odontologica", "odontologicos", "odontologicas", "odontologo", "odontologa", "dentista", "dentistas", "dentist", "dentists", "dentistry", "zahnarzt", "zahnarztin", "dentiste", "dentistes", "стоматолог", "стоматология"],
+  fisioterapia: ["fisioterapia", "fisioterapeuta", "fisioterapeutas", "physiotherapy", "physiotherapist", "physiotherapists", "physiotherapie", "physiotherapeut", "kinesitherapie", "kinesitherapeute", "физиотерапия", "физиотерапевт", "फिजियोथेरेपी"],
+  psicologia: ["psicologia", "psicologo", "psicologa", "psicologos", "psicologas", "psychology", "psychologist", "psychologists", "psychologe", "psychologin", "psychologue", "psychologues", "психолог", "психологи", "मनोवैज्ञानिक"],
+  psicoterapia: ["psicoterapia", "psicoterapeuta", "psicoterapeutas", "psychotherapy", "psychotherapist", "psychotherapists", "psychotherapie", "psychotherapeut", "psychotherapeute", "психотерапия", "психотерапевт"],
+  psiquiatria: ["psiquiatria", "psiquiatra", "psiquiatras", "psychiatry", "psychiatrist", "psychiatrists", "психиатр"],
+  enfermagem: ["enfermagem", "enfermeiro", "enfermeira", "enfermeiros", "enfermeiras", "nursing", "nurse", "nurses", "enfermeria", "enfermero", "enfermera", "enfermeros", "enfermeras", "infirmier", "infirmiere", "infirmiers", "infirmieres", "медсестра", "नर्स", "ممرض", "ممرضة"],
+  nutricionista: ["nutricionista", "nutricionistas", "nutritionist", "nutritionists", "dietitian", "dietitians", "nutritionniste", "диетолог", "ernahrungsberater"],
+  terapeuta: ["terapeuta", "terapeutas", "therapist", "therapists"],
+  fonoaudiologia: ["fonoaudiologia", "fonoaudiologo", "fonoaudiologa", "fonoaudiologos", "fonoaudiologas", "orthophoniste"],
+  veterinaria: ["veterinaria", "veterinario", "veterinarias", "veterinarios", "veterinarian", "veterinarians", "tierarzt", "veterinaire"],
+  pericia: ["pericia", "pericias", "perito", "perita", "peritos", "peritas"],
+  copywriting: ["copywriting", "copywriter", "copywriters"],
+  programador: ["programador", "programadora", "programadores", "programadoras", "programmer", "programmers"],
 };
 /**
  * Chinês e japonês não separam palavras por espaço, então a classificação por
@@ -318,6 +394,10 @@ const SERVICOS_SEM_ESPACO: Array<[string, string]> = ([
   ["营销", "marketing"], ["广告", "publicidade"],
   ["翻译", "traducao"], ["培训", "treinamento"], ["设计", "design"],
   ["维护", "manutencao"], ["招聘", "recrutamento"], ["经纪", "corretagem"],
+  // 14/09: logística e saúde. "运输" (transporte) e "仓储" (armazenagem) ficam de
+  // fora: "运输设备" é o equipamento e "仓储中心" é o galpão.
+  ["物流", "logistica"], ["货运代理", "frete"], ["诊所", "clinica"], ["医生", "medicina"],
+  ["物理治疗", "fisioterapia"], ["心理咨询", "psicologia"], ["心理治疗", "psicoterapia"],
   // ja
   ["コンサルティング", "consultoria"], ["マーケティング", "marketing"],
   ["メンテナンス", "manutencao"], ["人材紹介", "recrutamento"], ["建築設計", "arquitetura"],
@@ -325,6 +405,8 @@ const SERVICOS_SEM_ESPACO: Array<[string, string]> = ([
   ["監査", "auditoria"], ["翻訳", "traducao"], ["通訳", "interpretacao"],
   ["研修", "treinamento"], ["デザイン", "design"], ["設計", "design"],
   ["保守", "manutencao"], ["採用", "recrutamento"], ["仲介", "corretagem"],
+  // 14/09: "看護" sozinho é também o artigo de enfermagem ("看護用品"); quem presta é "看護師".
+  ["クリニック", "clinica"], ["医師", "medicina"], ["理学療法", "fisioterapia"], ["看護師", "enfermagem"], ["歯科医", "odontologia"],
 ] as Array<[string, string]>).sort((a, b) => b[0].length - a[0].length);
 
 /** A família do serviço nomeado por substring, ou null — ver SERVICOS_SEM_ESPACO. */
@@ -370,8 +452,8 @@ const ATIVO = [
   "frota", "frotas", "fleet", "fleets",
   "maquina", "maquinas", "maquinario", "machine", "machines", "machinery", "maquinaria",
   "equipamento", "equipamentos", "equipment", "equipo", "equipos",
-  "logistica", "logistics", "transporte", "transportes", "transport", "frete", "fretes",
-  "armazenagem", "armazenamento", "storage",
+  // Logística, transporte, frete e armazenagem passaram a serviço em 14/09 (ver o topo).
+  "armazenamento", "storage",
 ];
 
 const OPORTUNIDADE = [
@@ -452,6 +534,8 @@ const CABECAS_NEUTRAS = new Set([
   "team", "teams", "group", "groups", "professional", "professionals", "specialist", "specialists",
   "oficina", "oficinas", "profesional", "profesionales", "despacho", "despachos",
   "agencia", "agencias", "agency", "agencies",
+  // "Operador logístico", "Consultório odontológico"; "Operador de máquinas" e "Consultório para alugar" não (14/09).
+  "operador", "operadora", "operadores", "operadoras", "consultorio", "consultorios", "provider", "providers",
 ]);
 
 const COMPOSTOS = new Map<string, TipoDaOferta>([
@@ -464,6 +548,10 @@ const COMPOSTOS = new Map<string, TipoDaOferta>([
   ["law firm", "servico"],
   ["legal advisory", "servico"],
   ["legal services", "servico"],
+  // 14/09: prestações que não têm substantivo de serviço nas listas.
+  ["comercio exterior", "servico"],
+  ["social media", "servico"],
+  ["saude ocupacional", "servico"],
 ]);
 
 /** O que a CATEGORIA digitada pela usuária diz do tipo, quando o termo não disse. */
@@ -594,7 +682,8 @@ const ADJETIVOS_POSPOSTOS = new Set([
   "financeiro", "financeira", "financeiros", "financeiras", "financiero", "financiera", "financieros", "financieras",
   "logistico", "logistica", "logisticos", "logisticas",
 ]);
-const CABECAS_COM_ADJETIVO_POSPOSTO = new Set(["consultoria", "assessoria", "auditoria", "contabilidade", "advocacia", "mentoria", "coaching"]);
+// "BPO financeiro" e "Terceirização financeira" são o serviço, não capital (14/09).
+const CABECAS_COM_ADJETIVO_POSPOSTO = new Set(["consultoria", "assessoria", "auditoria", "contabilidade", "advocacia", "mentoria", "coaching", "bpo", "terceirizacao"]);
 
 /**
  * "Direito" é serviço de advocacia só com uma ÁREA curada: colada ("Direito
@@ -627,6 +716,50 @@ function areaDoDireito(palavras: string[], indice: number): string | null {
   const depois = palavras[indice + 2];
   if (seguinte && GENITIVOS.has(seguinte) && depois && AREAS_DO_DIREITO_PELO_GENITIVO.has(depois)) return depois;
   return null;
+}
+
+/**
+ * Prestações que as listas não nomeavam por palavra solta (lacunas medidas em
+ * 14/09, depois da #127). Cada regra é estreita de propósito — classificar
+ * como serviço sujeita o item ao portão — e nenhuma dá família: o serviço é
+ * reconhecido para ser BARRADO sem demanda expressa, e continua casando só
+ * pelo slug, pelo objeto ou pelo núcleo, como qualquer termo fora das listas.
+ *   - especialista pela área, sem a profissão: "Tributarista", "Criminalista";
+ *   - atividade sobre área tributária, trabalhista ou previdenciária:
+ *     "Planejamento tributário", "Recuperação de créditos de ICMS" — "Créditos
+ *     tributários" à venda é capital e segue sendo;
+ *   - desenvolvimento de tecnologia: "Desenvolvimento de software", "Web
+ *     development" — "Plataforma em desenvolvimento" é a plataforma;
+ *   - projeto técnico: "Projeto arquitetônico", "Projetos estruturais" —
+ *     "Projeto de engenharia" fica como oportunidade, porque é também a obra
+ *     que alguém tem e precisa contratar.
+ */
+const ESPECIALISTAS_PELA_AREA = new Set([
+  "tributarista", "tributaristas", "fiscalista", "fiscalistas", "previdenciarista", "previdenciaristas",
+  "criminalista", "criminalistas", "penalista", "penalistas", "civilista", "civilistas",
+  "societarista", "societaristas", "laboralista", "laboralistas",
+]);
+const ATIVIDADES_SOBRE_AREA = new Set(["planejamento", "recuperacao", "compensacao", "revisao", "regularizacao", "planning"]);
+const AREAS_DA_ATIVIDADE = new Set(["tributario", "trabalhista", "previdenciario"]);
+const DESENVOLVIMENTO = new Set(["desenvolvimento", "development", "desarrollo"]);
+const OBJETOS_DE_DESENVOLVIMENTO = new Set(["web", "site", "sites", "website", "websites", "mobile", "ecommerce"]);
+const CABECAS_DE_PROJETO = new Set(["projeto", "projetos", "proyecto", "proyectos"]);
+const PROJETOS_TECNICOS = new Set([
+  "arquitetonico", "arquitetonica", "arquitetonicos", "arquitetonicas", "estrutural", "estruturais",
+  "eletrico", "eletricos", "hidraulico", "hidraulicos", "hidrossanitario", "hidrossanitarios",
+  "luminotecnico", "luminotecnicos", "paisagistico", "paisagisticos",
+]);
+
+function servicoSemPalavraDeServico(palavras: string[], indice: number, cabeca: string, junto: string[]): boolean {
+  if (ESPECIALISTAS_PELA_AREA.has(cabeca)) return true;
+  if (ATIVIDADES_SOBRE_AREA.has(cabeca)) {
+    return palavras.slice(indice + 1).some(palavra => AREAS_DA_ATIVIDADE.has(lemaCurado(palavra) ?? ""));
+  }
+  const ehObjeto = (palavra: string | undefined) =>
+    !!palavra && (OBJETOS_DE_DESENVOLVIMENTO.has(palavra) || TIPO_POR_CABECA.get(palavra) === "tecnologia");
+  if (DESENVOLVIMENTO.has(cabeca)) return ehObjeto(complementoDaCabeca(palavras, indice)[0]);
+  if (ehObjeto(cabeca) && junto.some(palavra => DESENVOLVIMENTO.has(palavra))) return true;
+  return CABECAS_DE_PROJETO.has(cabeca) && PROJETOS_TECNICOS.has(junto[0] ?? "");
 }
 
 /**
@@ -672,6 +805,11 @@ function classificarPeloTexto(rotulo: string, categoria?: string | null): TipoDa
   //     em "outros" e escapava do portão (buraco registrado na #124); "Direito
   //     minerário" e "Direito creditório" seguem sem ser serviço.
   if (areaDoDireito(palavras, indice)) return "servico";
+  // 3c. Prestação sem substantivo de serviço: "Tributarista", "Planejamento
+  //     tributário", "Desenvolvimento de software", "Projeto arquitetônico".
+  //     Antes da cabeça, porque "Software development" e "Projetos estruturais"
+  //     têm cabeça de tecnologia e de oportunidade.
+  if (servicoSemPalavraDeServico(palavras, indice, cabeca, junto)) return "servico";
   // 4. A cabeça manda.
   if (!CABECAS_NEUTRAS.has(cabeca)) {
     const pelaCabeca = TIPO_POR_CABECA.get(cabeca);

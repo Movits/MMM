@@ -97,21 +97,34 @@ describe("Tipo da oferta — os outros tipos", () => {
     }
   });
 
-  it("as opções fixas de 'O que tenho' do onboarding nunca são serviço", () => {
-    const ids = ["industria", "fazenda", "laboratorio", "tecnologia", "investidores", "acesso_governamental", "commodities", "licencas", "imoveis", "logistica", "canais_comerciais"];
+  it("as opções fixas de 'O que tenho' do onboarding não são serviço — menos 'logistica', desde 14/09", () => {
+    const ids = ["industria", "fazenda", "laboratorio", "tecnologia", "investidores", "acesso_governamental", "commodities", "licencas", "imoveis", "canais_comerciais"];
     for (const id of ids) expect(ehServico(id), id).toBe(false);
     expect(classificarOferta("acesso_governamental")).toBe("conexao");
     expect(classificarOferta("investidores")).toBe("investimento");
-    expect(classificarOferta("logistica")).toBe("ativo");
+    // "Logística conta como serviço sim" (Nicolas, 14/09): quem marcou a opção
+    // passa pelo portão, e casa com quem declarou precisar de distribuidores ou
+    // fornecedores (HAVE_SATISFIES_NEED em server/matching.ts), não por presunção.
+    expect(classificarOferta("logistica")).toBe("servico");
   });
 
-  it("logística, transporte e armazenagem NÃO são serviço: são capacidade operacional no vocabulário da plataforma", () => {
-    expect(classificarOferta("Logística internacional")).toBe("ativo");
-    expect(classificarOferta("Transporte rodoviário")).toBe("ativo");
-    expect(classificarOferta("Armazenagem refrigerada")).toBe("ativo");
-    for (const rotulo of ["Logística internacional", "Transporte rodoviário", "Armazenagem refrigerada", "Frete marítimo"]) {
-      expect(ehServico(rotulo), rotulo).toBe(false);
+  it("logística, transporte, frete e armazenagem SÃO serviço (decisão de 14/09); o bem físico continua sendo o bem", () => {
+    for (const rotulo of ["Logística internacional", "Transporte rodoviário", "Transportadora", "Armazenagem refrigerada", "Frete marítimo", "Serviços de logística", "Operador logístico", "Freight forwarding", "Logistics"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
     }
+    // "logístico" é adjetivo de imóvel antes de ser serviço.
+    expect(classificarOferta("Galpão logístico")).toBe("imovel");
+    expect(classificarOferta("Condomínio logístico")).toBe("imovel");
+    expect(classificarOferta("Centro logístico")).toBe("outros");
+    expect(classificarOferta("Armazém em Santos")).toBe("imovel");
+    expect(classificarOferta("Frota de caminhões")).toBe("ativo");
+    expect(classificarOferta("Equipamentos de transporte")).toBe("ativo");
+    // Armazenamento é dado e energia antes de ser logística.
+    expect(classificarOferta("Armazenamento de energia")).toBe("ativo");
+    expect(ehServico("Cloud storage")).toBe(false);
+    // "Consultoria logística" continua consultoria, com a logística como assunto.
+    expect(familiaDoServico("Consultoria logística")).toBe("consultoria");
+    expect(familiaDoServico("Transporte rodoviário")).toBe("transporte");
   });
 });
 
@@ -146,12 +159,14 @@ describe("Tipo da oferta — a ordem da decisão", () => {
   it("conjunção coordena outro item: a cabeça fica com o que é", () => {
     expect(classificarOferta("Mina e consultoria mineral")).toBe("ativo");
     expect(classificarOferta("Capital e mentoria")).toBe("investimento");
-    expect(classificarOferta("Logística e consultoria aduaneira")).toBe("ativo");
+    expect(classificarOferta("Galpão e consultoria aduaneira")).toBe("imovel");
+    // Era "ativo" até a logística virar serviço (14/09): a cabeça segue mandando.
+    expect(classificarOferta("Logística e consultoria aduaneira")).toBe("servico");
     expect(classificarOferta("Peças e manutenção")).toBe("outros");
   });
 
   it("cabeça genérica 'serviços' deixa o complemento decidir", () => {
-    expect(classificarOferta("Serviços de logística")).toBe("ativo");
+    expect(classificarOferta("Serviços de armazenamento")).toBe("ativo");
     expect(classificarOferta("Serviços financeiros")).toBe("investimento");
     expect(classificarOferta("Serviços de tecnologia")).toBe("tecnologia");
     expect(classificarOferta("Serviços de consultoria")).toBe("servico");
@@ -713,5 +728,73 @@ describe("Reverificação dos consertos da correção empilhada (14/09)", () => 
     expect(servicoAtendeNecessidade("Consultoria em empresas familiares", "Consultoria familiar")).toBe(false);
     expect(servicoAtendeNecessidade("Advocacia de família", "Advogado de família")).toBe(true);
     expect(servicoAtendeNecessidade("Family lawyer", "Advogado de família")).toBe(true);
+  });
+});
+
+describe("Lacunas do classificador depois da #127: serviço que caía em 'outros' e casava por categoria (14/09)", () => {
+  // Medido contra a #127: estes itens eram "outros" (ou "oportunidade") e, com a
+  // mesma categoria digitada do outro lado, davam 60 no motor privado sem que
+  // ninguém declarasse precisar deles — o match presumido que a regra proíbe.
+  it("saúde é serviço: quem presta e a prestação, em pt, en e nos outros idiomas", () => {
+    for (const rotulo of ["Médico", "Médica do trabalho", "Clínica médica", "Fisioterapia", "Psicóloga", "Nutricionista", "Medicina do trabalho",
+      "Saúde ocupacional", "Odontologia", "Consultório odontológico", "Clínica veterinária", "Enfermagem domiciliar", "Psiquiatra", "Fonoaudióloga",
+      "Physiotherapist", "Dentist", "Врач", "Psychologue", "诊所", "クリニック"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    }
+  });
+
+  it("o adjetivo de saúde não arrasta produto, equipamento nem biotecnologia para serviço", () => {
+    expect(classificarOferta("Equipamento médico")).toBe("ativo");
+    expect(classificarOferta("Material odontológico")).toBe("produto");
+    expect(classificarOferta("Produtos veterinários")).toBe("produto");
+    for (const rotulo of ["Medical supplies", "Terapia gênica", "Nutrição animal", "Centro médico", "Farmácia veterinária", "看護用品"]) {
+      expect(ehServico(rotulo), rotulo).toBe(false);
+    }
+    // A categoria "Saúde" não faz do distribuidor um serviço.
+    expect(ehServico("Distribuidor de equipamentos hospitalares", "Saúde")).toBe(false);
+  });
+
+  it("tributário, contábil e financeiro sem a palavra da profissão", () => {
+    for (const rotulo of ["Tributarista", "Criminalista", "Planejamento tributário", "Recuperação de créditos tributários", "Recuperação de créditos de ICMS",
+      "Perícia contábil", "BPO financeiro", "Terceirização financeira"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    }
+    // O crédito à venda é capital; o suporte financeiro é aporte (decisão anterior, mantida).
+    expect(classificarOferta("Créditos tributários")).toBe("investimento");
+    expect(classificarOferta("Suporte financeiro")).toBe("investimento");
+  });
+
+  it("tecnologia, marketing, comércio exterior e projeto técnico", () => {
+    for (const rotulo of ["Desenvolvimento de software", "Desenvolvimento web", "Software development", "Programador", "Social media", "Branding",
+      "Copywriter", "Comércio exterior", "Comex", "Projeto arquitetônico", "Projetos estruturais"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    }
+    expect(classificarOferta("Plataforma em desenvolvimento")).toBe("tecnologia");
+    expect(ehServico("Desenvolvimento imobiliário")).toBe(false);
+    // Trading é quem compra e vende a mercadoria, papel de comércio como o distribuidor.
+    expect(ehServico("Trading")).toBe(false);
+    // "Projeto de engenharia" é também a obra que alguém tem para contratar.
+    expect(classificarOferta("Projeto de engenharia")).toBe("oportunidade");
+    expect(classificarOferta("Projeto imobiliário")).toBe("oportunidade");
+  });
+
+  it("cabeças neutras novas só decidem com serviço no complemento", () => {
+    expect(classificarOferta("Operador logístico")).toBe("servico");
+    expect(ehServico("Operador de máquinas")).toBe(false);
+    expect(ehServico("Operadora de saúde")).toBe(false);
+    expect(ehServico("Consultório para alugar")).toBe(false);
+  });
+
+  it("serviço novo com família casa com a necessidade que a nomeia, e só com ela", () => {
+    expect(necessidadeNomeiaOServico("Fisioterapia", null, "Fisioterapeuta")).toBe(true);
+    expect(necessidadeNomeiaOServico("Psicóloga", null, "Psicólogo")).toBe(true);
+    expect(necessidadeNomeiaOServico("Frete marítimo", null, "Frete")).toBe(true);
+    expect(necessidadeNomeiaOServico("Operador logístico", null, "Logística")).toBe(true);
+    // Lema, não área: frete não é transporte, psicologia não é psiquiatria, nutricionista não é consultoria.
+    expect(necessidadeNomeiaOServico("Frete marítimo", null, "Transporte")).toBe(false);
+    expect(necessidadeNomeiaOServico("Psicóloga", null, "Psiquiatra")).toBe(false);
+    expect(ehServicoDeAssessoria("Nutricionista")).toBe(false);
+    // Fisioterapia não atende quem procura distribuidores só porque os dois são "Saúde".
+    expect(necessidadeNomeiaOServico("Fisioterapia", "Saúde", "Distribuidores de equipamentos")).toBe(false);
   });
 });

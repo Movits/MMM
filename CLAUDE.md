@@ -224,12 +224,16 @@ Dashboard com trava de consentimento dos dois lados. **Regra da demanda expressa
 SERVIÇO (`shared/tipo-da-oferta.ts`) só casa com necessidade DECLARADA em "o que
 preciso" — no motor privado a categoria em comum não vale para serviço; no de perfis o
 par sustentado só por serviço sem demanda expressa dá zero, não é gravado e a leitura da
-lista esconde a linha antiga (sem apagá-la, para a dispensa da dona sobreviver); nos dois
+lista esconde a linha antiga (sem apagá-la, para a dispensa da dona sobreviver), e com
+"o que tenho" vazio a especialidade e a área de atuação são a oferta; nos dois
 prompts de `routers/matching.ts` o modelo classifica o item,
 cita o trecho da oportunidade que declara a necessidade e
 `server/portao-da-demanda-expressa.ts` confere a citação, e que ela pede um serviço que o
-perfil oferece, antes de exibir. A categoria digitada ainda decide o tipo quando o texto
-não decide (decisão do time em 14/09). Família de serviço é lema, não área,
+perfil oferece, antes de exibir; oportunidade que OFERECE serviço só vai a quem declarou
+algo que possa ser aquele serviço. A categoria digitada ainda decide o tipo quando o texto
+não decide (decisão do time em 14/09). **Logística, transporte, frete e armazenagem são
+serviço** (decisão do Nicolas, 14/09), inclusive a opção fixa "Logística"; galpão, armazém
+e frota continuam imóvel e ativo. Família de serviço é lema, não área,
 e a equivalência é ESTRITA: só casa o que as listas entendem (palavra desconhecida precisa
 aparecer igual dos dois lados; na IA, o que o texto não entende fica com o modelo). Produtos,
 ativos, investimento, conexões, tecnologia e imóveis não mudam.

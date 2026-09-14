@@ -380,3 +380,32 @@ describe("Revisão adversarial da correção empilhada sobre a #124 — notas do
     }
   });
 });
+
+describe("scoreMatch — lacunas do classificador depois da #127: serviço que casava pela categoria (14/09)", () => {
+  it("serviço que o classificador não lia casava em 60 pela categoria digitada; agora só com necessidade que o nomeie", () => {
+    const presumidos: Array<[string, string, string, string]> = [
+      ["Fisioterapia", "Saúde", "Distribuidor de equipamentos hospitalares", "Saúde"],
+      ["Psicóloga", "Saúde", "Clínica à venda", "Saúde"],
+      ["Projeto arquitetônico", "Imóveis", "Terreno", "Imóveis"],
+      ["Comércio exterior", "Comex", "Compradores na China", "Comex"],
+      ["Desenvolvimento de software", "Tecnologia", "Investidores", "Tecnologia"],
+      // Logística é serviço desde 14/09 (decisão do Nicolas).
+      ["Serviços de logística", "Logística", "Armazém em Santos", "Logística"],
+      ["Transporte rodoviário", "Logística", "Frete", "Logística"],
+    ];
+    for (const [oferta, categoriaDaOferta, necessidade, categoriaDaNecessidade] of presumidos) {
+      const r = scoreMatch(item(oferta, categoriaDaOferta), item(necessidade, categoriaDaNecessidade));
+      expect(r.score, `${oferta} × ${necessidade}`).toBe(0);
+      expect(r.bloqueio, `${oferta} × ${necessidade}`).toBe("servico-sem-demanda-expressa");
+    }
+  });
+
+  it("a necessidade que nomeia a família do serviço novo passa a casar (era 0: o serviço não tinha família)", () => {
+    expect(scoreMatch(item("Fisioterapia", "Saúde"), item("Fisioterapeuta")).score).toBe(60);
+    expect(scoreMatch(item("Transporte rodoviário", "Logística"), item("Transportadora")).score).toBe(60);
+  });
+
+  it("o bem físico da logística continua casando pela categoria, como antes", () => {
+    expect(scoreMatch(item("Galpão alfandegado", "Logística"), item("Armazém em Santos", "Logística"))).toEqual({ score: 60, type: "category" });
+  });
+});

@@ -103,6 +103,7 @@ export async function getUserProfile(userId: number) {
     avatarUrl: userProfiles.avatarUrl,
     bio: userProfiles.bio,
     primarySpecialty: userProfiles.primarySpecialty,
+    activityArea: userProfiles.activityArea,
     secondarySpecialties: userProfiles.secondarySpecialties,
     experienceYears: userProfiles.experienceYears,
     educationLevel: userProfiles.educationLevel,
@@ -223,11 +224,13 @@ const HAVE_SATISFIES_NEED: Record<string, string[]> = {
  * mesmo núcleo — nunca palavra parecida.
  *
  * Regra da demanda expressa (12/09/2026): um SERVIÇO só atende o que o outro
- * lado DECLAROU. Não há entrada de serviço em HAVE_SATISFIES_NEED de
- * propósito, e a única opção fixa de "O que preciso" que declara precisar de
- * um serviço profissional é "Consultoria" — atendida pelos serviços de
- * assessoria (consultoria, jurídico, contábil, auditoria, mentoria), não por
- * marketing ou tradução.
+ * lado DECLAROU. A única entrada de serviço em HAVE_SATISFIES_NEED é
+ * "logistica", desde que a logística virou serviço (decisão de 14/09): ela
+ * atende quem declarou distribuidores ou fornecedores, e mais ninguém. A única
+ * opção fixa de "O que preciso" que declara precisar de um serviço
+ * profissional é "Consultoria" — atendida pelos serviços de assessoria
+ * (consultoria, jurídico, contábil, auditoria, mentoria), não por marketing ou
+ * tradução.
  */
 function satisfaz(have: string, need: string): boolean {
   if (have === need) return true;
@@ -380,13 +383,30 @@ export function calculateCompatibilityScore(
   // para serviço, necessidade presumida não é match. O par ainda passa quando
   // existe base EXPRESSA por outro caminho — a outra tem o que esta declarou
   // precisar (produto, ativo, capital...), ou uma busca investimento e a outra
-  // declarou capacidade. Perfil sem nada em "o que tenho" não oferece serviço
-  // nenhum e segue como sempre: a regra é específica de serviço, e produtos,
-  // ativos, conexões etc. continuam casando pelas seis dimensões.
-  const soOfereceServicoPresumido = (have: string[], cobre: number) =>
-    have.length > 0 && cobre === 0 && have.every(item => ehServico(item));
-  const semBaseExpressa = aCoversB === 0 && bCoversA === 0 && !investimentoExpresso;
-  const bloqueio = semBaseExpressa && (soOfereceServicoPresumido(aHave, aCoversB) || soOfereceServicoPresumido(bHave, bCoversA))
+  // declarou capacidade. A regra é específica de serviço: produtos, ativos,
+  // conexões etc. continuam casando pelas seis dimensões.
+  //
+  // Com "o que tenho" vazio, o que o perfil oferece é a área de atuação e a
+  // especialidade — a mesma leitura do portão da IA (ofertasDoPerfil em
+  // portao-da-demanda-expressa.ts). Até 14/09 perfil sem "o que tenho" passava
+  // direto, e é o caso comum: a tela de cadastro não tem opção de serviço em "O
+  // que tenho", então a advogada põe o serviço na especialidade. Medido: "Advocacia
+  // tributária" na especialidade, nada em "o que tenho", diante de uma
+  // farmacêutica que procura distribuidores, dava 57 e era gravado. A cobertura
+  // usa as mesmas ofertas, para a especialidade que atende o que a outra
+  // declarou ("Contabilidade" diante de quem precisa de "Contador") ser base
+  // expressa; a complementaridade da nota continua lendo só "o que tenho".
+  const ofertasDoPerfil = (perfil: UserProfile, have: string[]) => have.length > 0
+    ? have
+    : [perfil.activityArea, perfil.primarySpecialty].filter((texto): texto is string => typeof texto === "string" && texto.trim() !== "");
+  const aOferece = ofertasDoPerfil(a, aHave);
+  const bOferece = ofertasDoPerfil(b, bHave);
+  const aCobreB = aHave.length > 0 ? aCoversB : coversNeeds(aOferece, bNeed);
+  const bCobreA = bHave.length > 0 ? bCoversA : coversNeeds(bOferece, aNeed);
+  const soOfereceServicoPresumido = (ofertas: string[], cobre: number) =>
+    ofertas.length > 0 && cobre === 0 && ofertas.every(item => ehServico(item));
+  const semBaseExpressa = aCobreB === 0 && bCobreA === 0 && !investimentoExpresso;
+  const bloqueio = semBaseExpressa && (soOfereceServicoPresumido(aOferece, aCobreB) || soOfereceServicoPresumido(bOferece, bCobreA))
     ? ("servico-sem-demanda-expressa" as const)
     : undefined;
 
@@ -543,6 +563,7 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
     avatarUrl: userProfiles.avatarUrl,
     bio: userProfiles.bio,
     primarySpecialty: userProfiles.primarySpecialty,
+    activityArea: userProfiles.activityArea,
     secondarySpecialties: userProfiles.secondarySpecialties,
     experienceYears: userProfiles.experienceYears,
     educationLevel: userProfiles.educationLevel,
@@ -658,8 +679,10 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
  * (ou o perfil mudou desde então), e "não exibir recomendação" vale na
  * LEITURA, como a trava de consentimento de routers/profileMatches.ts: a tela
  * não espera ninguém clicar em "Reanalisar" para parar de mostrar um serviço
- * casado por presunção. Só o que o portão lê sai do banco (tenho/preciso e o
- * trio de investimento); o resto do perfil não participa da decisão.
+ * casado por presunção. Só o que o portão lê sai do banco (tenho/preciso, a
+ * área de atuação e a especialidade, que dizem o que o perfil oferece quando
+ * "o que tenho" está vazio, e o trio de investimento); o resto do perfil não
+ * participa da decisão.
  */
 export async function matchesBloqueadosPelaDemandaExpressa(userId: number, matchedUserIds: number[]): Promise<Set<number>> {
   const bloqueados = new Set<number>();
@@ -671,6 +694,8 @@ export async function matchesBloqueadosPelaDemandaExpressa(userId: number, match
     userId: userProfiles.userId,
     whatIHave: userProfiles.whatIHave,
     whatINeed: userProfiles.whatINeed,
+    activityArea: userProfiles.activityArea,
+    primarySpecialty: userProfiles.primarySpecialty,
     investmentCapacity: userProfiles.investmentCapacity,
     lookingForInvestment: userProfiles.lookingForInvestment,
     investmentAmountSeeking: userProfiles.investmentAmountSeeking,
