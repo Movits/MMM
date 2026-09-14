@@ -917,6 +917,8 @@
     "salvando": "Сохранение...",
     "botaoSalvar": "✓ Сохранить",
     "vincularContatoTitulo": "Связать контакт",
+    "editarVinculoTitulo": "Изменить связь",
+    "badgeJaVinculado": "Уже связан",
     "toastVinculadoSucesso": "Связь {{name}} с {{context}} создана!",
     "toastVinculoAtualizado": "Связь {{name}} с {{context}} обновлена.",
     "toastErroVincular": "Ошибка при связывании: {{message}}",
