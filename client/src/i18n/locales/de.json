@@ -31,7 +31,8 @@
     "users": "Aktive Nutzer",
     "opportunities": "Geschaffene Möglichkeiten",
     "satisfaction": "Zufriedenheit der Mitglieder",
-    "connections": "Erfolgreiche Verbindungen"
+    "connections": "Erfolgreiche Verbindungen",
+    "countries": "Länder mit registrierten Mitgliedern"
   },
   "steps": {
     "title": "So funktioniert MMM",

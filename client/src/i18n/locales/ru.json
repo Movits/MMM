@@ -31,7 +31,8 @@
     "users": "Пользователей",
     "opportunities": "Возможностей",
     "satisfaction": "Удовлетворенность",
-    "connections": "Связей"
+    "connections": "Связей",
+    "countries": "Стран с участниками"
   },
   "steps": {
     "title": "Как это работает",

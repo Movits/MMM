@@ -31,7 +31,8 @@
     "users": "ユーザー",
     "opportunities": "機会",
     "satisfaction": "満足度",
-    "connections": "つながり"
+    "connections": "つながり",
+    "countries": "ユーザーのいる国"
   },
   "steps": {
     "title": "MMMの仕組み",

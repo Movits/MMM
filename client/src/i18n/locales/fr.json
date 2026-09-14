@@ -31,7 +31,8 @@
     "users": "Utilisateurs actifs",
     "opportunities": "Opportunités créées",
     "satisfaction": "Taux de satisfaction",
-    "connections": "Connexions établies"
+    "connections": "Connexions établies",
+    "countries": "Pays des membres inscrits"
   },
   "steps": {
     "title": "Comment ça marche",

@@ -31,7 +31,8 @@
     "users": "已连接会员",
     "opportunities": "已创造机会",
     "satisfaction": "社区满意度",
-    "connections": "成功连接"
+    "connections": "成功连接",
+    "countries": "会员注册国家"
   },
   "steps": {
     "title": "工作原理",
