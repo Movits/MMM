@@ -228,6 +228,42 @@ const FAMILIA_DA_PALAVRA = new Map<string, string>(
 );
 const familiaDaPalavra = (palavra: string) => FAMILIA_DA_PALAVRA.get(palavra) ?? palavra;
 
+/**
+ * A ESPECIALIDADE de um serviço — o lema que junta as flexões do QUE o serviço
+ * trata: "tributária", "tributarista", "tributos" e "fiscal" são a mesma
+ * especialidade. É o mesmo recurso de FAMILIAS, uma casa abaixo: a família diz
+ * QUE prestação é (advocacia), a especialidade diz SOBRE O QUÊ (tributário).
+ *
+ * Existe por causa de um defeito relatado depois da #101: "Advocacia
+ * tributária" possuído e "Advogado tributarista" procurado são o mesmo serviço
+ * e davam 0, porque a família batia mas nenhuma regra olhava a especialidade —
+ * e nota abaixo de 50 não é só escondida, some do banco. Continua NÃO sendo
+ * parecença de texto: é tabela curada, como FAMILIAS. Duas especialidades
+ * diferentes ("Consultoria tributária" × "Consultoria de marketing") seguem
+ * sem casar, que é o que a spec da cliente exige.
+ *
+ * Palavra fora do mapa é a própria especialidade: só casa consigo mesma.
+ */
+const ESPECIALIDADES: Record<string, readonly string[]> = {
+  tributario: ["tributario", "tributaria", "tributarios", "tributarias", "tributarista", "tributaristas", "tributos", "tributo", "tributacao", "fiscal", "fiscais", "imposto", "impostos", "tax", "taxes", "taxation", "impuesto", "impuestos", "tributacion"],
+  trabalhista: ["trabalhista", "trabalhistas", "trabalho", "laboral", "laborais", "labor", "labour", "employment", "laborales"],
+  imobiliario: ["imobiliario", "imobiliaria", "imobiliarios", "imobiliarias", "imovel", "imoveis", "inmobiliario", "inmobiliaria", "inmobiliarios", "property", "properties"],
+  empresarial: ["empresarial", "empresariais", "societario", "societaria", "societarios", "corporativo", "corporativa", "corporativos", "corporate", "mercantil", "mercantis", "corporativas"],
+  ambiental: ["ambiental", "ambientais", "ambiente", "environmental", "environment", "ambientales"],
+  previdenciario: ["previdenciario", "previdenciaria", "previdenciarios", "previdencia"],
+  civil: ["civil", "civis", "civiles"],
+  penal: ["penal", "penais", "criminal", "criminais", "criminalista", "criminalistas", "penales"],
+  familiar: ["familiar", "familiares", "familia", "family"],
+  contratual: ["contratual", "contratuais", "contrato", "contratos", "contract", "contracts", "contractual"],
+  digital: ["digital", "digitais", "digitales"],
+  internacional: ["internacional", "internacionais", "international", "internacionales"],
+  financeiro: ["financeiro", "financeira", "financeiros", "financeiras", "financial", "finance", "financiero", "financiera", "finanzas"],
+};
+const ESPECIALIDADE_DA_PALAVRA = new Map<string, string>(
+  Object.entries(ESPECIALIDADES).flatMap(([lema, palavras]) => palavras.map(palavra => [palavra, lema] as const)),
+);
+const especialidadeDaPalavra = (palavra: string) => ESPECIALIDADE_DA_PALAVRA.get(palavra) ?? palavra;
+
 /** Depois de uma destas, o que vem é complemento da cabeça, não a coisa oferecida. */
 const PREPOSICOES = new Set([
   ...Array.from(GENITIVOS), "para", "em", "no", "na", "nos", "nas", "com", "por", "sobre", "ao", "aos", "a", "as",
@@ -318,6 +354,14 @@ const IMOVEL = [
   "hotel", "hoteis", "hotels", "pousada", "pousadas",
   "espaco", "espacos", "space", "spaces", "espacio", "espacios",
   "condominio", "condominios", "shopping",
+  // O que uma pessoa de fato anuncia como imóvel e faltava aqui: sem estas, a
+  // cabeça não decidia e a CATEGORIA passava a decidir — "Apartamento na praia"
+  // com a categoria "Serviços jurídicos" virava serviço e caía no portão da
+  // demanda expressa, que é restrição (defeito relatado depois da #101).
+  "apartamento", "apartamentos", "apartment", "apartments", "flat", "flats",
+  "casa", "casas", "house", "houses", "sobrado", "sobrados", "cobertura", "coberturas",
+  "sala", "salas", "loja", "lojas", "store", "stores",
+  "vaga", "vagas", "garagem", "garagens",
 ];
 
 /**
@@ -515,6 +559,57 @@ export function necessidadeGenericaNomeiaOServico(oferta: string, categoriaDaOfe
   if (!cabeca || palavras.length - indice !== 1) return false;
   if (!(SUBSTANTIVOS_DE_SERVICO.has(cabeca) || ADJETIVOS_DE_SERVICO.has(cabeca)) || GENERICAS_DEMAIS.has(cabeca)) return false;
   return familiaDoServico(oferta, categoriaDaOferta) === familiaDaPalavra(cabeca);
+}
+
+/**
+ * A ESPECIALIDADE declarada num termo de serviço, em lemas: TODAS as palavras
+ * do termo, tiradas as que nomeiam a própria prestação ("advocacia",
+ * "jurídico", "serviços"), as cabeças neutras ("escritório") e a estrutura
+ * (artigos, preposições, conjunções). "Advocacia tributária" e "Advogado
+ * tributarista" dão os dois ["tributario"]; "Consultoria jurídica" dá [] (só
+ * nomeia a prestação, não o assunto).
+ */
+export function especialidadeDoServico(rotulo: string, categoria?: string | null): string[] {
+  if (!ehServico(rotulo, categoria)) return [];
+  // TODAS as palavras que não nomeiam a prestação nem são estrutura, onde quer
+  // que estejam. Tirar só o complemento da cabeça não serve: em "Sell-side
+  // advisory" a cabeça é "sell" e o serviço vem depois, então o complemento
+  // deixava de fora justamente a palavra que distingue de "Buy-side advisory"
+  // — e os dois lados de uma mesa de negociação casavam em 100.
+  return tokensDoTermo(rotulo)
+    .filter(palavra =>
+      !SUBSTANTIVOS_DE_SERVICO.has(palavra) && !ADJETIVOS_DE_SERVICO.has(palavra) && !GENERICAS_DEMAIS.has(palavra) &&
+      !CABECAS_NEUTRAS.has(palavra) && !FRONTEIRAS.has(palavra) && !ARTIGOS.has(palavra) && !MARCADORES_FRACOS.has(palavra))
+    .map(especialidadeDaPalavra);
+}
+
+/** Os dois lados declaram o MESMO conjunto de lemas, e nenhum deles é vazio. */
+const mesmoConjunto = (a: string[], b: string[]) => {
+  const ca = new Set(a);
+  const cb = new Set(b);
+  return ca.size > 0 && ca.size === cb.size && Array.from(ca).every(item => cb.has(item));
+};
+
+/**
+ * A necessidade NOMEIA o serviço oferecido? É o portão da demanda expressa do
+ * lado do motor privado, e passa de dois jeitos:
+ *
+ * 1. necessidade GENÉRICA da mesma família ("Advogado" × "Advocacia
+ *    tributária") — quem escreveu a família declarou precisar dela;
+ * 2. mesma família E mesma ESPECIALIDADE ("Advogado tributarista" ×
+ *    "Advocacia tributária") — o par que o defeito relatado depois da #101
+ *    fazia sumir, porque a redação mudava mas o serviço era o mesmo.
+ *
+ * O que continua barrado é o que o pedido do Nicolas veta: necessidade de
+ * OUTRA família, necessidade de outra especialidade na mesma família
+ * ("Consultoria tributária" × "Consultoria de marketing") e, acima de tudo, a
+ * categoria em comum — nada aqui olha para a categoria.
+ */
+export function necessidadeNomeiaOServico(oferta: string, categoriaDaOferta: string | null | undefined, necessidade: string): boolean {
+  if (necessidadeGenericaNomeiaOServico(oferta, categoriaDaOferta, necessidade)) return true;
+  const familia = familiaDoServico(oferta, categoriaDaOferta);
+  if (!familia || familiaDoServico(necessidade) !== familia) return false;
+  return mesmoConjunto(especialidadeDoServico(oferta, categoriaDaOferta), especialidadeDoServico(necessidade));
 }
 
 /** O item é um SERVIÇO — o único tipo em que o portão da demanda expressa atua. */

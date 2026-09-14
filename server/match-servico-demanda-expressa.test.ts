@@ -176,3 +176,39 @@ describe("Fiação", () => {
     expect(motor).toContain("O que A precisa:");
   });
 });
+
+/**
+ * Defeito relatado em 13/09, depois de a #101 entrar em produção: a regra
+ * passou a barrar pares em que a necessidade FOI declarada, só porque a
+ * redação mudava. "Advocacia tributária" possuído × "Advogado tributarista"
+ * procurado caía de 60 para 0 — e 0 não é só esconder: abaixo de
+ * SAVE_THRESHOLD a linha não entra em `pares` e a limpeza de órfãos remove a
+ * sugestão que havia. Quem escrevia a necessidade de forma MAIS específica
+ * perdia o match; quem escrevia "Advogado" (genérico) continuava achando.
+ */
+describe("Serviço × necessidade declarada com outra flexão — casa (defeito da #101)", () => {
+  it("a mesma família com a mesma especialidade casa em 100, escrita como for", () => {
+    for (const [oferta, necessidade] of [
+      ["Advocacia tributária", "Advogado tributarista"],
+      ["Advocacia tributária", "Advogado de tributos"],
+      ["Consultoria tributária", "Consultor tributário"],
+      ["Advocacia trabalhista", "Advogado trabalhista"],
+    ] as const) {
+      const r = scoreMatch(item(oferta, "Serviços"), item(necessidade, "Serviços"));
+      expect(r.score, `${oferta} × ${necessidade}`).toBe(100);
+      expect(r.type, `${oferta} × ${necessidade}`).toBe("exact");
+    }
+  });
+
+  it("e o que a #101 veio barrar continua barrado: outra família, outra especialidade, e a categoria em comum", () => {
+    for (const [oferta, necessidade] of [
+      ["Advocacia tributária", "Distribuidor para a África"],
+      ["Advocacia tributária", "Contador"],
+      ["Consultoria tributária", "Consultoria de marketing"],
+      ["Advocacia trabalhista", "Advogado tributarista"],
+      ["Sell-side advisory", "Buy-side advisory"],
+    ] as const) {
+      expect(scoreMatch(item(oferta, "Serviços"), item(necessidade, "Serviços")).score, `${oferta} × ${necessidade}`).toBe(0);
+    }
+  });
+});

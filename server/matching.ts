@@ -9,7 +9,7 @@ import { eq, ne, and, desc, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import { hasValidConsent, usersComConsentimento } from "./routers/consent";
 import { nomeiamAMesmaCoisa, slugDoTermo } from "@shared/direcao-do-termo";
-import { ehServico, ehServicoDeAssessoria, necessidadeGenericaNomeiaOServico } from "@shared/tipo-da-oferta";
+import { ehServico, ehServicoDeAssessoria, necessidadeNomeiaOServico } from "@shared/tipo-da-oferta";
 
 // ─── Encryption helpers (for sensitive data) ─────────────────
 const VAULT_KEY = process.env.VAULT_ENCRYPTION_KEY || requireSecret("JWT_SECRET");
@@ -235,7 +235,7 @@ function satisfaz(have: string, need: string): boolean {
   if (slugDoTermo(have) === slugDoTermo(need) || nomeiamAMesmaCoisa(have, need)) return true;
   // A necessidade genérica que nomeia a família do serviço ("Consultoria"
   // ou "Advogado" em texto livre) é demanda expressa, como no motor privado.
-  if (necessidadeGenericaNomeiaOServico(have, null, need)) return true;
+  if (necessidadeNomeiaOServico(have, null, need)) return true;
   return slugDoTermo(need) === "consultoria" && ehServicoDeAssessoria(have);
 }
 
