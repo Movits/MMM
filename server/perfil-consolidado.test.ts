@@ -6,9 +6,9 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  * Colunas duplicadas de user_profiles — etapa 1 da consolidação.
  *
  * Ficam jobTitle e company; currentRole e currentCompany continuam no banco,
- * mas não recebem mais escrita e só tapam buraco na leitura. As metas de curto
- * e longo prazo, que o Onboarding coletava e o servidor descartava, passam a
- * ser gravadas.
+ * não recebem mais valor (o Perfil só as anula) e só tapam buraco na leitura.
+ * As metas de curto e longo prazo, que o Onboarding coletava e o servidor
+ * descartava, passam a ser gravadas.
  */
 
 const upsertUserProfile = vi.fn(async (_userId: number, _dados: Record<string, unknown>) => {});
@@ -141,5 +141,35 @@ describe("profile.update", () => {
 
     const [, dadosDoUpsert] = upsertUserProfile.mock.calls[0];
     expect(dadosDoUpsert).toMatchObject({ shortTermGoal: "Curto", longTermGoal: "Longo" });
+  });
+});
+
+describe("profile.update: apagar cargo ou empresa no Perfil apaga de verdade", () => {
+  // Quem fez o Onboarding antes da consolidação e as contas da carga (o
+  // importador grava cargo e empresa nas duas colunas do par).
+  const LINHA_COM_COLUNAS_ANTIGAS = { jobTitle: "Diretora", currentRole: "Diretora", company: "Andina", currentCompany: "Andina" };
+  // Ida e volta: o UPDATE aplicado sobre a linha e lido pela mesma consolidação do getUserProfile.
+  const lerDepoisDoUpdate = (dados: Record<string, unknown>) =>
+    consolidarPerfil({ ...LINHA_COM_COLUNAS_ANTIGAS, ...dados } as typeof LINHA_COM_COLUNAS_ANTIGAS);
+
+  it.each([
+    ["sem tipo de pessoa", {}],
+    ["pessoa física", { personType: "individual" as const }],
+  ])("update({ jobTitle: '', company: '' }) anula currentRole/currentCompany e a leitura volta vazia (%s)", async (_ramo, extra) => {
+    await caller.update({ jobTitle: "", company: "", ...extra });
+
+    const [, dadosDoUpsert] = upsertUserProfile.mock.calls[0];
+    expect(dadosDoUpsert).toMatchObject({ jobTitle: "", currentRole: null, company: "", currentCompany: null });
+    expect(lerDepoisDoUpdate(dadosDoUpsert)).toMatchObject({ jobTitle: "", company: "" });
+  });
+
+  it("update({ jobTitle: 'CEO' }) anula só currentRole: currentCompany fica como estava", async () => {
+    await caller.update({ jobTitle: "CEO" });
+
+    const [, dadosDoUpsert] = upsertUserProfile.mock.calls[0];
+    expect(dadosDoUpsert).toMatchObject({ jobTitle: "CEO", currentRole: null });
+    expect(dadosDoUpsert).not.toHaveProperty("company");
+    expect(dadosDoUpsert).not.toHaveProperty("currentCompany");
+    expect(lerDepoisDoUpdate(dadosDoUpsert)).toMatchObject({ jobTitle: "CEO", company: "Andina", currentCompany: "Andina" });
   });
 });

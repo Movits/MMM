@@ -66,9 +66,19 @@ export const profileRouter = router({
       // `position` é coluna de users, não de user_profiles — mandá-la ao
       // upsert derrubava o UPDATE inteiro com "Unknown column".
       const { position: _position, ...updateData } = input;
+      // A leitura cai em currentRole/currentCompany quando jobTitle/company está
+      // vazio (perfil-consolidado.ts). Sem anular a coluna antiga do par que
+      // chegou, apagar cargo ou empresa no Perfil não apagava: o valor antigo
+      // voltava para quem fez o Onboarding antes da consolidação e para as contas
+      // da carga, que o importador grava nas duas colunas. Só anula, não copia;
+      // um par por vez, para quem manda só o cargo não perder a empresa antiga.
+      const legado = {
+        ...(input.jobTitle !== undefined ? { currentRole: null } : {}),
+        ...(input.company !== undefined ? { currentCompany: null } : {}),
+      };
       const businessData = updateData.personType === "individual"
-        ? { ...updateData, companySize: null, companyCnpj: null }
-        : { ...updateData, companyCnpj: updateData.companyCnpj ? normalizeCnpj(updateData.companyCnpj) : undefined };
+        ? { ...updateData, ...legado, companySize: null, companyCnpj: null }
+        : { ...updateData, ...legado, companyCnpj: updateData.companyCnpj ? normalizeCnpj(updateData.companyCnpj) : undefined };
       await upsertUserProfile(ctx.user.id, businessData);
       // Atualizar company/position na tabela users também
       const db = await exigirDb();
