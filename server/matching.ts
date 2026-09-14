@@ -10,6 +10,9 @@ import crypto from "crypto";
 import { hasValidConsent, usersComConsentimento } from "./routers/consent";
 import { nomeiamAMesmaCoisa, slugDoTermo } from "@shared/direcao-do-termo";
 import { ehServico, ehServicoDeAssessoria, necessidadeGenericaNomeiaOServico } from "@shared/tipo-da-oferta";
+import {
+  listaParaPrompt, rotuloEmPortugues, textoParaPrompt, SEM_INFORMACAO,
+} from "./rotulos-canonicos";
 
 // ─── Encryption helpers (for sensitive data) ─────────────────
 const VAULT_KEY = process.env.VAULT_ENCRYPTION_KEY || requireSecret("JWT_SECRET");
@@ -423,18 +426,6 @@ export function calculateCompatibilityScore(
 // Desde a migração para chaves canônicas (migrar-rotulos-para-chaves), busca e
 // valores ficam gravados como strategic_partner, innovation etc. — e era assim,
 // cru, que entravam no prompt e voltavam citados no texto que a usuária lê.
-// Estes mapas devolvem o rótulo humano; chave desconhecida passa como veio.
-const ROTULO_DE_BUSCA: Record<string, string> = {
-  strategic_partner: "Sócia estratégica", investor: "Investidora", mentor: "Mentora",
-  team: "Equipe/Talentos", job: "Emprego/Projeto", be_mentor: "Quer também mentorar",
-};
-const ROTULO_DE_VALOR: Record<string, string> = {
-  innovation: "Inovação", social_impact: "Impacto social", autonomy: "Autonomia",
-  fast_growth: "Crescimento rápido", stability: "Estabilidade", purpose: "Propósito",
-  collaboration: "Colaboração", results: "Resultados", diversity: "Diversidade",
-  transparency: "Transparência", sustainability: "Sustentabilidade",
-  technical_excellence: "Excelência técnica",
-};
 // As opções fixas de "O que tenho" e de "O que preciso" do onboarding, pelo
 // rótulo humano (WHAT_I_HAVE_OPTIONS / WHAT_I_NEED_OPTIONS em Onboarding.tsx).
 // Dois mapas porque "investidores" e "licencas" existem nas duas listas com
@@ -454,6 +445,69 @@ const ROTULO_DO_QUE_PRECISO: Record<string, string> = {
 const rotular = (valores: unknown, mapa: Record<string, string>) =>
   ((valores as string[]) || []).map(valor => mapa[valor] ?? valor).join(", ");
 
+// Os rótulos de busca, valores, setor e especialidade vinham de dois mapas copiados à mão aqui. Eles envelheceram: a
+// PR #12 fundiu opções e reescreveu textos no pt-BR.json, e o mapa daqui ficou
+// dizendo "Sócia estratégica" enquanto a tela já dizia "Sócia ou parceira de
+// negócios" para a MESMA chave. Agora quem responde é `rotulos-canonicos.ts`,
+// que lê o próprio pt-BR.json — a fonte que a tela usa.
+//
+// A regra da separação continua a mesma, e é o ponto da tarefa: a CHAVE manda
+// no armazenamento e em toda comparação de `calculateCompatibilityScore`; o
+// rótulo só nasce aqui embaixo, na montagem do texto legível para o LLM.
+
+/**
+ * Setor é o único destes campos que o onboarding ainda grava pelo RÓTULO do
+ * idioma de quem preencheu (`Onboarding.tsx` envia `s.label`), então o valor no
+ * banco pode ser "Saúde", "Health & Healthtechs" ou já a chave "health". Passa
+ * primeiro por `chaveDoSetor` — a mesma normalização que a comparação de score
+ * usa, para o prompt não contar uma história diferente da que o score contou.
+ *
+ * Se a normalização cair no fallback (rótulo de um dos 7 idiomas sem entrada em
+ * SECTOR_LABEL_PARA_CHAVE, ou setor personalizado), ela devolve o texto em
+ * minúsculas. Aí vale mais o valor ORIGINAL, com as maiúsculas que a usuária
+ * digitou, do que um "beleza & cosmeticos" no meio da frase.
+ */
+function setorParaPrompt(valor: string | null | undefined): string {
+  const chave = chaveDoSetor(valor);
+  if (!chave) return SEM_INFORMACAO;
+  const rotulo = rotuloEmPortugues("sectors", chave);
+  return rotulo === chave ? textoParaPrompt(valor) : rotulo;
+}
+
+/**
+ * Especialidades, principal e secundárias na mesma linha.
+ *
+ * As duas colunas são canônicas desde a PR #12 (o script de migração converte
+ * `primarySpecialty` e `secondarySpecialties` pelo mesmo mapa), então as duas
+ * falam o mesmo vocabulário e cabem numa lista só. A principal vem primeiro
+ * porque é a que o score usa em `calculateCompatibilityScore`.
+ *
+ * `rotulosEmPortugues` cuida do resto: descarta nulo, vazio e o que não for
+ * texto, e não repete rótulo — a principal costuma reaparecer entre as
+ * secundárias (o onboarding envia `selectedSpecialties[0]` e
+ * `selectedSpecialties.slice(1)`, mas o perfil pode ter sido gravado por outro
+ * caminho), e "Tecnologia & Software, Tecnologia & Software" não diz nada ao LLM.
+ */
+function especialidadesParaPrompt(perfil: UserProfile): string {
+  const secundarias = Array.isArray(perfil.secondarySpecialties) ? perfil.secondarySpecialties : [];
+  return listaParaPrompt("specialties", [perfil.primarySpecialty, ...secundarias]);
+}
+
+/** As linhas de perfil do prompt, já em português legível. */
+function perfilParaPrompt(perfil: UserProfile): string {
+  return [
+    `- Especialidades: ${especialidadesParaPrompt(perfil)}`,
+    `- Busca: ${listaParaPrompt("seeking", perfil.seekingTypes)}`,
+    `- Setor: ${setorParaPrompt(perfil.sector)}`,
+    // businessInterests guarda CHAVES DE SETOR (o onboarding usa a mesma lista),
+    // por isso o namespace é "sectors" e não um namespace de interesses.
+    `- Interesses de negócio: ${listaParaPrompt("sectors", perfil.businessInterests)}`,
+    `- Valores: ${listaParaPrompt("values", perfil.values)}`,
+    `- Idiomas: ${listaParaPrompt("languages", perfil.languages)}`,
+    `- Localização: ${textoParaPrompt(perfil.city, perfil.country)}`,
+  ].join("\n");
+}
+
 // ─── Generate AI insight for a match ─────────────────────────
 export async function generateMatchInsight(
   profileA: UserProfile,
@@ -464,18 +518,10 @@ export async function generateMatchInsight(
     const prompt = `Você é um assistente de matchmaking profissional. Analise a compatibilidade entre dois perfis e escreva um insight conciso (2-3 frases) explicando POR QUE eles são compatíveis e QUAL oportunidade específica podem criar juntos. Cite apenas necessidades que os perfis DECLARARAM em "O que precisa": nunca presuma que alguém precisa de um serviço por causa do setor, do porte, do cargo ou da atividade da empresa.
 
 Perfil A:
-- Especialidade: ${profileA.primarySpecialty}
-- Busca: ${rotular(profileA.seekingTypes, ROTULO_DE_BUSCA)}
-- Setor: ${profileA.sector}
-- Valores: ${rotular(profileA.values, ROTULO_DE_VALOR)}
-- Localização: ${profileA.city}, ${profileA.country}
+${perfilParaPrompt(profileA)}
 
 Perfil B:
-- Especialidade: ${profileB.primarySpecialty}
-- Busca: ${rotular(profileB.seekingTypes, ROTULO_DE_BUSCA)}
-- Setor: ${profileB.sector}
-- Valores: ${rotular(profileB.values, ROTULO_DE_VALOR)}
-- Localização: ${profileB.city}, ${profileB.country}
+${perfilParaPrompt(profileB)}
 
 Score de compatibilidade: ${scores.overall}%
 - Objetivos: ${scores.objectives}%
@@ -515,6 +561,108 @@ const INSIGHTS_DE_ENCHIMENTO = new Set([
 // LLM em sequência — mais que o dia inteiro de cota do plano gratuito, num
 // clique. O insight já gravado é reaproveitado e nunca sobrescrito por null.
 const INSIGHTS_POR_RODADA = 3;
+
+// ─── Dados suficientes para um par virar match ───────────────
+//
+// O corte de 40 não filtrava nada: dois perfis INTEIRAMENTE VAZIOS pontuavam 41
+// e viravam match. Não é defeito do número, é de onde vêm os pontos. Cada
+// dimensão devolve um valor NEUTRO quando falta dado — complementaridade 50,
+// investimento 60 (porque `lookingForInvestment` é `false` por padrão no banco,
+// então o ramo "co-investimento" sempre dispara), valores 50, localização 50,
+// setor 30 — e a soma desses neutros já dá 40,5. O score dizia "41" quando a
+// resposta honesta era "não sei".
+//
+// Mexer no 40 não resolveria: qualquer limite abaixo de 41 continuaria aprovando
+// o par vazio, e qualquer limite acima passaria a reprovar pares reais, sem que
+// nada tivesse sido medido de fato. O que faltava é anterior à pontuação: exigir
+// que exista informação para pontuar.
+//
+// A regra abaixo não inventa critério novo — ela LÊ as condições que o próprio
+// `calculateCompatibilityScore` já usa para sair do neutro. Uma dimensão está
+// "apurada" exatamente quando o score teria dado dos dois lados para compará-la.
+
+/**
+ * Os pesos da fórmula, em centésimos. Somam 100.
+ *
+ * Inteiros de propósito: somados em decimais, setor + especialidade + valores +
+ * localização dá 0,49999999999999994 e o par que é exatamente meio a meio caía
+ * fora do portão (revisão da PR #84).
+ */
+export const PESOS_DO_SCORE = {
+  complementaridade: 30,
+  setor: 20,
+  investimento: 20,
+  especialidade: 15,
+  valores: 10,
+  localizacao: 5,
+} as const;
+
+/**
+ * Centésimos do peso total que precisam vir de dimensão realmente apurada.
+ *
+ * Meio a meio: a MAIORIA do score tem de vir de informação, não de valor neutro.
+ * Não é um número escolhido no olho — é a tradução direta de "um match precisa
+ * ser sustentado mais pelo que se sabe do que pelo que se supôs". Abaixo disso,
+ * o número que chega à tela é majoritariamente preenchimento.
+ *
+ * É o único parâmetro ajustável desta regra, e mexer nele é decisão de produto:
+ * subir aperta o filtro e reduz matches na tela; descer reabre a porta para
+ * pares sustentados por default. Ver "Corte de score" na entrega da tarefa.
+ */
+export const PESO_MINIMO_APURADO = 50;
+
+/**
+ * Quanto do peso da fórmula foi de fato medido para este par.
+ *
+ * Cada teste espelha, linha a linha, a condição que a dimensão correspondente
+ * usa em `calculateCompatibilityScore`. Se aquela mudar, esta precisa mudar
+ * junto — é o preço de a fórmula não expor quais dimensões apurou.
+ */
+export function pesoApurado(a: UserProfile, b: UserProfile): number {
+  const lista = (valor: unknown) => (Array.isArray(valor) ? (valor as string[]) : []);
+  let peso = 0;
+
+  // Complementaridade: mesma condição da linha `aHave.length + aNeed.length === 0`.
+  const perfilEstrategico = (perfil: UserProfile) =>
+    lista(perfil.whatIHave).length + lista(perfil.whatINeed).length > 0;
+  if (perfilEstrategico(a) && perfilEstrategico(b)) peso += PESOS_DO_SCORE.complementaridade;
+
+  // Setor: mesma condição do `if (setorA && setorB)`.
+  if (chaveDoSetor(a.sector) && chaveDoSetor(b.sector)) peso += PESOS_DO_SCORE.setor;
+
+  // Especialidade: mesma condição do `if (a.primarySpecialty && b.primarySpecialty)`.
+  if (a.primarySpecialty && b.primarySpecialty) peso += PESOS_DO_SCORE.especialidade;
+
+  // Valores: mesma condição do `aValues.length > 0 && bValues.length > 0`.
+  if (lista(a.values).length > 0 && lista(b.values).length > 0) peso += PESOS_DO_SCORE.valores;
+
+  // Localização: mesma condição do `if (a.country && b.country)`.
+  if (a.country && b.country) peso += PESOS_DO_SCORE.localizacao;
+
+  // Investimento é o único que precisa de leitura própria, e é justamente o que
+  // inflava o par vazio. A dimensão não tem ramo "sem dado": `lookingForInvestment`
+  // é boolean com default `false` no schema, então "não marquei nada" e "não
+  // procuro investimento" chegam iguais e caem no ramo de 60 pontos. Só conta
+  // como apurado quando existe declaração POSITIVA dos dois lados — capacidade
+  // preenchida ou procura assumida. "none" é o valor inicial do onboarding, não
+  // declaração: a mesma exclusão de `capacidadeDeclarada` no score.
+  const declarouInvestimento = (perfil: UserProfile) =>
+    (!!perfil.investmentCapacity && perfil.investmentCapacity !== "none") || perfil.lookingForInvestment === true;
+  if (declarouInvestimento(a) && declarouInvestimento(b)) peso += PESOS_DO_SCORE.investimento;
+
+  return peso;
+}
+
+/**
+ * O par tem informação suficiente para que o score signifique alguma coisa.
+ *
+ * Roda ANTES do corte de 40 e é independente dele: o 40 continua sendo o 40, e
+ * segue julgando o quão bom é o encaixe. Esta função julga outra coisa — se há
+ * encaixe a julgar.
+ */
+export function temDadosSuficientesParaMatch(a: UserProfile, b: UserProfile): boolean {
+  return pesoApurado(a, b) >= PESO_MINIMO_APURADO;
+}
 
 // ─── Generate matches for a user ─────────────────────────────
 export async function generateMatchesForUser(userId: number): Promise<number> {
@@ -593,6 +741,11 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
 
   for (const candidate of candidates) {
     if (!autorizadas.has(candidate.userId as number)) continue;
+    // Antes de pontuar: o par tem informação para ser pontuado? Sem isso, o
+    // score sai dos valores neutros das dimensões e um par de perfis vazios
+    // passava com 41.
+    if (!temDadosSuficientesParaMatch(myProfile as UserProfile, candidate as UserProfile)) continue;
+
     const scores = calculateCompatibilityScore(myProfile as UserProfile, candidate as UserProfile);
 
     // Regra da demanda expressa: o par bloqueado não é gravado nem atualizado.
