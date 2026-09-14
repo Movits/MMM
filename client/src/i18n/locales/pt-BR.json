@@ -31,7 +31,8 @@
     "users": "Pessoas cadastradas",
     "opportunities": "Oportunidades ativas",
     "satisfaction": "Satisfação",
-    "connections": "Conexões realizadas"
+    "connections": "Conexões realizadas",
+    "countries": "Países representados"
   },
   "steps": {
     "title": "Como funciona",
@@ -453,6 +454,8 @@
     }
   },
   "dashboard": {
+    "networkTitle": "A rede hoje",
+    "networkDesc": "Números reais da plataforma inteira, não só do seu perfil.",
     "title": "Olá",
     "matches": "Conexões Sugeridas",
     "connections": "Conexões",

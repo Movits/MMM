@@ -31,7 +31,8 @@
     "users": "已连接会员",
     "opportunities": "已创造机会",
     "satisfaction": "社区满意度",
-    "connections": "成功连接"
+    "connections": "成功连接",
+    "countries": "覆盖国家"
   },
   "steps": {
     "title": "工作原理",
@@ -453,6 +454,8 @@
     }
   },
   "dashboard": {
+    "networkTitle": "当前网络",
+    "networkDesc": "整个平台的真实数据，不只是你的个人资料。",
     "title": "你好",
     "matches": "您的匹配",
     "connections": "联系",

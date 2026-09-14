@@ -854,6 +854,10 @@ export default function Dashboard() {
     distribution: [0,1,2,3,4].map(b => data.filter(m => Math.min(4, Math.floor(m.overallScore / 20)) === b).length),
   }) });
   const connectionsQuery = trpc.connections.list.useQuery(undefined, { enabled: isAuthenticated });
+  // Números da plataforma inteira. É a MESMA consulta que alimentava os quatro
+  // indicadores da Hero (stats.platform, em server/routers/stats.ts), que saíram
+  // da página pública: nenhum cálculo novo, nenhum número fixo no código.
+  const plataformaQuery = trpc.stats.platform.useQuery(undefined, { enabled: isAuthenticated });
 
   const dismissMutation = trpc.matches.dismiss.useMutation({
     onSuccess: () => { matchesQuery.refetch(); toast.success(t("dashboard.dismiss")); },
@@ -911,6 +915,7 @@ export default function Dashboard() {
   }
 
   const stats = statsQuery.data;
+  const plataforma = plataformaQuery.data;
   const matches = matchesQuery.data || [];
   const aguardandoTermo = Boolean(consentQuery.data?.document) && !consentQuery.data?.accepted;
   const connections = connectionsQuery.data || [];
@@ -983,6 +988,36 @@ export default function Dashboard() {
           ].map((s, i) => (
             <StatCard key={s.label} {...s} index={i} />
           ))}
+        </div>
+
+        {/* ─── A REDE INTEIRA ───
+            Os quatro indicadores que ficavam na Hero pública. Aqui eles fazem
+            sentido: quem já entrou lê o tamanho da rede em que está, em vez de
+            ver o número servir de vitrine na primeira tela.
+            O título existe porque a grade acima também tem um cartão
+            "Conexões" — lá é a da usuária, aqui é a da plataforma; sem a
+            separação os dois números pareceriam o mesmo, contraditório.
+            Mesmo StatCard, mesmas quatro cores e mesma grade da grade de cima:
+            nenhum componente novo, nenhuma cor fora da identidade. O índice
+            começa em 4 para a entrada escalonada continuar a de cima em vez de
+            recomeçar. */}
+        <div className="mb-8">
+          <div className="flex items-baseline gap-3 mb-3 flex-wrap">
+            <h2 className="font-bold text-white">{t("dashboard.networkTitle")}</h2>
+            <p className="text-xs text-white/35">{t("dashboard.networkDesc")}</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              // Mesma convenção da grade de cima: consulta que falhou não é
+              // "0 pessoas cadastradas" — o traço diz que o número não veio.
+              { label: t("stats.users"), value: plataforma?.users ?? 0, color: "#c98f70", icon: "👥" },
+              { label: t("stats.opportunities"), value: plataforma?.opportunities ?? 0, color: "#3b82f6", icon: "💼" },
+              { label: t("stats.connections"), value: plataforma?.connections ?? 0, color: "#10b981", icon: "🔗" },
+              { label: t("stats.countries"), value: plataforma?.countries ?? 0, color: "#8b5cf6", icon: "🌍" },
+            ].map((s, i) => (
+              <StatCard key={s.label} {...s} value={plataformaQuery.isError ? "—" : s.value} index={4 + i} />
+            ))}
+          </div>
         </div>
 
         {/* ─── TABS ─── */}

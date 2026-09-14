@@ -31,7 +31,8 @@
     "users": "People registered",
     "opportunities": "Active opportunities",
     "satisfaction": "Satisfaction",
-    "connections": "Connections made"
+    "connections": "Connections made",
+    "countries": "Countries represented"
   },
   "steps": {
     "title": "How it works",
@@ -453,6 +454,8 @@
     }
   },
   "dashboard": {
+    "networkTitle": "The network today",
+    "networkDesc": "Real numbers for the whole platform, not just your profile.",
     "title": "Hello",
     "matches": "Your Matches",
     "connections": "Connections",

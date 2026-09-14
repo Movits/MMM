@@ -31,7 +31,8 @@
     "users": "Пользователей",
     "opportunities": "Возможностей",
     "satisfaction": "Удовлетворенность",
-    "connections": "Связей"
+    "connections": "Связей",
+    "countries": "Стран представлено"
   },
   "steps": {
     "title": "Как это работает",
@@ -453,6 +454,8 @@
     }
   },
   "dashboard": {
+    "networkTitle": "Сеть сегодня",
+    "networkDesc": "Реальные цифры всей платформы, а не только вашего профиля.",
     "title": "Привет",
     "matches": "Ваши совпадения",
     "connections": "Связи",

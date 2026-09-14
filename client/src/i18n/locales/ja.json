@@ -31,7 +31,8 @@
     "users": "ユーザー",
     "opportunities": "機会",
     "satisfaction": "満足度",
-    "connections": "つながり"
+    "connections": "つながり",
+    "countries": "参加国"
   },
   "steps": {
     "title": "MMMの仕組み",
@@ -453,6 +454,8 @@
     }
   },
   "dashboard": {
+    "networkTitle": "今のネットワーク",
+    "networkDesc": "あなたのプロフィールだけでなく、プラットフォーム全体の実数です。",
     "title": "こんにちは",
     "matches": "あなたのマッチ",
     "connections": "つながり",

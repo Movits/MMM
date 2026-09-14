@@ -17,24 +17,6 @@ import {
 // container e o cartão flutuante caem justamente ali.
 const HERO_IMG = "/images/hero-globo.webp";
 
-// Animated counter hook
-function useCounter(target: number, duration = 2000, start = false) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!start) return;
-    let startTime: number | null = null;
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(eased * target));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [target, duration, start]);
-  return count;
-}
-
 // Intersection observer hook
 function useInView(threshold = 0.2) {
   const ref = useRef<HTMLDivElement>(null);
@@ -463,7 +445,6 @@ function FundoDoPlaneta({ progresso, animar, pracas, ligacoes }: {
 export default function Home() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
-  const { ref: statsRef, inView: statsInView } = useInView();
   const { ref: stepsRef, inView: stepsInView } = useInView();
   const { ref: oppsRef, inView: oppsInView } = useInView();
   const heroRef = useParallax<HTMLElement>();
@@ -489,10 +470,6 @@ export default function Home() {
   // manter identidade entre renders.
   const { data: presenca } = trpc.stats.presencaPorPais.useQuery(undefined, { staleTime: Infinity });
   const { pracas, ligacoes } = useMemo(() => montarPracasDoGlobo(presenca), [presenca]);
-  const users = useCounter(stats?.users ?? 0, 1600, statsInView && !!stats);
-  const opps = useCounter(stats?.opportunities ?? 0, 1600, statsInView && !!stats);
-  const countries = useCounter(stats?.countries ?? 0, 1400, statsInView && !!stats);
-  const connections = useCounter(stats?.connections ?? 0, 1600, statsInView && !!stats);
 
   const [activeStep, setActiveStep] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -745,21 +722,14 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Stats minimalistas */}
-              <div ref={statsRef} className="flex flex-wrap gap-x-10 gap-y-6"
-                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.45s both" }}>
-                {[
-                  { value: users.toLocaleString(), label: t("stats.users") },
-                  { value: opps.toLocaleString(), label: t("stats.opportunities") },
-                  { value: connections.toLocaleString(), label: t("stats.connections") },
-                  { value: countries.toLocaleString(), label: "Países representados" },
-                ].map((s, i) => (
-                  <div key={i}>
-                    <div className="text-2xl font-extrabold text-white tracking-tight">{s.value}</div>
-                    <div className="text-xs text-white/35 mt-0.5">{s.label}</div>
-                  </div>
-                ))}
-              </div>
+              {/* Os quatro indicadores da plataforma (pessoas, oportunidades,
+                  conexões e países) moravam aqui, logo abaixo do botão. Saíram
+                  da primeira tela pública para a área logada, em Dashboard.tsx:
+                  na Hero eles disputavam a atenção com a mensagem e com o globo,
+                  e um número baixo de rede nova enfraquece o convite justamente
+                  para quem ainda não entrou. Nada foi apagado: a mesma consulta
+                  stats.platform continua aqui (alimenta os níveis, mais abaixo)
+                  e agora também alimenta os cartões do Dashboard. */}
             </div>
 
             {/* Imagem */}

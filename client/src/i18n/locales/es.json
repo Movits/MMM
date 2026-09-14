@@ -31,7 +31,8 @@
     "users": "Personas activas",
     "opportunities": "Oportunidades creadas",
     "satisfaction": "Satisfacción garantizada",
-    "connections": "Conexiones exitosas"
+    "connections": "Conexiones exitosas",
+    "countries": "Países representados"
   },
   "steps": {
     "title": "Tu camino hacia el éxito",
@@ -453,6 +454,8 @@
     }
   },
   "dashboard": {
+    "networkTitle": "La red hoy",
+    "networkDesc": "Números reales de toda la plataforma, no solo de tu perfil.",
     "title": "Hola",
     "matches": "Tus Matches",
     "connections": "Conexiones",

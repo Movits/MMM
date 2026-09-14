@@ -31,7 +31,8 @@
     "users": "قادة ملهمون",
     "opportunities": "فرص استثنائية",
     "satisfaction": "رضا عالٍ",
-    "connections": "روابط قوية"
+    "connections": "روابط قوية",
+    "countries": "دول ممثَّلة"
   },
   "steps": {
     "title": "كيف تعمل منصة MMM",
@@ -453,6 +454,8 @@
     }
   },
   "dashboard": {
+    "networkTitle": "الشبكة اليوم",
+    "networkDesc": "أرقام حقيقية للمنصّة بأكملها، لا لملفّك وحده.",
     "title": "مرحباً",
     "matches": "تطابقاتك",
     "connections": "الاتصالات",
