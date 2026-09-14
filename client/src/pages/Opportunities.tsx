@@ -147,6 +147,15 @@ function OpportunityCard({ opp, isGold, isSaved = false, onToggleSave, onDelete 
             <span className="text-yellow-300 text-xs font-semibold">{t("opportunitiesPage.pendingReviewBadge")}</span>
           </div>
         )}
+        {/* A12: destaque VIGENTE. A conta é feita na tela porque a lista já vem
+            ordenada pelo servidor — aqui só se mostra o que ele decidiu, e um
+            destaque vencido no cache não pinta selo. */}
+        {opp.destaqueAte && new Date(opp.destaqueAte as string | Date).getTime() > Date.now() && (
+          <div className="mb-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-400/15 border border-amber-400/40">
+            <span className="text-xs">★</span>
+            <span className="text-amber-300 text-xs font-semibold">{t("opportunitiesPage.destaqueBadge")}</span>
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">

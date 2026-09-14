@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "cb13cd95-5f8c-433c-8267-cca52651957e",
+  "id": "ccc09a00-283a-41f9-a1c1-aa2e699f0ad2",
   "prevId": "224ec345-c7a5-4527-a6b5-9e5e9011ff77",
   "tables": {
     "ai_match_suggestions": {
@@ -687,24 +687,7 @@
           "autoincrement": false
         }
       },
-      "indexes": {
-        "cc_owner_context_idx": {
-          "name": "cc_owner_context_idx",
-          "columns": [
-            "owner_id",
-            "context_id"
-          ],
-          "isUnique": false
-        },
-        "cc_owner_contact_idx": {
-          "name": "cc_owner_contact_idx",
-          "columns": [
-            "owner_id",
-            "contact_id"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "contact_contexts_id": {
@@ -918,16 +901,7 @@
           "autoincrement": false
         }
       },
-      "indexes": {
-        "cmedia_owner_context_idx": {
-          "name": "cmedia_owner_context_idx",
-          "columns": [
-            "owner_id",
-            "context_id"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "context_media_id": {
@@ -1014,16 +988,7 @@
           "autoincrement": false
         }
       },
-      "indexes": {
-        "cpart_owner_context_idx": {
-          "name": "cpart_owner_context_idx",
-          "columns": [
-            "owner_id",
-            "context_id"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "context_participants_id": {
@@ -1215,15 +1180,7 @@
           "autoincrement": false
         }
       },
-      "indexes": {
-        "ctx_owner_idx": {
-          "name": "ctx_owner_idx",
-          "columns": [
-            "owner_id"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "contexts_id": {
@@ -1782,16 +1739,7 @@
           "autoincrement": false
         }
       },
-      "indexes": {
-        "enr_msg_owner_session_idx": {
-          "name": "enr_msg_owner_session_idx",
-          "columns": [
-            "owner_id",
-            "session_id"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "enrichment_messages_id": {
@@ -1888,16 +1836,7 @@
           "autoincrement": false
         }
       },
-      "indexes": {
-        "enr_sess_owner_contact_idx": {
-          "name": "enr_sess_owner_contact_idx",
-          "columns": [
-            "owner_id",
-            "contact_id"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "enrichment_sessions_id": {
@@ -2036,25 +1975,7 @@
           "autoincrement": false
         }
       },
-      "indexes": {
-        "enr_sug_owner_contact_idx": {
-          "name": "enr_sug_owner_contact_idx",
-          "columns": [
-            "owner_id",
-            "contact_id"
-          ],
-          "isUnique": false
-        },
-        "enr_sug_owner_session_status_idx": {
-          "name": "enr_sug_owner_session_status_idx",
-          "columns": [
-            "owner_id",
-            "session_id",
-            "status"
-          ],
-          "isUnique": false
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "enrichment_suggestions_id": {
@@ -3505,6 +3426,20 @@
           "notNull": false,
           "autoincrement": false
         },
+        "destaqueAte": {
+          "name": "destaqueAte",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "destacadaPor": {
+          "name": "destacadaPor",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "viewCount": {
           "name": "viewCount",
           "type": "int",
@@ -3586,6 +3521,13 @@
           "name": "opp_compliance_idx",
           "columns": [
             "complianceLevel"
+          ],
+          "isUnique": false
+        },
+        "opp_destaque_idx": {
+          "name": "opp_destaque_idx",
+          "columns": [
+            "destaqueAte"
           ],
           "isUnique": false
         },
@@ -4965,13 +4907,6 @@
           "name": "sivc_doc_ver_idx",
           "columns": [
             "verificationId"
-          ],
-          "isUnique": false
-        },
-        "sivc_doc_user_idx": {
-          "name": "sivc_doc_user_idx",
-          "columns": [
-            "userId"
           ],
           "isUnique": false
         }

@@ -391,17 +391,17 @@ export function calculateCompatibilityScore(
     : undefined;
 
   // Weighted overall score
-  // complementaridade (30%) + sector (20%) + investment (20%) + specialty (15%)
-  //   + values (10%) + location (5%). Os 30% eram de `objectives`, que media
+  // Pesos inteiros: complementaridade (30) + sector (20) + investment (20) + specialty (15)
+  //   + values (10) + location (5) = 100. Os 30 eram de `objectives`, que media
   //   overlap de objetivo (concorrência); passaram para a complementaridade,
   //   que é o que a etapa 2 promete. `objectives` continua no retorno com peso 0.
   const overall = Math.round(
-    complementarityScore * 0.30 +
-    sectorScore * 0.20 +
-    investmentScore * 0.20 +
-    specialtyScore * 0.15 +
-    valuesScore * 0.10 +
-    locationScore * 0.05
+    (complementarityScore * 30 +
+    sectorScore * 20 +
+    investmentScore * 20 +
+    specialtyScore * 15 +
+    valuesScore * 10 +
+    locationScore * 5) / 100
   );
 
   return {
@@ -604,8 +604,8 @@ export async function generateMatchesForUser(userId: number): Promise<number> {
     // um match dispensado voltaria à tela (revisão adversarial de 12/09).
     if (scores.bloqueio) continue;
 
-    // Only create matches with score >= 40
-    if (scores.overall < 40) continue;
+    // Only create matches with score >= 50
+    if (scores.overall < 50) continue;
 
     // Insight de IA só para os melhores, só quando ainda não existe um DE
     // VERDADE (enchimento antigo não conta), e no máximo INSIGHTS_POR_RODADA
