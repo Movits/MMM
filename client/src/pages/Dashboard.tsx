@@ -1003,7 +1003,11 @@ export default function Dashboard() {
             recomeçar. */}
         <div className="mb-8">
           <div className="flex items-baseline gap-3 mb-3 flex-wrap">
-            <h2 className="font-bold text-white">{t("dashboard.networkTitle")}</h2>
+            {/* Mesmo corpo do título "Oportunidades Recomendadas" (linha 592), que é
+                a outra seção fora de cartão. Sem a classe de tamanho, o h2 cai no
+                padrão do navegador e sai com 36 px — medido: gritava mais alto que
+                os indicadores da própria usuária, que nem título têm. */}
+            <h2 className="font-black text-white text-lg leading-tight">{t("dashboard.networkTitle")}</h2>
             <p className="text-xs text-white/35">{t("dashboard.networkDesc")}</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
