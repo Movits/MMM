@@ -137,6 +137,25 @@ describe("contexts.linkContact — o tipo do vínculo e o que a tela é avisada"
     expect(dados.relationshipType).toBeUndefined();
   });
 
+  it("data, cidade, país ou notas em null chegam como null ao db.ts (apagar); ausentes seguem ausentes (manter)", async () => {
+    // Revisão da PR #122: o router trocava null por undefined, e a dona que
+    // apagava a cidade ao editar o vínculo via "atualizado" sem nada apagado.
+    await caller.linkContact({ contextId: "ctx-1", contactId: 7, city: null, notes: null });
+
+    const [, dados] = linkContactToContext.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(dados.city).toBeNull();
+    expect(dados.notes).toBeNull();
+    expect(dados.eventDate).toBeUndefined();
+    expect(dados.country).toBeUndefined();
+
+    linkContactToContext.mockClear();
+    await caller.linkContact({ contextId: "ctx-1", contactId: 7, eventDate: null, country: null });
+    const [, outros] = linkContactToContext.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    expect(outros.eventDate).toBeNull();
+    expect(outros.country).toBeNull();
+    expect(outros.city).toBeUndefined();
+  });
+
   it("tipo escolhido pela dona é repassado intacto", async () => {
     await caller.linkContact({ contextId: "ctx-1", contactId: 7, relationshipType: "pessoal" });
 

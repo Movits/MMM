@@ -22,6 +22,9 @@ import Contexts from "./Contexts";
  * linkContact (o servidor atualiza em vez de duplicar); nenhum tipo
  * pré-marcado num vínculo novo, e o tipo de um vínculo existente só sobe se a
  * dona o trocar; a mensagem segue o `created` que o servidor devolve.
+ *
+ * Revisão da PR #122 — campo esvaziado na edição sobe null (o servidor apaga);
+ * vazio num vínculo novo sobe undefined (o servidor não mexe no que houver).
  */
 
 type Opcoes = { onSuccess?: (...args: unknown[]) => unknown; onError?: (...args: unknown[]) => unknown };
@@ -233,6 +236,19 @@ describe("Modal de vincular — editar o vínculo que já existe", () => {
     expect(corpo).toMatchObject({ contactId: ANA.id, city: "Bolonha", relationshipType: "ambos" });
   });
 
+  it("apagar 'Milão' e salvar sobe city: null — é o que manda o servidor apagar; o resto segue gravado", () => {
+    abrirModalDeVincular();
+    buscar("ana");
+    selecionar("Ana Souza");
+    const modal = dentroDoModal();
+    fireEvent.change(modal.getByDisplayValue("Milão"), { target: { value: "" } });
+    fireEvent.click(modal.getByRole("button", { name: "✓ Salvar" }));
+
+    const corpo = duble.vincular.mock.calls[0][0] as Record<string, unknown>;
+    expect(corpo.city).toBeNull();
+    expect(corpo).toMatchObject({ contactId: ANA.id, eventDate: "2024-10-08", notes: "Conheci no estande da Itália" });
+  });
+
   it("desistir da edição e escolher a Bruna: o vínculo novo não leva os dados da Ana", () => {
     abrirModalDeVincular();
     buscar("a");
@@ -248,7 +264,12 @@ describe("Modal de vincular — editar o vínculo que já existe", () => {
     fireEvent.click(modal.getByRole("button", { name: "Vincular" }));
 
     const corpo = duble.vincular.mock.calls[0][0] as Record<string, unknown>;
-    expect(corpo).toMatchObject({ contactId: BRUNA.id, eventDate: null, city: null, notes: null });
+    expect(corpo).toMatchObject({ contactId: BRUNA.id });
+    // Vazio num vínculo NOVO é undefined, não null: se a Bruna já estiver
+    // vinculada no servidor (lista desatualizada), nada do que existe é apagado.
+    expect(corpo.eventDate).toBeUndefined();
+    expect(corpo.city).toBeUndefined();
+    expect(corpo.notes).toBeUndefined();
     expect(corpo.relationshipType).toBeUndefined();
   });
 });

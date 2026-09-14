@@ -355,9 +355,14 @@ function LinkContactModal({ contextId, contextName, links, onClose, onLinked }: 
           <Button variant="ghost" onClick={onClose} className="text-white/50 hover:text-white/80">{t("contexts.botaoCancelar")}</Button>
           {selectedContact && (
             <Button onClick={() => linkMut.mutate({
+              // Campo vazio: null na edição (a dona apagou, o servidor limpa);
+              // undefined num vínculo novo, que pode já existir no servidor
+              // (lista desatualizada) e não deve ter nada apagado.
               contextId, contactId: selectedContact.id,
-              eventDate: eventDate || null, city: city || null,
-              notes: notes || null, relationshipType: relType && relType !== tipoOriginal ? relType : undefined,
+              eventDate: eventDate || (vinculoEmEdicao ? null : undefined),
+              city: city || (vinculoEmEdicao ? null : undefined),
+              notes: notes || (vinculoEmEdicao ? null : undefined),
+              relationshipType: relType && relType !== tipoOriginal ? relType : undefined,
             })} disabled={linkMut.isPending}
               className="bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold">
               {linkMut.isPending ? t("contexts.vinculando") : vinculoEmEdicao ? t("contexts.botaoSalvar") : t("contexts.botaoVincular")}
