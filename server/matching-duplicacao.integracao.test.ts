@@ -30,9 +30,9 @@ describe.skipIf(!temBanco)("Match — regeneração não duplica (integração)"
     //
     // `investmentCapacity` entrou junto com o portão de dados suficientes
     // (`temDadosSuficientesParaMatch`): setor + especialidade sozinhos apuram
-    // 0,35 do peso da fórmula, abaixo do mínimo de 0,5, e o par seria descartado
+    // 35 centésimos do peso da fórmula, abaixo do mínimo de 50, e o par seria descartado
     // antes de pontuar — este teste passaria a falhar por falta de dado, não por
-    // duplicação. Com a capacidade declarada nos dois, o peso apurado vai a 0,55
+    // duplicação. Com a capacidade declarada nos dois, o peso apurado vai a 55
     // e o score continua o mesmo (55): a dimensão de investimento já caía no
     // ramo de co-investimento. O que o teste mede — upsert e dispensa — não muda.
     for (const id of [A, B]) {

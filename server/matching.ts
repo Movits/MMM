@@ -581,18 +581,24 @@ const INSIGHTS_POR_RODADA = 3;
 // `calculateCompatibilityScore` já usa para sair do neutro. Uma dimensão está
 // "apurada" exatamente quando o score teria dado dos dois lados para compará-la.
 
-/** Os pesos da fórmula, no mesmo lugar em que ela os aplica. Somam 1,00. */
+/**
+ * Os pesos da fórmula, em centésimos. Somam 100.
+ *
+ * Inteiros de propósito: somados em decimais, setor + especialidade + valores +
+ * localização dá 0,49999999999999994 e o par que é exatamente meio a meio caía
+ * fora do portão (revisão da PR #84).
+ */
 export const PESOS_DO_SCORE = {
-  complementaridade: 0.30,
-  setor: 0.20,
-  investimento: 0.20,
-  especialidade: 0.15,
-  valores: 0.10,
-  localizacao: 0.05,
+  complementaridade: 30,
+  setor: 20,
+  investimento: 20,
+  especialidade: 15,
+  valores: 10,
+  localizacao: 5,
 } as const;
 
 /**
- * Fração do peso total que precisa vir de dimensão realmente apurada.
+ * Centésimos do peso total que precisam vir de dimensão realmente apurada.
  *
  * Meio a meio: a MAIORIA do score tem de vir de informação, não de valor neutro.
  * Não é um número escolhido no olho — é a tradução direta de "um match precisa
@@ -603,7 +609,7 @@ export const PESOS_DO_SCORE = {
  * subir aperta o filtro e reduz matches na tela; descer reabre a porta para
  * pares sustentados por default. Ver "Corte de score" na entrega da tarefa.
  */
-export const PESO_MINIMO_APURADO = 0.5;
+export const PESO_MINIMO_APURADO = 50;
 
 /**
  * Quanto do peso da fórmula foi de fato medido para este par.

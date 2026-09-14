@@ -481,7 +481,7 @@ describe("perfil sem informação não gera match", () => {
     for (const [a, b, esperado] of casos) {
       expect(motor.pesoApurado(perfil(a), perfil(b))).toBe(esperado);
     }
-    expect(Object.values(PESOS).reduce((soma, peso) => soma + peso, 0)).toBeCloseTo(1);
+    expect(Object.values(PESOS).reduce((soma, peso) => soma + peso, 0)).toBe(100);
   });
 
   it("um lado preenchido e o outro vazio não apura nada", () => {
@@ -496,22 +496,48 @@ describe("perfil sem informação não gera match", () => {
   });
 
   it("meio a meio passa; abaixo disso, não", () => {
-    // Complementaridade (0,30) + valores (0,10) = 0,40 → insuficiente.
+    // Complementaridade (30) + valores (10) = 40 → insuficiente.
     const parFraco: [UserProfile, UserProfile] = [
       perfil({ whatIHave: ["tecnologia"], values: ["innovation"] }),
       perfil({ whatINeed: ["tecnologia"], values: ["innovation"] }),
     ];
-    expect(motor.pesoApurado(...parFraco)).toBeCloseTo(0.4);
+    expect(motor.pesoApurado(...parFraco)).toBe(40);
     expect(motor.temDadosSuficientesParaMatch(...parFraco)).toBe(false);
 
-    // Somando o setor (0,20) → 0,60, acima do mínimo.
+    // Somando o setor (20) → 60, acima do mínimo.
     const parBom: [UserProfile, UserProfile] = [
       perfil({ whatIHave: ["tecnologia"], values: ["innovation"], sector: "health" }),
       perfil({ whatINeed: ["tecnologia"], values: ["innovation"], sector: "health" }),
     ];
-    expect(motor.pesoApurado(...parBom)).toBeCloseTo(0.6);
+    expect(motor.pesoApurado(...parBom)).toBe(60);
     expect(motor.temDadosSuficientesParaMatch(...parBom)).toBe(true);
-    expect(motor.PESO_MINIMO_APURADO).toBe(0.5);
+    expect(motor.PESO_MINIMO_APURADO).toBe(50);
+  });
+
+  it("exatamente 50 passa: as duas combinações que o ponto flutuante reprovava", () => {
+    // Somadas em decimais, na ordem de `pesoApurado`, as duas davam
+    // 0,49999999999999994 e caíam fora do `>= 0,5` (revisão da PR #84).
+    const setorEspecialidadeValoresLocalizacao: [UserProfile, UserProfile] = [
+      perfil({ sector: "health", primarySpecialty: "tech", values: ["innovation"], country: "BR" }),
+      perfil({ sector: "retail", primarySpecialty: "design", values: ["purpose"], country: "PT" }),
+    ];
+    expect(motor.pesoApurado(...setorEspecialidadeValoresLocalizacao)).toBe(50);
+    expect(motor.temDadosSuficientesParaMatch(...setorEspecialidadeValoresLocalizacao)).toBe(true);
+
+    const complementaridadeEspecialidadeLocalizacao: [UserProfile, UserProfile] = [
+      perfil({ whatIHave: ["tecnologia"], primarySpecialty: "tech", country: "BR" }),
+      perfil({ whatINeed: ["tecnologia"], primarySpecialty: "design", country: "PT" }),
+    ];
+    expect(motor.pesoApurado(...complementaridadeEspecialidadeLocalizacao)).toBe(50);
+    expect(motor.temDadosSuficientesParaMatch(...complementaridadeEspecialidadeLocalizacao)).toBe(true);
+
+    // Um degrau abaixo da fronteira continua reprovado: sem a localização, 45.
+    const semLocalizacao: [UserProfile, UserProfile] = [
+      perfil({ sector: "health", primarySpecialty: "tech", values: ["innovation"] }),
+      perfil({ sector: "retail", primarySpecialty: "design", values: ["purpose"] }),
+    ];
+    expect(motor.pesoApurado(...semLocalizacao)).toBe(45);
+    expect(motor.temDadosSuficientesParaMatch(...semLocalizacao)).toBe(false);
   });
 
   it("o filtro roda no gerador: par vazio não vira linha em `matches`", async () => {
