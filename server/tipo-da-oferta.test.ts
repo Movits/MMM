@@ -240,6 +240,14 @@ describe("Imóvel residencial e comercial — a cabeça decide antes da categori
     // Rural continua ATIVO, como já era decidido: "Fazenda de café" produz.
     expect(classificarOferta("Fazenda de café")).toBe("ativo");
   });
+
+  it("house, flat e store só são imóvel na cabeça: 'Consulting house' é a consultoria (revisão de 14/09 na #127)", () => {
+    for (const rotulo of ["House", "Flat na praia", "Store"]) {
+      expect(classificarOferta(rotulo, "Serviços"), rotulo).toBe("imovel");
+    }
+    expect(classificarOferta("Consulting house")).toBe("servico");
+    expect(classificarOferta("Consulting house", "Imóveis")).toBe("servico");
+  });
 });
 
 describe("Família do serviço e necessidade genérica", () => {

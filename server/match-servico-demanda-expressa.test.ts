@@ -159,6 +159,8 @@ describe("Serviço × necessidade que o NOMEIA — casa em 100", () => {
     // ou telhado. Classificado como imóvel, o item SAI do portão da demanda
     // expressa e volta a casar por categoria — o vazamento que a #101 fecha.
     expect(scoreMatch(item("Cobertura jornalística", "Serviços"), item("Compradores", "Serviços")).score).toBe(0);
+    // Revisão de 14/09 na #127: "house" no fim do composto em inglês é a empresa, não o imóvel.
+    expect(scoreMatch(item("Consulting house", "Consulting"), item("Buyers", "Consulting")).score).toBe(0);
   });
 
   it("mas a necessidade que nomeia a ESPECIALIDADE, e não só a família, segue valendo 100", () => {

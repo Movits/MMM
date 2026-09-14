@@ -516,6 +516,16 @@ const tipoNaoServico = (palavra: string): TipoDaOferta | null => {
   return tipo && tipo !== "servico" ? tipo : null;
 };
 
+/**
+ * Imóvel só na CABEÇA do termo: "House", "Flat na praia", "Store". Fora dela,
+ * no fim do composto em inglês ou atrás de "serviços de", "house" é a empresa
+ * ("Consulting house", "Software house") e "store"/"flat" não decidem — antes
+ * "Consulting house" × "Buyers" [Consulting] saía do portão como imóvel e
+ * valia 60 pela categoria (revisão de 14/09 na #127).
+ */
+const IMOVEL_SO_NA_CABECA = new Set(["house", "houses", "flat", "flats", "store", "stores"]);
+const tipoForaDaCabeca = (palavra: string): TipoDaOferta | null => (IMOVEL_SO_NA_CABECA.has(palavra) ? null : tipoNaoServico(palavra));
+
 /** Verbos de quem pede, que saem da frente do termo como os marcadores fracos. */
 const VERBOS_DE_NECESSIDADE = new Set([
   "precisamos", "buscamos", "procuramos", "queremos", "necessitamos", "desejamos", "gostariamos",
@@ -657,7 +667,7 @@ function classificarPeloTexto(rotulo: string, categoria?: string | null): TipoDa
     const final = junto[junto.length - 1];
     // Só nas cabeças de aconselhamento: "Suporte financeiro" e "Assistência financeira" são aporte de capital.
     const aconselha = CABECAS_COM_ADJETIVO_POSPOSTO.has(familiaDaPalavra(cabeca));
-    const ultimo = ADJETIVOS_POSPOSTOS.has(final) && aconselha ? null : tipoNaoServico(final);
+    const ultimo = ADJETIVOS_POSPOSTOS.has(final) && aconselha ? null : tipoForaDaCabeca(final);
     if (ultimo) return ultimo;
   }
   // 2. Substantivo de serviço colado à cabeça (antes do composto: "Real
@@ -672,7 +682,7 @@ function classificarPeloTexto(rotulo: string, categoria?: string | null): TipoDa
   //    capital, "Serviços de tradução" é serviço.
   if (GENERICAS_DEMAIS.has(cabeca)) {
     const complemento = complementoDaCabeca(palavras, indice);
-    return (complemento.length ? tipoNaoServico(complemento[0]) : null) ?? "servico";
+    return (complemento.length ? tipoForaDaCabeca(complemento[0]) : null) ?? "servico";
   }
   // 3b. "Direito" com área curada é advocacia pelo texto: "Direito tributário",
   //     "Direito do trabalho". Sem isto, "Direito tributário" sem categoria caía
@@ -688,7 +698,7 @@ function classificarPeloTexto(rotulo: string, categoria?: string | null): TipoDa
   if (CABECAS_NEUTRAS.has(cabeca)) {
     const complemento = complementoDaCabeca(palavras, indice);
     // A primeira palavra do complemento de outro tipo manda: "Empresa especializada em SOFTWARES jurídicos" é tecnologia.
-    const primeiraDeOutroTipo = tipoNaoServico(complemento[0] ?? "") !== null;
+    const primeiraDeOutroTipo = tipoForaDaCabeca(complemento[0] ?? "") !== null;
     if (!primeiraDeOutroTipo && complemento.some((palavra, k) => SUBSTANTIVOS_DE_SERVICO.has(palavra) || ADJETIVOS_DE_SERVICO.has(palavra) || areaDoDireito(complemento, k) !== null)) {
       return "servico";
     }
