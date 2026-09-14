@@ -61,13 +61,52 @@ describe("Serviço × necessidade que o NOMEIA — casa em 100", () => {
     // CONTINUA existindo, acima do corte de 50 — derrubar para 0 repetiria o
     // defeito que a regra da especialidade consertou.
     expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Consultoria", "Serviços"))).toEqual({ score: 60, type: "category" });
-    expect(scoreMatch(item("Empresa de consultoria"), item("Procura consultoria")).score).toBe(60);
+    // Este valia 60 até 14/09 e passou a valer 100, junto com o conserto de
+    // "Contabilidade" × "Contador" — é a MESMA regra, e a mudança é deliberada.
+    // O defeito 3 era necessidade genérica contra oferta ESPECIALIZADA
+    // ("Consultoria" pedido dando 100 para consultoria tributária, de marketing
+    // e de segurança do trabalho, as três empatadas). Aqui os dois lados são
+    // genéricos: uma empresa de consultoria diante de quem procura consultoria
+    // não está a uma especialidade de distância — é o mesmo serviço. Manter 60
+    // aqui exigiria um critério que separasse este par de "Contabilidade" ×
+    // "Contador", e não existe: "empresa" e "procura" são estrutura.
+    expect(scoreMatch(item("Empresa de consultoria"), item("Procura consultoria")).score).toBe(100);
     // Outra especialidade pedida é outra necessidade; outra família também.
     expect(scoreMatch(item("Consultoria jurídica"), item("Consultoria em marketing")).score).toBe(0);
     expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Advocacia", "Serviços")).score).toBe(0);
     // A família junta as flexões: "Advogado" procurado × "Advocacia tributária" possuído.
     expect(scoreMatch(item("Advocacia tributária", "Jurídico"), item("Advogado", "Jurídico")).score).toBe(60);
     expect(scoreMatch(item("Serviços jurídicos tributários"), item("Advogada")).score).toBe(60);
+  });
+
+  it("atividade e profissional da MESMA família, sem mais nada, são a mesma coisa: 100", () => {
+    // Achado na revisão de 14/09 da #124, e era regressão da própria PR: com as
+    // duas especialidades vazias, `mesmoConjunto` falhava (exige conjunto
+    // não-vazio) e o par caía na regra da família, valendo 60. Abaixo do
+    // EMAIL_THRESHOLD de 70 — o match existia e a pessoa NÃO era avisada.
+    //
+    // Quem oferece "Contabilidade" e quem procura "Contador" não estão a uma
+    // especialidade de distância: é o mesmo serviço dito de dois jeitos.
+    for (const categoria of [undefined, "Serviços"]) {
+      expect(scoreMatch(item("Contabilidade", categoria), item("Contador", categoria)), `Contabilidade × Contador [${categoria}]`)
+        .toEqual({ score: 100, type: "exact" });
+      expect(scoreMatch(item("Advocacia", categoria), item("Advogado", categoria)), `Advocacia × Advogado [${categoria}]`)
+        .toEqual({ score: 100, type: "exact" });
+    }
+
+    // E o que separa esses de "Consultoria jurídica" NÃO é ter especialidade —
+    // ela é vazia nos dois —, é nomearem uma SEGUNDA família além da sua. Se
+    // esta distinção se perder, o teste da família genérica acima cai junto.
+    expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Consultoria", "Serviços")).score).toBe(60);
+    expect(scoreMatch(item("Consultoria de marketing", "Serviços"), item("Consultoria", "Serviços")).score).toBe(60);
+  });
+
+  it("\"cobertura\" não é imóvel: reportagem não escapa do portão", () => {
+    // Também da revisão de 14/09. "cobertura" tinha entrado em IMOVEL junto com
+    // apartamento e casa; fora do mercado imobiliário ela é reportagem, seguro
+    // ou telhado. Classificado como imóvel, o item SAI do portão da demanda
+    // expressa e volta a casar por categoria — o vazamento que a #101 fecha.
+    expect(scoreMatch(item("Cobertura jornalística", "Serviços"), item("Compradores", "Serviços")).score).toBe(0);
   });
 
   it("mas a necessidade que nomeia a ESPECIALIDADE, e não só a família, segue valendo 100", () => {

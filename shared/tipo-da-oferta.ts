@@ -444,7 +444,12 @@ const IMOVEL = [
   // com a categoria "Serviços jurídicos" virava serviço e caía no portão da
   // demanda expressa, que é restrição (defeito relatado depois da #101).
   "apartamento", "apartamentos", "apartment", "apartments", "flat", "flats",
-  "casa", "casas", "house", "houses", "sobrado", "sobrados", "cobertura", "coberturas",
+  // "cobertura" saiu daqui: fora do mercado imobiliário ela é reportagem,
+  // seguro ou telhado, e classificar "Cobertura jornalística" como IMÓVEL tira
+  // o item do portão da demanda expressa — o par com "Compradores" [Serviços]
+  // passava a valer 60 por categoria, que é exatamente o vazamento que a #101
+  // existe para fechar. Achado na revisão de 14/09.
+  "casa", "casas", "house", "houses", "sobrado", "sobrados",
   "sala", "salas", "loja", "lojas", "store", "stores",
   "vaga", "vagas", "garagem", "garagens",
 ];
@@ -725,7 +730,48 @@ export function necessidadeNomeiaOServico(oferta: string, categoriaDaOferta: str
 export function mesmaFamiliaEEspecialidade(oferta: string, categoriaDaOferta: string | null | undefined, necessidade: string): boolean {
   const familia = familiaDoServico(oferta, categoriaDaOferta);
   if (!familia || familiaDoServico(necessidade) !== familia) return false;
+
+  // Os DOIS lados nomeiam a família e nada além dela: "Contabilidade" oferecida
+  // diante de "Contador" procurado, "Advocacia" diante de "Advogado". Não há o
+  // que distinguir — a necessidade nomeia exatamente o que está sendo oferecido,
+  // e não uma família da qual a oferta seria um caso particular. Sem isto o par
+  // caía na regra da família e valia 60, abaixo do EMAIL_THRESHOLD de 70: o
+  // match existia e a pessoa não era avisada.
+  //
+  // O teste é sobre as PALAVRAS, não sobre a especialidade: "Consultoria
+  // jurídica" e "Consultoria de marketing" também têm especialidade vazia
+  // ("jurídica" e "marketing" nomeiam serviço, então saem no filtro), e as
+  // duas precisam continuar valendo 60 diante de "Consultoria". O que as
+  // separa de "Contabilidade" é nomearem uma SEGUNDA família além da sua.
+  if (soNomeiaAFamilia(oferta, familia, categoriaDaOferta) && soNomeiaAFamilia(necessidade, familia)) return true;
+
   return mesmoConjunto(especialidadeDoServico(oferta, categoriaDaOferta), especialidadeDoServico(necessidade));
+}
+
+/**
+ * O rótulo nomeia a família `familia` e NADA além dela?
+ *
+ * Toda palavra de serviço do rótulo tem de cair na mesma família. É o que
+ * separa "Contabilidade" (só contabilidade) de "Consultoria jurídica"
+ * (consultoria + advocacia) e de "Consultoria de marketing" (consultoria +
+ * marketing) — nos dois últimos a segunda palavra é o objeto do serviço, e
+ * quem procurou só "Consultoria" não pediu aquele objeto.
+ */
+function soNomeiaAFamilia(rotulo: string, familia: string, categoria?: string | null): boolean {
+  if (familiaDoServico(rotulo, categoria) !== familia) return false;
+  // Duas coisas podem sobrar num rótulo, e as duas desqualificam:
+  //
+  // 1. uma ESPECIALIDADE — "trabalhista" em "Advocacia trabalhista". Sem esta
+  //    linha, "Advocacia trabalhista" × "Advogado tributarista" valia 100, que
+  //    é o defeito que a #101 existe para barrar;
+  // 2. uma palavra de serviço de OUTRA família — "jurídica" em "Consultoria
+  //    jurídica", "marketing" em "Consultoria de marketing". Essas têm
+  //    especialidade vazia (nomeiam serviço, então saem no filtro) e por isso
+  //    a checagem 1 sozinha não as pega.
+  if (especialidadeDoServico(rotulo, categoria).length > 0) return false;
+  const doServico = tokensDoTermo(rotulo)
+    .filter(p => (SUBSTANTIVOS_DE_SERVICO.has(p) || ADJETIVOS_DE_SERVICO.has(p)) && !GENERICAS_DEMAIS.has(p));
+  return doServico.length > 0 && doServico.every(p => familiaDaPalavra(p) === familia);
 }
 
 /** O item é um SERVIÇO — o único tipo em que o portão da demanda expressa atua. */
