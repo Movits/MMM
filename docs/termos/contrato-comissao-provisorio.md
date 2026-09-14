@@ -27,8 +27,17 @@ entre si.
 Negócio originado de uma apresentação feita pela plataforma gera comissão ao
 MMM, nas seguintes condições:
 
-- o percentual é definido caso a caso, conforme o tipo e o tamanho do negócio;
-- o limite é de 50% do lucro declarado no negócio;
+- o percentual é definido caso a caso pela Diretoria Comercial;
+- o limite é de 50% do valor dos **honorários da intermediação** do negócio;
+- quem declara o valor é o **consultor de negócios**, não as partes;
+- havendo duas indicadoras: se forem network de usuárias distintas, a comissão é
+  rateada em partes iguais; se for uma usuária cadastrada e o network pessoal de
+  outra, só a usuária cadastrada é remunerada;
+- **é vedado o bypass**: ao ocorrer a conexão, as partes são contactadas pelo
+  consultor de negócios e assinam contrato de intermediação e contra
+  circunvenção;
+- não há prazo de decadência — o negócio gera comissão a qualquer momento depois
+  da apresentação;
 - nesta versão o pagamento acontece fora da plataforma; o site apenas registra o
   negócio e a comissão devida.
 
@@ -42,12 +51,20 @@ exato deste aceite ficam registrados.
 
 ## O que ainda falta (para a versão 2, com o jurídico)
 
-1. O percentual que vale na prática, ou o critério que o define. Hoje o texto diz
-   apenas "caso a caso", que é o que a Dra. Glenda decidiu em 31/08.
-2. Como o lucro declarado é comprovado, e por quem.
-3. A divisão quando duas indicadoras participam da mesma conexão.
-4. Se a comissão vale para negócio fechado fora da plataforma entre pessoas que
-   se conheceram nela, e como isso seria controlado.
-5. Por quanto tempo, depois da apresentação, o negócio ainda gera comissão.
-6. O nome jurídico que entra no contrato: o termo do Smart Match usa
-   "WMW — Women Moving the World" e o aplicativo usa MMM.
+Em 12/09/2026 a Dra. Glenda respondeu por escrito cinco das seis perguntas que
+estavam nesta lista, e as respostas subiram para a seção 2. Sobraram duas:
+
+1. **O critério do percentual.** Ela respondeu que quem define é a Diretoria
+   Comercial, "por critérios que serão definidos em outra ocasião" — então existe
+   o responsável, e não existe ainda a régra. Enquanto isso, o sistema grava o
+   percentual que alguém preencher e recusa acima de 50%; calcular sozinho, não
+   consegue.
+2. **O nome jurídico que entra no contrato.** Perguntada qual nome entra nos
+   contratos e qual aparece na tela, ela respondeu: "Houve alteração, vou lhe
+   encaminhar a nova logo". Ou seja, nem "MMM — Mulheres que Movem o Mundo"
+   (aplicativo) nem "WMW — Women Moving the World" (termo do Smart Match, redação
+   da Cris) são definitivos, e a logo nova ainda não chegou.
+
+E uma pergunta que a resposta dela abriu, e que é do jurídico, não do produto:
+**o que são exatamente "os honorários da intermediação"** e como eles são
+acordados com as partes, já que é sobre esse valor que os 50% incidem.
