@@ -37,17 +37,21 @@
   "steps": {
     "title": "Tu camino hacia el éxito",
     "subtitle": "Descubre lo fácil que es conectar y crecer con MMM.",
+    "closing": "En algún lugar de nuestra red, alguien puede estar buscando exactamente lo que tú tienes.",
     "step1": {
-      "title": "Crea tu perfil empoderador",
-      "desc": "Destaca tus habilidades, experiencias y aspiraciones para atraer las conexiones correctas."
+      "eyebrow": "Muestra al mundo lo que tienes. Y lo que buscas.",
+      "title": "Crea tu perfil estratégico",
+      "desc": "En pocos minutos, cuenta quién eres, qué ofreces y qué buscas. Cuanto más te conoce la plataforma, más cerca está de la conexión capaz de generar tu próximo negocio."
     },
     "step2": {
-      "title": "Descubre conexiones estratégicas",
-      "desc": "Nuestro algoritmo inteligente sugiere matches con personas que complementan tus objetivos."
+      "eyebrow": "La tecnología encuentra lo que no encontrarías por tu cuenta.",
+      "title": "La inteligencia trabaja para ti",
+      "desc": "Mientras amplías tu red, nuestra IA cruza tu perfil con personas, empresas, necesidades y oportunidades, e identifica conexiones estratégicas dentro de una red presente en más de 33 países."
     },
     "step3": {
-      "title": "Colabora y conquista",
-      "desc": "Inicia conversaciones, explora alianzas y transforma tus ambiciones en realidad."
+      "eyebrow": "No es solo un match. Es una oportunidad de negocio.",
+      "title": "Descubre tus mejores conexiones",
+      "desc": "Recibe conexiones seleccionadas por su compatibilidad con lo que tienes, lo que necesitas y lo que buscas. Entiende por qué existe un match y descubre quién puede abrirte la puerta a tu próximo gran negocio."
     }
   },
   "opportunities": {

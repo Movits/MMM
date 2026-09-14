@@ -37,17 +37,21 @@
   "steps": {
     "title": "Comment ça marche",
     "subtitle": "Notre processus simple pour vous connecter avec les bonnes personnes.",
+    "closing": "Quelque part dans notre réseau, quelqu'un cherche peut-être exactement ce que vous avez.",
     "step1": {
-      "title": "Créez votre profil puissant",
-      "desc": "Mettez en valeur vos réalisations, vos aspirations et ce que vous recherchez."
+      "eyebrow": "Montrez au monde ce que vous avez. Et ce que vous cherchez.",
+      "title": "Créez votre profil stratégique",
+      "desc": "En quelques minutes, dites qui vous êtes, ce que vous proposez et ce que vous cherchez. Mieux la plateforme vous connaît, plus elle se rapproche de la connexion qui deviendra votre prochaine affaire."
     },
     "step2": {
-      "title": "Obtenez des correspondances intelligentes",
-      "desc": "Notre IA avancée vous connecte avec des membres partageant les mêmes idées."
+      "eyebrow": "La technologie trouve ce que vous ne trouveriez pas par vous-même.",
+      "title": "L'intelligence travaille pour vous",
+      "desc": "Pendant que vous élargissez votre réseau, notre IA croise votre profil avec des personnes, des entreprises, des besoins et des opportunités, et repère des connexions stratégiques dans un réseau présent dans plus de 33 pays."
     },
     "step3": {
-      "title": "Débloquez des opportunités illimitées",
-      "desc": "Établissez des liens significatifs et faites progresser votre carrière."
+      "eyebrow": "Ce n'est pas qu'un match. C'est une opportunité d'affaires.",
+      "title": "Découvrez vos meilleures connexions",
+      "desc": "Recevez des connexions choisies pour leur compatibilité avec ce que vous avez, ce dont vous avez besoin et ce que vous cherchez. Comprenez pourquoi le match existe et découvrez qui peut vous ouvrir la porte de votre prochaine grande affaire."
     }
   },
   "opportunities": {

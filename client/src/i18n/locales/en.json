@@ -37,17 +37,21 @@
   "steps": {
     "title": "How it works",
     "subtitle": "Three steps to find the right connections",
+    "closing": "Somewhere in our network, someone may be looking for exactly what you have.",
     "step1": {
-      "title": "Create your profile",
-      "desc": "Answer a smart questionnaire about who you are, your expertise, goals, and what you're looking for. Takes less than 5 minutes."
+      "eyebrow": "Show the world what you have. And what you are looking for.",
+      "title": "Create your strategic profile",
+      "desc": "In a few minutes, tell us who you are, what you offer and what you need. The better the platform knows you, the closer it gets to the connection that becomes your next deal."
     },
     "step2": {
-      "title": "AI analyzes everything",
-      "desc": "Our artificial intelligence engine processes your profile across 6 dimensions and compares it with all other members on the platform."
+      "eyebrow": "Technology finds what you would never find on your own.",
+      "title": "Intelligence works for you",
+      "desc": "While you grow your network, our AI cross-references your profile with people, companies, needs and opportunities, spotting strategic connections inside a network present in more than 33 countries."
     },
     "step3": {
-      "title": "Connect",
-      "desc": "Receive a personalized feed with the most compatible profiles and opportunities, with a score from 0 to 100 and an explanatory insight."
+      "eyebrow": "It is not just a match. It is a business opportunity.",
+      "title": "Discover your best connections",
+      "desc": "Receive connections selected by how well they fit what you have, what you need and what you are looking for. Understand why the match exists, and find out who can open the door to your next big deal."
     }
   },
   "opportunities": {

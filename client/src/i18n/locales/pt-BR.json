@@ -37,17 +37,21 @@
   "steps": {
     "title": "Como funciona",
     "subtitle": "Três passos para encontrar as conexões certas",
+    "closing": "Em algum lugar da nossa rede, alguém pode estar procurando exatamente o que você tem.",
     "step1": {
-      "title": "Crie seu perfil",
-      "desc": "Responda um questionário inteligente sobre quem você é, sua especialidade, objetivos e o que busca. Leva menos de 5 minutos."
+      "eyebrow": "Mostre ao mundo o que você tem. E o que procura.",
+      "title": "Crie seu perfil estratégico",
+      "desc": "Em poucos minutos, conte quem você é, o que oferece e o que busca. Quanto mais a plataforma conhece você, mais perto fica da conexão capaz de gerar seu próximo negócio."
     },
     "step2": {
-      "title": "A IA analisa tudo",
-      "desc": "Nosso motor de inteligência artificial analisa seu perfil em seis critérios e compara com todos os outros membros da plataforma."
+      "eyebrow": "A tecnologia encontra o que você não encontraria sozinho.",
+      "title": "A inteligência trabalha por você",
+      "desc": "Enquanto você amplia sua rede, nossa IA cruza seu perfil com pessoas, empresas, necessidades e oportunidades, identificando conexões estratégicas dentro de uma rede presente em mais de 33 países."
     },
     "step3": {
-      "title": "Conecte-se",
-      "desc": "Receba uma lista feita para você, com os perfis e oportunidades mais compatíveis. Cada sugestão traz uma nota de 0 a 100 e uma explicação de por que vocês combinam."
+      "eyebrow": "Não é apenas um match. É uma oportunidade de negócio.",
+      "title": "Descubra suas melhores conexões",
+      "desc": "Receba conexões selecionadas pela compatibilidade com o que você tem, precisa e procura. Entenda por que existe um match e descubra quem pode abrir a porta para o seu próximo grande negócio."
     }
   },
   "opportunities": {
