@@ -184,7 +184,8 @@ tentar decidi-lo pelo id (nunca FORBIDDEN, que denunciaria o pedido oculto); ped
 já decidido leva o mesmo NOT_FOUND (os ids são sequenciais: um "já decidido" próprio
 acusaria os buracos). Se a
 outra pessoa clica depois de um `not_forwarded` oculto para ela, nasce o pedido dela
-(o par pode ter duas linhas; o cartão mostra a mais recente visível). Sem
+(o par pode ter duas linhas; o cartão e a aba Conexões mostram a mesma, a mais recente
+visível, por `linhaMaisRecenteVisivelDoPar`). Sem
 distribuidor que possa decidir, o pedido FICA esperando e president/admin ativos
 recebem o aviso (contas Ouro não, como no aviso de oportunidade pendente): mesclar a
 fila só depois de conceder o poder em produção. Detalhes em docs/arquitetura/fluxos.md

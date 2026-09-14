@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll, beforeEach, afterAll } from "vitest";
 import { and, inArray, or } from "drizzle-orm";
-import { getDb, getMatchesForUser, sendConnectionRequest, lerPedidoDeMatch } from "./db";
+import { getDb, getMatchesForUser, getConnectionsForUser, sendConnectionRequest, lerPedidoDeMatch } from "./db";
 import { users, userProfiles, matches, connections } from "../drizzle/schema";
 
 /**
@@ -108,6 +108,26 @@ describe.skipIf(!temBanco)("Pedido de interesse em análise (integração)", () 
     const cartao = (await cartoesDe(A)).get(B)!;
     expect(cartao).toMatchObject({ connectionId: bParaA, connectionStatus: "pending", displayName: null });
     expect(Number(cartao.souDestinataria)).toBe(1);
+  });
+
+  it("getConnectionsForUser (aba Conexões): com duas linhas visíveis no par, UMA linha, e a mesma do cartão", async () => {
+    const [, bParaA, , aParaD] = await semear([
+      { de: A, para: B, status: "not_forwarded" }, // visível para A...
+      { de: B, para: A, status: "pending" },       // ...e esta também: vale a mais nova
+      { de: D, para: A, status: "not_forwarded" }, // oculta para A
+      { de: A, para: D, status: "in_review" },
+    ]);
+
+    const conexoesDeA = await getConnectionsForUser(A);
+    expect(conexoesDeA.map(c => c.id).sort((x, y) => x - y)).toEqual([bParaA, aParaD].sort((x, y) => x - y));
+    expect(conexoesDeA.find(c => c.id === bParaA)).toMatchObject({ status: "pending", displayName: null });
+    const cartoes = await cartoesDe(A);
+    for (const outra of [B, D]) {
+      expect(conexoesDeA.map(c => c.id)).toContain(cartoes.get(outra)!.connectionId);
+    }
+
+    // Para B, a linha de A é oculta: sobra só o pedido dela.
+    expect((await getConnectionsForUser(B)).map(c => c.id)).toEqual([bParaA]);
   });
 
   it("pedido em análise com o clique recíproco aparece para a destinatária, sem dizer quem clicou primeiro", async () => {

@@ -266,13 +266,25 @@ describe("a destinatária não vê o pedido em análise — regra de consulta", 
   it("getConnectionsForUser: o MESMO predicado no WHERE, e data e ordem pelo clique de quem consulta na linha recíproca", async () => {
     await db.getConnectionsForUser(1);
     const [consulta] = selects();
-    const trechoDoWhere = consulta.sql.slice(consulta.sql.lastIndexOf(" where "));
+    // O primeiro " where " é o da consulta de fora (o da subconsulta vem depois).
+    const trechoDoWhere = consulta.sql.slice(consulta.sql.indexOf(" where "));
     expect(trechoDoWhere).toContain(OCULTACAO);
     expect(consulta.sql).toContain("`connections`.`status` = 'accepted'");
     const dataVisivel = "CASE WHEN `connections`.`recipientId` = ? AND `connections`.`status` IN ('in_review', 'not_forwarded') THEN `connections`.`reciprocatedAt` ELSE `connections`.`createdAt` END";
     expect(consulta.sql).toContain(dataVisivel);
     expect(trechoDoWhere).toContain(`order by ${dataVisivel} desc`);
     expect(consulta.sql).toContain("`connections`.`recipientId` = ? AND `connections`.`status` NOT IN ('in_review', 'not_forwarded')");
+  });
+
+  it("getConnectionsForUser: uma linha por par — a MESMA subconsulta do cartão, com a outra parte tirada da própria linha", async () => {
+    await db.getConnectionsForUser(1);
+    const [consulta] = selects();
+    const trechoDoWhere = consulta.sql.slice(consulta.sql.indexOf(" where "));
+    expect(trechoDoWhere).toContain("`connections`.`id` = (select MAX(`id`) from `connections` `conexao_do_par` where");
+    const outraParte = "CASE WHEN `connections`.`requesterId` = ? THEN `connections`.`recipientId` ELSE `connections`.`requesterId` END";
+    expect(trechoDoWhere).toContain(`\`conexao_do_par\`.\`recipientId\` = ${outraParte}`);
+    expect(trechoDoWhere).toContain(`\`conexao_do_par\`.\`requesterId\` = ${outraParte}`);
+    expect(trechoDoWhere).toContain("NOT (`conexao_do_par`.`status` IN ('in_review', 'not_forwarded') AND `conexao_do_par`.`recipientId` = ? AND `conexao_do_par`.`reciprocatedAt` IS NULL)");
   });
 
   it("getConnectionsForUser: a data da CASE chega como Date de verdade (decodificada como a coluna)", async () => {
@@ -384,13 +396,16 @@ describe("a fila, a leitura do pedido e a decisão do distribuidor", () => {
 describe("pinos de fonte (db.ts)", () => {
   const fonte = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
 
-  it("o predicado de ocultação é UM só (pedidoVisivelPara), usado nas duas consultas", () => {
+  it("o predicado de ocultação é UM só (pedidoVisivelPara), e a escolha da linha do par também: as duas consultas usam os dois", () => {
     expect(fonte.match(/pedidoVisivelPara\(userId\)/g)).toHaveLength(2);
     const getMatches = fonte.slice(fonte.indexOf("export async function getMatchesForUser"), fonte.indexOf("export async function dismissMatch"));
     const getConnections = fonte.slice(fonte.indexOf("export async function getConnectionsForUser"), fonte.indexOf("function pedidoVisivelPara"));
+    const linhaDoPar = fonte.slice(fonte.indexOf("function linhaMaisRecenteVisivelDoPar"), fonte.indexOf("function linhasAfetadas"));
     expect(getMatches).toContain("pedidoVisivelPara(userId)");
-    expect(getMatches).toContain("pedidoVisivelPara(userId, conexaoDoPar)");
+    expect(getMatches).toContain("linhaMaisRecenteVisivelDoPar(db, userId, matches.matchedUserId!)");
     expect(getConnections).toContain("pedidoVisivelPara(userId)");
+    expect(getConnections).toContain("linhaMaisRecenteVisivelDoPar(db, userId, outraParte)");
+    expect(linhaDoPar).toContain("pedidoVisivelPara(userId, conexaoDoPar)");
   });
 
   it("o insert do pedido novo diz in_review explicitamente (não depende do default da coluna)", () => {

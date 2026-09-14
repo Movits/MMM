@@ -1,4 +1,4 @@
-import { and, eq, desc, asc, like, or, ne, notInArray, inArray, sql, isNull, isNotNull } from "drizzle-orm";
+import { and, eq, desc, asc, like, or, ne, notInArray, inArray, sql, isNull, isNotNull, type AnyColumn, type SQL } from "drizzle-orm";
 const drizzleOr = or;
 import { drizzle } from "drizzle-orm/mysql2";
 import { alias } from "drizzle-orm/mysql-core";
@@ -775,16 +775,8 @@ export async function getMatchesForUser(userId: number, limit = 20) {
       pedidoVisivelPara(userId),
       // O par pode ter duas linhas (o pedido não encaminhado de uma pessoa e,
       // depois, o pedido novo da outra): o cartão é UM, com a linha mais recente
-      // entre as que esta pessoa pode ver.
-      eq(connections.id, db.select({ id: sql<number>`MAX(${conexaoDoPar.id})` })
-        .from(conexaoDoPar)
-        .where(and(
-          or(
-            and(eq(conexaoDoPar.requesterId, userId), eq(conexaoDoPar.recipientId, matches.matchedUserId!)),
-            and(eq(conexaoDoPar.requesterId, matches.matchedUserId!), eq(conexaoDoPar.recipientId, userId)),
-          ),
-          pedidoVisivelPara(userId, conexaoDoPar),
-        ))),
+      // entre as que esta pessoa pode ver — a mesma da aba Conexões.
+      eq(connections.id, linhaMaisRecenteVisivelDoPar(db, userId, matches.matchedUserId!)),
     ))
     .where(and(eq(matches.userId, userId), eq(matches.userDismissed, false)))
     .orderBy(desc(matches.overallScore))
@@ -855,6 +847,9 @@ export async function resolverAlvoDoMatch(userId: number, matchId: number): Prom
  * O bilhete (`message`) também espera o aceite: o bloqueio A13 barra telefone e
  * e-mail, não nome — "oi, aqui é a Ana da Vinícola X" atravessaria o portão
  * inteiro numa linha de texto livre.
+ *
+ * Uma linha por par, e a mesma do cartão do Smart Match: com duas linhas no par,
+ * só a mais recente entre as que esta pessoa pode ver (linhaMaisRecenteVisivelDoPar).
  */
 export async function getConnectionsForUser(userId: number) {
   const db = await exigirDb();
@@ -888,6 +883,9 @@ export async function getConnectionsForUser(userId: number) {
       // O MESMO predicado de getMatchesForUser: em análise ou não encaminhado
       // não existe para a destinatária.
       pedidoVisivelPara(userId),
+      // E a MESMA linha do cartão: com duas linhas no par, só a mais recente entre
+      // as que esta pessoa pode ver. Sem isto a aba mostrava as duas.
+      eq(connections.id, linhaMaisRecenteVisivelDoPar(db, userId, outraParte)),
     ))
     .orderBy(desc(dataVisivel))
     .limit(50);
@@ -906,8 +904,29 @@ function pedidoVisivelPara(userId: number, tabela: typeof connections | typeof c
 }
 
 // A mesma tabela com outro nome, para a subconsulta "linha mais recente visível do
-// par" dentro do join de getMatchesForUser.
+// par" (linhaMaisRecenteVisivelDoPar).
 const conexaoDoPar = alias(connections, "conexao_do_par");
+
+/**
+ * O id da linha mais recente do par (userId, outraParte) entre as que `userId` pode
+ * ver, como subconsulta correlacionada. O par pode ter duas linhas — o pedido não
+ * encaminhado de uma pessoa e, depois, o pedido novo da outra —, e o cartão do Smart
+ * Match (getMatchesForUser) e a aba Conexões (getConnectionsForUser) mostram UMA, e
+ * a mesma, porque as duas consultas passam por aqui. `outraParte` é coluna ou
+ * expressão da consulta de fora; a correlação é conferida contra o banco em
+ * match-em-analise.integracao.test.ts.
+ */
+function linhaMaisRecenteVisivelDoPar(db: Awaited<ReturnType<typeof exigirDb>>, userId: number, outraParte: AnyColumn | SQL) {
+  return db.select({ id: sql<number>`MAX(${conexaoDoPar.id})` })
+    .from(conexaoDoPar)
+    .where(and(
+      or(
+        and(eq(conexaoDoPar.requesterId, userId), eq(conexaoDoPar.recipientId, outraParte)),
+        and(eq(conexaoDoPar.requesterId, outraParte), eq(conexaoDoPar.recipientId, userId)),
+      ),
+      pedidoVisivelPara(userId, conexaoDoPar),
+    ));
+}
 
 /**
  * Quantas linhas o UPDATE alcançou (cópia da função de match-service.ts, que

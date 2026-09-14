@@ -365,8 +365,8 @@ decide não gera `pending` com `reciprocatedAt` preenchido.
 Pedido não encaminhado e, depois, clique da outra pessoa: para ela a linha recusada
 não existe, então o clique vira o pedido novo dela, analisado pelos próprios méritos.
 Responder "nada" deixaria o cartão igual depois do clique, e esse cartão parado seria
-justamente o sinal da recusa. O par passa a ter duas linhas, e o cartão mostra a mais
-recente entre as que cada pessoa pode ver.
+justamente o sinal da recusa. O par passa a ter duas linhas, e o cartão e a aba
+Conexões mostram a mesma: a mais recente entre as que cada pessoa pode ver.
 
 **Limite conhecido**: o termo do Smart Match não diz, hoje, que uma pessoa lê os
 dois perfis antes da entrega. Registrado em decisoes-em-aberto.md (D7).
