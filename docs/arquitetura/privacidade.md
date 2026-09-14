@@ -344,8 +344,9 @@ O que muda na privacidade, em três frases:
   fila nunca traz: `userId` das partes, e-mail, telefone, cofre, LinkedIn, site, foto.
   A bio sai mascarada por `mascararContatosEmTexto`. Quem é parte do pedido não o vê
   na fila nem no histórico, não recebe o aviso do sino e, se tentar decidi-lo pelo id,
-  leva o mesmo "não encontrado" de um pedido inexistente (a tentativa vai para a
-  auditoria como `MATCH_HANDLE_INVALID`).
+  leva o mesmo "não encontrado ou já decidido" de um pedido inexistente ou já
+  decidido (os ids são sequenciais; a tentativa vai para a auditoria como
+  `MATCH_HANDLE_INVALID`, igual nos três casos).
 - **A resposta de `connections.send` continua idêntica** em todos os desfechos
   (novo, em análise, repetido, recusado, não encaminhado): sem oráculo. A recusa do
   distribuidor chega à solicitante como "não encaminhado", sem o motivo; a nota é

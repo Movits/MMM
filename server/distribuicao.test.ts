@@ -18,7 +18,7 @@ process.env.DATABASE_URL ??= "mysql://teste:teste@localhost/teste";
  * (`pending`/`accepted`) ou não (`not_forwarded`). A fila e o histórico mostram
  * as duas partes com nome e sem id/e-mail, cada leitura fica na auditoria, e
  * quem é parte de um pedido não o vê nem consegue distingui-lo de um id
- * inexistente.
+ * inexistente ou de um pedido já decidido.
  *
  * `./db` vira um dublê por função (molde de etapa13-trilha-de-aceite.test.ts):
  * registra cada chamada com os argumentos para o teste dizer o que NÃO pode
@@ -63,10 +63,11 @@ vi.mock("./db", () => new Proxy({}, {
       if (prop === "createNotification" && estado.sinoForaDoAr) throw new Error("sino fora do ar");
       if (prop === "listarPedidosEmAnalise") return estado.fila;
       if (prop === "lerPedidoDeMatch") {
-        // O recorte real mora no WHERE (match-em-analise.test.ts); o dublê o reproduz.
+        // O recorte real mora no WHERE (match-em-analise.test.ts); o dublê o reproduz:
+        // só `in_review`, e nunca o pedido de que quem decide é parte.
         const distribuidorId = args[1] as number;
         const p = estado.pedido;
-        return p && p.requesterId !== distribuidorId && p.recipientId !== distribuidorId ? p : null;
+        return p && p.status === "in_review" && p.requesterId !== distribuidorId && p.recipientId !== distribuidorId ? p : null;
       }
       if (prop === "decidirPedidoDeMatch") {
         if (!estado.decidiu) return null;
@@ -420,41 +421,72 @@ describe("distribuicao.decidir — travas antes do UPDATE", () => {
 
   it("pedido inexistente → NOT_FOUND, e a tentativa vai para a auditoria como alça inválida", async () => {
     estado.pedido = null;
-    await expect(caller().decidir({ connectionId: 1, aprovar: true })).rejects.toMatchObject({ code: "NOT_FOUND", message: "Pedido não encontrado." });
+    await expect(caller().decidir({ connectionId: 1, aprovar: true })).rejects.toMatchObject({ code: "NOT_FOUND", message: "Pedido não encontrado ou já decidido." });
     expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
     expect(estado.auditorias).toEqual([expect.objectContaining({
       userId: 9, action: "MATCH_HANDLE_INVALID", resource: "distribuicao.decidir", resourceId: "1", status: "blocked",
     })]);
   });
 
-  it("quem é PARTE leva exatamente o mesmo NOT_FOUND de um id inexistente — um FORBIDDEN denunciaria o pedido oculto", async () => {
+  it("inexistente, pedido em que quem decide é PARTE e pedido já decidido: a MESMA resposta, a mesma trilha e nenhuma escrita", async () => {
+    // Os ids são sequenciais e aparecem na fila, no histórico e no cartão. Um
+    // FORBIDDEN para "é seu" ou um CONFLICT para "já decidido" deixaria a
+    // destinatária distribuidora achar, pelos buracos da sequência, o pedido oculto.
     estado.pedido = null;
     const inexistente = await caller().decidir({ connectionId: 7, aprovar: false, nota: "x" }).catch(e => e);
+    expect(inexistente).toMatchObject({ code: "NOT_FOUND", message: "Pedido não encontrado ou já decidido." });
 
-    for (const pedido of [
+    const casos: Pedido[] = [
       { id: 7, requesterId: 9, recipientId: 3, status: "in_review", reciprocatedAt: null },
       { id: 7, requesterId: 2, recipientId: 9, status: "in_review", reciprocatedAt: null },
       { id: 7, requesterId: 2, recipientId: 9, status: "not_forwarded", reciprocatedAt: null },
+      { id: 7, requesterId: 2, recipientId: 9, status: "pending", reciprocatedAt: null },
+      ...["pending", "accepted", "declined", "not_forwarded", "blocked"].map(status => ({
+        id: 7, requesterId: 2, recipientId: 3, status, reciprocatedAt: null,
+      })),
+    ];
+    for (const pedido of casos) {
+      estado.pedido = pedido;
+      for (const entrada of [{ aprovar: false, nota: "x" }, { aprovar: true }]) {
+        const erro = await caller().decidir({ connectionId: 7, ...entrada }).catch(e => e);
+        expect(erro.code, JSON.stringify({ pedido, entrada })).toBe(inexistente.code);
+        expect(erro.message).toBe(inexistente.message);
+      }
+    }
+    expect(chamadas("lerPedidoDeMatch").map(c => c.args)).toEqual(Array(1 + casos.length * 2).fill([7, 9]));
+    expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
+    expect(avisos()).toEqual([]);
+    // A trilha também não diz qual dos casos era: toda tentativa grava a mesma linha.
+    expect(estado.auditorias).toHaveLength(1 + casos.length * 2);
+    expect(new Set(estado.auditorias.map(a => JSON.stringify(a))).size).toBe(1);
+  });
+
+  it("não encaminhar exige a nota (BAD_REQUEST), conferida antes de ler o banco: a resposta não depende do pedido", async () => {
+    for (const pedido of [
+      null,
+      { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: null },
+      { id: 7, requesterId: 2, recipientId: 9, status: "in_review", reciprocatedAt: null },
+      { id: 7, requesterId: 2, recipientId: 3, status: "pending", reciprocatedAt: null },
     ]) {
       estado.pedido = pedido;
-      const erro = await caller().decidir({ connectionId: 7, aprovar: false, nota: "x" }).catch(e => e);
-      expect(erro.code).toBe(inexistente.code);
-      expect(erro.message).toBe(inexistente.message);
+      await expect(caller().decidir({ connectionId: 7, aprovar: false })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "   " })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     }
-    expect(chamadas("lerPedidoDeMatch").map(c => c.args)).toEqual(Array(4).fill([7, 9]));
+    expect(chamadas("lerPedidoDeMatch")).toEqual([]);
     expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
+    expect(estado.auditorias).toEqual([]);
   });
 
-  it("pedido que já saiu da análise → CONFLICT antes de qualquer escrita", async () => {
-    estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "pending", reciprocatedAt: null };
-    await expect(caller().decidir({ connectionId: 7, aprovar: true })).rejects.toMatchObject({ code: "CONFLICT" });
+  it("corrida entre duas distribuidoras: o CONFLICT só alcança quem NÃO é parte; a parte fica no NOT_FOUND mesmo com a decisão nula", async () => {
+    estado.decidiu = false;
+    estado.pedido = { id: 7, requesterId: 2, recipientId: 9, status: "in_review", reciprocatedAt: null };
+    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "x" }))
+      .rejects.toMatchObject({ code: "NOT_FOUND", message: "Pedido não encontrado ou já decidido." });
     expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
-  });
 
-  it("não encaminhar exige a nota (BAD_REQUEST)", async () => {
-    await expect(caller().decidir({ connectionId: 7, aprovar: false })).rejects.toMatchObject({ code: "BAD_REQUEST" });
-    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "   " })).rejects.toMatchObject({ code: "BAD_REQUEST" });
-    expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
+    estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: null };
+    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "x" })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(chamadas("decidirPedidoDeMatch")).toHaveLength(1);
   });
 
   it("termo revogado por uma das partes → PRECONDITION_FAILED, sem UPDATE", async () => {

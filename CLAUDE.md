@@ -180,7 +180,9 @@ em `db.ts` tira a linha do join em `getMatchesForUser` e do WHERE em
 CONFLICT, sem efeito; `respondToConnection` e o interesse mútuo em
 `sendConnectionRequest` também levam o status no WHERE. Quem é PARTE de um pedido
 não o vê na fila nem no histórico, não recebe o aviso do sino e leva NOT_FOUND ao
-tentar decidi-lo pelo id (nunca FORBIDDEN, que denunciaria o pedido oculto). Se a
+tentar decidi-lo pelo id (nunca FORBIDDEN, que denunciaria o pedido oculto); pedido
+já decidido leva o mesmo NOT_FOUND (os ids são sequenciais: um "já decidido" próprio
+acusaria os buracos). Se a
 outra pessoa clica depois de um `not_forwarded` oculto para ela, nasce o pedido dela
 (o par pode ter duas linhas; o cartão mostra a mais recente visível). Sem
 distribuidor que possa decidir, o pedido FICA esperando e president/admin ativos

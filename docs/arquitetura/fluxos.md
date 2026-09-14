@@ -96,7 +96,7 @@ confere o par e só então encaminha. Máquina de estados de `connections.status
 | `pending` | `accepted` / `declined` | destinatária (`connections.respond`) | `id AND recipientId = ela AND status = 'pending'` | revelação só com 1 linha afetada |
 | `pending` A→B | `accepted` | B por `send` | `id AND status = 'pending'` | `via: interesse_mutuo` |
 | `not_forwarded` A→B, sem `reciprocatedAt` | + linha nova B→A `in_review` | B clicando em A | nenhuma linha de B no par | aviso a quem distribui (menos as partes); o par passa a ter duas linhas |
-| terminais | — | — | 0 linhas afetadas | `send` responde igual; `decidir` → CONFLICT |
+| terminais | — | — | 0 linhas afetadas | `send` responde igual; `decidir` → o mesmo NOT_FOUND de um id inexistente (CONFLICT só na corrida entre dois distribuidores que leram `in_review`) |
 
 O que cada lado vê é o que a consulta devolve (`pedidoVisivelPara`, em `db.ts`):
 

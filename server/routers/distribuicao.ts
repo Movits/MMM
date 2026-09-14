@@ -129,10 +129,11 @@ export const distribuicaoRouter = router({
   }),
 
   // A decisão. O desfecho sai do BANCO no instante da escrita (decidirPedidoDeMatch):
-  // a segunda pessoa (ou a segunda aba) que decide o mesmo pedido leva CONFLICT e
-  // não produz efeito nenhum, e o clique recíproco que chega durante a decisão vira
-  // `accepted`. Aprovar reconfere as travas ANTES do UPDATE: o termo pode ter sido
-  // revogado e o perfil pode ter mudado desde o clique.
+  // a segunda pessoa (ou a segunda aba) que decide o mesmo pedido não produz efeito
+  // nenhum — leva "não encontrado ou já decidido" se leu depois da primeira decisão,
+  // ou CONFLICT se as duas leram antes —, e o clique recíproco que chega durante a
+  // decisão vira `accepted`. Aprovar reconfere as travas ANTES do UPDATE: o termo
+  // pode ter sido revogado e o perfil pode ter mudado desde o clique.
   decidir: distribuidorProcedure
     .input(z.object({
       connectionId: z.number().int(),
@@ -140,23 +141,28 @@ export const distribuicaoRouter = router({
       nota: z.string().max(1000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // A nota é conferida ANTES de ler o banco: é validação da entrada, e a
+      // resposta a um pedido sem nota não pode mudar conforme o id exista, seja de
+      // quem decide ou já tenha sido decidido.
+      const nota = input.nota?.trim() || null;
+      if (!input.aprovar && !nota) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Diga por que não encaminhou. A nota fica só na trilha interna." });
+      }
+
       const pedido = await lerPedidoDeMatch(input.connectionId, ctx.user.id);
       if (!pedido) {
-        // Id inexistente e pedido em que quem decide é PARTE recebem a mesma
-        // resposta: um código próprio para "é seu" denunciaria à destinatária
-        // distribuidora o pedido que está oculto para ela. A tentativa fica na
-        // trilha, como a alça inválida de connections.send.
+        // Id inexistente, pedido em que quem decide é PARTE e pedido que já saiu da
+        // análise recebem a MESMA resposta (a leitura só acha `in_review` de
+        // terceiros). Os ids de `connections` são sequenciais e aparecem na fila, no
+        // histórico e no cartão: se "já decidido" tivesse código próprio, a
+        // destinatária distribuidora acharia pelos buracos da sequência o pedido
+        // oculto para ela. A tentativa fica na trilha, igual nos três casos (a conta
+        // Ouro lê a auditoria no painel), como a alça inválida de connections.send.
         await createAuditLog({
           userId: ctx.user.id, action: "MATCH_HANDLE_INVALID", resource: "distribuicao.decidir",
           resourceId: String(input.connectionId), status: "blocked", riskLevel: "high",
         });
-        throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
-      }
-      if (pedido.status !== "in_review") throw new TRPCError({ code: "CONFLICT", message: "Este pedido já foi decidido." });
-
-      const nota = input.nota?.trim() || null;
-      if (!input.aprovar && !nota) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Diga por que não encaminhou. A nota fica só na trilha interna." });
+        throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado ou já decidido." });
       }
 
       if (input.aprovar) {
@@ -179,6 +185,9 @@ export const distribuicaoRouter = router({
       }
 
       const decisao = await decidirPedidoDeMatch(pedido.id, { aprovar: input.aprovar, moderatedBy: ctx.user.id, moderationNote: nota });
+      // Corrida: outra distribuidora decidiu entre a leitura e o UPDATE. Só chega
+      // aqui quem NÃO é parte (a leitura recortou pelas partes, que nunca mudam), e
+      // o pedido estava na fila dela: este CONFLICT não denuncia pedido oculto.
       if (!decisao) throw new TRPCError({ code: "CONFLICT", message: "Outra pessoa acabou de decidir este pedido." });
       const { status: statusFinal, reciprocado } = decisao;
 

@@ -450,10 +450,13 @@ export async function listarPedidosEmAnalise(distribuidorId: number, limit = 50)
 }
 
 /**
- * A linha crua do pedido, para o router conferir as travas antes de decidir.
- * O pedido em que o distribuidor é PARTE não existe para ele (o mesmo recorte da
- * fila e do histórico): um "proibido" diferente de "não encontrado" denunciaria à
- * destinatária distribuidora o pedido que está oculto para ela.
+ * A linha crua do pedido EM ANÁLISE, para o router conferir as travas antes de
+ * decidir. O pedido em que o distribuidor é PARTE não existe para ele (o mesmo
+ * recorte da fila e do histórico), e o que já saiu de `in_review` também não: id
+ * inexistente, pedido de que ele é parte e pedido já decidido dão o mesmo null.
+ * Um "proibido" ou um "já decidido" diferente de "não encontrado" denunciaria à
+ * destinatária distribuidora, pelos buracos da sequência de ids, o pedido que
+ * está oculto para ela.
  */
 export async function lerPedidoDeMatch(connectionId: number, distribuidorId: number) {
   const db = await exigirDb();
@@ -467,6 +470,7 @@ export async function lerPedidoDeMatch(connectionId: number, distribuidorId: num
     .from(connections)
     .where(and(
       eq(connections.id, connectionId),
+      eq(connections.status, "in_review"),
       ne(connections.requesterId, distribuidorId),
       ne(connections.recipientId, distribuidorId),
     ))

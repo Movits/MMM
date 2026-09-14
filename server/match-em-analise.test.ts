@@ -300,12 +300,12 @@ describe("a fila, a leitura do pedido e a decisão do distribuidor", () => {
     expect(consulta.sql).toContain("`matches`.`userId` = `connections`.`requesterId`");
   });
 
-  it("lerPedidoDeMatch: quem consulta sendo parte não acha a linha; reciprocatedAt chega como Date válido", async () => {
+  it("lerPedidoDeMatch: só acha in_review, e quem consulta sendo parte não acha a linha; reciprocatedAt chega como Date válido", async () => {
     estado.linhas = [[7, 2, 3, "in_review", QUANDO]];
     const pedido = await db.lerPedidoDeMatch(7, 9);
     const [consulta] = selects();
-    expect(consulta.sql).toContain("where (`connections`.`id` = ? and `connections`.`requesterId` <> ? and `connections`.`recipientId` <> ?)");
-    expect(consulta.params).toEqual([7, 9, 9, 1]);
+    expect(consulta.sql).toContain("where (`connections`.`id` = ? and `connections`.`status` = ? and `connections`.`requesterId` <> ? and `connections`.`recipientId` <> ?)");
+    expect(consulta.params).toEqual([7, "in_review", 9, 9, 1]);
     expect(pedido?.reciprocatedAt).toBeInstanceOf(Date);
     expect(pedido!.reciprocatedAt!.getTime()).toBe(Date.UTC(2026, 8, 13, 10, 0, 0));
   });
