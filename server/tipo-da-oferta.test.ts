@@ -257,7 +257,10 @@ describe("Família do serviço e necessidade genérica", () => {
   it("'Consultoria' procurado nomeia 'Consultoria jurídica' possuído; 'Consultoria em marketing' procurado não", () => {
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consultoria")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Procura consultoria")).toBe(true);
-    expect(necessidadeGenericaNomeiaOServico("Empresa de consultoria", null, "Consultoria")).toBe(true);
+    // "Empresa de consultoria" × "Consultoria" deixou de ser a genérica em 14/09: os dois lados nomeiam o mesmo
+    // serviço e nada além dele, o que vale 100 (revisão da #124). O par continua atendido; só muda a nota.
+    expect(necessidadeGenericaNomeiaOServico("Empresa de consultoria", null, "Consultoria")).toBe(false);
+    expect(necessidadeNomeiaOServico("Empresa de consultoria", null, "Consultoria")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consultoria em marketing")).toBe(false);
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consultoria tributária")).toBe(false); // duas palavras: outra necessidade
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Advocacia")).toBe(false);

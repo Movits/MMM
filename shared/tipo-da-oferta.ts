@@ -433,7 +433,12 @@ const IMOVEL = [
   // com a categoria "Serviços jurídicos" virava serviço e caía no portão da
   // demanda expressa, que é restrição (defeito relatado depois da #101).
   "apartamento", "apartamentos", "apartment", "apartments", "flat", "flats",
-  "casa", "casas", "house", "houses", "sobrado", "sobrados", "cobertura", "coberturas",
+  // "cobertura" saiu daqui: fora do mercado imobiliário ela é reportagem,
+  // seguro ou telhado, e classificar "Cobertura jornalística" como IMÓVEL tira
+  // o item do portão da demanda expressa — o par com "Compradores" [Serviços]
+  // passava a valer 60 por categoria, que é exatamente o vazamento que a #101
+  // existe para fechar. Achado na revisão de 14/09.
+  "casa", "casas", "house", "houses", "sobrado", "sobrados",
   "sala", "salas", "loja", "lojas", "store", "stores",
   "vaga", "vagas", "garagem", "garagens",
 ];
@@ -1406,11 +1411,49 @@ function umServicoAtende(oferecido: ServicoNomeado, pedido: ServicoNomeado): boo
 }
 
 /**
+ * O rótulo nomeia um serviço e NADA além dele? Devolve a família, ou null.
+ *
+ * É o que separa "Contabilidade" × "Contador" (100) de "Consultoria jurídica"
+ * × "Consultoria" (60): no primeiro par os dois lados dizem o mesmo serviço de
+ * dois jeitos; no segundo a oferta nomeia uma SEGUNDA família além da sua
+ * (revisão de 14/09 da #124, commit 9615971). Só pode sobrar estrutura —
+ * cabeça neutra, genitivo, artigo, "serviços" e o verbo de quem pede:
+ * "Empresa DE consultoria", "PROCURA consultoria", "Escritório de contabilidade".
+ *
+ * Ser genérico (`ehGenerico`) não basta. A leitura do serviço descarta, sem
+ * virar especialidade, coisas que dizem algo a mais, e a #127 já as fixou na
+ * nota da família: o adjetivo sozinho ("Jurídico", "Contábil" nomeiam a área,
+ * por isso se exige um SUBSTANTIVO de serviço), o lugar ("Contador em
+ * Campinas/SP") e os serviços coordenados ("Advogado e contador").
+ */
+function familiaSemMaisNada(rotulo: string): string | null {
+  const servico = entenderServico(rotulo);
+  if (!servico || !ehGenerico(servico) || partesDoServico(rotulo).length !== 1) return null;
+  const palavras = palavrasDe(rotulo);
+  let temSubstantivo = false;
+  for (let i = 0; i < palavras.length; i += 1) {
+    const palavra = palavras[i];
+    if (ehSubstantivoDeServico(palavra) || ADJETIVOS_DE_SERVICO.has(palavra)) {
+      if (familiaDaPalavra(palavra) !== servico.familia) return null;
+      if (ehSubstantivoDeServico(palavra)) temSubstantivo = true;
+      continue;
+    }
+    const deQuemProcura = palavra === "for" && MARCADORES_FRACOS.has(palavras[i - 1] ?? ""); // "Looking FOR a lawyer"
+    const estrutura = CABECAS_NEUTRAS.has(palavra) || GENITIVOS.has(palavra) || ARTIGOS.has(palavra) || GENERICAS_DEMAIS.has(palavra)
+      || MARCADORES_FRACOS.has(palavra) || VERBOS_DE_NECESSIDADE.has(palavra) || deQuemProcura;
+    if (!estrutura) return null;
+  }
+  return temSubstantivo ? servico.familia : null;
+}
+
+/**
  * Como a necessidade é atendida pelo serviço oferecido:
  *   - "especifico": pede ESTE serviço — mesma família e mesma especialidade
  *     ("Advogado tributarista" × "Advocacia tributária"), o público que a oferta
- *     atende ("Contador para MEI"), ou a profissão com a especialidade
- *     ("Assessoria jurídica tributária" × "Advocacia tributária");
+ *     atende ("Contador para MEI"), a profissão com a especialidade
+ *     ("Assessoria jurídica tributária" × "Advocacia tributária"), ou os dois
+ *     lados nomeando a família e nada mais ("Contador" × "Contabilidade", ver
+ *     `familiaSemMaisNada`);
  *   - "familia": nomeia só a família ("Advogado", "Consultoria", "Assessoria
  *     jurídica" × "Advocacia tributária") — um bom palpite, que no motor
  *     privado vale 60 (decisão da #124).
@@ -1443,12 +1486,19 @@ function comoAtende(oferta: string, categoriaDaOferta: string | null | undefined
       }
     }
   }
+  // Os dois lados nomeiam o mesmo serviço e nada além dele: não há especialidade de distância, então não é palpite.
+  // Só troca a nota de um par que a família já atendia — nunca cria match, e o motor de perfis não muda.
+  if (melhor === "familia") {
+    const familia = familiaSemMaisNada(oferta);
+    if (familia !== null && familiaSemMaisNada(necessidade) === familia) return "especifico";
+  }
   return melhor;
 }
 
 /**
  * A necessidade pede ESTE serviço, não só a família dele: mesma família E
- * mesma especialidade ("Advogado tributarista" × "Advocacia tributária"). No
+ * mesma especialidade ("Advogado tributarista" × "Advocacia tributária"), ou o
+ * mesmo serviço sem mais nada dos dois lados ("Contador" × "Contabilidade"). No
  * motor privado vale 100, a nota de quem tem a mesma coisa.
  */
 export function mesmaFamiliaEEspecialidade(oferta: string, categoriaDaOferta: string | null | undefined, necessidade: string): boolean {

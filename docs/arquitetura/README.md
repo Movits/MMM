@@ -127,8 +127,9 @@ outro jeito é a mesma necessidade:** família (o lema: advocacia, consultoria, 
 tradução...) e especialidade (lemas curados: tributário = tributarista = fiscal = tax =
 ICMS) iguais dão 100 no motor privado e satisfazem o de perfis — também entre consultoria e
 assessoria e no apoio que nomeia a profissão ("Assessoria jurídica tributária" diante de
-"Advocacia tributária"); a necessidade que nomeia só a família ("Advogado" diante de
-"Advocacia tributária") vale 60. **Palavra igual não é serviço
+"Advocacia tributária"), e quando os dois lados nomeiam a família e nada mais
+("Contabilidade" diante de "Contador"); a necessidade que nomeia só a família ("Advogado"
+diante de "Advocacia tributária") vale 60. **Palavra igual não é serviço
 igual, e na dúvida não casa:** o motor só afirma equivalência do que entende. Palavra
 fora das listas precisa aparecer igual dos dois lados, e a oferta não pode ter palavra
 desconhecida a mais: "Consultoria em segurança do trabalho" não atende "Consultoria
