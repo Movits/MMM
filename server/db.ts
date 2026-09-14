@@ -25,6 +25,7 @@ import { slugifyMatchTag } from "./match-service";
 import { normalizar } from "@shared/direcao-do-termo";
 import { BancoIndisponivel } from "./banco-indisponivel";
 import { condicaoDeStatusNasListas } from "./oportunidade-acesso";
+import { contextoParaOferecer } from "./contexto-oferecido";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -1766,7 +1767,11 @@ export type UndoSnapshot =
   // ficou só na nota. Os retratos gravados antes disso trazem o id e o
   // contextoCriado true; o desfazer lê os dois formatos (só usa linhaDeNota e
   // vinculoId), então nada precisa ser migrado.
-  | { kind: "how_met"; linhaDeNota: string | null; contextoId: string | null; contextoCriado: boolean; vinculoId: string | null }
+  // contextoCriadoPelaDona: o contexto nasceu do "Criar" explícito da dona na
+  // pergunta "Criar o contexto X?" (criarContextoOferecido). É marca separada de
+  // propósito: contextoCriado true identifica os contextos-frase do defeito
+  // antigo, que o script de limpeza apaga.
+  | { kind: "how_met"; linhaDeNota: string | null; contextoId: string | null; contextoCriado: boolean; vinculoId: string | null; contextoCriadoPelaDona?: boolean }
   | { kind: "nota"; linhaDeNota: string | null };
 
 // Colunas simples do perfil que o chat preenche. A chave é o field_type da
@@ -1983,6 +1988,72 @@ ${linha}` : linha;
   // Tipo desconhecido: não há onde gravar, e fingir que gravou é o defeito que
   // este código existe para não repetir.
   throw new Error(`Tipo de resposta sem destino: ${fieldType}`);
+}
+
+export type ResultadoDoContextoOferecido =
+  | { resultado: "indisponivel" }
+  | { resultado: "criado" | "ja_existia"; contextoId: string; nome: string };
+
+/**
+ * O "Criar" da pergunta "Criar o contexto X?" do chat de enriquecimento. Só é
+ * chamada pela confirmação explícita da dona (enrichment.createSuggestedContext):
+ * nenhum outro caminho cria contexto a partir de resposta do chat.
+ *
+ * O nome é o que a sugestão aplicou, relido aqui, nunca um texto vindo da tela.
+ * Procura de novo antes de criar: se o contexto passou a existir enquanto a
+ * pergunta estava aberta (outra aba, tela de Contextos), só vincula. O retrato
+ * do desfazer ganha o contexto e o vínculo; desfazer tira o vínculo e o contexto
+ * fica, como no caso de contexto existente. `contextoCriado` continua false.
+ */
+export async function criarContextoOferecido(suggestionId: string, ownerId: string): Promise<ResultadoDoContextoOferecido> {
+  const db = await exigirDb();
+  const sug = await getEnrichmentSuggestion(suggestionId, ownerId);
+  const nome = contextoParaOferecer(sug);
+  if (!sug || !nome) return { resultado: "indisponivel" };
+  const retrato = sug.undoSnapshot as Extract<UndoSnapshot, { kind: "how_met" }>;
+
+  const [contatoVivo] = await db.select({ id: privateContacts.id }).from(privateContacts)
+    .where(and(eq(privateContacts.id, sug.contactId), eq(privateContacts.ownerId, ownerId)))
+    .limit(1);
+  if (!contatoVivo) return { resultado: "indisponivel" };
+
+  const now = Date.now();
+  let contextoId = await acharContextoPeloNome(db, ownerId, nome);
+  const criado = !contextoId;
+  if (!contextoId) {
+    contextoId = crypto.randomUUID();
+    await db.insert(contexts).values({
+      id: contextoId, ownerId, contextTypeId: null, name: nome,
+      isCustom: true, visibility: "private", createdAt: now, updatedAt: now,
+    });
+  }
+
+  const [vinculoExistente] = await db.select({ id: contactContexts.id }).from(contactContexts)
+    .where(and(
+      eq(contactContexts.ownerId, ownerId),
+      eq(contactContexts.contactId, sug.contactId),
+      eq(contactContexts.contextId, contextoId),
+    ))
+    .limit(1);
+  let vinculoId: string | null = null;
+  if (!vinculoExistente) {
+    vinculoId = crypto.randomUUID();
+    await db.insert(contactContexts).values({
+      id: vinculoId, ownerId, contactId: sug.contactId, contextId: contextoId,
+      relationshipType: "profissional", visibility: "private", createdAt: now, updatedAt: now,
+    });
+  }
+
+  const novoRetrato: UndoSnapshot = { ...retrato, contextoId, vinculoId, contextoCriado: false, contextoCriadoPelaDona: criado };
+  await db.update(enrichmentSuggestions)
+    .set({ undoSnapshot: novoRetrato, updatedAt: now })
+    .where(and(
+      eq(enrichmentSuggestions.id, suggestionId),
+      eq(enrichmentSuggestions.ownerId, ownerId),
+      eq(enrichmentSuggestions.status, "applied"),
+    ));
+
+  return { resultado: criado ? "criado" : "ja_existia", contextoId, nome };
 }
 
 // Tira a linha exata que o chat acrescentou às anotações (e só ela). Devolve
