@@ -938,6 +938,13 @@ export default function Dashboard() {
   const profileData = profileQuery.data;
   const profile = profileData?.profile;
   const pendingConnections = connections.filter((c) => c.status === "pending" && c.souDestinataria);
+  // O nome de uma conexão só existe depois do aceite, e nessa hora o servidor já
+  // libera o apelido do perfil e o nome da conta (getConnectionsForUser). Sem o
+  // nome da conta, conexão aceita de perfil sem apelido aparecia como "Membro da
+  // rede", como se continuasse anônima. Antes do aceite a tela não desenha nome
+  // nenhum, mesmo que o servidor mande.
+  const nomeDaConexao = (conn: (typeof connections)[number]) =>
+    conn.status === "accepted" ? (conn.displayName || conn.userName || t("dashboard.userFallback")) : null;
 
   return (
     <div className="min-h-screen bg-transparent text-white">
@@ -1133,12 +1140,11 @@ export default function Dashboard() {
                   className="bg-[#1b1714] border border-white/8 rounded-2xl p-5 flex items-center gap-4 hover:border-white/15 transition-colors duration-200">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center text-[#151312] font-black flex-shrink-0"
                     style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }}>
-                    {conn.displayName
-                      ? conn.displayName[0].toUpperCase()
-                      : <User className="w-5 h-5 opacity-60" strokeWidth={2.5} aria-label={t("dashboard.anonAvatarAlt")} />}
+                    {nomeDaConexao(conn)?.[0].toUpperCase()
+                      ?? <User className="w-5 h-5 opacity-60" strokeWidth={2.5} aria-label={t("dashboard.anonAvatarAlt")} />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold">{conn.displayName || t("dashboard.anonTitle")}</div>
+                    <div className="font-bold">{nomeDaConexao(conn) ?? t("dashboard.anonTitle")}</div>
                     <div className="text-sm text-white/40">{optionLabel(t, conn.primarySpecialty)} · {conn.city}</div>
                     {conn.message && <div className="text-xs text-white/25 mt-1 truncate">"{conn.message}"</div>}
                     {conn.status === "pending" && conn.souDestinataria && (

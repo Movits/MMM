@@ -283,3 +283,57 @@ describe("quem pediu vê o aceite sem F5", () => {
     expect(releMatches).toHaveBeenCalledTimes(1);
   });
 });
+
+// ── Aba Conexões depois do aceite ───────────────────────────────────────────
+// Validação da #108 pelo Roberto (item 4): conexão aceita cujo perfil não tem
+// apelido aparecia como "Membro da rede". Depois do aceite o servidor já libera
+// o nome da conta (`userName`, atrás do mesmo CASE WHEN de getConnectionsForUser);
+// antes dele, a tela não desenha nome nenhum, nem que o servidor mande.
+describe("aba Conexões — o nome depois do aceite", () => {
+  const conexao = (extra: Record<string, unknown>) => ({
+    id: 9, status: "accepted", souDestinataria: false, outraParteId: 5, primarySpecialty: "finance", city: "Porto",
+    message: null, displayName: null, avatarUrl: null, userName: null, userCompany: null, ...extra,
+  });
+
+  it("aceita sem apelido mostra o nome da conta, com a inicial, e nunca 'Membro da rede'", async () => {
+    duble.respostas["matches.list"] = { data: [] };
+    duble.respostas["connections.list"] = {
+      data: [
+        conexao({ id: 9, userName: NOME_SECRETO }),
+        // Sem apelido e sem nome de conta: o mesmo rótulo do cartão revelado.
+        conexao({ id: 10, userName: null }),
+      ],
+    };
+    render(<Dashboard />);
+    fireEvent.click(screen.getByRole("button", { name: "Conexões (2)" }));
+
+    expect(await screen.findByText(NOME_SECRETO, {}, ESPERA)).toBeInTheDocument();
+    expect(screen.getByText("Z")).toBeInTheDocument();
+    expect(screen.getByText("Usuário")).toBeInTheDocument();
+    expect(screen.queryByText("Membro da rede")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Identidade oculta")).not.toBeInTheDocument();
+  });
+
+  it("com apelido, o apelido vem antes do nome da conta", async () => {
+    duble.respostas["matches.list"] = { data: [] };
+    duble.respostas["connections.list"] = { data: [conexao({ displayName: NOME_SECRETO, userName: "Nome Civil Qualquer" })] };
+    render(<Dashboard />);
+    fireEvent.click(screen.getByRole("button", { name: "Conexões (1)" }));
+
+    expect(await screen.findByText(NOME_SECRETO, {}, ESPERA)).toBeInTheDocument();
+    expect(document.body.innerHTML).not.toContain("Nome Civil Qualquer");
+  });
+
+  it("antes do aceite, nome nenhum, nem que o servidor mande apelido e nome da conta", async () => {
+    duble.respostas["matches.list"] = { data: [] };
+    duble.respostas["connections.list"] = {
+      data: [conexao({ status: "pending", souDestinataria: true, outraParteId: null, displayName: NOME_SECRETO, userName: NOME_SECRETO })],
+    };
+    render(<Dashboard />);
+    fireEvent.click(screen.getByRole("button", { name: "Conexões (1)" }));
+
+    expect(await screen.findByRole("button", { name: "Aceitar e revelar" }, ESPERA)).toBeInTheDocument();
+    expect(document.body.innerHTML).not.toContain("Zoroastra");
+    expect(screen.getByText("Membro da rede")).toBeInTheDocument();
+  });
+});
