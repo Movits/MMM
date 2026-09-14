@@ -917,6 +917,8 @@
     "salvando": "Salvando...",
     "botaoSalvar": "✓ Salvar",
     "vincularContatoTitulo": "Vincular Contato",
+    "editarVinculoTitulo": "Editar Vínculo",
+    "badgeJaVinculado": "Já vinculado",
     "toastVinculadoSucesso": "Vínculo de {{name}} com {{context}} criado!",
     "toastVinculoAtualizado": "Vínculo de {{name}} com {{context}} atualizado.",
     "toastErroVincular": "Erro ao vincular: {{message}}",

@@ -917,6 +917,8 @@
     "salvando": "Wird gespeichert...",
     "botaoSalvar": "✓ Speichern",
     "vincularContatoTitulo": "Kontakt verknüpfen",
+    "editarVinculoTitulo": "Verknüpfung bearbeiten",
+    "badgeJaVinculado": "Bereits verknüpft",
     "toastVinculadoSucesso": "{{name}} mit {{context}} verknüpft!",
     "toastVinculoAtualizado": "Verknüpfung von {{name}} mit {{context}} aktualisiert.",
     "toastErroVincular": "Fehler beim Verknüpfen: {{message}}",

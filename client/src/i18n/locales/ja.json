@@ -917,6 +917,8 @@
     "salvando": "保存中...",
     "botaoSalvar": "✓ 保存",
     "vincularContatoTitulo": "連絡先を紐付け",
+    "editarVinculoTitulo": "紐付けを編集",
+    "badgeJaVinculado": "紐付け済み",
     "toastVinculadoSucesso": "{{name}}を{{context}}に紐付けました！",
     "toastVinculoAtualizado": "{{name}}と{{context}}の紐付けを更新しました。",
     "toastErroVincular": "紐付けエラー：{{message}}",
