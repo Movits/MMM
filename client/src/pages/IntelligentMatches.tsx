@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 import { SmartMatchConsent } from "@/components/SmartMatchConsent";
 import { analisarTermo } from "@shared/direcao-do-termo";
+import { familiaDoServico } from "@shared/tipo-da-oferta";
 
 type EntryKind = "asset" | "need";
 
@@ -23,7 +24,19 @@ type ItemDoMatch = { slug: string; label: string; category?: string | null };
  */
 export function seloDoMatch(match: { matchType: string; matchedAssets: ItemDoMatch[]; matchedNeeds: ItemDoMatch[] }, t: (key: string) => string) {
   if (match.matchType === "mutual") return t("intelligentMatches.seloMutuo");
-  if (match.matchType === "category") return t("intelligentMatches.seloCategoria");
+  // "category" carrega duas coisas desde 14/09: a categoria em comum de sempre
+  // e a necessidade que nomeia só a FAMÍLIA do serviço ("Consultoria" procurado
+  // diante de "Consultoria tributária"). São a mesma nota, 60, mas dizer
+  // "Mesma categoria" no segundo caso é afirmar à usuária uma coisa que os
+  // termos na linha de baixo desmentem — o mesmo motivo pelo qual "Tag exata"
+  // deixou de ser dito para todo match exato.
+  if (match.matchType === "category") {
+    const porFamilia = match.matchedAssets.some(ativo => {
+      const familia = familiaDoServico(ativo.label, ativo.category);
+      return familia !== null && match.matchedNeeds.some(necessidade => familiaDoServico(necessidade.label, necessidade.category) === familia);
+    });
+    return t(porFamilia ? "intelligentMatches.seloFamilia" : "intelligentMatches.seloCategoria");
+  }
   if (match.matchType !== "exact") return t("intelligentMatches.seloSignificados");
 
   const porDirecaoOposta = match.matchedAssets.some(ativo =>

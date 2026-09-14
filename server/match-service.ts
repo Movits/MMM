@@ -6,7 +6,7 @@ import { exigirDb } from "./db";
 import { sendEmail } from "./_core/email";
 import { embedWithGemini } from "./gemini";
 import { nomeiamAMesmaCoisa, saoConcorrentes, slugDoTermo } from "@shared/direcao-do-termo";
-import { classificarOferta, necessidadeNomeiaOServico } from "@shared/tipo-da-oferta";
+import { classificarOferta, mesmaFamiliaEEspecialidade, necessidadeGenericaNomeiaOServico } from "@shared/tipo-da-oferta";
 
 const SEMANTIC_THRESHOLD = 0.7;
 const SAVE_THRESHOLD = 50;
@@ -104,17 +104,28 @@ export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore 
   // 60, como sempre: a restrição é específica do tipo serviço.
   const ofertaEhServico = classificarOferta(asset.label, asset.category) === "servico";
 
-  // A necessidade que NOMEIA o serviço também é demanda expressa, de dois
-  // jeitos (necessidadeNomeiaOServico, em shared/tipo-da-oferta.ts): a
-  // necessidade genérica da mesma família — "Consultoria" procurado diante de
-  // "Consultoria jurídica" possuído, quem escreveu "consultoria" declarou
-  // precisar de consultoria (revisão adversarial de 12/09: sem isto o par caía
-  // de 60 para 0) — e a mesma família com a mesma ESPECIALIDADE, "Advogado
-  // tributarista" procurado diante de "Advocacia tributária" possuído, que a
-  // #101 fazia cair de 60 para 0 e sumir do banco (defeito relatado em 13/09).
+  // A necessidade que NOMEIA o serviço também é demanda expressa, e passa de
+  // dois jeitos — que valem notas DIFERENTES, porque não são a mesma coisa.
+  //
+  // 100: mesma família E mesma especialidade. "Advogado tributarista"
+  // procurado diante de "Advocacia tributária" possuído é o serviço pedido,
+  // escrito com outra flexão. A #101 fazia esse par cair de 60 para 0 e sumir
+  // do banco (defeito relatado em 13/09).
+  if (ofertaEhServico && mesmaFamiliaEEspecialidade(asset.label, asset.category, need.label)) return { score: 100, type: "exact" as const };
+
+  // 60: a necessidade nomeia só a FAMÍLIA. "Consultoria" procurado declara
+  // precisar de consultoria, e por isso o par existe (revisão adversarial de
+  // 12/09: sem esta regra ele caía de 60 para 0) — mas quem escreveu
+  // "Consultoria" não pediu consultoria tributária, nem de marketing, nem de
+  // segurança do trabalho, e valia 100 para as três. 100 é a nota de quem tem
+  // a MESMA coisa; isto é um bom palpite, que é o que 60 já significa aqui
+  // (defeito relatado em 13/09). Continua acima do corte de 50, então o par
+  // segue no banco — derrubar para 0 seria repetir o defeito que a regra da
+  // especialidade acabou de consertar.
+  if (ofertaEhServico && necessidadeGenericaNomeiaOServico(asset.label, asset.category, need.label)) return { score: 60, type: "category" as const };
+
   // Segue barrado o que o pedido veta: outra família, outra especialidade na
-  // mesma família, e a categoria em comum — nada disto olha para a categoria.
-  if (ofertaEhServico && necessidadeNomeiaOServico(asset.label, asset.category, need.label)) return { score: 100, type: "exact" as const };
+  // mesma família, e a categoria em comum — nada acima olha para a categoria.
 
   const categoriaAsset = slugifyMatchTag(asset.category ?? "");
   const categoriaNeed = slugifyMatchTag(need.category ?? "");

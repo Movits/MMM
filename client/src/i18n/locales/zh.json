@@ -1436,6 +1436,7 @@
   "intelligentMatches": {
     "seloMutuo": "↔ 双向连接",
     "seloCategoria": "同一类别",
+    "seloFamilia": "同类服务",
     "seloSignificados": "含义相近",
     "seloOfertaProcura": "供需匹配",
     "seloTagExata": "标签完全匹配",
