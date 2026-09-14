@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normalizar, tokensDoTermo } from "@shared/direcao-do-termo";
-import { classificarOferta, ehServico, ehServicoDeAssessoria, especialidadeDoServico, familiaDoServico, LISTAS_POR_TIPO, necessidadeGenericaNomeiaOServico, necessidadeNomeiaOServico, servicoAtendeNecessidade, TIPOS_DA_OFERTA, trechoNomeiaServicoAtendido } from "@shared/tipo-da-oferta";
+import { classificarOferta, ehServico, ehServicoDeAssessoria, especialidadeDoServico, familiaDoServico, LISTAS_POR_TIPO, mesmaFamiliaEEspecialidade, necessidadeGenericaNomeiaOServico, necessidadeNomeiaOServico, servicoAtendeNecessidade, TIPOS_DA_OFERTA, trechoNomeiaServicoAtendido } from "@shared/tipo-da-oferta";
 
 /**
  * Regra da demanda expressa (12/09/2026) — a classificação que vem ANTES do
@@ -272,7 +272,11 @@ describe("Família do serviço e necessidade genérica", () => {
     expect(necessidadeGenericaNomeiaOServico("Advocacia tributária", null, "Advogado")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Serviços jurídicos tributários", null, "Advogada")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consulting")).toBe(true);
-    expect(necessidadeGenericaNomeiaOServico("Contabilidade para PMEs", null, "Contador")).toBe(true);
+    expect(necessidadeGenericaNomeiaOServico("Contabilidade tributária", null, "Contador")).toBe(true);
+    // "Contabilidade para PMEs" deixou de ser a genérica em 14/09 (revisão na #127): público na oferta não é
+    // especialidade, e o par é o mesmo serviço.
+    expect(necessidadeGenericaNomeiaOServico("Contabilidade para PMEs", null, "Contador")).toBe(false);
+    expect(mesmaFamiliaEEspecialidade("Contabilidade para PMEs", null, "Contador")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Advocacia tributária", null, "Contador")).toBe(false);
   });
 });

@@ -103,12 +103,54 @@ describe("Serviço × necessidade que o NOMEIA — casa em 100", () => {
     expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Consultoria", "Serviços")).score).toBe(60);
     expect(scoreMatch(item("Consultoria de marketing", "Serviços"), item("Consultoria", "Serviços")).score).toBe(60);
 
-    // "Nada além da família" é literal. A leitura do serviço descarta lugar e
-    // adjetivo sozinho sem virar especialidade, mas os dois dizem algo a mais, e
-    // a #127 os fixou em 60 (ver "a necessidade que nomeia só a família vale 60
-    // e fica no banco"); aqui, o lugar do lado da OFERTA.
+    // Do lado da NECESSIDADE, "nada além da família" é literal: adjetivo sozinho
+    // e lugar dizem algo a mais, e a #127 os fixou em 60 (ver "a necessidade
+    // que nomeia só a família vale 60 e fica no banco").
     expect(scoreMatch(item("Contabilidade"), item("Contábil")).score).toBe(60);
-    expect(scoreMatch(item("Contabilidade em São Paulo"), item("Contador")).score).toBe(60);
+  });
+
+  it("do lado da OFERTA, público e lugar não são especialidade: 100 diante da necessidade que nomeia só o serviço", () => {
+    // Revisão de 14/09 na #127: "Contabilidade para pequenas empresas" ×
+    // "Contador" ficava em 60, abaixo do EMAIL_THRESHOLD, e o mesmo em inglês e
+    // espanhol. "Contabilidade em São Paulo" × "Contador" valia 60 por um
+    // teste da própria integração da 9615971, e passa a 100 pela mesma regra.
+    for (const [oferta, necessidade] of [
+      ["Contabilidade para pequenas empresas", "Contador"], ["Contabilidade em São Paulo", "Contador"],
+      ["Accounting services", "Accountant"], ["Despacho de abogados", "Abogado"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 100, type: "exact" });
+    }
+    // O que diz algo a mais sobre O QUE se presta segue na nota da família: a
+    // especialidade (o conserto do defeito 3), o público que é especialidade
+    // curada ("divórcio" é família) e o público que nomeia outro serviço.
+    for (const [oferta, necessidade] of [
+      ["Consultoria tributária", "Consultoria"], ["Advogado para divórcio", "Advogado"], ["Marketing para advogados", "Marketing"],
+    ] as Array<[string, string]>) {
+      for (const categoria of [null, "Serviços"]) {
+        expect(scoreMatch(item(oferta, categoria), item(necessidade, categoria)), `${oferta} × ${necessidade} [${categoria}]`).toEqual({ score: 60, type: "category" });
+      }
+    }
+  });
+
+  it("o mesmo serviço com escritório, 'firm' ou adjetivo de estilo vale 100; o falso positivo provado segue fechado", () => {
+    // Revisão de 14/09 na #127: a regra estrita da palavra desconhecida cortava
+    // estes pares. Só saem da especialidade a cabeça neutra (inclusive colada
+    // depois do serviço, "law FIRM") e "estratégica" ao lado de especialidade
+    // reconhecida.
+    for (const [oferta, necessidade] of [
+      ["Escritório de advocacia", "Escritório de advogados"], ["Tax law firm", "Tax lawyer"],
+      ["Advocacia tributária estratégica", "Advogado tributarista"], ["Boutique de advocacia tributária", "Advogado tributarista"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 100, type: "exact" });
+    }
+    // Sozinha, "estratégica" é o assunto da consultoria, não a genérica.
+    expect(scoreMatch(item("Consultoria estratégica"), item("Consultoria"))).toEqual({ score: 60, type: "category" });
+    for (const [oferta, necessidade] of [
+      ["Consultoria em segurança do trabalho", "Consultoria trabalhista"], ["Consultoria em seguros empresariais", "Consultoria empresarial"],
+      ["Sell-side advisory", "Buy-side advisory"], ["Consultoria publicitária imobiliária", "Consultoria imobiliária"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta, "Serviços"), item(necessidade, "Serviços")).score, `${oferta} × ${necessidade}`).toBe(0);
+    }
   });
 
   it("\"cobertura\" não é imóvel: reportagem não escapa do portão", () => {

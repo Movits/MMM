@@ -457,6 +457,8 @@ const CABECAS_NEUTRAS = new Set([
   "team", "teams", "group", "groups", "professional", "professionals", "specialist", "specialists",
   "oficina", "oficinas", "profesional", "profesionales", "despacho", "despachos",
   "agencia", "agencias", "agency", "agencies",
+  // "Boutique de advocacia tributária" é o escritório, não a especialidade (revisão de 14/09 na #127).
+  "boutique", "boutiques",
 ]);
 
 const COMPOSTOS = new Map<string, TipoDaOferta>([
@@ -862,6 +864,16 @@ const PALAVRAS_DE_ATIVIDADE = new Set([
   "demandas", "caso", "casos", "problema", "problemas", "causa", "causas", "defesa", "planning", "management",
 ]);
 
+/**
+ * Adjetivos de estilo, que dizem COMO se presta e não o quê: "Advocacia
+ * tributária ESTRATÉGICA" é advocacia tributária (revisão de 14/09 na #127,
+ * que a regra estrita da palavra desconhecida levava a zero). Seguem a regra
+ * das palavras de atividade: só saem da especialidade quando o mesmo item tem
+ * uma especialidade reconhecida. Sozinhos continuam sendo o assunto —
+ * "Consultoria estratégica" é um tipo de consultoria, e não a genérica.
+ */
+const ADJETIVOS_DE_ESTILO = new Set(["estrategico", "estrategica", "estrategicos", "estrategicas", "strategic"]);
+
 /** Plurais que não terminam só em -s: exportações, gerais, papéis, embalagens, exportadores. */
 const PLURAIS_IRREGULARES: ReadonlyArray<readonly [string, string]> = [
   ["coes", "cao"], ["oes", "ao"], ["ais", "al"], ["eis", "el"], ["ns", "m"], ["wares", "ware"], ["ores", "or"], ["eres", "er"], ["ares", "ar"],
@@ -1121,7 +1133,10 @@ function especialidadesDoServico(palavras: string[], nucleo: { indice: number; f
         continue;
       }
     }
-    if (pulaNoServico(palavra) || (i < nucleo.indice && CABECAS_NEUTRAS.has(palavra))) continue;
+    // Cabeça neutra antes do serviço ("ESCRITÓRIO de advocacia") ou colada depois dele, sem preposição no meio
+    // ("Tax law FIRM", "Consulting GROUP"): é quem presta, não o que se presta (revisão de 14/09 na #127).
+    const neutraColada = i > nucleo.indice && !noPublico && !noAssunto && CABECAS_NEUTRAS.has(palavra);
+    if (pulaNoServico(palavra) || (i < nucleo.indice && CABECAS_NEUTRAS.has(palavra)) || neutraColada) continue;
     let lema: string;
     let conhecido: boolean;
     if (CABECAS_DO_DIREITO.has(palavra)) {
@@ -1155,7 +1170,7 @@ function especialidadesDoServico(palavras: string[], nucleo: { indice: number; f
       continue;
     }
     const comoAssunto = noAssunto || i < nucleo.indice;
-    if (!conhecido && PALAVRAS_DE_ATIVIDADE.has(palavra)) {
+    if (!conhecido && (PALAVRAS_DE_ATIVIDADE.has(palavra) || ADJETIVOS_DE_ESTILO.has(palavra))) {
       atual.atividade.add(lema);
       if (comoAssunto) atual.assunto.add(lema);
       continue;
@@ -1411,7 +1426,7 @@ function umServicoAtende(oferecido: ServicoNomeado, pedido: ServicoNomeado): boo
 }
 
 /**
- * O rótulo nomeia um serviço e NADA além dele? Devolve a família, ou null.
+ * A NECESSIDADE nomeia um serviço e NADA além dele? Devolve a família, ou null.
  *
  * É o que separa "Contabilidade" × "Contador" (100) de "Consultoria jurídica"
  * × "Consultoria" (60): no primeiro par os dois lados dizem o mesmo serviço de
@@ -1424,7 +1439,8 @@ function umServicoAtende(oferecido: ServicoNomeado, pedido: ServicoNomeado): boo
  * virar especialidade, coisas que dizem algo a mais, e a #127 já as fixou na
  * nota da família: o adjetivo sozinho ("Jurídico", "Contábil" nomeiam a área,
  * por isso se exige um SUBSTANTIVO de serviço), o lugar ("Contador em
- * Campinas/SP") e os serviços coordenados ("Advogado e contador").
+ * Campinas/SP") e os serviços coordenados ("Advogado e contador"). Do lado da
+ * oferta a leitura é mais larga: ver `familiaOferecidaSemEspecialidade`.
  */
 function familiaSemMaisNada(rotulo: string): string | null {
   const servico = entenderServico(rotulo);
@@ -1447,13 +1463,38 @@ function familiaSemMaisNada(rotulo: string): string | null {
 }
 
 /**
+ * A OFERTA nomeia o serviço sem especialidade? Devolve a família, ou null.
+ *
+ * Do lado de quem oferece, público e lugar não são especialidade:
+ * "Contabilidade para pequenas empresas" e "Contabilidade em São Paulo" são
+ * contabilidade, e diante de quem procura "Contador" são o mesmo serviço — a
+ * revisão de 14/09 na #127 achou o primeiro par em 60, abaixo do corte de
+ * e-mail. O que diz algo a mais sobre O QUE se presta continua na nota da
+ * família: especialidade ("Consultoria tributária" × "Consultoria" fica em 60,
+ * o conserto do defeito 3), adjetivo sozinho ("Jurídico"), serviços
+ * coordenados e público que nomeia outro serviço ou especialidade curada
+ * ("Marketing para advogados", "Advogado para divórcio").
+ */
+function familiaOferecidaSemEspecialidade(rotulo: string): string | null {
+  const servico = entenderServico(rotulo);
+  if (!servico || partesDoServico(rotulo).length !== 1) return null;
+  const soPublicoComum = servico.especialidades.every(especialidade => especialidade.lemas.size === 0
+    && Array.from(especialidade.publico).every(lema => !FAMILIAS_CONHECIDAS.has(lema))
+    && Array.from(especialidade.publicoEspecifico).every(lema => !lemaCuradoOuIdioma(lema)));
+  if (!soPublicoComum) return null;
+  const nomeiaPeloSubstantivo = palavrasDe(rotulo).some(palavra => ehSubstantivoDeServico(palavra) && familiaDaPalavra(palavra) === servico.familia);
+  return nomeiaPeloSubstantivo ? servico.familia : null;
+}
+
+/**
  * Como a necessidade é atendida pelo serviço oferecido:
  *   - "especifico": pede ESTE serviço — mesma família e mesma especialidade
  *     ("Advogado tributarista" × "Advocacia tributária"), o público que a oferta
  *     atende ("Contador para MEI"), a profissão com a especialidade
- *     ("Assessoria jurídica tributária" × "Advocacia tributária"), ou os dois
- *     lados nomeando a família e nada mais ("Contador" × "Contabilidade", ver
- *     `familiaSemMaisNada`);
+ *     ("Assessoria jurídica tributária" × "Advocacia tributária"), ou a
+ *     necessidade nomeando a família e nada mais diante de oferta sem
+ *     especialidade ("Contador" × "Contabilidade para pequenas empresas", ver
+ *     `familiaSemMaisNada` e `familiaOferecidaSemEspecialidade`);
  *   - "familia": nomeia só a família ("Advogado", "Consultoria", "Assessoria
  *     jurídica" × "Advocacia tributária") — um bom palpite, que no motor
  *     privado vale 60 (decisão da #124).
@@ -1486,11 +1527,12 @@ function comoAtende(oferta: string, categoriaDaOferta: string | null | undefined
       }
     }
   }
-  // Os dois lados nomeiam o mesmo serviço e nada além dele: não há especialidade de distância, então não é palpite.
-  // Só troca a nota de um par que a família já atendia — nunca cria match, e o motor de perfis não muda.
+  // A necessidade nomeia o serviço e nada além dele, e a oferta é esse serviço sem especialidade: não há especialidade
+  // de distância, então não é palpite. Só troca a nota de um par que a família já atendia — nunca cria match, e o
+  // motor de perfis não muda.
   if (melhor === "familia") {
-    const familia = familiaSemMaisNada(oferta);
-    if (familia !== null && familiaSemMaisNada(necessidade) === familia) return "especifico";
+    const familia = familiaSemMaisNada(necessidade);
+    if (familia !== null && familiaOferecidaSemEspecialidade(oferta) === familia) return "especifico";
   }
   return melhor;
 }
