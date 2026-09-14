@@ -651,7 +651,9 @@ export default function Home() {
                     Se um trecho sozinho não cabe (telas de ~320 px), o recuo deslocado
                     (pl + -indent de 1em) faz a continuação começar fora do recorte;
                     o marcador zera o indent, que é herdado e o empurraria 1em à esquerda.
-                    Leitor de tela recebe a frase inteira, sem os marcadores.
+                    Os marcadores são aria-hidden, mas o t("hero.badge") cru ainda
+                    tem os " • ", e o leitor de tela os lê em voz alta; por isso o
+                    sr-only troca cada separador por vírgula e lê só os trechos.
 
                     No desktop o selo mede a frase inteira (w-max) e cabe em UMA
                     linha: 530 px em pt-BR, o mais largo dos 10 idiomas (484 de
@@ -666,7 +668,7 @@ export default function Home() {
                     página inteira, não aquele cartão. Quem religar o cartão troca
                     `lg:` por `xl:` nas duas classes do selo: ele passa a quebrar
                     em duas linhas de 1024 a 1279 px e não invade em largura alguma. */}
-                <span className="sr-only">{t("hero.badge")}</span>
+                <span className="sr-only">{t("hero.badge").split(" • ").join(", ")}</span>
                 <span aria-hidden="true" className="min-w-0 overflow-hidden">
                   <span className="-ml-[1em] flex flex-wrap">
                     {t("hero.badge").split(" • ").map((trecho, i) => (
