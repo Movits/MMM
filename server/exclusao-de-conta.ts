@@ -39,7 +39,7 @@
 //    nada: apagar por ela transformaria a exclusão da própria conta numa
 //    exclusão de arquivo alheio. Essas linhas saem do banco e o objeto fica.
 
-import { and, eq, inArray, or, sql, getTableName } from "drizzle-orm";
+import { and, eq, inArray, notInArray, or, sql, getTableName } from "drizzle-orm";
 import type { MySqlColumn, MySqlTable } from "drizzle-orm/mysql-core";
 import type { exigirDb } from "./db";
 import { chaveDoStorageDaDona } from "./storage";
@@ -83,12 +83,20 @@ export type ChavesDaConta = {
 
 type Origem = "id" | "openId" | "email" | "oportunidades" | "salas" | "verificacoes";
 
+/**
+ * O que só se sabe depois de passar pelo bucket: as gravações de reunião cujo
+ * áudio NÃO saiu (ids de meeting_recordings). Essas linhas ficam.
+ */
+export type ContextoDaExclusao = {
+  gravacoesQueFicam: string[];
+};
+
 export type PassoDeExclusao = {
   tabela: MySqlTable;
   coluna: MySqlColumn;
   origem: Origem;
   /** Segunda condição, quando a coluna sozinha não delimita a linha. */
-  filtro?: (chaves: ChavesDaConta) => ReturnType<typeof sql> | undefined;
+  filtro?: (chaves: ChavesDaConta, contexto?: ContextoDaExclusao) => ReturnType<typeof sql> | undefined;
   /** Por que este passo existe, quando não é óbvio pelo nome da coluna. */
   motivo?: string;
 };
@@ -135,7 +143,13 @@ export const PLANO_DE_EXCLUSAO: PassoDeExclusao[] = [
   { tabela: meetingEntities, coluna: meetingEntities.ownerId, origem: "openId" },
   { tabela: meetingTranscriptTranslations, coluna: meetingTranscriptTranslations.ownerId, origem: "openId" },
   { tabela: meetingTranscripts, coluna: meetingTranscripts.ownerId, origem: "openId" },
-  { tabela: meetingRecordings, coluna: meetingRecordings.ownerId, origem: "openId" },
+  {
+    tabela: meetingRecordings, coluna: meetingRecordings.ownerId, origem: "openId",
+    filtro: (_chaves, contexto) => (contexto?.gravacoesQueFicam.length
+      ? notInArray(meetingRecordings.id, contexto.gravacoesQueFicam)
+      : undefined),
+    motivo: "a gravação cujo áudio não saiu do bucket fica, sem reunião, para a varredura tentar de novo",
+  },
   { tabela: meetings, coluna: meetings.ownerId, origem: "openId" },
   { tabela: enrichmentSuggestions, coluna: enrichmentSuggestions.ownerId, origem: "openId" },
   { tabela: enrichmentMessages, coluna: enrichmentMessages.ownerId, origem: "openId" },
@@ -337,13 +351,38 @@ export async function tirarDosGruposAlheios(
 }
 
 /**
+ * As gravações de reunião cujo áudio NÃO saiu do bucket (ids de
+ * meeting_recordings). Essas linhas ficam quando a conta sai: sem a reunião, a
+ * poda da varredura de gravações (meeting-service.ts) as dá como vencidas na
+ * hora, e a passada de 5 min tenta o expurgo com todas as versões até
+ * conseguir — só então a linha sai. Apagá-las aqui deixaria a voz das
+ * participantes no bucket sem ponteiro nenhum, e a conta já não existe para
+ * pedir de novo.
+ *
+ * Casa pelo ID da gravação, não pela chave: a chave de `arquivosComFalha`
+ * passou por chaveDoStorageDaDona (sem "/manus-storage/", sem barra no
+ * começo), e uma linha legada com a chave em outro formato não bateria num
+ * filtro pela coluna. Só lê o banco quando algum áudio falhou.
+ */
+async function gravacoesComAudioNoBucket(db: Db, chaves: ChavesDaConta, arquivosComFalha: string[]): Promise<string[]> {
+  const audiosComFalha = new Set(arquivosComFalha.filter(chave => chave.startsWith("meetings/")));
+  if (!audiosComFalha.size) return [];
+  const gravacoes = await db.select({ id: meetingRecordings.id, chave: meetingRecordings.storageKey })
+    .from(meetingRecordings).where(eq(meetingRecordings.ownerId, chaves.openId));
+  return gravacoes
+    .filter(gravacao => audiosComFalha.has(chaveDoStorageDaDona("meetings", chaves.openId, gravacao.chave) ?? ""))
+    .map(gravacao => gravacao.id);
+}
+
+/**
  * Apaga a conta e tudo que é dela. Recebe o `db` por parâmetro para o teste
  * executar a lógica de verdade, sem banco, como `apagarRastroDoContato`.
  *
  * `apagarArquivo` é injetável pelo mesmo motivo, e também porque em
  * desenvolvimento não há `STORAGE_*`: sem bucket configurado, a exclusão do
  * banco não pode parar. Falha de arquivo nunca aborta o resto — ela volta no
- * relatório, em `arquivosComFalha`.
+ * relatório, em `arquivosComFalha` — e, se o arquivo é áudio de reunião, a
+ * linha da gravação fica (ver gravacoesComAudioNoBucket).
  */
 export async function excluirConta(
   db: Db,
@@ -352,8 +391,17 @@ export async function excluirConta(
 ): Promise<RelatorioDeExclusao> {
   // Import tardio do bucket: sem ele, importar este módulo puxaria o SDK da AWS
   // para dentro do teste, que injeta o próprio apagador e nunca fala com o B2.
+  //
+  // O ÁUDIO de reunião sai com todas as versões, como na varredura das 24 h: o
+  // B2 guarda versões e o DELETE simples só esconde. Os outros arquivos seguem
+  // com storageDelete (cartão F11). A chave "meetings/" é a que
+  // chavesDeArquivosDaConta já conferiu contra o openId da conta.
   const apagarArquivo = opcoes.apagarArquivo
-    ?? (async (chave: string) => (await import("./storage")).storageDelete(chave));
+    ?? (async (chave: string) => {
+      const storage = await import("./storage");
+      if (chave.startsWith("meetings/")) await storage.storageApagarTodasAsVersoes(chave);
+      else await storage.storageDelete(chave);
+    });
   const chaves = await lerChavesDaConta(db, conta);
   const arquivos = await chavesDeArquivosDaConta(db, chaves);
 
@@ -369,9 +417,11 @@ export async function excluirConta(
       arquivosApagados++;
     } catch (erro) {
       arquivosComFalha.push(chave);
+      // Sem a chave no log: ela carrega o openId da conta que está saindo.
       console.error(`[ExclusãoDeConta] o bucket recusou apagar um objeto (userId ${conta.id}):`, erro instanceof Error ? erro.message : erro);
     }
   }
+  const contexto: ContextoDaExclusao = { gravacoesQueFicam: await gravacoesComAudioNoBucket(db, chaves, arquivosComFalha) };
 
   const passos: { nome: string; linhas: number }[] = [];
   let linhasApagadas = 0;
@@ -381,7 +431,7 @@ export async function excluirConta(
     const condicoes = [
       valores.length === 1 ? eq(passo.coluna, valores[0]) : inArray(passo.coluna, valores),
     ];
-    const extra = passo.filtro?.(chaves);
+    const extra = passo.filtro?.(chaves, contexto);
     if (extra) condicoes.push(extra);
     const [resultado] = await db.delete(passo.tabela).where(and(...condicoes));
     const linhas = Number((resultado as { affectedRows?: number } | undefined)?.affectedRows ?? 0);

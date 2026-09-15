@@ -14,16 +14,19 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  *    (PRECONDITION_FAILED), pronta ou já processando (CONFLICT).
  * 2. Toma a reunião com um UPDATE condicional ('failed' → 'processing', com a
  *    ficha) e devolve antes de o trabalho terminar.
- * 3. Lê o áudio de volta do bucket, sem gravar áudio nem mexer na gravação e
- *    no prazo dela, e só apaga o resultado anterior DEPOIS de a IA dar certo.
+ * 3. Lê o áudio de volta do bucket, sem gravar áudio nem criar ou apagar
+ *    gravação, e só apaga o resultado anterior DEPOIS de a IA dar certo. Da
+ *    gravação, só o prazo muda: renovado se der certo (24 h a partir da nova
+ *    transcrição), nunca estendido se falhar de novo.
  * 4. Falha de novo com a frase certa, sem apagar nada — e o trabalho nunca
  *    rejeita, nem com o banco caindo na hora de marcar a falha.
  * 5. Convive com a varredura de interrompidas, com a exclusão e com um segundo
  *    pedido: quem tomou a reunião por último decide.
  *
- * O banco é um fake que APLICA os UPDATEs de `meetings` avaliando o WHERE
- * renderizado pelo dialeto do MySQL (igualdades e `<>` em AND): a trava é
- * provada pelo predicado, não por um contador de linhas escolhido no teste.
+ * O banco é um fake que APLICA os UPDATEs de `meetings` e de
+ * `meeting_recordings` avaliando o WHERE renderizado pelo dialeto do MySQL
+ * (igualdades, `<>` e `>` em AND): a trava e o "nunca estende" são provados
+ * pelo predicado, não por um contador de linhas escolhido no teste.
  */
 
 type Predicado = { sql: string; params: unknown[] };
@@ -54,15 +57,19 @@ const estado = {
 
 const COLUNAS: Record<string, string> = {
   id: "id", owner_id: "ownerId", status: "status", updated_at: "updatedAt", consent_granted: "consentGranted",
+  meeting_id: "meetingId", expires_at: "expiresAt",
 };
 
-/** Avalia um WHERE de `meetings` feito só de `coluna = ?` e `coluna <> ?` em AND. */
-function casa({ sql, params }: Predicado, linha: Record<string, unknown>): boolean {
-  const termos = [...sql.matchAll(/`meetings`\.`(\w+)` (=|<>) \?/g)];
-  if (/\bor\b/.test(sql) || termos.length !== params.length) throw new Error(`o fake não sabe avaliar: ${sql}`);
+/** Avalia um WHERE de `tabela` feito só de `coluna = ?`, `coluna <> ?` e `coluna > ?` em AND. */
+function casa({ sql, params }: Predicado, linha: Record<string, unknown>, tabela = "meetings"): boolean {
+  const termos = [...sql.matchAll(new RegExp(`\`${tabela}\`\\.\`(\\w+)\` (=|<>|>) \\?`, "g"))];
+  if (/\bor\b/.test(sql) || termos.length !== params.length || termos.some(([, coluna]) => !COLUNAS[coluna])) {
+    throw new Error(`o fake não sabe avaliar: ${sql}`);
+  }
   return termos.every(([, coluna, operador], i) => {
     const valor = linha[COLUNAS[coluna]];
     const esperado = params[i];
+    if (operador === ">") return Number(valor) > Number(esperado);
     const igual = valor === esperado || (typeof valor === "boolean" && Number(valor) === Number(esperado));
     return operador === "=" ? igual : !igual;
   });
@@ -100,6 +107,11 @@ vi.mock("./db", () => ({
       estado.operacoes.push({ tipo: "update", tabela, valores, ...predicado });
       const erro = estado.falharUpdate?.(valores);
       if (erro) throw erro;
+      if (tabela === schema.meetingRecordings) {
+        const alvos = estado.gravacoes.filter(gravacao => casa(predicado, gravacao, "meeting_recordings"));
+        for (const gravacao of alvos) Object.assign(gravacao, valores);
+        return [{ affectedRows: alvos.length }];
+      }
       if (tabela !== schema.meetings || !estado.reuniao || !casa(predicado, estado.reuniao)) return [{ affectedRows: 0 }];
       Object.assign(estado.reuniao, valores);
       return [{ affectedRows: 1 }];
@@ -117,12 +129,16 @@ vi.mock("./db", () => ({
 const storageGetBytes = vi.fn();
 const storagePut = vi.fn(async () => ({ key: "k", url: "/manus-storage/k" }));
 const storageDelete = vi.fn(async () => {});
+// O áudio de reunião sai do bucket com todas as versões: o B2 guarda versões,
+// e o DELETE simples de storageDelete só esconderia a voz das participantes.
+const storageApagarTodasAsVersoes = vi.fn(async (_chave: string) => {});
 // As classes de erro e chaveDoStorageDaDona vêm do módulo real: o serviço faz
 // instanceof e confere a chave com elas.
 vi.mock("./storage", async importOriginal => ({
   ...await importOriginal<typeof import("./storage")>(),
   storagePut: (...args: unknown[]) => storagePut(...(args as [])),
   storageDelete: (...args: unknown[]) => storageDelete(...(args as [])),
+  storageApagarTodasAsVersoes: (...args: unknown[]) => storageApagarTodasAsVersoes(...(args as [string])),
   storageGetBytes: (...args: unknown[]) => {
     estado.operacoes.push({ tipo: "bucket", tabela: "leitura", sql: "", params: args });
     return storageGetBytes(...(args as []));
@@ -152,7 +168,8 @@ const { GeminiCotaEsgotadaError } = await import("./gemini");
 const { ObjetoAusenteNoStorageError } = await import("./storage");
 
 const AGORA = Date.now();
-const DIA = 24 * 60 * 60 * 1000;
+const HORA = 60 * 60 * 1000;
+const DIA = 24 * HORA;
 const DONA = "dona-1";
 const REUNIAO = "reuniao-1";
 const CHAVE = `meetings/${DONA}/${REUNIAO}/recording_abc12345.webm`;
@@ -165,7 +182,7 @@ const reuniaoComFalha = (extra: Record<string, unknown> = {}) => ({
 });
 const gravacaoGuardada = (extra: Record<string, unknown> = {}) => ({
   id: "gravacao-1", meetingId: REUNIAO, ownerId: DONA, storageKey: CHAVE, storageUrl: `/manus-storage/${CHAVE}`,
-  mimeType: "audio/webm", sizeBytes: AUDIO.length, durationSeconds: 95, expiresAt: AGORA + 20 * DIA, createdAt: AGORA - DIA, ...extra,
+  mimeType: "audio/webm", sizeBytes: AUDIO.length, durationSeconds: 95, expiresAt: AGORA + 20 * HORA, createdAt: AGORA - DIA, ...extra,
 });
 
 const REUNIAO_DA_DONA = { sql: "(`meetings`.`id` = ? and `meetings`.`owner_id` = ?)", params: [REUNIAO, DONA] };
@@ -207,6 +224,7 @@ beforeEach(() => {
   storageGetBytes.mockResolvedValue(AUDIO);
   storagePut.mockClear();
   storageDelete.mockClear();
+  storageApagarTodasAsVersoes.mockClear();
   transcribeWithGemini.mockReset();
   transcribeWithGemini.mockResolvedValue({ text: "Transcrição nova.", segments: [], language: "pt" });
   invokeLLM.mockReset();
@@ -336,13 +354,48 @@ describe("reprocessar — com o áudio guardado", () => {
     expect(storageGetBytes).toHaveBeenCalledWith(CHAVE, servico.MAX_MEETING_AUDIO_BYTES);
   });
 
-  it("lê o áudio uma vez, com o teto de 10 MB, e não grava áudio nem mexe na gravação (nem no prazo dela)", async () => {
+  it("lê o áudio uma vez, com o teto de 10 MB, e não grava áudio nem cria ou apaga gravação — da gravação, só o PRAZO muda, depois do 'ready'", async () => {
     await reprocessar();
     expect(storageGetBytes).toHaveBeenCalledTimes(1);
     expect(storageGetBytes).toHaveBeenCalledWith(CHAVE, servico.MAX_MEETING_AUDIO_BYTES);
     expect(storagePut).not.toHaveBeenCalled();
-    for (const tipo of ["insert", "update", "delete"] as const) expect(de(tipo, schema.meetingRecordings)).toEqual([]);
+    for (const tipo of ["insert", "delete"] as const) expect(de(tipo, schema.meetingRecordings)).toEqual([]);
+    expect(storageApagarTodasAsVersoes).not.toHaveBeenCalled();
     expect(transcribeWithGemini).toHaveBeenCalledWith({ audio: AUDIO, mimeType: "audio/webm", language: "pt" });
+
+    // Um único UPDATE em meeting_recordings: SET simples (sem `expires_at > ?`,
+    // é a transição que pode estender), na gravação DA reunião DA dona, com a
+    // hora do 'ready' + 24 h — e só depois de o 'ready' valer.
+    const [, pronta] = de("update", schema.meetings);
+    const [prazo] = de("update", schema.meetingRecordings);
+    expect(de("update", schema.meetingRecordings)).toHaveLength(1);
+    expect(prazo.valores).toEqual({ expiresAt: Number(pronta.valores!.updatedAt) + servico.PRAZO_DO_AUDIO_MS });
+    expect(soPredicado(prazo)).toEqual(daReuniaoDaDona("meeting_recordings"));
+    expect(estado.operacoes.indexOf(prazo)).toBeGreaterThan(estado.operacoes.indexOf(pronta));
+  });
+
+  it("deu certo: o prazo passa a ser a nova transcrição + 24 h, mesmo que o anterior fosse MAIS CURTO — o reprocesso que dá certo renova", async () => {
+    // Falhou há quase 23 h: sobra pouco mais de 1 h de áudio guardado.
+    estado.gravacoes = [gravacaoGuardada({ expiresAt: AGORA + HORA })];
+    // Relógio falso que anda 10 min dentro da IA: tomada e transcrição em
+    // instantes distintos, para o prazo contado da tomada não passar por acaso.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(AGORA);
+    transcribeWithGemini.mockImplementation(async () => {
+      vi.setSystemTime(Date.now() + 10 * 60_000);
+      return { text: "Transcrição nova.", segments: [], language: "pt" };
+    });
+    try {
+      await reprocessar();
+    } finally {
+      vi.useRealTimers();
+    }
+    const [tomada, pronta] = de("update", schema.meetings);
+    expect(estado.reuniao!.status).toBe("ready");
+    expect(Number(tomada.valores!.updatedAt)).toBe(AGORA);
+    expect(Number(pronta.valores!.updatedAt)).toBe(AGORA + 10 * 60_000);
+    expect(estado.gravacoes[0].expiresAt).toBe(Number(pronta.valores!.updatedAt) + servico.PRAZO_DO_AUDIO_MS);
+    expect(estado.gravacoes[0].expiresAt).toBe(AGORA + 10 * 60_000 + servico.PRAZO_DO_AUDIO_MS);
   });
 
   it("o resultado anterior sai DEPOIS de a IA dar certo e ANTES de gravar o novo, sempre por meeting_id e owner_id", async () => {
@@ -416,6 +469,43 @@ describe("reprocessar — quando falha de novo", () => {
     // fica 'processing', para a varredura de interrompidas assumir
     expect(estado.reuniao!.status).toBe("processing");
   });
+
+  it("falhou de novo: o prazo NÃO é estendido — segue contando da PRIMEIRA falha (o UPDATE exige `expires_at > ?`)", async () => {
+    // Primeira falha há 22 h: o áudio vence daqui a 2 h. Se cada falha
+    // renovasse, reprocessar e falhar todo dia guardaria a voz para sempre.
+    estado.gravacoes = [gravacaoGuardada({ expiresAt: AGORA + 2 * HORA })];
+    transcribeWithGemini.mockRejectedValue(new Error("qualquer"));
+    await reprocessar();
+    const [falha] = falhasGravadas();
+    const [prazo] = de("update", schema.meetingRecordings);
+    expect(estado.reuniao!.status).toBe("failed");
+    expect(de("update", schema.meetingRecordings)).toHaveLength(1);
+    expect(prazo.valores).toEqual({ expiresAt: Number(falha.valores!.updatedAt) + servico.PRAZO_DO_AUDIO_MS });
+    expect(soPredicado(prazo)).toEqual({
+      sql: "(`meeting_recordings`.`meeting_id` = ? and `meeting_recordings`.`owner_id` = ? and `meeting_recordings`.`expires_at` > ?)",
+      params: [REUNIAO, DONA, prazo.valores!.expiresAt],
+    });
+    expect(estado.gravacoes[0].expiresAt).toBe(AGORA + 2 * HORA);
+  });
+
+  it("falhou de novo com um prazo MAIS LONGO que a falha + 24 h (o de 30 dias de antes da regra, por exemplo): é encurtado para a hora da FALHA + 24 h", async () => {
+    estado.gravacoes = [gravacaoGuardada({ expiresAt: AGORA + 10 * DIA })];
+    // A IA leva 10 min no relógio falso e então falha: o prazo conta da falha, não da tomada.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(AGORA);
+    transcribeWithGemini.mockImplementation(async () => {
+      vi.setSystemTime(Date.now() + 10 * 60_000);
+      throw new Error("qualquer");
+    });
+    try {
+      await reprocessar();
+    } finally {
+      vi.useRealTimers();
+    }
+    const [falha] = falhasGravadas();
+    expect(Number(falha.valores!.updatedAt)).toBe(AGORA + 10 * 60_000);
+    expect(estado.gravacoes[0].expiresAt).toBe(Number(falha.valores!.updatedAt) + servico.PRAZO_DO_AUDIO_MS);
+  });
 });
 
 describe("reprocessar — quem tomou a reunião por último decide", () => {
@@ -439,7 +529,10 @@ describe("reprocessar — quem tomou a reunião por último decide", () => {
     await reprocessar();
     expect(de("insert")).toEqual([]);
     expect(de("delete").map(o => o.tabela)).toEqual([...derivadas(), schema.meetingRecordings]);
-    expect(storageDelete).toHaveBeenCalledWith(CHAVE);
+    // o arquivo sai com todas as versões; o DELETE simples só o esconderia no B2
+    expect(storageApagarTodasAsVersoes).toHaveBeenCalledWith(CHAVE);
+    expect(storageDelete).not.toHaveBeenCalled();
+    expect(de("update", schema.meetingRecordings)).toEqual([]);
     expect(falhasGravadas()).toEqual([]);
   });
 
@@ -450,7 +543,9 @@ describe("reprocessar — quem tomou a reunião por último decide", () => {
     await reprocessar();
     const depoisDasEscritas = estado.operacoes.slice(primeira(o => o.tipo === "insert"));
     expect(depoisDasEscritas.filter(o => o.tipo === "delete")).toEqual([]);
-    expect(storageDelete).not.toHaveBeenCalled();
+    expect(storageApagarTodasAsVersoes).not.toHaveBeenCalled();
+    // o prazo é de quem tomou a reunião: esta execução, sem o 'ready', não o toca
+    expect(de("update", schema.meetingRecordings)).toEqual([]);
     expect(falhasGravadas()).toEqual([]);
     expect(estado.reuniao!.status).toBe("processing");
     expect(vi.mocked(console.warn)).toHaveBeenCalled();

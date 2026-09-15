@@ -212,6 +212,33 @@ describe("marcarReunioesInterrompidas — quem a dispara", () => {
     expect(bloco.indexOf("try {")).toBeLessThan(bloco.indexOf("marcarReunioesInterrompidas()"));
   });
 
+  it("as gravações de reunião no MESMO bloco: a poda com await, depois das presas e antes do listen; o apagamento sem await no boot e de novo no setInterval, em try, com a guarda de STORAGE_BUCKET e a trava", () => {
+    // A poda antes do listen: nenhum pedido de reprocesso desta instância vê o
+    // prazo velho de 30 dias. O apagamento sem await: são chamadas ao bucket, e
+    // a subida não espera por elas.
+    const depoisDoApp = inicioDoServidor.slice(posicaoDoApp);
+    const guarda = depoisDoApp.slice(depoisDoApp.indexOf("if (process.env.DATABASE_URL) {"));
+    const bloco = guarda.slice(0, guarda.indexOf("app.set("));
+    const presasNoBoot = bloco.indexOf('await varrerReunioesPresas("Boot")');
+    const poda = bloco.indexOf("await ajustarPrazosDasGravacoes()");
+    expect(presasNoBoot).toBeGreaterThan(0);
+    expect(poda).toBeGreaterThan(presasNoBoot);
+    expect(bloco.lastIndexOf("try {", poda)).toBeGreaterThan(presasNoBoot);
+    expect(depoisDoApp.indexOf("await ajustarPrazosDasGravacoes()")).toBeLessThan(depoisDoApp.indexOf("server.listen("));
+
+    // A passada do boot recebe as chaves que a poda pôs no passado, para
+    // expurgá-las pela chave mesmo que a linha já tenha saído.
+    expect(bloco.indexOf('void varrerGravacoes("Boot", vencidasNaPoda)')).toBeGreaterThan(poda);
+    expect(bloco).not.toContain('await varrerGravacoes("Boot"');
+    const intervalo = bloco.slice(bloco.indexOf("setInterval("));
+    expect(intervalo.slice(0, intervalo.indexOf("5 * 60_000"))).toContain('await varrerGravacoes("Varredura")');
+
+    const helper = bloco.slice(bloco.indexOf("const varrerGravacoes"), presasNoBoot);
+    expect(helper).toContain("process.env.STORAGE_BUCKET");
+    expect(helper.indexOf("try {")).toBeLessThan(helper.indexOf("limparGravacoesVencidas(chavesDaPoda)"));
+    expect(helper).toContain("finally");
+  });
+
   it("há o endpoint de cron ao lado da limpeza de gravações, com a mesma autenticação e auditoria", () => {
     const endpoint = boot.slice(boot.indexOf('app.post("/api/scheduled/mark-interrupted-meetings"'));
     expect(endpoint.length).toBeGreaterThan(0);

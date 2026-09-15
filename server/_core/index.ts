@@ -139,8 +139,30 @@ async function startServer() {
   // encerrando a requisição, exceção fora do try) ficaria presa até o
   // próximo restart — e a tela deixa excluir, mas a dona não deveria precisar.
   // `unref()`: o timer não segura o processo vivo num shutdown.
+  //
+  // Gravações de reunião, no mesmo bloco: o áudio vive 24 h depois da
+  // transcrição ou da falha (PRAZO_DO_AUDIO_MS em meeting-service.ts), e a
+  // promessa é sobre a voz de TODAS as participantes — que não têm login e
+  // não vão reabrir a reunião —, então não pode esperar alguém abrir a tela
+  // nem um agendador externo, que não existe. Três passos:
+  // - a PODA dos prazos, com await e antes do listen: ela reescreve o
+  //   expires_at das gravações antigas (30 dias contados do envio), e nenhum
+  //   pedido de reprocesso desta instância pode aceitar áudio pelo prazo
+  //   velho. Vem depois da varredura de presas, para uma reunião presa já
+  //   contar como falha. Só toca o banco: é rápida;
+  // - o APAGAMENTO no boot, SEM await: são chamadas ao bucket, uma por versão
+  //   de cada áudio, e a subida não espera por elas. É ele que tira, já na
+  //   primeira passada, o que venceu — inclusive o que a poda acabou de pôr no
+  //   passado, cujas chaves a poda devolve e ele expurga pela CHAVE: se a
+  //   instância velha, ainda no ar durante o deploy, abrir a reunião nesse meio
+  //   tempo, ela só esconde o áudio e apaga a linha, e sem a chave a voz ficaria
+  //   no bucket sem ponteiro;
+  // - o apagamento de novo a cada 5 min, no mesmo timer das presas.
+  // Sem STORAGE_BUCKET (dev com banco e sem bucket) não há o que apagar, e cada
+  // gravação vencida viraria um aviso a cada 5 min. A trava impede duas
+  // passadas juntas quando o bucket demora mais que o intervalo.
   if (process.env.DATABASE_URL) {
-    const { marcarReunioesInterrompidas } = await import("../meeting-service");
+    const { marcarReunioesInterrompidas, ajustarPrazosDasGravacoes, limparGravacoesVencidas } = await import("../meeting-service");
     const varrerReunioesPresas = async (origem: string) => {
       try {
         const presas = await marcarReunioesInterrompidas();
@@ -149,8 +171,49 @@ async function startServer() {
         console.error(`[${origem}] Não foi possível varrer as reuniões presas em processamento:`, erro instanceof Error ? erro.message : erro);
       }
     };
+    let limpezaDeGravacoesEmCurso = false;
+    const varrerGravacoes = async (origem: string, chavesDaPoda: readonly string[] = []) => {
+      if (!process.env.STORAGE_BUCKET || limpezaDeGravacoesEmCurso) return;
+      limpezaDeGravacoesEmCurso = true;
+      try {
+        const resultado = await limparGravacoesVencidas(chavesDaPoda);
+        if (resultado.encontradas || resultado.prazosAjustados) {
+          console.warn(`[${origem}] Gravações de reunião: ${resultado.apagadas} de ${resultado.encontradas} vencidas apagadas; ${resultado.prazosAjustados} prazos ajustados à regra das 24 h.`);
+        }
+        // Prova de que o prazo foi cumprido, para o jurídico. Só quando algo
+        // saiu: a passada de 5 min não enche audit_logs de linhas vazias.
+        if (resultado.apagadas > 0) {
+          await createAuditLog({
+            userId: null,
+            action: "CRON_CLEANUP_RECORDINGS",
+            resource: "meeting_recordings",
+            status: "success",
+            riskLevel: "low",
+            details: { ...resultado, origem },
+          }).catch(() => {});
+        }
+      } catch (erro) {
+        console.error(`[${origem}] Não foi possível limpar as gravações de reunião vencidas:`, erro instanceof Error ? erro.message : erro);
+      } finally {
+        limpezaDeGravacoesEmCurso = false;
+      }
+    };
     await varrerReunioesPresas("Boot");
-    setInterval(() => { void varrerReunioesPresas("Varredura"); }, 5 * 60_000).unref();
+    let vencidasNaPoda: string[] = [];
+    try {
+      const poda = await ajustarPrazosDasGravacoes();
+      vencidasNaPoda = poda.vencidasNaPoda;
+      if (poda.prazosAjustados) console.warn(`[Boot] Prazos de gravação de reunião ajustados à regra das 24 h: ${poda.prazosAjustados}.`);
+    } catch (erro) {
+      console.error("[Boot] Não foi possível ajustar os prazos das gravações de reunião:", erro instanceof Error ? erro.message : erro);
+    }
+    void varrerGravacoes("Boot", vencidasNaPoda);
+    setInterval(() => {
+      void (async () => {
+        await varrerReunioesPresas("Varredura");
+        await varrerGravacoes("Varredura");
+      })();
+    }, 5 * 60_000).unref();
   }
 
   // Confiar no proxy reverso (necessário para rate limiting por IP real)
@@ -267,15 +330,15 @@ async function startServer() {
   });
 
   // ============================================================
-  // JOB PERIÓDICO: gravações de reunião que passaram dos 30 dias
+  // JOB PERIÓDICO: gravações de reunião com o prazo vencido
   // Endpoint: POST /api/scheduled/cleanup-recordings
   // Mesma sessão de cron da limpeza de sessões.
   //
-  // Existe porque a tela promete que o áudio "expira automaticamente após 30
-  // dias" e essa promessa é sobre a voz de TODAS as participantes — que não
-  // têm login e nunca vão abrir a página. Sem esta varredura, o descarte só
-  // aconteceria quando a dona reabrisse a reunião, e o caso comum (nunca mais
-  // voltar lá) deixaria o áudio no bucket para sempre.
+  // A tela promete que o áudio é apagado 24 h depois da transcrição ou da
+  // falha, e essa promessa é sobre a voz de TODAS as participantes — que não
+  // têm login e nunca vão abrir a página. O boot e o setInterval lá em cima
+  // já fazem esta limpeza (poda dos prazos e apagamento); o endpoint fica
+  // para o dia em que houver um agendador externo.
   // ============================================================
   app.post("/api/scheduled/cleanup-recordings", async (req: Request, res: Response) => {
     const user = await autenticarCron(req, res);
@@ -309,9 +372,9 @@ async function startServer() {
   // Endpoint: POST /api/scheduled/mark-interrupted-meetings
   // Mesma sessão de cron das limpezas acima.
   //
-  // O boot e o setInterval lá em cima já fazem esta varredura; o endpoint
-  // fica ao lado das outras duas rotas de cron para o dia em que houver um
-  // agendador externo (hoje nenhuma delas tem chamador).
+  // O boot e o setInterval lá em cima já fazem esta varredura, e a das
+  // gravações; o endpoint fica ao lado das outras duas rotas de cron para o
+  // dia em que houver um agendador externo (hoje nenhuma delas tem chamador).
   // ============================================================
   app.post("/api/scheduled/mark-interrupted-meetings", async (req: Request, res: Response) => {
     const user = await autenticarCron(req, res);
