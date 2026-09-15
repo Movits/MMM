@@ -73,5 +73,10 @@ describe("seloDoMatch — o 100 pelo mesmo serviço não é 'Tag exata' (revisã
   it("a mesma tag e o mesmo objeto seguem dizendo 'Tag exata'", () => {
     expect(seloDoMatch({ matchType: "exact", matchedAssets: [item("Consultoria tributária")], matchedNeeds: [item("Consultoria tributária")] }, t)).toBe("seloTagExata");
     expect(seloDoMatch({ matchType: "exact", matchedAssets: [item("Terras raras")], matchedNeeds: [item("Procura terras raras")] }, t)).toBe("seloTagExata");
+    // O mesmo SERVIÇO pelo mesmo objeto também é tag exata: o motor o reconhece como mesmo serviço, e sem a pergunta do
+    // objeto (`nomeiamAMesmaCoisa`) o selo diria "Mesmo serviço" para tags iguais a menos do "Procura" (revisão de 15/09 na #127).
+    for (const [ativo, necessidade] of [["Consultoria tributária", "Procura consultoria tributária"], ["Contabilidade", "Procura contabilidade"]]) {
+      expect(seloDoMatch({ matchType: "exact", matchedAssets: [item(ativo)], matchedNeeds: [item(necessidade)] }, t), `${ativo} × ${necessidade}`).toBe("seloTagExata");
+    }
   });
 });
