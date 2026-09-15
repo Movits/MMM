@@ -284,7 +284,7 @@ function ContactForm({ initial, onSave, onClose, loading }: {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <div>

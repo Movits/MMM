@@ -207,10 +207,16 @@ export default function AdminPanel() {
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
       <header className="bg-[#1B1714] border-b border-[#C98F70]/30 sticky top-16 z-30">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Shield className="w-7 h-7 text-[#C98F70]" />
-            <div>
+        {/* Em 375 px esta linha não caberia nunca: logo + subtítulo + nome +
+            selo ADMIN + "Dashboard" + "Sair" numa única fila. Como os itens de
+            flex encolhem abaixo do conteúdo, o texto vazava da própria caixa: o
+            selo ADMIN saía DESENHADO EM CIMA do botão "Dashboard" e o "Sair"
+            terminava fora da tela. Agora a fila quebra (flex-wrap), o nome
+            corta com truncate e os botões não encolhem. */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Shield className="w-7 h-7 flex-shrink-0 text-[#C98F70]" />
+            <div className="min-w-0">
               <button
                 onClick={() => navigate("/dashboard")}
                 style={playfairStyle}
@@ -218,24 +224,24 @@ export default function AdminPanel() {
               >
                 WRW
               </button>
-              <p className="text-xs text-gray-400">Painel Administrativo Seguro</p>
+              <p className="text-xs text-gray-400 truncate">Painel Administrativo Seguro</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-300">{user.name}</span>
-              <span className="px-2 py-0.5 text-xs bg-red-900/50 text-red-300 border border-red-700 rounded">ADMIN</span>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="w-2 h-2 flex-shrink-0 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="truncate text-sm text-gray-300">{user.name}</span>
+              <span className="flex-shrink-0 px-2 py-0.5 text-xs bg-red-900/50 text-red-300 border border-red-700 rounded">ADMIN</span>
             </div>
             <button
               onClick={() => navigate("/dashboard")}
-              className="px-4 py-2 text-sm border border-[#C98F70]/50 text-[#C98F70] rounded-lg hover:bg-[#C98F70]/10 transition-colors"
+              className="flex-shrink-0 px-4 py-2 text-sm border border-[#C98F70]/50 text-[#C98F70] rounded-lg hover:bg-[#C98F70]/10 transition-colors"
             >
               Dashboard
             </button>
             <button
               onClick={() => { logout(); navigate("/"); }}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-red-900/30 text-red-400 border border-red-700/50 rounded-lg hover:bg-red-900/50 transition-colors"
+              className="flex flex-shrink-0 items-center gap-2 px-4 py-2 text-sm bg-red-900/30 text-red-400 border border-red-700/50 rounded-lg hover:bg-red-900/50 transition-colors"
             >
               <LogOut className="w-4 h-4" />
               Sair
@@ -468,8 +474,13 @@ export default function AdminPanel() {
             {sessionsQuery.isLoading ? (
               <div className="text-center py-12 text-gray-400">Carregando sessões...</div>
             ) : (
-              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-hidden">
-                <table className="w-full">
+              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-x-auto">
+                {/* Em 375 px estas tabelas (7, 5 e 6 colunas) não cabem. O
+                    container era `overflow-hidden`: a tabela ficava cortada e as
+                    últimas colunas, inclusive "Ações", eram inalcançáveis.
+                    `overflow-x-auto` deixa a tabela rolar DENTRO do cartão, sem
+                    arrastar a página para o lado. */}
+                <table className="w-full min-w-[640px]">
                   <thead>
                     <tr className="border-b border-[#C98F70]/20">
                       <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">ID Sessão</th>
@@ -578,8 +589,13 @@ export default function AdminPanel() {
             {usersQuery.isLoading ? (
               <div className="text-center py-12 text-gray-400">Carregando usuários...</div>
             ) : (
-              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-hidden">
-                <table className="w-full">
+              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-x-auto">
+                {/* Em 375 px estas tabelas (7, 5 e 6 colunas) não cabem. O
+                    container era `overflow-hidden`: a tabela ficava cortada e as
+                    últimas colunas, inclusive "Ações", eram inalcançáveis.
+                    `overflow-x-auto` deixa a tabela rolar DENTRO do cartão, sem
+                    arrastar a página para o lado. */}
+                <table className="w-full min-w-[640px]">
                   <thead>
                     <tr className="border-b border-[#C98F70]/20">
                       <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Usuário</th>
@@ -725,8 +741,13 @@ export default function AdminPanel() {
             {auditQuery.isLoading ? (
               <div className="text-center py-12 text-gray-400">Carregando logs...</div>
             ) : (
-              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-hidden">
-                <table className="w-full">
+              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-x-auto">
+                {/* Em 375 px estas tabelas (7, 5 e 6 colunas) não cabem. O
+                    container era `overflow-hidden`: a tabela ficava cortada e as
+                    últimas colunas, inclusive "Ações", eram inalcançáveis.
+                    `overflow-x-auto` deixa a tabela rolar DENTRO do cartão, sem
+                    arrastar a página para o lado. */}
+                <table className="w-full min-w-[640px]">
                   <thead>
                     <tr className="border-b border-[#C98F70]/20">
                       <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Ação</th>
