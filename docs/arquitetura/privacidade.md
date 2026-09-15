@@ -343,20 +343,31 @@ O que muda na privacidade, em três frases:
   `distribuicao.historico` gravam `DISTRIBUTOR_VIEW_QUEUE` em `audit_logs`. O que a
   fila nunca traz: `userId` das partes, e-mail, telefone, cofre, LinkedIn, site, foto.
   A bio sai mascarada por `mascararContatosEmTexto`. Quem é parte do pedido não o vê
-  na fila nem no histórico, não recebe o aviso do sino e, se tentar decidi-lo pelo id,
-  leva o mesmo "não encontrado ou já decidido" de um pedido inexistente ou já
-  decidido (os ids são sequenciais; a tentativa vai para a auditoria como
-  `MATCH_HANDLE_INVALID`, igual nos três casos).
+  na fila nem no histórico e não recebe o aviso do sino. A fila não traz o
+  `connections.id`, que é sequencial: traz uma alça opaca, cifrada e presa a quem leu
+  (`server/alca-do-pedido.ts`), e o histórico não traz id nenhum. Com o número à
+  mostra ("Pedido #18"), a distribuidora que também recebe pedidos juntava os ids da
+  fila, do histórico e das próprias conexões e achava nos buracos o pedido oculto
+  para ela, sem precisar chamar `decidir`. Alça que a conta não recebeu leva "não
+  encontrado ou já decidido" e fica na auditoria como `MATCH_HANDLE_INVALID`; alça de
+  pedido que outra pessoa já decidiu leva a mesma resposta, sem linha de bloqueio
+  (nenhuma alça aponta para pedido oculto, então as duas trilhas não dizem nada dele).
 - **A resposta de `connections.send` continua idêntica** em todos os desfechos
-  (novo, em análise, repetido, recusado, não encaminhado): sem oráculo. A recusa do
+  (novo, em análise, repetido, recusado, não encaminhado): sem oráculo no conteúdo. E
+  ela não espera o aviso a quem distribui, que roda depois de a resposta sair: com o
+  aviso no caminho, o pedido novo demorava bem mais que o clique sobre o pedido oculto
+  da outra parte (ver os limites abaixo). A recusa do
   distribuidor chega à solicitante como "não encaminhado", sem o motivo; a nota é
   interna (`connections.moderationNote`).
 
 Interesse recíproco durante a análise (`reciprocatedAt`): o pedido passa a ser das
 duas, as duas veem "em análise", e a aprovação vira `accepted` de uma vez, com as
 duas linhas de `MATCH_IDENTITY_REVEALED` (`via: "distribuidor"`). A projeção não diz
-quem clicou primeiro: nessas linhas `souDestinataria` sai falso e, na lista de
-conexões, a data (e a ordem) é a do clique de quem consulta. Se o distribuidor não
+quem clicou primeiro: nessas linhas `souDestinataria` sai falso; o id da conexão não
+sai (no par recíproco a linha é da outra pessoa, e o id, menor que o de um pedido
+anterior de quem consulta, contava a ordem; ele só vai no pedido encaminhado que a
+pessoa responde); e, na lista de conexões, a data (e a ordem) é a do clique de quem
+consulta. Se o distribuidor não
 encaminhar, as duas veem "não encaminhado" e as duas recebem o aviso, com o mesmo
 texto de um pedido feito sozinha: nada nele conta que a outra também clicou. O desfecho
 sai do banco no instante da escrita: um clique que chega enquanto o distribuidor
@@ -366,7 +377,32 @@ Pedido não encaminhado e, depois, clique da outra pessoa: para ela a linha recu
 não existe, então o clique vira o pedido novo dela, analisado pelos próprios méritos.
 Responder "nada" deixaria o cartão igual depois do clique, e esse cartão parado seria
 justamente o sinal da recusa. O par passa a ter duas linhas, e o cartão e a aba
-Conexões mostram a mesma: a mais recente entre as que cada pessoa pode ver.
+Conexões mostram a mesma entre as que cada pessoa pode ver, escolhida pelo estado: a
+conexão aceita, depois o pedido encaminhado que ela responde, depois o encaminhado que
+ela espera e, no empate, a mais recente. A ordem por estado cobre também as duas
+linhas de uma corrida de cliques (não há índice único no par): "a mais recente" pura
+escondia de um dos lados a conexão aceita, ou o pedido que a outra precisava aceitar.
+
+**Limites conhecidos do passo do distribuidor** (revisão dos consertos da #115, 15/09/2026):
+
+- **Tempo de resposta.** Sem o aviso no caminho, o pedido novo grava uma linha
+  (INSERT) e o clique recíproco atualiza outra (UPDATE). Medido num MariaDB local, 200
+  cliques por caso: mediana de 6,03 ms no par vazio contra 5,68 ms com o pedido oculto
+  da outra parte, e adivinhar o caso por um clique acerta 54,5% (antes do conserto,
+  91%). O tempo do par vazio deixou de crescer com o número de distribuidoras. Cada
+  par dá uma amostra só (o segundo clique cai no ramo sem escrita nos dois casos), e a
+  rede até o servidor soma mais ruído que essa diferença.
+- **O id do pedido encaminhado.** No pedido `pending` em que a pessoa é destinatária o
+  id da conexão ainda sai, porque a tela responde por ele. Ela já sabe que foi pedida;
+  o número só conta a posição na sequência. Quem tiver dois desses ao mesmo tempo e
+  vigiar a fila de distribuição poderia contar as linhas criadas entre eles. Fecha de
+  vez com alça opaca também em `connections.respond`.
+- **A trilha de auditoria da conta Ouro.** `admin.getAuditLogs` mostra ação, pessoa e
+  hora de cada linha (sem os detalhes). Uma distribuidora que também é Ouro pode contar
+  as linhas `MATCH_REVIEW_*` de outras distribuidoras e comparar com o histórico, que
+  não traz os pedidos de que ela é parte: a diferença inclui a decisão de um pedido
+  oculto para ela. É consequência da regra "Ouro = administradora" (CLAUDE.md), não da
+  fila.
 
 **Limite conhecido**: o termo do Smart Match não diz, hoje, que uma pessoa lê os
 dois perfis antes da entrega. Registrado em decisoes-em-aberto.md (D7).

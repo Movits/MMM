@@ -7,6 +7,7 @@ import {
   listarPedidosEmAnalise, lerPedidoDeMatch, decidirPedidoDeMatch, listarHistoricoDeDistribuicao, idsDeContasAtivas,
 } from "../db";
 import { createAuditLog } from "../security";
+import { selarAlcaDoPedido, abrirAlcaDoPedido } from "../alca-do-pedido";
 import { registrarRevelacao } from "./connections";
 import { mascararContatosEmTexto } from "@shared/contato-em-texto";
 
@@ -29,6 +30,7 @@ const CORPO_CONCEDIDO =
   "os pedidos de interesse do Smart Match passam pela sua análise antes de chegar à outra pessoa. " +
   "A fila de análise fica no Painel Ouro, na aba Distribuição.";
 const TITULO_REVOGADO = "Poder de distribuição revogado";
+const PEDIDO_AUSENTE = "Pedido não encontrado ou já decidido.";
 
 type PerfilCru = Awaited<ReturnType<typeof listarPedidosEmAnalise>>[number]["solicitante"];
 
@@ -113,10 +115,13 @@ export const distribuicaoRouter = router({
       userId: ctx.user.id, action: "DISTRIBUTOR_VIEW_QUEUE", resource: "connections",
       details: { pedidos: pedidos.length }, status: "success", riskLevel: "medium",
     });
-    // Os ids das partes serviram às travas acima e PARAM aqui: a fila age pelo
-    // `connectionId`. Lista-branca explícita, como em profileMatches.
+    // Os ids das partes serviram às travas acima e PARAM aqui, e o id do pedido
+    // também: a fila age pela alça opaca, presa a quem leu (server/alca-do-pedido.ts).
+    // Com o `connections.id` sequencial na tela ("Pedido #18"), a distribuidora que
+    // também recebe pedidos achava pelos buracos da sequência o pedido oculto para
+    // ela. Lista-branca explícita, como em profileMatches.
     return pedidos.map((p, i) => ({
-      connectionId: p.connectionId,
+      alca: selarAlcaDoPedido(p.connectionId, ctx.user.id),
       createdAt: p.createdAt,
       reciprocado: p.reciprocatedAt !== null,
       solicitante: perfilParaAnalise(p.solicitante),
@@ -136,33 +141,41 @@ export const distribuicaoRouter = router({
   // pode ter sido revogado e o perfil pode ter mudado desde o clique.
   decidir: distribuidorProcedure
     .input(z.object({
-      connectionId: z.number().int(),
+      alca: z.string().min(1).max(200),
       aprovar: z.boolean(),
       nota: z.string().max(1000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // A nota é conferida ANTES de ler o banco: é validação da entrada, e a
-      // resposta a um pedido sem nota não pode mudar conforme o id exista, seja de
-      // quem decide ou já tenha sido decidido.
+      // A nota é conferida ANTES de abrir a alça e de ler o banco: é validação da
+      // entrada, e a resposta a um pedido sem nota não pode mudar conforme a alça
+      // valha ou o pedido ainda esteja em análise.
       const nota = input.nota?.trim() || null;
       if (!input.aprovar && !nota) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Diga por que não encaminhou. A nota fica só na trilha interna." });
       }
 
-      const pedido = await lerPedidoDeMatch(input.connectionId, ctx.user.id);
-      if (!pedido) {
-        // Id inexistente, pedido em que quem decide é PARTE e pedido que já saiu da
-        // análise recebem a MESMA resposta (a leitura só acha `in_review` de
-        // terceiros). Os ids de `connections` são sequenciais e aparecem na fila, no
-        // histórico e no cartão: se "já decidido" tivesse código próprio, a
-        // destinatária distribuidora acharia pelos buracos da sequência o pedido
-        // oculto para ela. A tentativa fica na trilha, igual nos três casos (a conta
-        // Ouro lê a auditoria no painel), como a alça inválida de connections.send.
+      const connectionId = abrirAlcaDoPedido(input.alca, ctx.user.id);
+      if (connectionId === null) {
+        // Alça que a fila não entregou a esta conta: inventada, adulterada ou de
+        // outra distribuidora. Fica na trilha como a alça inválida de
+        // connections.send, para a varredura não ser silenciosa.
         await createAuditLog({
           userId: ctx.user.id, action: "MATCH_HANDLE_INVALID", resource: "distribuicao.decidir",
-          resourceId: String(input.connectionId), status: "blocked", riskLevel: "high",
+          status: "blocked", riskLevel: "high",
         });
-        throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado ou já decidido." });
+        throw new TRPCError({ code: "NOT_FOUND", message: PEDIDO_AUSENTE });
+      }
+
+      const pedido = await lerPedidoDeMatch(connectionId, ctx.user.id);
+      if (!pedido) {
+        // A alça é legítima, e a fila nunca traz pedido de que quem consulta é
+        // parte: o pedido saiu da análise depois que esta fila carregou (outra
+        // pessoa decidiu) ou a conta de uma das partes foi excluída. É clique em
+        // fila velha, não tentativa de nada: sem linha de bloqueio na trilha, que
+        // antes enchia o painel de "alto risco" num uso normal da tela. Nada aqui
+        // denuncia pedido oculto, porque nenhuma alça aponta para um. A resposta é a
+        // mesma da alça inválida, e a tela recarrega a fila.
+        throw new TRPCError({ code: "NOT_FOUND", message: PEDIDO_AUSENTE });
       }
 
       if (input.aprovar) {
@@ -251,8 +264,8 @@ export const distribuicaoRouter = router({
     }),
 
   // As decisões já tomadas (de qualquer distribuidor), com os nomes das partes:
-  // leitura nominal, auditada como a fila, e sem os pedidos em que quem consulta
-  // é parte.
+  // leitura nominal, auditada como a fila, sem os pedidos em que quem consulta
+  // é parte e sem o id da conexão (listarHistoricoDeDistribuicao).
   historico: distribuidorProcedure
     .input(z.object({ limit: z.number().int().min(1).max(100).default(50) }))
     .query(async ({ ctx, input }) => {

@@ -1129,7 +1129,7 @@ function PerfilNaFila({ titulo, perfil, termoOk }: { titulo: string; perfil: Per
 }
 
 function FilaDeAnalise() {
-  const [recusaDialog, setRecusaDialog] = useState<{ connectionId: number; quem: string; reciprocado: boolean } | null>(null);
+  const [recusaDialog, setRecusaDialog] = useState<{ alca: string; quem: string; reciprocado: boolean } | null>(null);
   const [nota, setNota] = useState("");
   const filaQuery = trpc.distribuicao.fila.useQuery();
   const historicoQuery = trpc.distribuicao.historico.useQuery({ limit: 30 });
@@ -1174,10 +1174,13 @@ function FilaDeAnalise() {
               const travasOk = p.termoOk.solicitante && p.termoOk.destinataria && p.ativas.solicitante && p.ativas.destinataria && !p.bloqueadoPeloPortao;
               const quem = `${p.solicitante.name || "Sem nome"} → ${p.destinataria.name || "Sem nome"}`;
               return (
-                <div key={p.connectionId} className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5 space-y-4">
+                <div key={p.alca} className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5 space-y-4">
                   <div className="flex items-center justify-between flex-wrap gap-2">
+                    {/* Sem número de pedido: o servidor manda só a alça opaca. O id
+                        sequencial na tela deixava a distribuidora que também recebe
+                        pedidos achar pelos buracos o pedido oculto para ela. */}
                     <p className="text-xs text-white/40">
-                      Pedido #{p.connectionId} · {new Date(p.createdAt).toLocaleString("pt-BR")}
+                      Pedido feito em {new Date(p.createdAt).toLocaleString("pt-BR")}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {p.reciprocado && (
@@ -1228,7 +1231,7 @@ function FilaDeAnalise() {
                       size="sm"
                       className="text-red-400 border-red-400/30 hover:bg-red-400/10 bg-transparent text-xs"
                       disabled={decidirMutation.isPending}
-                      onClick={() => { setRecusaDialog({ connectionId: p.connectionId, quem, reciprocado: p.reciprocado }); setNota(""); }}
+                      onClick={() => { setRecusaDialog({ alca: p.alca, quem, reciprocado: p.reciprocado }); setNota(""); }}
                     >
                       Não encaminhar
                     </Button>
@@ -1236,7 +1239,7 @@ function FilaDeAnalise() {
                       size="sm"
                       className="bg-amber-400 hover:bg-amber-500 text-[#151312] text-xs font-bold"
                       disabled={decidirMutation.isPending || !travasOk}
-                      onClick={() => decidirMutation.mutate({ connectionId: p.connectionId, aprovar: true })}
+                      onClick={() => decidirMutation.mutate({ alca: p.alca, aprovar: true })}
                     >
                       <Share2 size={12} className="mr-1" /> Encaminhar
                     </Button>
@@ -1260,8 +1263,10 @@ function FilaDeAnalise() {
           </div>
         ) : (
           <div className="space-y-2">
-            {historico.map(h => (
-              <div key={h.connectionId} className="p-3.5 rounded-xl bg-white/3 border border-white/8 text-xs">
+            {/* A chave é a posição: o histórico não traz o id da conexão, pelo mesmo
+                motivo da fila, e a lista só é lida, nunca reordenada na tela. */}
+            {historico.map((h, i) => (
+              <div key={i} className="p-3.5 rounded-xl bg-white/3 border border-white/8 text-xs">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-white/80">
                     {h.solicitanteNome || "Sem nome"} → {h.destinatariaNome || "Sem nome"}
@@ -1309,7 +1314,7 @@ function FilaDeAnalise() {
             <Button
               className="bg-red-500 hover:bg-red-600 text-white font-bold"
               disabled={nota.trim().length === 0 || decidirMutation.isPending}
-              onClick={() => recusaDialog && decidirMutation.mutate({ connectionId: recusaDialog.connectionId, aprovar: false, nota: nota.trim() })}
+              onClick={() => recusaDialog && decidirMutation.mutate({ alca: recusaDialog.alca, aprovar: false, nota: nota.trim() })}
             >
               {decidirMutation.isPending ? "Registrando..." : "Confirmar: não encaminhar"}
             </Button>

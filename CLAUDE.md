@@ -179,13 +179,20 @@ em `db.ts` tira a linha do join em `getMatchesForUser` e do WHERE em
 (`distribuicao.decidir`) é um UPDATE com `status = 'in_review'` no WHERE: 0 linhas =
 CONFLICT, sem efeito; `respondToConnection` e o interesse mútuo em
 `sendConnectionRequest` também levam o status no WHERE. Quem é PARTE de um pedido
-não o vê na fila nem no histórico, não recebe o aviso do sino e leva NOT_FOUND ao
-tentar decidi-lo pelo id (nunca FORBIDDEN, que denunciaria o pedido oculto); pedido
-já decidido leva o mesmo NOT_FOUND (os ids são sequenciais: um "já decidido" próprio
-acusaria os buracos). Se a
-outra pessoa clica depois de um `not_forwarded` oculto para ela, nasce o pedido dela
-(o par pode ter duas linhas; o cartão e a aba Conexões mostram a mesma, a mais recente
-visível, por `linhaMaisRecenteVisivelDoPar`). Sem
+não o vê na fila nem no histórico e não recebe o aviso do sino. **O `connections.id`
+sequencial não sai para quem distribui nem para as partes**: a fila entrega uma alça
+opaca (`server/alca-do-pedido.ts`, AES-GCM presa à conta que leu) e `decidir` age por
+ela; o histórico não traz id; o cartão e a aba Conexões só trazem o id do pedido
+encaminhado que a pessoa responde (`idParaResponder` em `db.ts`). Com o id à mostra, a
+destinatária distribuidora achava pelos buracos da sequência o pedido oculto para ela,
+e um id menor que o do próprio clique contava que a outra pessoa pediu antes. Alça que
+a conta não recebeu dá NOT_FOUND e `MATCH_HANDLE_INVALID`; alça de pedido que já saiu
+da análise (fila velha) dá o mesmo NOT_FOUND, sem trilha. Se a
+outra pessoa clica depois de um `not_forwarded` oculto para ela, nasce o pedido dela.
+O par pode ter duas linhas (esse caso e a corrida de dois cliques, sem índice único): o
+cartão e a aba mostram a mesma, escolhida pelo estado (aceita, depois a encaminhada que
+a pessoa responde, depois a encaminhada que ela espera, depois a mais recente), por
+`linhaVisivelDoPar`. Sem
 distribuidor que possa decidir, o pedido FICA esperando e president/admin ativos
 recebem o aviso (contas Ouro não, como no aviso de oportunidade pendente). A fila está
 na `main` desde a #113: enquanto ninguém tiver o poder concedido em produção, todo

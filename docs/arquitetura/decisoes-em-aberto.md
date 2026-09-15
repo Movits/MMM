@@ -304,9 +304,15 @@ Desde a #115 o par pode ter duas linhas de propósito (o pedido `not_forwarded` 
 pessoa e, depois, o pedido novo da outra), e um índice único no par quebraria esse
 fluxo. O que cabe é único por direção (`requesterId`, `recipientId`): o código já não
 insere segunda linha da mesma pessoa no par (`sendConnectionRequest`), e o índice
-fecharia a corrida de dois cliques simultâneos dela. Exige migração (fora do
-congelamento de 16/09/2026) e conferir antes se há duplicatas antigas. Hoje a trava
-contra dupla revelação é o status no WHERE.
+fecharia a corrida de dois cliques simultâneos DELA (clique duplo, duas abas). Ele não
+fecha a corrida cruzada: as duas pessoas clicando uma na outra ao mesmo tempo geram
+uma linha em cada direção, e o índice por direção aceita as duas; para esse caso seria
+preciso serializar o clique no par. Exige migração (fora do congelamento de
+16/09/2026) e conferir antes se há duplicatas antigas. Hoje: a trava contra dupla
+revelação é o status no WHERE; o botão "Demonstrar Interesse" fica desabilitado
+enquanto o clique está a caminho; e o cartão e a aba Conexões escolhem a linha do par
+pelo estado (`linhaVisivelDoPar`), para uma duplicata não esconder a conexão aceita
+nem o pedido que a pessoa precisa responder (revisão da #115).
 
 ---
 

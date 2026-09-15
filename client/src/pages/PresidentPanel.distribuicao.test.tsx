@@ -98,7 +98,7 @@ const perfil = (name: string, extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 const pedido = (extra: Record<string, unknown> = {}) => ({
-  connectionId: 7, createdAt: new Date("2026-09-13T10:00:00Z"), reciprocado: false,
+  alca: "alca-opaca-7", createdAt: new Date("2026-09-13T10:00:00Z"), reciprocado: false,
   solicitante: perfil("Zoroastra Solicitante"), destinataria: perfil("Quintiliana Destinatária"),
   compatibilidade: { overallScore: 82, specialtyScore: 90, objectivesScore: 80, incomeScore: 70, locationScore: 60, valuesScore: 50, aiInsight: "Vinho e capital." },
   bloqueadoPeloPortao: false, termoOk: { solicitante: true, destinataria: true }, ativas: { solicitante: true, destinataria: true },
@@ -304,11 +304,14 @@ describe("aba Distribuição para quem tem o poder — Fila de análise", () => 
     expect(screen.getByRole("button", { name: /^encaminhar$/i })).toBeEnabled();
   });
 
-  it("Encaminhar chama decidir({ connectionId, aprovar: true })", () => {
+  it("Encaminhar chama decidir({ alca, aprovar: true }); o cartão não mostra número de pedido", () => {
     duble.fila = [pedido()];
     render(<PresidentPanel />);
+    // O número sequencial na tela deixava achar pelos buracos o pedido oculto.
+    expect(screen.getByText(/^Pedido feito em /)).toBeInTheDocument();
+    expect(screen.queryByText(/Pedido #/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^encaminhar$/i }));
-    expect(duble.decidir).toHaveBeenCalledWith({ connectionId: 7, aprovar: true });
+    expect(duble.decidir).toHaveBeenCalledWith({ alca: "alca-opaca-7", aprovar: true });
   });
 
   it("Não encaminhar exige a nota (até 1000); o diálogo diz que só quem pediu vê; depois chama decidir com a nota", () => {
@@ -326,7 +329,7 @@ describe("aba Distribuição para quem tem o poder — Fila de análise", () => 
     fireEvent.change(campo, { target: { value: "  Setores sem relação  " } });
     expect(confirmar).toBeEnabled();
     fireEvent.click(confirmar);
-    expect(duble.decidir).toHaveBeenCalledWith({ connectionId: 7, aprovar: false, nota: "Setores sem relação" });
+    expect(duble.decidir).toHaveBeenCalledWith({ alca: "alca-opaca-7", aprovar: false, nota: "Setores sem relação" });
   });
 
   it("não encaminhar pedido RECÍPROCO: o diálogo diz que as duas pessoas veem e são avisadas", () => {
@@ -355,7 +358,7 @@ describe("aba Distribuição para quem tem o poder — Fila de análise", () => 
 
   it("histórico lista as decisões com quem decidiu, o resultado e a nota", () => {
     duble.historico = [{
-      connectionId: 3, decididoEm: new Date("2026-09-12T09:00:00Z"), decididoPor: { id: 2, name: "Distribuidora" },
+      decididoEm: new Date("2026-09-12T09:00:00Z"), decididoPor: { id: 2, name: "Distribuidora" },
       resultado: "not_forwarded", nota: "Setores sem relação", reciprocado: false,
       solicitanteNome: "Ana Histórica", destinatariaNome: "Bia Histórica",
     }];

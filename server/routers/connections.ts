@@ -119,7 +119,12 @@ export const connectionsRouter = router({
       if (resultado.revelou) await registrarRevelacao(resultado.connectionId, ctx.user.id, alvo, "interesse_mutuo");
       // Pedido novo: fica em análise até o distribuidor conferir e encaminhar.
       // A destinatária não é avisada aqui — ela só fica sabendo se for encaminhado.
-      if (resultado.emAnalise) await avisarQuemDistribui(ctx.user.id, alvo);
+      // Sem await, de propósito: o aviso lê quem distribui e grava uma linha por
+      // pessoa, e esperar por ele fazia o pedido novo responder bem mais devagar que
+      // o clique que só marca `reciprocatedAt` no pedido oculto da outra parte —
+      // cronometrar o próprio clique dizia que a outra pessoa pediu antes (revisão
+      // da #115). avisarQuemDistribui nunca lança: engole a própria falha.
+      if (resultado.emAnalise) void avisarQuemDistribui(ctx.user.id, alvo);
       // Resposta IGUAL em todos os casos que não são erro: pedido novo, pedido
       // repetido, em análise, não encaminhado, recusado ou bloqueado. Antes, o
       // `CONFLICT` distinguível dizia a quem perguntasse que aquela pessoa já

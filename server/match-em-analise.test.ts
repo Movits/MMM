@@ -245,7 +245,15 @@ describe("respondToConnection — o aceite leva o status no WHERE", () => {
 });
 
 describe("a destinatária não vê o pedido em análise — regra de consulta", () => {
-  it("getMatchesForUser: ocultação no JOIN, uma linha por par (a mais recente visível) e o nome atrás do aceite", async () => {
+  // A linha do par escolhida pelo ESTADO (revisão da #115): a aceita, depois o pedido
+  // encaminhado a quem consulta, depois o encaminhado que ela espera e, no empate, a
+  // mais recente. Com MAX(id) puro, uma duplicata de corrida escondia a aceita.
+  const ESCOLHA_DA_LINHA_DO_PAR = "order by CASE WHEN `conexao_do_par`.`status` = 'accepted' THEN 0 WHEN `conexao_do_par`.`status` = 'pending' AND `conexao_do_par`.`recipientId` = ? THEN 1 WHEN `conexao_do_par`.`status` = 'pending' THEN 2 ELSE 3 END, `conexao_do_par`.`id` desc limit ?)";
+  // O id da conexão só no pedido que quem consulta responde; o id sequencial em
+  // qualquer outro estado contava quem clicou primeiro no par recíproco.
+  const ID_PARA_RESPONDER = "CASE WHEN `connections`.`status` = 'pending' AND `connections`.`recipientId` = ? THEN `connections`.`id` ELSE NULL END";
+
+  it("getMatchesForUser: ocultação no JOIN, uma linha por par (escolhida pelo estado), o nome atrás do aceite e o id só no pedido a responder", async () => {
     await db.getMatchesForUser(1, 50);
     const [consulta] = selects();
     expect(consulta.sql).toContain("CASE WHEN `connections`.`status` = 'accepted'");
@@ -253,14 +261,18 @@ describe("a destinatária não vê o pedido em análise — regra de consulta", 
     // oculta não derruba o match, só some o estado da conexão.
     const trechoDoJoin = consulta.sql.slice(consulta.sql.indexOf("left join `connections`"), consulta.sql.lastIndexOf(" where `matches`"));
     expect(trechoDoJoin).toContain(OCULTACAO);
-    // A subconsulta da linha mais recente visível do par, com o MESMO predicado na tabela apelidada.
+    // A subconsulta da linha do par que esta pessoa vê, com o MESMO predicado na tabela apelidada.
     // Numa subconsulta de tabela única o drizzle não qualifica a coluna selecionada:
-    // `MAX(`id`)` resolve para o escopo mais interno (conexao_do_par), pela regra de
+    // `id` resolve para o escopo mais interno (conexao_do_par), pela regra de
     // escopo do SQL, e não para `connections` nem `matches` do lado de fora.
-    expect(trechoDoJoin).toContain("`connections`.`id` = (select MAX(`id`) from `connections` `conexao_do_par` where");
+    expect(trechoDoJoin).toContain("`connections`.`id` = (select `id` from `connections` `conexao_do_par` where");
     expect(trechoDoJoin).toContain("NOT (`conexao_do_par`.`status` IN ('in_review', 'not_forwarded') AND `conexao_do_par`.`recipientId` = ? AND `conexao_do_par`.`reciprocatedAt` IS NULL)");
-    // A projeção não diz quem clicou primeiro numa linha recíproca em análise.
+    expect(trechoDoJoin).toContain(ESCOLHA_DA_LINHA_DO_PAR);
+    // A projeção não diz quem clicou primeiro numa linha recíproca em análise: nem
+    // por `souDestinataria`, nem pelo id, que só sai no pedido encaminhado a quem consulta.
     expect(consulta.sql).toContain("`connections`.`recipientId` = ? AND `connections`.`status` NOT IN ('in_review', 'not_forwarded')");
+    expect(consulta.sql).toContain(ID_PARA_RESPONDER);
+    expect(consulta.sql).not.toContain("`connections`.`id`, `connections`.`status`");
   });
 
   it("getConnectionsForUser: o MESMO predicado no WHERE, e data e ordem pelo clique de quem consulta na linha recíproca", async () => {
@@ -280,7 +292,9 @@ describe("a destinatária não vê o pedido em análise — regra de consulta", 
     await db.getConnectionsForUser(1);
     const [consulta] = selects();
     const trechoDoWhere = consulta.sql.slice(consulta.sql.indexOf(" where "));
-    expect(trechoDoWhere).toContain("`connections`.`id` = (select MAX(`id`) from `connections` `conexao_do_par` where");
+    expect(trechoDoWhere).toContain("`connections`.`id` = (select `id` from `connections` `conexao_do_par` where");
+    expect(trechoDoWhere).toContain(ESCOLHA_DA_LINHA_DO_PAR);
+    expect(consulta.sql).toContain(`select ${ID_PARA_RESPONDER}, \`connections\`.\`status\``);
     const outraParte = "CASE WHEN `connections`.`requesterId` = ? THEN `connections`.`recipientId` ELSE `connections`.`requesterId` END";
     expect(trechoDoWhere).toContain(`\`conexao_do_par\`.\`recipientId\` = ${outraParte}`);
     expect(trechoDoWhere).toContain(`\`conexao_do_par\`.\`requesterId\` = ${outraParte}`);
@@ -362,9 +376,11 @@ describe("a fila, a leitura do pedido e a decisão do distribuidor", () => {
     expect(r).toEqual({ status: "not_forwarded", reciprocado: false });
   });
 
-  it("listarHistoricoDeDistribuicao: só linhas decididas e sem as em que quem consulta é parte, mais recentes primeiro", async () => {
+  it("listarHistoricoDeDistribuicao: só linhas decididas e sem as em que quem consulta é parte, mais recentes primeiro, sem o id da conexão", async () => {
     await db.listarHistoricoDeDistribuicao(9, 30);
     const [consulta] = selects();
+    // O id sequencial somado ao da fila deixava achar pelos buracos o pedido oculto.
+    expect(consulta.sql).not.toContain("`connections`.`id`");
     expect(consulta.sql).toContain("`connections`.`moderatedAt` IS NOT NULL");
     expect(consulta.sql).toContain("`connections`.`requesterId` <> ?");
     expect(consulta.sql).toContain("`connections`.`recipientId` <> ?");
@@ -396,16 +412,20 @@ describe("a fila, a leitura do pedido e a decisão do distribuidor", () => {
 describe("pinos de fonte (db.ts)", () => {
   const fonte = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
 
-  it("o predicado de ocultação é UM só (pedidoVisivelPara), e a escolha da linha do par também: as duas consultas usam os dois", () => {
+  it("o predicado de ocultação é UM só (pedidoVisivelPara), e a escolha da linha do par e o id a responder também: as duas consultas usam os três", () => {
     expect(fonte.match(/pedidoVisivelPara\(userId\)/g)).toHaveLength(2);
+    expect(fonte.match(/idParaResponder\(userId\)/g)).toHaveLength(2);
     const getMatches = fonte.slice(fonte.indexOf("export async function getMatchesForUser"), fonte.indexOf("export async function dismissMatch"));
     const getConnections = fonte.slice(fonte.indexOf("export async function getConnectionsForUser"), fonte.indexOf("function pedidoVisivelPara"));
-    const linhaDoPar = fonte.slice(fonte.indexOf("function linhaMaisRecenteVisivelDoPar"), fonte.indexOf("function linhasAfetadas"));
+    const linhaDoPar = fonte.slice(fonte.indexOf("function linhaVisivelDoPar"), fonte.indexOf("function linhasAfetadas"));
     expect(getMatches).toContain("pedidoVisivelPara(userId)");
-    expect(getMatches).toContain("linhaMaisRecenteVisivelDoPar(db, userId, matches.matchedUserId!)");
+    expect(getMatches).toContain("linhaVisivelDoPar(db, userId, matches.matchedUserId!)");
+    expect(getMatches).toContain("connectionId: idParaResponder(userId)");
     expect(getConnections).toContain("pedidoVisivelPara(userId)");
-    expect(getConnections).toContain("linhaMaisRecenteVisivelDoPar(db, userId, outraParte)");
+    expect(getConnections).toContain("linhaVisivelDoPar(db, userId, outraParte)");
+    expect(getConnections).toContain("id: idParaResponder(userId)");
     expect(linhaDoPar).toContain("pedidoVisivelPara(userId, conexaoDoPar)");
+    expect(linhaDoPar).toContain(".limit(1)");
   });
 
   it("o insert do pedido novo diz in_review explicitamente (não depende do default da coluna)", () => {

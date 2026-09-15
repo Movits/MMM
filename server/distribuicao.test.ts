@@ -17,8 +17,9 @@ process.env.DATABASE_URL ??= "mysql://teste:teste@localhost/teste";
  * distribui (nunca uma das partes) e só o distribuidor o encaminha
  * (`pending`/`accepted`) ou não (`not_forwarded`). A fila e o histórico mostram
  * as duas partes com nome e sem id/e-mail, cada leitura fica na auditoria, e
- * quem é parte de um pedido não o vê nem consegue distingui-lo de um id
- * inexistente ou de um pedido já decidido.
+ * quem é parte de um pedido não o vê. A fila age por alça opaca, não pelo id
+ * sequencial da conexão, e a alça legítima de pedido já decidido responde igual à
+ * alça inválida.
  *
  * `./db` vira um dublê por função (molde de etapa13-trilha-de-aceite.test.ts):
  * registra cada chamada com os argumentos para o teste dizer o que NÃO pode
@@ -49,6 +50,8 @@ const estado = vi.hoisted(() => ({
   envio: { revelou: false, connectionId: 7, emAnalise: true } as { revelou: boolean; connectionId: number | null; emAnalise: boolean },
   distribuidoresAtivos: [] as number[],
   presidencia: [] as number[],
+  /** Quando preenchida, o aviso a quem distribui fica preso nela. */
+  segurarAviso: null as Promise<void> | null,
 }));
 
 vi.mock("./db", () => new Proxy({}, {
@@ -79,7 +82,10 @@ vi.mock("./db", () => new Proxy({}, {
       if (prop === "idsDeContasAtivas") return new Set((args[0] as number[]).filter(id => estado.ativas.includes(id)));
       if (prop === "resolverAlvoDoMatch") return estado.alvo;
       if (prop === "sendConnectionRequest") return estado.envio;
-      if (prop === "idsDosDistribuidoresAtivos") return estado.distribuidoresAtivos;
+      if (prop === "idsDosDistribuidoresAtivos") {
+        if (estado.segurarAviso) await estado.segurarAviso;
+        return estado.distribuidoresAtivos;
+      }
       if (prop === "idsDaPresidenciaAtiva") return estado.presidencia;
       return undefined;
     };
@@ -102,6 +108,7 @@ const { distribuicaoRouter } = await import("./routers/distribuicao");
 const { connectionsRouter } = await import("./routers/connections");
 const { distribuidorProcedure, presidentProcedure } = await import("./routers/_procedures");
 const { router } = await import("./_core/trpc");
+const { selarAlcaDoPedido, abrirAlcaDoPedido } = await import("./alca-do-pedido");
 
 // Um consumidor mínimo da procedure, para provar a régua sem depender da fila.
 const routerDeProva = router({
@@ -151,6 +158,7 @@ beforeEach(() => {
   estado.envio = { revelou: false, connectionId: 7, emAnalise: true };
   estado.distribuidoresAtivos = [];
   estado.presidencia = [];
+  estado.segurarAviso = null;
 });
 
 // ═══════════════════════════ parte 1: o poder ═══════════════════════════════
@@ -310,7 +318,8 @@ describe("connections.send — o pedido novo espera o distribuidor", () => {
     const r = await connectionsRouter.createCaller(solicitante).send({ matchId: 55 });
     expect(r).toEqual({ success: true, revelou: false });
 
-    expect(avisos().map(a => a.userId)).toEqual([8, 9]);
+    // O aviso sai sem await (a resposta não espera por ele): o teste espera o sino.
+    await vi.waitFor(() => expect(avisos().map(a => a.userId)).toEqual([8, 9]));
     for (const aviso of avisos()) {
       expect(aviso).toMatchObject({ type: "system", actionUrl: "/president" });
       expect(`${aviso.title} ${aviso.body}`).not.toMatch(/Conta|conta-1|t@local/);
@@ -323,7 +332,7 @@ describe("connections.send — o pedido novo espera o distribuidor", () => {
     estado.distribuidoresAtivos = [2];
     estado.presidencia = [4];
     await connectionsRouter.createCaller(solicitante).send({ matchId: 55 });
-    expect(avisos().map(a => a.userId)).toEqual([4]);
+    await vi.waitFor(() => expect(avisos().map(a => a.userId)).toEqual([4]));
     expect(String(avisos()[0].body)).toMatch(/nenhum distribuidor/i);
   });
 
@@ -331,7 +340,7 @@ describe("connections.send — o pedido novo espera o distribuidor", () => {
     estado.distribuidoresAtivos = [];
     estado.presidencia = [1, 2, 4];
     await connectionsRouter.createCaller(solicitante).send({ matchId: 55 });
-    expect(avisos().map(a => a.userId)).toEqual([4]);
+    await vi.waitFor(() => expect(avisos().map(a => a.userId)).toEqual([4]));
     expect(String(avisos()[0].body)).toMatch(/nenhum distribuidor/i);
     expect(String(avisos()[0].body)).toMatch(/Painel Ouro/);
   });
@@ -358,11 +367,29 @@ describe("connections.send — o pedido novo espera o distribuidor", () => {
     estado.distribuidoresAtivos = [8];
     estado.sinoForaDoAr = true;
     await expect(connectionsRouter.createCaller(solicitante).send({ matchId: 55 })).resolves.toEqual({ success: true, revelou: false });
+    await vi.waitFor(() => expect(chamadas("createNotification")).toHaveLength(1));
+  });
+
+  it("a resposta não espera o aviso a quem distribui", async () => {
+    // Revisão da #115: com o aviso no caminho da resposta, o pedido novo (INSERT e
+    // aviso) demorava bem mais que o clique sobre o pedido oculto da outra parte (só
+    // o UPDATE de reciprocatedAt), e cronometrar o próprio clique contava que ela
+    // pediu antes. Com o aviso preso, a resposta tem de sair mesmo assim.
+    let soltar = () => {};
+    estado.segurarAviso = new Promise<void>(resolve => { soltar = resolve; });
+    estado.distribuidoresAtivos = [8];
+    await expect(connectionsRouter.createCaller(solicitante).send({ matchId: 55 })).resolves.toEqual({ success: true, revelou: false });
+    await vi.waitFor(() => expect(chamadas("idsDosDistribuidoresAtivos")).toHaveLength(1));
+    expect(avisos()).toEqual([]);
+    soltar();
+    await vi.waitFor(() => expect(avisos().map(a => a.userId)).toEqual([8]));
   });
 });
 
 // ═══════════════════════════ parte 2: a fila ════════════════════════════════
 const distribuidora = ctx({ id: 9, role: "silver", isDistributor: true });
+/** A alça que a fila entregaria à conta `quem` (a distribuidora 9, por padrão). */
+const alca = (connectionId: number, quem = 9) => selarAlcaDoPedido(connectionId, quem);
 
 describe("distribuicao.fila", () => {
   it("Ouro sem a flag leva FORBIDDEN sem consultar a fila", async () => {
@@ -385,7 +412,10 @@ describe("distribuicao.fila", () => {
     expect(chamadas("listarPedidosEmAnalise").map(c => c.args[0])).toEqual([9]);
     expect(fila).toHaveLength(1);
     const [p] = fila;
-    expect(p.connectionId).toBe(7);
+    // O id sequencial do pedido não sai: a fila entrega a alça opaca, que só abre para quem leu.
+    expect(p).not.toHaveProperty("connectionId");
+    expect(abrirAlcaDoPedido(p.alca, 9)).toBe(7);
+    expect(abrirAlcaDoPedido(p.alca, 8)).toBeNull();
     expect(p.reciprocado).toBe(true);
     expect(p.solicitante.name).toBe("Ana Solicitante");
     expect(p.destinataria.name).toBe("Bia Destinatária");
@@ -395,7 +425,7 @@ describe("distribuicao.fila", () => {
     expect(p.ativas).toEqual({ solicitante: true, destinataria: true });
 
     const texto = JSON.stringify(fila);
-    for (const proibido of ["requesterId", "recipientId", "userId", "email", "99999-8888", "ana@exemplo.com"]) {
+    for (const proibido of ["connectionId", "requesterId", "recipientId", "userId", "email", "99999-8888", "ana@exemplo.com"]) {
       expect(texto, proibido).not.toContain(proibido);
     }
     expect(p.solicitante.bio).not.toBe("me chama no 11 99999-8888 ou ana@exemplo.com");
@@ -419,24 +449,30 @@ describe("distribuicao.fila", () => {
 describe("distribuicao.decidir — travas antes do UPDATE", () => {
   const caller = () => distribuicaoRouter.createCaller(distribuidora);
 
-  it("pedido inexistente → NOT_FOUND, e a tentativa vai para a auditoria como alça inválida", async () => {
-    estado.pedido = null;
-    await expect(caller().decidir({ connectionId: 1, aprovar: true })).rejects.toMatchObject({ code: "NOT_FOUND", message: "Pedido não encontrado ou já decidido." });
+  it("alça que a fila não entregou a esta conta (inventada, adulterada, de outra distribuidora) → NOT_FOUND sem ler o banco, e a tentativa vai para a trilha", async () => {
+    const valida = alca(7);
+    const adulterada = valida.slice(0, 10) + (valida[10] === "A" ? "B" : "A") + valida.slice(11);
+    for (const invalida of ["7", adulterada, alca(7, 8)]) {
+      await expect(caller().decidir({ alca: invalida, aprovar: true })).rejects.toMatchObject({ code: "NOT_FOUND", message: "Pedido não encontrado ou já decidido." });
+    }
+    expect(chamadas("lerPedidoDeMatch")).toEqual([]);
     expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
-    expect(estado.auditorias).toEqual([expect.objectContaining({
-      userId: 9, action: "MATCH_HANDLE_INVALID", resource: "distribuicao.decidir", resourceId: "1", status: "blocked",
-    })]);
+    expect(estado.auditorias).toEqual(Array(3).fill(expect.objectContaining({
+      userId: 9, action: "MATCH_HANDLE_INVALID", resource: "distribuicao.decidir", status: "blocked", riskLevel: "high",
+    })));
   });
 
-  it("inexistente, pedido em que quem decide é PARTE e pedido já decidido: a MESMA resposta, a mesma trilha e nenhuma escrita", async () => {
-    // Os ids são sequenciais e aparecem na fila, no histórico e no cartão. Um
-    // FORBIDDEN para "é seu" ou um CONFLICT para "já decidido" deixaria a
-    // destinatária distribuidora achar, pelos buracos da sequência, o pedido oculto.
-    estado.pedido = null;
-    const inexistente = await caller().decidir({ connectionId: 7, aprovar: false, nota: "x" }).catch(e => e);
+  it("alça legítima de pedido que não está mais em análise (e, por garantia, de que se é parte): a MESMA resposta da alça inválida, nenhuma escrita e nenhuma linha de bloqueio", async () => {
+    // A fila só entrega alça de pedido de terceiros: alça que abre e não acha
+    // `in_review` é clique em fila velha (outra pessoa decidiu). Nada a bloquear, e a
+    // trilha deixa de encher o painel de "alto risco" num uso normal da tela. A
+    // resposta é igual à da alça inválida, e nenhuma das duas carrega id.
+    const inexistente = await caller().decidir({ alca: "7", aprovar: false, nota: "x" }).catch(e => e);
     expect(inexistente).toMatchObject({ code: "NOT_FOUND", message: "Pedido não encontrado ou já decidido." });
+    estado.auditorias = [];
 
-    const casos: Pedido[] = [
+    const casos: (Pedido | null)[] = [
+      null,
       { id: 7, requesterId: 9, recipientId: 3, status: "in_review", reciprocatedAt: null },
       { id: 7, requesterId: 2, recipientId: 9, status: "in_review", reciprocatedAt: null },
       { id: 7, requesterId: 2, recipientId: 9, status: "not_forwarded", reciprocatedAt: null },
@@ -448,20 +484,18 @@ describe("distribuicao.decidir — travas antes do UPDATE", () => {
     for (const pedido of casos) {
       estado.pedido = pedido;
       for (const entrada of [{ aprovar: false, nota: "x" }, { aprovar: true }]) {
-        const erro = await caller().decidir({ connectionId: 7, ...entrada }).catch(e => e);
+        const erro = await caller().decidir({ alca: alca(7), ...entrada }).catch(e => e);
         expect(erro.code, JSON.stringify({ pedido, entrada })).toBe(inexistente.code);
         expect(erro.message).toBe(inexistente.message);
       }
     }
-    expect(chamadas("lerPedidoDeMatch").map(c => c.args)).toEqual(Array(1 + casos.length * 2).fill([7, 9]));
+    expect(chamadas("lerPedidoDeMatch").map(c => c.args)).toEqual(Array(casos.length * 2).fill([7, 9]));
     expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
     expect(avisos()).toEqual([]);
-    // A trilha também não diz qual dos casos era: toda tentativa grava a mesma linha.
-    expect(estado.auditorias).toHaveLength(1 + casos.length * 2);
-    expect(new Set(estado.auditorias.map(a => JSON.stringify(a))).size).toBe(1);
+    expect(estado.auditorias).toEqual([]);
   });
 
-  it("não encaminhar exige a nota (BAD_REQUEST), conferida antes de ler o banco: a resposta não depende do pedido", async () => {
+  it("não encaminhar exige a nota (BAD_REQUEST), conferida antes da alça e do banco: a resposta não depende do pedido", async () => {
     for (const pedido of [
       null,
       { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: null },
@@ -469,8 +503,10 @@ describe("distribuicao.decidir — travas antes do UPDATE", () => {
       { id: 7, requesterId: 2, recipientId: 3, status: "pending", reciprocatedAt: null },
     ]) {
       estado.pedido = pedido;
-      await expect(caller().decidir({ connectionId: 7, aprovar: false })).rejects.toMatchObject({ code: "BAD_REQUEST" });
-      await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "   " })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      for (const a of [alca(7), "inventada"]) {
+        await expect(caller().decidir({ alca: a, aprovar: false })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+        await expect(caller().decidir({ alca: a, aprovar: false, nota: "   " })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      }
     }
     expect(chamadas("lerPedidoDeMatch")).toEqual([]);
     expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
@@ -480,36 +516,36 @@ describe("distribuicao.decidir — travas antes do UPDATE", () => {
   it("corrida entre duas distribuidoras: o CONFLICT só alcança quem NÃO é parte; a parte fica no NOT_FOUND mesmo com a decisão nula", async () => {
     estado.decidiu = false;
     estado.pedido = { id: 7, requesterId: 2, recipientId: 9, status: "in_review", reciprocatedAt: null };
-    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "x" }))
+    await expect(caller().decidir({ alca: alca(7),aprovar: false, nota: "x" }))
       .rejects.toMatchObject({ code: "NOT_FOUND", message: "Pedido não encontrado ou já decidido." });
     expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
 
     estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: null };
-    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "x" })).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(caller().decidir({ alca: alca(7),aprovar: false, nota: "x" })).rejects.toMatchObject({ code: "CONFLICT" });
     expect(chamadas("decidirPedidoDeMatch")).toHaveLength(1);
   });
 
   it("termo revogado por uma das partes → PRECONDITION_FAILED, sem UPDATE", async () => {
     estado.comTermo = [2];
-    await expect(caller().decidir({ connectionId: 7, aprovar: true })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    await expect(caller().decidir({ alca: alca(7),aprovar: true })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
   });
 
   it("conta inativa → PRECONDITION_FAILED, sem UPDATE", async () => {
     estado.ativas = [2];
-    await expect(caller().decidir({ connectionId: 7, aprovar: true })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    await expect(caller().decidir({ alca: alca(7),aprovar: true })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
   });
 
   it("portão da demanda expressa fechado → PRECONDITION_FAILED, sem UPDATE", async () => {
     estado.bloqueados = [3];
-    await expect(caller().decidir({ connectionId: 7, aprovar: true })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    await expect(caller().decidir({ alca: alca(7),aprovar: true })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(chamadas("decidirPedidoDeMatch")).toEqual([]);
   });
 
   it("as travas do encaminhamento não valem para NÃO encaminhar: recusa passa mesmo sem termo", async () => {
     estado.comTermo = [];
-    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "Sem termo vigente" }))
+    await expect(caller().decidir({ alca: alca(7),aprovar: false, nota: "Sem termo vigente" }))
       .resolves.toEqual({ success: true, statusFinal: "not_forwarded", reciprocado: false });
   });
 });
@@ -518,7 +554,7 @@ describe("distribuicao.decidir — efeitos", () => {
   const caller = () => distribuicaoRouter.createCaller(distribuidora);
 
   it("encaminhar: vira pending, audita, avisa a destinatária (interest_received) e a solicitante (system)", async () => {
-    await expect(caller().decidir({ connectionId: 7, aprovar: true, nota: "Par forte" }))
+    await expect(caller().decidir({ alca: alca(7),aprovar: true, nota: "Par forte" }))
       .resolves.toEqual({ success: true, statusFinal: "pending", reciprocado: false });
 
     expect(chamadas("decidirPedidoDeMatch").map(c => c.args)).toEqual([[7, { aprovar: true, moderatedBy: 9, moderationNote: "Par forte" }]]);
@@ -532,7 +568,7 @@ describe("distribuicao.decidir — efeitos", () => {
 
   it("encaminhar pedido recíproco: vira accepted, revela os dois nomes (via distribuidor) e avisa os dois", async () => {
     estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: new Date() };
-    await expect(caller().decidir({ connectionId: 7, aprovar: true }))
+    await expect(caller().decidir({ alca: alca(7),aprovar: true }))
       .resolves.toEqual({ success: true, statusFinal: "accepted", reciprocado: true });
 
     expect(chamadas("decidirPedidoDeMatch")[0].args[1]).toMatchObject({ aprovar: true, moderationNote: null });
@@ -547,7 +583,7 @@ describe("distribuicao.decidir — efeitos", () => {
   it("a destinatária clicou ENTRE a leitura do router e o UPDATE: vale o desfecho do banco (accepted) — revela e a trilha diz recíproco", async () => {
     estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: null };
     estado.reciprocadoNoBanco = true;
-    await expect(caller().decidir({ connectionId: 7, aprovar: true }))
+    await expect(caller().decidir({ alca: alca(7),aprovar: true }))
       .resolves.toEqual({ success: true, statusFinal: "accepted", reciprocado: true });
     expect(acoes()).toEqual(["MATCH_REVIEW_APPROVED", "MATCH_IDENTITY_REVEALED", "MATCH_IDENTITY_REVEALED"]);
     expect((estado.auditorias[0].details as { reciprocado: boolean }).reciprocado).toBe(true);
@@ -556,7 +592,7 @@ describe("distribuicao.decidir — efeitos", () => {
   });
 
   it("não encaminhar: vira not_forwarded com a nota, avisa só a solicitante e sem o motivo; a destinatária que não clicou nunca sabe", async () => {
-    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "Setores sem relação" }))
+    await expect(caller().decidir({ alca: alca(7),aprovar: false, nota: "Setores sem relação" }))
       .resolves.toEqual({ success: true, statusFinal: "not_forwarded", reciprocado: false });
 
     expect(chamadas("decidirPedidoDeMatch").map(c => c.args)).toEqual([[7, { aprovar: false, moderatedBy: 9, moderationNote: "Setores sem relação" }]]);
@@ -570,13 +606,13 @@ describe("distribuicao.decidir — efeitos", () => {
     // Um texto próprio do caso recíproco ("as duas partes") contaria a cada uma que
     // a outra também clicou, sem encaminhamento nenhum. Privacidade vence: o aviso
     // é um só, e nenhuma pessoa distingue o seu caso do outro.
-    await caller().decidir({ connectionId: 7, aprovar: false, nota: "Setores sem relação" });
+    await caller().decidir({ alca: alca(7),aprovar: false, nota: "Setores sem relação" });
     const { userId: _sozinha, ...avisoDeQuemPediuSozinha } = avisos()[0];
 
     estado.chamadas = [];
     estado.auditorias = [];
     estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: new Date() };
-    await expect(caller().decidir({ connectionId: 7, aprovar: false, nota: "Setores sem relação" }))
+    await expect(caller().decidir({ alca: alca(7),aprovar: false, nota: "Setores sem relação" }))
       .resolves.toEqual({ success: true, statusFinal: "not_forwarded", reciprocado: true });
 
     expect(acoes()).toEqual(["MATCH_REVIEW_REJECTED"]);
@@ -591,7 +627,7 @@ describe("distribuicao.decidir — efeitos", () => {
   it("outra pessoa decidiu antes (decisão nula): CONFLICT, sem auditoria, aviso ou revelação", async () => {
     estado.decidiu = false;
     estado.pedido = { id: 7, requesterId: 2, recipientId: 3, status: "in_review", reciprocatedAt: new Date() };
-    await expect(caller().decidir({ connectionId: 7, aprovar: true })).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(caller().decidir({ alca: alca(7),aprovar: true })).rejects.toMatchObject({ code: "CONFLICT" });
     expect(chamadas("decidirPedidoDeMatch")).toHaveLength(1);
     expect(estado.auditorias).toEqual([]);
     expect(avisos()).toEqual([]);
@@ -599,14 +635,14 @@ describe("distribuicao.decidir — efeitos", () => {
 
   it("sino fora do ar não desfaz a decisão nem a auditoria", async () => {
     estado.sinoForaDoAr = true;
-    await expect(caller().decidir({ connectionId: 7, aprovar: true })).resolves.toEqual({ success: true, statusFinal: "pending", reciprocado: false });
+    await expect(caller().decidir({ alca: alca(7),aprovar: true })).resolves.toEqual({ success: true, statusFinal: "pending", reciprocado: false });
     expect(acoes()).toEqual(["MATCH_REVIEW_APPROVED"]);
   });
 });
 
 describe("distribuicao.historico", () => {
   it("pede ao banco só as decisões em que quem consulta NÃO é parte, com o limite pedido, e audita a leitura", async () => {
-    estado.historico = [{ connectionId: 7, resultado: "pending", solicitanteNome: "Ana", destinatariaNome: "Bia" }];
+    estado.historico = [{ resultado: "pending", solicitanteNome: "Ana", destinatariaNome: "Bia" }];
     const r = await distribuicaoRouter.createCaller(distribuidora).historico({ limit: 10 });
     expect(r).toEqual(estado.historico);
     expect(chamadas("listarHistoricoDeDistribuicao").map(c => c.args)).toEqual([[9, 10]]);
@@ -657,10 +693,13 @@ describe("pinos de fonte", () => {
     expect(fonteDoRouter).not.toContain("protectedProcedure");
   });
 
-  it("decidir não lança FORBIDDEN: o recorte de quem é parte mora na consulta e responde NOT_FOUND", () => {
+  it("decidir não lança FORBIDDEN e age pela alça: o recorte de quem é parte mora na consulta e responde NOT_FOUND", () => {
     const decidir = fonteDoRouter.slice(fonteDoRouter.indexOf("decidir: distribuidorProcedure"), fonteDoRouter.indexOf("historico: distribuidorProcedure"));
     expect(decidir).not.toContain('code: "FORBIDDEN"');
-    expect(decidir).toContain("lerPedidoDeMatch(input.connectionId, ctx.user.id)");
+    expect(decidir).toContain("abrirAlcaDoPedido(input.alca, ctx.user.id)");
+    expect(decidir).toContain("lerPedidoDeMatch(connectionId, ctx.user.id)");
+    expect(decidir).not.toContain("connectionId: z.");
+    expect(fonteDoRouter).toContain("alca: selarAlcaDoPedido(p.connectionId, ctx.user.id)");
     expect(fonteDoRouter).toContain("listarHistoricoDeDistribuicao(ctx.user.id, input.limit)");
   });
 });

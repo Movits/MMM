@@ -454,9 +454,9 @@ export async function listarPedidosEmAnalise(distribuidorId: number, limit = 50)
  * decidir. O pedido em que o distribuidor é PARTE não existe para ele (o mesmo
  * recorte da fila e do histórico), e o que já saiu de `in_review` também não: id
  * inexistente, pedido de que ele é parte e pedido já decidido dão o mesmo null.
- * Um "proibido" ou um "já decidido" diferente de "não encontrado" denunciaria à
- * destinatária distribuidora, pelos buracos da sequência de ids, o pedido que
- * está oculto para ela.
+ * O router só chega aqui com o id tirado de uma alça que a própria fila entregou
+ * a quem decide (server/alca-do-pedido.ts), e a fila nunca traz pedido de que ele
+ * é parte: o recorte pelas partes continua no WHERE como segunda trava.
  */
 export async function lerPedidoDeMatch(connectionId: number, distribuidorId: number) {
   const db = await exigirDb();
@@ -517,12 +517,15 @@ export async function decidirPedidoDeMatch(
  * Sem os pedidos em que quem consulta é parte (o mesmo recorte da fila): o
  * histórico traz nomes, o desfecho e a nota interna, e a destinatária de um pedido
  * não encaminhado nunca pode saber dele.
+ *
+ * Sem `connections.id`, de propósito: a tela não age sobre o histórico, e o id
+ * sequencial à mostra (somado ao da fila) deixava a distribuidora que também recebe
+ * pedidos achar pelos buracos da sequência o pedido oculto para ela.
  */
 export async function listarHistoricoDeDistribuicao(distribuidorId: number, limit = 50) {
   const db = await exigirDb();
   const distribuidor = alias(users, "distribuidor");
   return db.select({
-    connectionId: connections.id,
     decididoEm: connections.moderatedAt,
     decididoPor: { id: distribuidor.id, name: distribuidor.name },
     resultado: connections.status,
@@ -748,8 +751,9 @@ export async function getMatchesForUser(userId: number, limit = 20) {
     // O estado do interesse vem do SERVIDOR, resolvido aqui. A tela não tem como
     // cruzar match e conexão por conta própria — e é bom que não tenha: para
     // cruzar, precisaria do id da outra usuária, que é justamente o que não pode
-    // atravessar. `connectionId` é id de conexão, não de pessoa.
-    connectionId: connections.id,
+    // atravessar. `connectionId` é id de conexão, não de pessoa, e só sai quando a
+    // tela precisa dele para responder (idParaResponder).
+    connectionId: idParaResponder(userId),
     connectionStatus: connections.status,
     // Em análise ou não encaminhado, ninguém é "destinatária" na projeção: a linha
     // recíproca (a outra pessoa pediu antes, esta também clicou) sai igual a um
@@ -774,9 +778,10 @@ export async function getMatchesForUser(userId: number, limit = 20) {
       // não houvesse pedido. Regra de consulta, não de tela.
       pedidoVisivelPara(userId),
       // O par pode ter duas linhas (o pedido não encaminhado de uma pessoa e,
-      // depois, o pedido novo da outra): o cartão é UM, com a linha mais recente
-      // entre as que esta pessoa pode ver — a mesma da aba Conexões.
-      eq(connections.id, linhaMaisRecenteVisivelDoPar(db, userId, matches.matchedUserId!)),
+      // depois, o pedido novo da outra; ou dois cliques que chegaram juntos): o
+      // cartão é UM, com a linha que esta pessoa pode ver escolhida pelo estado
+      // (linhaVisivelDoPar) — a mesma da aba Conexões.
+      eq(connections.id, linhaVisivelDoPar(db, userId, matches.matchedUserId!)),
     ))
     .where(and(eq(matches.userId, userId), eq(matches.userDismissed, false)))
     .orderBy(desc(matches.overallScore))
@@ -849,7 +854,11 @@ export async function resolverAlvoDoMatch(userId: number, matchId: number): Prom
  * inteiro numa linha de texto livre.
  *
  * Uma linha por par, e a mesma do cartão do Smart Match: com duas linhas no par,
- * só a mais recente entre as que esta pessoa pode ver (linhaMaisRecenteVisivelDoPar).
+ * a que esta pessoa pode ver, escolhida pelo estado (linhaVisivelDoPar).
+ *
+ * `id` segue a regra do `connectionId` do cartão (idParaResponder): só sai no
+ * pedido que esta pessoa responde; nos outros estados vai null e a tela usa a
+ * posição como chave.
  */
 export async function getConnectionsForUser(userId: number) {
   const db = await exigirDb();
@@ -860,7 +869,7 @@ export async function getConnectionsForUser(userId: number) {
   // revelar que a outra pediu antes (nem quando).
   const dataVisivel = sql<Date>`CASE WHEN ${connections.recipientId} = ${userId} AND ${connections.status} IN ('in_review', 'not_forwarded') THEN ${connections.reciprocatedAt} ELSE ${connections.createdAt} END`.mapWith(connections.createdAt);
   return db.select({
-    id: connections.id,
+    id: idParaResponder(userId),
     status: connections.status,
     createdAt: dataVisivel,
     souDestinataria: sql<boolean>`${connections.recipientId} = ${userId} AND ${connections.status} NOT IN ('in_review', 'not_forwarded')`,
@@ -883,9 +892,9 @@ export async function getConnectionsForUser(userId: number) {
       // O MESMO predicado de getMatchesForUser: em análise ou não encaminhado
       // não existe para a destinatária.
       pedidoVisivelPara(userId),
-      // E a MESMA linha do cartão: com duas linhas no par, só a mais recente entre
-      // as que esta pessoa pode ver. Sem isto a aba mostrava as duas.
-      eq(connections.id, linhaMaisRecenteVisivelDoPar(db, userId, outraParte)),
+      // E a MESMA linha do cartão: com duas linhas no par, uma só, escolhida pelo
+      // estado (linhaVisivelDoPar). Sem isto a aba mostrava as duas.
+      eq(connections.id, linhaVisivelDoPar(db, userId, outraParte)),
     ))
     .orderBy(desc(dataVisivel))
     .limit(50);
@@ -903,21 +912,43 @@ function pedidoVisivelPara(userId: number, tabela: typeof connections | typeof c
   return sql`NOT (${tabela.status} IN ('in_review', 'not_forwarded') AND ${tabela.recipientId} = ${userId} AND ${tabela.reciprocatedAt} IS NULL)`;
 }
 
-// A mesma tabela com outro nome, para a subconsulta "linha mais recente visível do
-// par" (linhaMaisRecenteVisivelDoPar).
+/**
+ * O id da conexão só quando quem consulta responde por ele: pedido encaminhado a
+ * ela (`pending`, ela destinatária). Nos outros estados, null. O id é sequencial:
+ * no clique recíproco a linha é a da OUTRA pessoa, com id menor que o de qualquer
+ * pedido que quem consulta fez antes, e o número sozinho contava que a outra pediu
+ * primeiro — mesmo com o aviso e o status iguais (revisão da #115). No pedido
+ * encaminhado a ela não há o que esconder: ela já sabe que foi pedida. O mesmo em
+ * getMatchesForUser e getConnectionsForUser.
+ */
+function idParaResponder(userId: number) {
+  return sql<number | null>`CASE WHEN ${connections.status} = 'pending' AND ${connections.recipientId} = ${userId} THEN ${connections.id} ELSE NULL END`;
+}
+
+// A mesma tabela com outro nome, para a subconsulta "a linha do par que esta
+// pessoa vê" (linhaVisivelDoPar).
 const conexaoDoPar = alias(connections, "conexao_do_par");
 
 /**
- * O id da linha mais recente do par (userId, outraParte) entre as que `userId` pode
- * ver, como subconsulta correlacionada. O par pode ter duas linhas — o pedido não
- * encaminhado de uma pessoa e, depois, o pedido novo da outra —, e o cartão do Smart
- * Match (getMatchesForUser) e a aba Conexões (getConnectionsForUser) mostram UMA, e
- * a mesma, porque as duas consultas passam por aqui. `outraParte` é coluna ou
- * expressão da consulta de fora; a correlação é conferida contra o banco em
+ * O id da linha do par (userId, outraParte) que `userId` vê, entre as que ela pode
+ * ver, como subconsulta correlacionada. O cartão do Smart Match (getMatchesForUser)
+ * e a aba Conexões (getConnectionsForUser) mostram UMA linha por par, e a mesma,
+ * porque as duas consultas passam por aqui. `outraParte` é coluna ou expressão da
+ * consulta de fora; a correlação é conferida contra o banco em
  * match-em-analise.integracao.test.ts.
+ *
+ * O par tem duas linhas em dois casos: o previsto (o pedido não encaminhado de uma
+ * pessoa e, depois, o pedido novo da outra) e a corrida (dois cliques que chegam
+ * juntos passam pela leitura de sendConnectionRequest antes de qualquer INSERT; não
+ * há índice único no par, e criá-lo exige migração). Por isso a escolha é pelo
+ * ESTADO, e só no empate pela mais recente: a conexão aceita primeiro, depois o
+ * pedido encaminhado que esta pessoa responde, depois o encaminhado que ela espera.
+ * Com "a mais recente" pura, uma duplicata recusada ou em análise escondia para
+ * sempre a conexão aceita (a revelação ficava de um lado só) ou o pedido que ela
+ * precisava aceitar. No caso previsto a escolha é a mesma de antes.
  */
-function linhaMaisRecenteVisivelDoPar(db: Awaited<ReturnType<typeof exigirDb>>, userId: number, outraParte: AnyColumn | SQL) {
-  return db.select({ id: sql<number>`MAX(${conexaoDoPar.id})` })
+function linhaVisivelDoPar(db: Awaited<ReturnType<typeof exigirDb>>, userId: number, outraParte: AnyColumn | SQL) {
+  return db.select({ id: conexaoDoPar.id })
     .from(conexaoDoPar)
     .where(and(
       or(
@@ -925,7 +956,12 @@ function linhaMaisRecenteVisivelDoPar(db: Awaited<ReturnType<typeof exigirDb>>, 
         and(eq(conexaoDoPar.requesterId, outraParte), eq(conexaoDoPar.recipientId, userId)),
       ),
       pedidoVisivelPara(userId, conexaoDoPar),
-    ));
+    ))
+    .orderBy(
+      sql`CASE WHEN ${conexaoDoPar.status} = 'accepted' THEN 0 WHEN ${conexaoDoPar.status} = 'pending' AND ${conexaoDoPar.recipientId} = ${userId} THEN 1 WHEN ${conexaoDoPar.status} = 'pending' THEN 2 ELSE 3 END`,
+      desc(conexaoDoPar.id),
+    )
+    .limit(1);
 }
 
 /**
