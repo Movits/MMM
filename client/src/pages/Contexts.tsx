@@ -136,7 +136,7 @@ function ContextForm({ initial, types, onSave, onClose, loading }: {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <h2 className="font-bold text-white">{initial?.id ? t("contexts.editarContextoTitulo") : t("contexts.novoContextoTitulo")}</h2>
           <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors"><X size={18} /></button>
@@ -270,7 +270,7 @@ function LinkContactModal({ contextId, contextName, links, onClose, onLinked }: 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <h2 className="font-bold text-white">{t(selectedContact && vinculoEmEdicao ? "contexts.editarVinculoTitulo" : "contexts.vincularContatoTitulo")}</h2>
           <button onClick={onClose} className="text-white/40 hover:text-white/70"><X size={18} /></button>
@@ -444,7 +444,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
   if (isError) return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-white/10">
           <button onClick={onClose} className="text-white/40 hover:text-white/70 flex items-center gap-1.5 text-sm">
             <ChevronLeft size={16} /> {t("contexts.voltarContextos")}

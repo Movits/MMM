@@ -299,19 +299,25 @@ export default function Opportunities() {
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
       <div className="border-b border-white/10 bg-[#151312]/95 backdrop-blur-xl sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        {/* Em 375 px o bloco do título não encolhia (sem min-w-0, um filho de
+            flex não desce da largura do conteúdo) e empurrava as ações para
+            fora: o botão "Publicar" terminava em 405 px, 30 px além da tela.
+            Agora o título encolhe e corta com truncate, e as ações não
+            encolhem. O `-m-2 p-2` na seta amplia a área de toque sem mexer no
+            desenho. */}
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex min-w-0 items-center gap-3">
             <Link href="/dashboard">
-              <button className="text-white/50 hover:text-white transition-colors">
+              <button className="-m-2 p-2 text-white/50 hover:text-white transition-colors">
                 <ArrowLeft size={18} />
               </button>
             </Link>
-            <div>
-              <h1 className="text-white font-bold text-lg leading-tight">{t("opportunitiesPage.pageTitle")}</h1>
-              <p className="text-white/40 text-xs">{t("opportunitiesPage.pageSubtitle")}</p>
+            <div className="min-w-0">
+              <h1 className="text-white font-bold text-lg leading-tight truncate">{t("opportunitiesPage.pageTitle")}</h1>
+              <p className="text-white/40 text-xs truncate">{t("opportunitiesPage.pageSubtitle")}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-shrink-0 items-center gap-2">
             {/* Ícone de salvos */}
             {user && (
               <button
