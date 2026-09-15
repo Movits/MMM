@@ -42,6 +42,13 @@ type CtxDetail = Ctx & {
   participants: Array<{ id: string; name: string; company?: string | null; role?: string | null }>;
   media: Array<{ id: string; originalName: string; fileType: string; storagePath: string }>;
 };
+type VinculoDoContexto = CtxDetail["links"][number];
+type TipoDeRelacao = "pessoal" | "profissional" | "ambos";
+
+/** O tipo gravado no vínculo, se for um dos três que a tela oferece; senão null (nada pré-marcado). */
+function tipoDeRelacao(valor: string | null | undefined): TipoDeRelacao | null {
+  return valor === "pessoal" || valor === "profissional" || valor === "ambos" ? valor : null;
+}
 
 // ─── Formulário vazio ─────────────────────────────────────────────────────────
 const emptyForm = () => ({ name: "", contextTypeId: "", eventDate: "", city: "", country: "", notes: "" });
@@ -190,8 +197,8 @@ function ContextForm({ initial, types, onSave, onClose, loading }: {
 }
 
 // ─── Modal de vincular contato ────────────────────────────────────────────────
-function LinkContactModal({ contextId, contextName, linkedContactIds, onClose, onLinked }: {
-  contextId: string; contextName: string; linkedContactIds: number[];
+function LinkContactModal({ contextId, contextName, links, onClose, onLinked }: {
+  contextId: string; contextName: string; links: VinculoDoContexto[];
   onClose: () => void; onLinked: () => void;
 }) {
   const { t } = useTranslation();
@@ -204,6 +211,8 @@ function LinkContactModal({ contextId, contextName, linkedContactIds, onClose, o
   // null = a dona não tocou nos botões. Pré-marcar "profissional" fazia o modal
   // enviar uma escolha que ela nunca fez, apagando o tipo do vínculo antigo.
   const [relType, setRelType] = useState<"pessoal" | "profissional" | "ambos" | null>(null);
+  // O vínculo já gravado do contato selecionado (editar), ou null (vínculo novo).
+  const [vinculoEmEdicao, setVinculoEmEdicao] = useState<VinculoDoContexto | null>(null);
 
   const debRef = { current: null as ReturnType<typeof setTimeout> | null };
   const handleSearch = (v: string) => {
@@ -217,10 +226,31 @@ function LinkContactModal({ contextId, contextName, linkedContactIds, onClose, o
     { enabled: !!debouncedSearch }
   );
 
-  // Quem já está no contexto não aparece na busca: o modal não dizia quem já
-  // estava vinculado, e re-selecionar a mesma pessoa parecia um vínculo novo.
-  const jaVinculados = new Set(linkedContactIds);
-  const resultados = (contacts?.data ?? []).filter(c => !jaVinculados.has(c.id));
+  // Quem já está no contexto CONTINUA na busca, marcado: é o caminho da tela
+  // para editar o vínculo. Tirá-lo daqui fechava esse caminho e, como o filtro
+  // rodava no navegador depois do limite de 10 do servidor, uma página inteira
+  // de vinculadas virava "nenhum contato encontrado" (revisão da PR #82).
+  const vinculoPorContato = new Map(links.map(l => [l.contactId, l]));
+  const resultados = contacts?.data ?? [];
+
+  const selecionar = (c: { id: number; fullName: string }) => {
+    const existente = vinculoPorContato.get(c.id) ?? null;
+    if (existente) {
+      // Editar parte do que está gravado, não de um formulário vazio.
+      setEventDate(existente.eventDate ?? "");
+      setCity(existente.city ?? "");
+      setNotes(existente.notes ?? "");
+      setRelType(tipoDeRelacao(existente.relationshipType));
+    } else if (vinculoEmEdicao) {
+      // Saindo de uma edição para um vínculo novo: os dados do antigo não vão junto.
+      setEventDate(""); setCity(""); setNotes(""); setRelType(null);
+    }
+    setVinculoEmEdicao(existente);
+    setSelectedContact({ id: c.id, fullName: c.fullName });
+  };
+  // O tipo só sobe se a dona escolheu: num vínculo novo, se tocou num botão;
+  // num existente, se trocou o que estava gravado (PR #82).
+  const tipoOriginal = vinculoEmEdicao ? tipoDeRelacao(vinculoEmEdicao.relationshipType) : null;
 
   const linkMut = trpc.contexts.linkContact.useMutation({
     onSuccess: (r) => {
@@ -242,7 +272,7 @@ function LinkContactModal({ contextId, contextName, linkedContactIds, onClose, o
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-lg bg-[#211e1b] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <h2 className="font-bold text-white">{t("contexts.vincularContatoTitulo")}</h2>
+          <h2 className="font-bold text-white">{t(selectedContact && vinculoEmEdicao ? "contexts.editarVinculoTitulo" : "contexts.vincularContatoTitulo")}</h2>
           <button onClick={onClose} className="text-white/40 hover:text-white/70"><X size={18} /></button>
         </div>
         <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
@@ -257,7 +287,7 @@ function LinkContactModal({ contextId, contextName, linkedContactIds, onClose, o
               {resultados.length > 0 && (
                 <div className="space-y-1">
                   {resultados.map(c => (
-                    <button key={c.id} onClick={() => setSelectedContact({ id: c.id, fullName: c.fullName })}
+                    <button key={c.id} onClick={() => selecionar(c)}
                       className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-left">
                       <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold text-sm flex-shrink-0">
                         {c.fullName[0].toUpperCase()}
@@ -266,6 +296,11 @@ function LinkContactModal({ contextId, contextName, linkedContactIds, onClose, o
                         <p className="text-sm font-medium text-white">{c.fullName}</p>
                         {c.jobTitle && <p className="text-xs text-white/40">{c.jobTitle}{c.company ? ` · ${c.company}` : ""}</p>}
                       </div>
+                      {vinculoPorContato.has(c.id) && (
+                        <span className="ml-auto flex-shrink-0 px-2 py-0.5 rounded-full border border-amber-500/30 text-[10px] uppercase tracking-wider text-amber-400/80">
+                          {t("contexts.badgeJaVinculado")}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -320,12 +355,17 @@ function LinkContactModal({ contextId, contextName, linkedContactIds, onClose, o
           <Button variant="ghost" onClick={onClose} className="text-white/50 hover:text-white/80">{t("contexts.botaoCancelar")}</Button>
           {selectedContact && (
             <Button onClick={() => linkMut.mutate({
+              // Campo vazio: null na edição (a dona apagou, o servidor limpa);
+              // undefined num vínculo novo, que pode já existir no servidor
+              // (lista desatualizada) e não deve ter nada apagado.
               contextId, contactId: selectedContact.id,
-              eventDate: eventDate || null, city: city || null,
-              notes: notes || null, relationshipType: relType ?? undefined,
+              eventDate: eventDate || (vinculoEmEdicao ? null : undefined),
+              city: city || (vinculoEmEdicao ? null : undefined),
+              notes: notes || (vinculoEmEdicao ? null : undefined),
+              relationshipType: relType && relType !== tipoOriginal ? relType : undefined,
             })} disabled={linkMut.isPending}
               className="bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold">
-              {linkMut.isPending ? t("contexts.vinculando") : t("contexts.botaoVincular")}
+              {linkMut.isPending ? t("contexts.vinculando") : vinculoEmEdicao ? t("contexts.botaoSalvar") : t("contexts.botaoVincular")}
             </Button>
           )}
         </div>
@@ -585,7 +625,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
 
       {showLinkModal && (
         <LinkContactModal contextId={contextId} contextName={ctx.name}
-          linkedContactIds={(ctx.links ?? []).map(l => l.contactId)}
+          links={ctx.links ?? []}
           onClose={() => setShowLinkModal(false)} onLinked={() => refetch()} />
       )}
     </div>
