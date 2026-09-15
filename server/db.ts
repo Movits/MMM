@@ -1452,12 +1452,14 @@ export async function listContextMediaByContext(ownerId: string, contextId: stri
 
 export async function linkContactToContext(
   ownerId: string,
-  data: { contactId: number; contextId: string; eventDate?: string; city?: string; country?: string; notes?: string; relationshipType?: string }
+  data: { contactId: number; contextId: string; eventDate?: string | null; city?: string | null; country?: string | null; notes?: string | null; relationshipType?: string }
 ): Promise<{ id: string; created: boolean }> {
   const db = await exigirDb();
   // Vincular duas vezes não duplica: o vínculo existente é atualizado com o
-  // que veio preenchido e devolvido. Jogar fora o que a usuária digitou (data,
-  // cidade, notas) com um toast de sucesso seria mentir para ela.
+  // que veio e devolvido. Jogar fora o que a usuária digitou (data, cidade,
+  // notas) com um toast de sucesso seria mentir para ela. Em data, cidade, país
+  // e notas, null (ou vazio) APAGA o valor gravado e undefined o mantém: a
+  // edição do vínculo manda null no campo que a dona esvaziou.
   const [jaExiste] = await db.select({ id: contactContexts.id }).from(contactContexts)
     .where(and(
       eq(contactContexts.ownerId, ownerId),
@@ -1467,10 +1469,10 @@ export async function linkContactToContext(
     .limit(1);
   if (jaExiste) {
     const atualiza: Record<string, unknown> = {};
-    if (data.eventDate) atualiza.eventDate = data.eventDate;
-    if (data.city) atualiza.city = data.city;
-    if (data.country) atualiza.country = data.country;
-    if (data.notes) atualiza.notes = data.notes;
+    if (data.eventDate !== undefined) atualiza.eventDate = data.eventDate || null;
+    if (data.city !== undefined) atualiza.city = data.city || null;
+    if (data.country !== undefined) atualiza.country = data.country || null;
+    if (data.notes !== undefined) atualiza.notes = data.notes || null;
     if (data.relationshipType) atualiza.relationshipType = data.relationshipType;
     if (Object.keys(atualiza).length > 0) {
       await db.update(contactContexts).set({ ...atualiza, updatedAt: Date.now() })

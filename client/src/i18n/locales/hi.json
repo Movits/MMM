@@ -917,6 +917,8 @@
     "salvando": "सहेजा जा रहा है...",
     "botaoSalvar": "✓ सहेजें",
     "vincularContatoTitulo": "संपर्क लिंक करें",
+    "editarVinculoTitulo": "जुड़ाव संपादित करें",
+    "badgeJaVinculado": "पहले से जुड़ा हुआ",
     "toastVinculadoSucesso": "{{name}} को {{context}} से जोड़ दिया गया!",
     "toastVinculoAtualizado": "{{name}} का {{context}} से जुड़ाव अपडेट किया गया।",
     "toastErroVincular": "लिंक करने में त्रुटि: {{message}}",

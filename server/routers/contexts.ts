@@ -136,13 +136,17 @@ export const contextsRouter = router({
       if (!(await getPrivateContactById(ctx.user.openId, input.contactId))) {
         throw new Error("NOT_FOUND");
       }
+      // Data, cidade, país e notas descem como vieram: null = a dona apagou o
+      // campo ao editar o vínculo (o db.ts limpa); ausente = não mexa. Trocar
+      // null por undefined aqui fazia "atualizado" sem apagar nada (revisão da
+      // PR #122). O tipo continua virando undefined: a coluna é NOT NULL.
       const { id, created } = await linkContactToContext(ctx.user.openId, {
         contactId: input.contactId,
         contextId: input.contextId,
-        eventDate: input.eventDate ?? undefined,
-        city: input.city ?? undefined,
-        country: input.country ?? undefined,
-        notes: input.notes ?? undefined,
+        eventDate: input.eventDate,
+        city: input.city,
+        country: input.country,
+        notes: input.notes,
         relationshipType: input.relationshipType ?? undefined,
       });
       // `created` sobe até a tela: um vínculo que já existia foi ATUALIZADO, e

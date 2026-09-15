@@ -917,6 +917,8 @@
     "salvando": "جارٍ الحفظ...",
     "botaoSalvar": "✓ حفظ",
     "vincularContatoTitulo": "ربط جهة اتصال",
+    "editarVinculoTitulo": "تعديل الارتباط",
+    "badgeJaVinculado": "مرتبط بالفعل",
     "toastVinculadoSucesso": "تم ربط {{name}} بـ{{context}}!",
     "toastVinculoAtualizado": "تم تحديث ارتباط {{name}} بـ{{context}}.",
     "toastErroVincular": "خطأ أثناء الربط: {{message}}",
