@@ -142,6 +142,14 @@ const PALAVRAS_VAZIAS = PALAVRAS_VAZIAS_DA_CITACAO;
  * pedaço da fonte, sem tolerância (não há palavra para contar), com ao menos
  * quatro caracteres — duas palavras de dois —, e as palavras latinas da mesma
  * citação também precisam estar todas na fonte.
+ *
+ * A conferência literal só vale quando a citação é, de fato, chinesa ou
+ * japonesa: com duas palavras latinas de conteúdo ou mais, é uma frase latina
+ * com um nome no meio ("Precisamos de consultoria tributária para a filial de
+ * 東京"). Ali as palavras seguem a regra de sempre, com a tolerância, e o nome
+ * só precisa estar na fonte — antes o nome curto (menos de quatro caracteres)
+ * derrubava a citação inteira, e o portão barrava o match (revisão de 15/09 na
+ * #127).
  */
 const ESCRITA_SEM_ESPACO = new RegExp("[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]", "u");
 const MINIMO_DE_CARACTERES_SEM_ESPACO = 4;
@@ -149,20 +157,20 @@ const MINIMO_DE_CARACTERES_SEM_ESPACO = 4;
 export function citacaoConfere(citacao: unknown, fonte: string): boolean {
   if (typeof citacao !== "string") return false;
   const pedacos = tokensDoTermo(citacao);
+  const pedacosDaFonte = tokensDoTermo(fonte);
   const semEspaco = pedacos.filter(pedaco => ESCRITA_SEM_ESPACO.test(pedaco));
+  const palavras = pedacos.filter(palavra => !ESCRITA_SEM_ESPACO.test(palavra) && palavra.length >= 3 && !PALAVRAS_VAZIAS.has(palavra));
   if (semEspaco.length > 0) {
-    const pedacosDaFonte = tokensDoTermo(fonte);
-    const caracteres = semEspaco.reduce((total, pedaco) => total + Array.from(pedaco).length, 0);
-    if (caracteres < MINIMO_DE_CARACTERES_SEM_ESPACO) return false;
     if (!semEspaco.every(pedaco => pedacosDaFonte.some(daFonte => daFonte.includes(pedaco)))) return false;
-    const latinasDaFonte = new Set(pedacosDaFonte);
-    return pedacos
-      .filter(pedaco => !ESCRITA_SEM_ESPACO.test(pedaco) && pedaco.length >= 3 && !PALAVRAS_VAZIAS.has(pedaco))
-      .every(pedaco => latinasDaFonte.has(pedaco));
+    if (palavras.length < 2) {
+      const caracteres = semEspaco.reduce((total, pedaco) => total + Array.from(pedaco).length, 0);
+      if (caracteres < MINIMO_DE_CARACTERES_SEM_ESPACO) return false;
+      const latinasDaFonte = new Set(pedacosDaFonte);
+      return palavras.every(pedaco => latinasDaFonte.has(pedaco));
+    }
   }
-  const palavras = pedacos.filter(palavra => palavra.length >= 3 && !PALAVRAS_VAZIAS.has(palavra));
   if (palavras.length < 2) return false;
-  const daFonte = new Set(tokensDoTermo(fonte));
+  const daFonte = new Set(pedacosDaFonte);
   const ausentes = palavras.filter(palavra => !daFonte.has(palavra));
   if (ausentes.some(palavra => PALAVRAS_DE_SERVICO.has(palavra))) return false;
   return palavras.length <= 3 ? ausentes.length === 0 : ausentes.length <= 1;

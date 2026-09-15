@@ -466,4 +466,22 @@ describe("Portão da IA — citação em chinês e japonês, sem espaço (revis�
     expect(passa("税務コンサルティング", "税務コンサルティングが必要です", "当社は税務コンサルティングが必要です。")).toBe(true);
     expect(passa("税务咨询", "我们需要法律咨询服务", "新工厂项目 | 我们需要税务咨询服务")).toBe(false);
   });
+
+  it("frase latina com um nome curto em chinês ou japonês segue a regra das palavras, e o nome só precisa estar na fonte (revisão de 15/09 na #127)", () => {
+    // Antes o "東京" (dois caracteres) levava a citação inteira para a conferência literal e ela não conferia.
+    expect(citacaoConfere("Precisamos de consultoria tributária para a filial de 東京", "Nova filial | Precisamos de consultoria tributária para a filial de 東京")).toBe(true);
+    expect(citacaoConfere("We need tax consulting for our 日本橋 office", "New office | We need tax consulting for our 日本橋 office")).toBe(true);
+    // A tolerância de uma palavra ausente continua valendo, também com o nome japonês na frase.
+    expect(citacaoConfere("Precisamos urgentemente de consultoria tributária para 株式会社トヨタ", "Precisamos de consultoria tributária para 株式会社トヨタ")).toBe(true);
+    // O nome que não está na fonte não confere.
+    expect(citacaoConfere("Precisamos de consultoria tributária para a filial de 東京", "Precisamos de consultoria tributária para a filial")).toBe(false);
+    // Parte latina inventada: com duas palavras cai na regra de sempre; com uma, na conferência literal.
+    expect(citacaoConfere("我们需要税务咨询服务 transfer pricing", "我们需要税务咨询服务")).toBe(false);
+    expect(citacaoConfere("我们需要税务咨询服务 pricing", "我们需要税务咨询服务")).toBe(false);
+    expect(passaNoPortao(
+      { tipoDaOferta: "servico", necessidadeExpressa: "Precisamos de consultoria tributária para a filial de 東京" },
+      "Nova filial | Precisamos de consultoria tributária para a filial de 東京",
+      { whatIHave: ["Consultoria tributária"], whatINeed: [] },
+    )).toBe(true);
+  });
 });
