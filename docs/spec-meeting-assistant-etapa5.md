@@ -8,6 +8,8 @@
 **Autoria:** Manus AI  
 **Status:** pronto para planejamento e desenvolvimento; não é uma implementação executável.
 
+> **Nota do time (14/09/2026): a retenção do áudio mudou.** O áudio de reunião não fica mais 30 dias: é apagado 24 horas depois da transcrição ou, se a transcrição falhar, 24 horas depois da falha; um reprocessamento que dá certo recomeça a contagem a partir da nova transcrição, e uma nova falha não. Decisão da Dra. Glenda (24 h) e do Nicolas (falha e reprocesso), registrada em `docs/arquitetura/decisoes-em-aberto.md` (D8). Os trechos desta spec que falam em 30 dias, lifecycle do S3 e reconciliação diária são o desenho original e não foram reescritos; a implementação real está em `server/meeting-service.ts`.
+
 > **Escopo desta etapa.** Este documento define o módulo de reuniões privadas do CRM: gravação consentida, upload de áudio, transcrição assíncrona, extração de entidades e revisão de sugestões de contato. Por instrução de produto, ele não cria controllers, migrations executáveis, jobs nem processamento de áudio no projeto atual.
 
 ### Matriz de cobertura da solicitação
