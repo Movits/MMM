@@ -2,10 +2,20 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
-import { exigeCnpj, isValidCnpj, normalizeCnpj } from "../../shared/business-registration";
+import { CADASTRO_EMPRESARIAL_MAX, exigeCadastroEmpresarial, normalizarCadastroEmpresarial } from "../../shared/business-registration";
 import { exigirDb, getUserProfile, upsertUserProfile } from "../db";
+import { cargoEEmpresaParaGravar } from "../perfil-consolidado";
 import { users, userProfiles } from "../../drizzle/schema";
 import { toPublicUser } from "../auth";
+import { reavaliarNivelPeloPerfil } from "../nivel-do-perfil";
+import { exigirAceiteDoTermoGeral } from "../termo-geral-de-uso";
+import {
+  LIMITE_OUTRA_NECESSIDADE,
+  outraNecessidadeValida,
+  textoDaOutraNecessidade,
+  VALORES_ACEITOS_EM_SEEKING_TYPES,
+} from "../../shared/o-que-busca";
+import { esquemaDasDemandas, esquemaDoWhatINeed, prepararOQuePreciso } from "../o-que-preciso";
 
 // ============================================================
 // PERFIL DO USUÁRIO
@@ -18,6 +28,29 @@ const urlFlexivel = z.preprocess(
   v => (typeof v === "string" && v.trim() && !/^https?:\/\//i.test(v.trim()) ? "https://" + v.trim() : v),
   z.string().url("Informe uma URL válida (ex.: https://seusite.com.br)").optional().or(z.literal(""))
 );
+
+// O campo `companyCnpj` guarda o Número de Cadastro Empresarial (Rosber, 14/09
+// 20:44; comportamento da PR #133 do Gabriel): letras e números, sem máscara,
+// sem 14 dígitos fixos e sem dígito verificador (vale para registro de outro
+// país e para o CNPJ alfanumérico). Quem se declara MEI, pessoa jurídica ou
+// organização sem fins lucrativos tem cadastro por definição (A7).
+// Os dois tetos ficam aqui, e não num .max() do zod: erro do zod chega ao toast do
+// Onboarding como JSON cru e em inglês, e a tela não corta mais o que se cola.
+const CADASTRO_BRUTO_MAX = 1000;
+const MENSAGEM_CADASTRO_LONGO = `O Número de Cadastro Empresarial tem no máximo ${CADASTRO_EMPRESARIAL_MAX} letras e números.`;
+
+function conferirCadastroEmpresarial(personType: string | undefined, companyCnpj: string | undefined) {
+  if (companyCnpj && companyCnpj.length > CADASTRO_BRUTO_MAX) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: MENSAGEM_CADASTRO_LONGO });
+  }
+  const cadastro = companyCnpj ? normalizarCadastroEmpresarial(companyCnpj) : "";
+  if (cadastro.length > CADASTRO_EMPRESARIAL_MAX) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: MENSAGEM_CADASTRO_LONGO });
+  }
+  if (exigeCadastroEmpresarial(personType) && !cadastro) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o Número de Cadastro Empresarial: ele é obrigatório para MEI, pessoa jurídica e organização sem fins lucrativos." });
+  }
+}
 
 export const profileRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
@@ -40,8 +73,10 @@ export const profileRouter = router({
      position: z.string().max(200).optional(),
      personType: z.enum(["individual", "legal_entity", "mei", "nonprofit"]).optional(),
      companySize: z.enum(["mei", "micro", "small", "medium", "large"]).optional(),
-     companyCnpj: z.string().max(18).optional(),
+     companyCnpj: z.string().optional(),
      gender: z.enum(["male", "female", "prefer_not_to_say"]).optional(),
+     shortTermGoal: z.string().max(2000).optional(),
+     longTermGoal: z.string().max(2000).optional(),
      // Novos campos v2
      jobTitle: z.string().max(200).optional(),
      activityArea: z.string().max(200).optional(),
@@ -49,23 +84,31 @@ export const profileRouter = router({
      institutionalNetwork: z.string().max(300).optional(),
       currentResources: z.string().max(2000).optional(),
      whatIHave: z.array(z.string()).optional(),
-      whatINeed: z.array(z.string()).optional(),
+      whatINeed: esquemaDoWhatINeed.optional(),
+      // "O que preciso" detalhado (shared/o-que-preciso.ts); validado em prepararOQuePreciso.
+      whatINeedDetails: esquemaDasDemandas.optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (input.companyCnpj && !isValidCnpj(input.companyCnpj)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe um CNPJ válido." });
-      }
-      // Quem se declara MEI, pessoa jurídica ou organização sem fins lucrativos
-      // tem CNPJ por definição (A7).
-      if (exigeCnpj(input.personType) && !input.companyCnpj) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o CNPJ: ele é obrigatório para MEI, pessoa jurídica e organização sem fins lucrativos." });
-      }
+      conferirCadastroEmpresarial(input.personType, input.companyCnpj);
+      // Demanda começada e inválida é recusada antes de gravar qualquer coisa.
+      const oQuePreciso = prepararOQuePreciso(input.whatINeed, input.whatINeedDetails);
       // `position` é coluna de users, não de user_profiles — mandá-la ao
       // upsert derrubava o UPDATE inteiro com "Unknown column".
-      const { position: _position, ...updateData } = input;
+      const { position: _position, whatINeed: _whatINeed, whatINeedDetails: _whatINeedDetails, ...semOQuePreciso } = input;
+      const updateData = { ...semOQuePreciso, ...oQuePreciso };
+      // A leitura cai em currentRole/currentCompany quando jobTitle/company está
+      // vazio (perfil-consolidado.ts). Sem anular a coluna antiga do par que
+      // chegou, apagar cargo ou empresa no Perfil não apagava: o valor antigo
+      // voltava para quem fez o Onboarding antes da consolidação e para as contas
+      // da carga, que o importador grava nas duas colunas. Só anula, não copia;
+      // um par por vez, para quem manda só o cargo não perder a empresa antiga.
+      const legado = {
+        ...(input.jobTitle !== undefined ? { currentRole: null } : {}),
+        ...(input.company !== undefined ? { currentCompany: null } : {}),
+      };
       const businessData = updateData.personType === "individual"
-        ? { ...updateData, companySize: null, companyCnpj: null }
-        : { ...updateData, companyCnpj: updateData.companyCnpj ? normalizeCnpj(updateData.companyCnpj) : undefined };
+        ? { ...updateData, ...legado, companySize: null, companyCnpj: null }
+        : { ...updateData, ...legado, companyCnpj: updateData.companyCnpj ? normalizarCadastroEmpresarial(updateData.companyCnpj) || undefined : undefined };
       await upsertUserProfile(ctx.user.id, businessData);
       // Atualizar company/position na tabela users também
       const db = await exigirDb();
@@ -76,7 +119,10 @@ export const profileRouter = router({
         if (input.country !== undefined) updateData.country = input.country;
         await db.update(users).set(updateData).where(eq(users.id, ctx.user.id));
       }
-      return { success: true };
+      // Governança: Bronze vira Prata quando o perfil salvo atende à régua de
+      // qualidade (shared/qualificacao-do-perfil.ts). Nunca rebaixa ninguém.
+      const { promovidaAPrata } = await reavaliarNivelPeloPerfil(ctx.user);
+      return { success: true, promovidaAPrata };
     }),
 
  completeOnboarding: protectedProcedure
@@ -92,7 +138,7 @@ export const profileRouter = router({
      position: z.string().max(200).optional(),
      personType: z.enum(["individual", "legal_entity", "mei", "nonprofit"]).optional(),
      companySize: z.enum(["mei", "micro", "small", "medium", "large"]).optional(),
-     companyCnpj: z.string().max(18).optional(),
+     companyCnpj: z.string().optional(),
      gender: z.enum(["male", "female", "prefer_not_to_say"]).optional(),
      // Campos do sistema de matching
      age: z.number().int().min(16).max(120).optional(),
@@ -100,10 +146,22 @@ export const profileRouter = router({
      secondarySpecialties: z.array(z.string().min(1).max(100)).optional(),
      experienceYears: z.number().int().min(0).max(60).optional(),
      educationLevel: z.string().max(50).optional(),
+     // Nomes antigos de cargo e empresa: aceitos para o Onboarding em cache
+     // durante o deploy, mas gravados em jobTitle/company (ver abaixo).
      currentRole: z.string().max(200).optional(),
      currentCompany: z.string().max(200).optional(),
      sector: z.string().max(100).optional(),
-     seekingTypes: z.array(z.string()).optional(),
+     // "O que você busca?": as 12 chaves de shared/o-que-busca.ts, o "Quero
+     // também mentorar" e as 5 antigas (Onboarding em cache durante o deploy).
+     seekingTypes: z.array(z.string().refine(
+       valor => VALORES_ACEITOS_EM_SEEKING_TYPES.includes(valor),
+       "Opção desconhecida em \"O que você busca?\".",
+     )).max(20).optional(),
+     // Texto obrigatório quando "Outra necessidade" está marcada (validado abaixo).
+     seekingOtherNeed: z.string().max(LIMITE_OUTRA_NECESSIDADE).optional(),
+     // As metas eram coletadas e descartadas: não havia coluna para elas.
+     shortTermGoal: z.string().max(2000).optional(),
+     longTermGoal: z.string().max(2000).optional(),
      businessInterests: z.array(z.string()).optional(),
      preferredCompanySize: z.string().max(50).optional(),
      openToRemote: z.boolean().optional(),
@@ -120,17 +178,29 @@ export const profileRouter = router({
      institutionalNetwork: z.string().max(300).optional(),
       currentResources: z.string().max(2000).optional(),
      whatIHave: z.array(z.string()).optional(),
-      whatINeed: z.array(z.string()).optional(),
+      whatINeed: esquemaDoWhatINeed.optional(),
+      // "O que preciso" detalhado (shared/o-que-preciso.ts); ausente no Onboarding em cache do deploy.
+      whatINeedDetails: esquemaDasDemandas.optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (input.companyCnpj && !isValidCnpj(input.companyCnpj)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe um CNPJ válido." });
+      conferirCadastroEmpresarial(input.personType, input.companyCnpj);
+      if (!outraNecessidadeValida(input.seekingTypes, input.seekingOtherNeed)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Você marcou \"Outra necessidade\": descreva o que você procura." });
       }
-      if (exigeCnpj(input.personType) && !input.companyCnpj) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o CNPJ: ele é obrigatório para MEI, pessoa jurídica e organização sem fins lucrativos." });
-      }
-      const { company, position, jobTitle, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed, personType, companySize, companyCnpj, ...profileData } = input;
-      await upsertUserProfile(ctx.user.id, profileData);
+      // Antes do termo e de qualquer escrita: demanda começada e inválida não grava nada.
+      const oQuePreciso = prepararOQuePreciso(input.whatINeed, input.whatINeedDetails);
+      // Última etapa do cadastro: sem o Termo Geral de Uso vigente aceito, nada
+      // é gravado e o cadastro não conclui (server/termo-geral-de-uso.ts).
+      await exigirAceiteDoTermoGeral(ctx.user.id);
+      const { company, position, jobTitle, currentRole, currentCompany, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed: _whatINeed, whatINeedDetails: _whatINeedDetails, personType, companySize, companyCnpj, seekingOtherNeed, ...profileData } = input;
+      await upsertUserProfile(ctx.user.id, {
+        ...profileData,
+        // Desmarcar "Outra necessidade" apaga o texto: ele não pode seguir
+        // valendo como necessidade declarada. Sem seekingTypes no pedido, não mexe.
+        ...(input.seekingTypes !== undefined
+          ? { seekingOtherNeed: textoDaOutraNecessidade(input.seekingTypes, seekingOtherNeed) }
+          : {}),
+      });
       const db = await exigirDb();
       await db.update(users).set({
         onboardingCompleted: true,
@@ -140,7 +210,11 @@ export const profileRouter = router({
       }).where(eq(users.id, ctx.user.id));
       // Salvar campos v2 no user_profiles
       const profileUpdates: Record<string, unknown> = {};
-      if (jobTitle !== undefined) profileUpdates.jobTitle = jobTitle;
+      // Cargo e empresa vão só para jobTitle/company, a coluna que fica; as
+      // antigas (currentRole/currentCompany) não recebem mais escrita.
+      const { jobTitle: cargo, company: empresa } = cargoEEmpresaParaGravar({ jobTitle, currentRole, company, currentCompany });
+      if (cargo !== undefined) profileUpdates.jobTitle = cargo;
+      if (empresa !== undefined) profileUpdates.company = empresa;
       if (activityArea !== undefined) profileUpdates.activityArea = activityArea;
       if (currentResources !== undefined) profileUpdates.currentResources = currentResources;
       if (personType !== undefined) profileUpdates.personType = personType;
@@ -149,21 +223,26 @@ export const profileRouter = router({
         profileUpdates.companyCnpj = null;
       } else {
         if (companySize !== undefined) profileUpdates.companySize = companySize;
-        if (companyCnpj !== undefined) profileUpdates.companyCnpj = companyCnpj ? normalizeCnpj(companyCnpj) : null;
+        if (companyCnpj !== undefined) profileUpdates.companyCnpj = companyCnpj ? normalizarCadastroEmpresarial(companyCnpj) || null : null;
       }
       if (institutionalNetwork !== undefined) profileUpdates.institutionalNetwork = institutionalNetwork;
       // Colunas json — o Drizzle serializa; passar já stringificado gravaria JSON duplo
       if (interestSectors !== undefined) profileUpdates.interestSectors = interestSectors;
       if (whatIHave !== undefined) profileUpdates.whatIHave = whatIHave;
-      if (whatINeed !== undefined) profileUpdates.whatINeed = whatINeed;
+      if (oQuePreciso.whatINeed !== undefined) profileUpdates.whatINeed = oQuePreciso.whatINeed;
+      if (oQuePreciso.whatINeedDetails !== undefined) profileUpdates.whatINeedDetails = oQuePreciso.whatINeedDetails;
       if (Object.keys(profileUpdates).length > 0) {
         await db.update(userProfiles).set(profileUpdates as any).where(eq(userProfiles.userId, ctx.user.id));
       }
+      // Governança: o cadastro nasce Bronze; se o que acabou de ser gravado já
+      // atende à régua de qualidade, sai daqui Prata. Depois das DUAS escritas
+      // acima, porque O que tenho / O que preciso vão na segunda.
+      const { promovidaAPrata } = await reavaliarNivelPeloPerfil(ctx.user);
       // Gerar matches automaticamente após onboarding
       try {
         const { generateMatchesForUser } = await import("../matching");
         await generateMatchesForUser(ctx.user.id);
       } catch (e) { console.warn("[Onboarding] Match generation failed:", e); }
-      return { success: true };
+      return { success: true, promovidaAPrata };
     }),
 });

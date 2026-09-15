@@ -1,11 +1,12 @@
 import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { createPrivateContact, exigirDb } from "../db";
-import { meetingContactSuggestions, meetingEntities, meetings } from "../../drizzle/schema";
+import { meetingContactSuggestions, meetingEntities, meetings, privateContacts } from "../../drizzle/schema";
 import { protectedProcedure, router } from "../_core/trpc";
 import { createAuditLog } from "../security";
+import { decidirPendenciasDaPessoaSugerida } from "../network-extracao";
 import {
   ALLOWED_MEETING_AUDIO_TYPES,
   deletePrivateMeeting,
@@ -42,6 +43,7 @@ function devolverVagaDeReprocesso(openId: string, momento: number) {
 }
 
 export const MENSAGEM_REUNIAO_PROCESSANDO = "Esta reunião está sendo processada de novo. Espere terminar para decidir.";
+export const MENSAGEM_SUGESTAO_JA_DECIDIDA = "Esta pessoa já foi decidida. Atualize a tela para ver como ficou.";
 
 /**
  * Durante um reprocessamento, as sugestões e entidades da tentativa anterior
@@ -178,32 +180,63 @@ export const meetingsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await exigirDb();
-      const [suggestion] = await db.select().from(meetingContactSuggestions)
-        .where(and(eq(meetingContactSuggestions.id, input.suggestionId), eq(meetingContactSuggestions.ownerId, ctx.user.openId))).limit(1);
+      const daDona = and(eq(meetingContactSuggestions.id, input.suggestionId), eq(meetingContactSuggestions.ownerId, ctx.user.openId));
+      const [suggestion] = await db.select().from(meetingContactSuggestions).where(daDona).limit(1);
       if (!suggestion) throw new TRPCError({ code: "NOT_FOUND", message: "Sugestão não encontrada." });
+      if (suggestion.status !== "pending") throw new TRPCError({ code: "CONFLICT", message: MENSAGEM_SUGESTAO_JA_DECIDIDA });
       await recusarSeReuniaoProcessando(db, ctx.user.openId, suggestion.meetingId);
 
-      let status: "created" | "linked" | "ignored" = "ignored";
+      const status = input.action === "create" ? "created" as const : input.action === "link" ? "linked" as const : "ignored" as const;
       let linkedContactId: number | null = null;
-      if (input.action === "create") {
-        linkedContactId = await createPrivateContact(ctx.user.openId, {
-          fullName: suggestion.fullName,
-          jobTitle: suggestion.jobTitle,
-          company: suggestion.company,
-          phone: suggestion.phone,
-          email: suggestion.email,
-        });
-        status = "created";
-      } else if (input.action === "link") {
+      if (input.action === "link") {
         if (!input.contactId) throw new TRPCError({ code: "BAD_REQUEST", message: "Selecione um contato para vincular." });
+        // Vincular só a contato DA dona: sem isto, um id de outra rede virava o
+        // ponteiro da sugestão (e das pendências do Meu Network Inteligente).
+        const [alvo] = await db.select({ id: privateContacts.id }).from(privateContacts)
+          .where(and(eq(privateContacts.id, input.contactId), eq(privateContacts.ownerId, ctx.user.openId))).limit(1);
+        if (!alvo) throw new TRPCError({ code: "NOT_FOUND", message: "Contato não encontrado." });
         linkedContactId = input.contactId;
-        status = "linked";
       }
-      await db.update(meetingContactSuggestions).set({
-        status,
-        existingContactId: linkedContactId,
-        updatedAt: Date.now(),
-      }).where(and(eq(meetingContactSuggestions.id, input.suggestionId), eq(meetingContactSuggestions.ownerId, ctx.user.openId)));
+      // Tomada: só UMA decisão tira a sugestão de 'pending', e antes de criar
+      // contato ou mexer nas pendências. Sem o status no WHERE, o duplo clique
+      // (ou a aba velha) criava um segundo contato e levava as pendências da IA
+      // para ele, e um 'ignorar' tardio ignorava as do contato já criado.
+      const [tomada] = await db.update(meetingContactSuggestions)
+        .set({ status, existingContactId: linkedContactId, updatedAt: Date.now() })
+        .where(and(daDona, eq(meetingContactSuggestions.status, "pending")));
+      if (!(tomada as { affectedRows?: number } | undefined)?.affectedRows) {
+        throw new TRPCError({ code: "CONFLICT", message: MENSAGEM_SUGESTAO_JA_DECIDIDA });
+      }
+      if (input.action === "create") {
+        try {
+          linkedContactId = await createPrivateContact(ctx.user.openId, {
+            fullName: suggestion.fullName,
+            jobTitle: suggestion.jobTitle,
+            company: suggestion.company,
+            phone: suggestion.phone,
+            email: suggestion.email,
+          });
+        } catch (erro) {
+          // O contato não nasceu: a sugestão volta a pendente para a dona tentar de novo.
+          await db.update(meetingContactSuggestions).set({ status: "pending", updatedAt: Date.now() })
+            .where(and(daDona, eq(meetingContactSuggestions.status, "created"), isNull(meetingContactSuggestions.existingContactId)))
+            .catch(erroAoDevolver => console.error("[meetings.decideContactSuggestion] a sugestão não voltou a pendente:", erroAoDevolver));
+          throw erro;
+        }
+        await db.update(meetingContactSuggestions).set({ existingContactId: linkedContactId, updatedAt: Date.now() }).where(daDona);
+      }
+      // Meu Network Inteligente: O QUE TENHO / O QUE PRECISO que a IA tirou da
+      // reunião para esta pessoa passam a apontar para o contato, AINDA
+      // pendentes — criar o contato confirma o Quem Sou que a tela mostrou, não
+      // o resto. Ignorar a pessoa ignora tudo que veio dela.
+      await decidirPendenciasDaPessoaSugerida(db, {
+        ownerId: ctx.user.openId,
+        meetingSuggestionId: suggestion.id,
+        meetingId: suggestion.meetingId,
+        acao: input.action,
+        contactId: linkedContactId,
+        quemSouDaSugestao: { fullName: suggestion.fullName, phone: suggestion.phone, email: suggestion.email },
+      });
       return { success: true, contactId: linkedContactId };
     }),
 

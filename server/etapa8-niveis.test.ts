@@ -214,7 +214,11 @@ describe("Etapa 8/11 — a trava de leitura mora no caminho vivo", () => {
 describe("Etapa 8 — confidencial não vaza pelo segundo caminho", () => {
   it("getRecommendedOpportunities aplica a régua de opportunities.list", () => {
     const rotas = readFileSync(join(__dirname, "routers", "matching.ts"), "utf8");
-    const corpo = rotas.slice(rotas.indexOf("getRecommendedOpportunities"), rotas.indexOf("checkAndNotifyHighCompatibility"));
+    // O fim do corpo é a função do alerta: `checkAndNotifyHighCompatibility` saiu do router (15/09),
+    // e um indexOf que devolve -1 faria o slice engolir o arquivo inteiro sem falhar.
+    const fim = rotas.indexOf("export async function notifyHighCompatibilityForOpportunity");
+    expect(fim).toBeGreaterThan(0);
+    const corpo = rotas.slice(rotas.indexOf("getRecommendedOpportunities"), fim);
     // o pin é a expressão exata da guarda: trocar false por true, ou remover o
     // condicional, quebra aqui
     expect(corpo).toContain("...(isGold ? [] : [eq(opportunities.isConfidential, false)])");

@@ -42,8 +42,10 @@ function cadeiaDeSelect() {
 // Conta as consultas: "não consulta o banco" só é prova se a contagem existir
 // (a fila vazia é verdadeira antes e depois, e não discrimina nada).
 let selects = 0;
+// As colunas de cada SELECT: a leitura só enxerga a especialidade se a pedir ao banco.
+const colunasPedidas: string[][] = [];
 const fakeDb = {
-  select: () => { selects += 1; return cadeiaDeSelect(); },
+  select: (colunas?: Record<string, unknown>) => { selects += 1; colunasPedidas.push(Object.keys(colunas ?? {})); return cadeiaDeSelect(); },
   insert: () => ({
     values: (values: Record<string, unknown>) => ({
       onDuplicateKeyUpdate: () => { upserts.push({ values }); return Promise.resolve(); },
@@ -53,12 +55,14 @@ const fakeDb = {
   delete: () => ({ where: (condicao: unknown) => { deletes.push(condicao); return Promise.resolve(); } }),
 };
 vi.mock("./db", () => ({ getDb: async () => fakeDb as never, exigirDb: async () => fakeDb as never }));
+// O registro PLATFORM_MATCH tem teste próprio (registro-de-conexoes-nos-motores.test.ts); aqui os upserts são só os de `matches`.
+vi.mock("./network-registro", () => ({ registrarConexoesEntreMembrasDepoisDoCalculo: async () => undefined }));
 
 const { calculateCompatibilityScore, generateMatchesForUser, matchesBloqueadosPelaDemandaExpressa } = await import("./matching");
 
 const perfil = (extra: Partial<UserProfile>) => ({ whatIHave: null, whatINeed: null, ...extra }) as unknown as UserProfile;
 
-beforeEach(() => { filas.length = 0; upserts.length = 0; deletes.length = 0; selects = 0; });
+beforeEach(() => { filas.length = 0; upserts.length = 0; deletes.length = 0; selects = 0; colunasPedidas.length = 0; });
 
 describe("calculateCompatibilityScore — serviço sem demanda expressa dá zero", () => {
   it("advocacia tributária × quem procura distribuidores: bloqueado, nota zero", () => {
@@ -236,5 +240,248 @@ describe("matchesBloqueadosPelaDemandaExpressa — a leitura enxerga o portão",
   it("sem ids não consulta o banco", async () => {
     expect(await matchesBloqueadosPelaDemandaExpressa(1, [])).toEqual(new Set());
     expect(selects).toBe(0);
+  });
+});
+
+describe("satisfaz — serviço escrito de outro jeito e serviço diferente, a mesma regra do motor privado (defeitos a e c da #101, 13/09)", () => {
+  const umaVia = (have: string, need: string) =>
+    calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] }));
+
+  it("(a) a mesma coisa escrita de outro jeito libera o serviço: 'Advocacia tributária' × 'Advogado tributarista'", () => {
+    const pares: Array<[string, string]> = [
+      ["Advocacia tributária", "Advogado tributarista"],
+      ["Contabilidade tributária", "Contador tributário"],
+      ["Tax lawyer", "Advogado tributarista"],
+      ["Advocacia tributária", "Direito tributário"],
+      ["Consultoria tributária", "Assessoria tributária"],
+    ];
+    for (const [have, need] of pares) {
+      const r = umaVia(have, need);
+      expect(r.bloqueio, `${have} × ${need}`).toBeUndefined();
+      expect(r.complementarity, `${have} × ${need}`).toBe(60);
+    }
+  });
+
+  it("(c) serviço diferente continua bloqueado, mesmo com a palavra igual", () => {
+    const pares: Array<[string, string]> = [
+      ["Consultoria jurídica", "Consultoria em marketing"],
+      ["Consultoria jurídica", "Assessoria"],
+      ["Assessoria de imprensa", "Consultoria"],
+      ["Interpretação de exames laboratoriais", "Tradutor"],
+      ["Consultoria digital", "Consultoria em marketing digital"],
+    ];
+    for (const [have, need] of pares) {
+      const r = umaVia(have, need);
+      expect(r.bloqueio, `${have} × ${need}`).toBe("servico-sem-demanda-expressa");
+      expect(r.complementarity, `${have} × ${need}`).toBe(0);
+    }
+  });
+
+  it("a opção fixa 'consultoria' é decidida pela cabeça: marketing e tradução não atendem; advocacia e auditoria sim", () => {
+    for (const have of ["Marketing para advogados", "Tradução jurídica", "Marketing digital"]) {
+      expect(umaVia(have, "consultoria").bloqueio, have).toBe("servico-sem-demanda-expressa");
+    }
+    for (const have of ["Advocacia tributária", "Auditoria"]) {
+      expect(umaVia(have, "consultoria").complementarity, have).toBe(60);
+    }
+  });
+});
+
+describe("calculateCompatibilityScore — serviço com adjetivo de outro tipo não escapa do portão (revisão de 13/09)", () => {
+  it("'Consultoria financeira' só casa com quem declarou precisar dela", () => {
+    const presumido = calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria financeira"] }), perfil({ whatINeed: ["distribuidores"] }));
+    expect(presumido.bloqueio).toBe("servico-sem-demanda-expressa");
+    const declarado = calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria financeira"] }), perfil({ whatINeed: ["Consultor financeiro"] }));
+    expect(declarado.bloqueio).toBeUndefined();
+    expect(declarado.complementarity).toBe(60);
+  });
+});
+
+describe("calculateCompatibilityScore — revisão adversarial da correção (13/09)", () => {
+  it("'Jurídico' e 'Legal services' voltam a atender a opção fixa 'consultoria'; 'Assessoria de viagens' não", () => {
+    for (const have of ["Jurídico", "Legal services"]) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: ["consultoria"] })).complementarity, have).toBe(60);
+    }
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Assessoria de viagens"] }), perfil({ whatINeed: ["consultoria"] })).bloqueio).toBe("servico-sem-demanda-expressa");
+  });
+
+  it("serviço diferente escrito com 'para' ou com lema que colide continua bloqueado", () => {
+    for (const [have, need] of [["Advocacia tributária", "Advogado para divórcio"], ["Consultoria em segurança do trabalho", "Consultoria trabalhista"]] as Array<[string, string]>) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] })).bloqueio, `${have} × ${need}`).toBe("servico-sem-demanda-expressa");
+    }
+  });
+});
+
+describe("calculateCompatibilityScore — necessidade que coordena serviços diferentes (revisão de 13/09)", () => {
+  it("'Advogado e contador' libera quem oferece advocacia", () => {
+    const r = calculateCompatibilityScore(perfil({ whatIHave: ["Advocacia tributária"] }), perfil({ whatINeed: ["Advogado e contador"] }));
+    expect(r.bloqueio).toBeUndefined();
+    expect(r.complementarity).toBe(60);
+  });
+});
+
+describe("calculateCompatibilityScore — 'Direito tributário' sem categoria é serviço (14/09)", () => {
+  it("perfil que só oferece 'Direito tributário' não vira match presumido, e atende 'Advogado tributarista'", () => {
+    const presumido = calculateCompatibilityScore(
+      perfil({ whatIHave: ["Direito tributário"], sector: "Jurídico" }),
+      perfil({ whatINeed: ["distribuidores"], sector: "Farmacêutico" }),
+    );
+    expect(presumido.bloqueio).toBe("servico-sem-demanda-expressa");
+    const declarado = calculateCompatibilityScore(perfil({ whatIHave: ["Direito tributário"] }), perfil({ whatINeed: ["Advogado tributarista"] }));
+    expect(declarado.bloqueio).toBeUndefined();
+    expect(declarado.complementarity).toBe(60);
+  });
+});
+
+
+describe("calculateCompatibilityScore — revisão adversarial da correção empilhada (14/09)", () => {
+  it("em chinês a oferta atende a necessidade genérica da família; serviço diferente segue bloqueado", () => {
+    const zh = calculateCompatibilityScore(perfil({ whatIHave: ["律师"] }), perfil({ whatINeed: ["Advogado"] }));
+    expect(zh.bloqueio).toBeUndefined();
+    expect(zh.complementarity).toBe(60);
+    const diferente = calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria trabalhista"] }), perfil({ whatINeed: ["Consultoria para segurança do trabalho"] }));
+    expect(diferente.bloqueio).toBe("servico-sem-demanda-expressa");
+  });
+});
+
+describe("calculateCompatibilityScore — o serviço que mora na especialidade (lacuna depois da #127, 14/09)", () => {
+  // A tela de cadastro não tem opção de serviço em "O que tenho": a advogada põe
+  // o serviço na especialidade e na área de atuação. Até aqui o bloqueio exigia
+  // "o que tenho" preenchido, e o par passava pelas seis dimensões.
+  it("especialidade de serviço com 'o que tenho' vazio × farmacêutica que procura distribuidores: bloqueado (era 57, gravado)", () => {
+    const r = calculateCompatibilityScore(
+      perfil({ whatIHave: [], primarySpecialty: "Advocacia tributária", sector: "Jurídico" }),
+      perfil({ whatINeed: ["distribuidores"], sector: "Farmacêutico" }),
+    );
+    expect(r.bloqueio).toBe("servico-sem-demanda-expressa");
+    expect(r.overall).toBe(0);
+  });
+
+  it("vale para a chave da especialidade do onboarding ('legal') e para a área de atuação, nos dois lados", () => {
+    expect(calculateCompatibilityScore(perfil({ primarySpecialty: "legal" }), perfil({ whatINeed: ["compradores"] })).bloqueio)
+      .toBe("servico-sem-demanda-expressa");
+    expect(calculateCompatibilityScore(perfil({ whatINeed: ["fornecedores"] }), perfil({ activityArea: "Transporte rodoviário de cargas" })).bloqueio)
+      .toBe("servico-sem-demanda-expressa");
+  });
+
+  it("a especialidade atende o que a outra DECLAROU: é base expressa e o par passa", () => {
+    const consultoria = calculateCompatibilityScore(perfil({ primarySpecialty: "legal" }), perfil({ whatINeed: ["consultoria"] }));
+    expect(consultoria.bloqueio).toBeUndefined();
+    const contador = calculateCompatibilityScore(perfil({ whatINeed: ["Contador"] }), perfil({ activityArea: "Escritório de contabilidade" }));
+    expect(contador.bloqueio).toBeUndefined();
+  });
+
+  it("especialidade que não é serviço, ou área mista, segue pelas seis dimensões como antes", () => {
+    expect(calculateCompatibilityScore(perfil({ primarySpecialty: "tech" }), perfil({ whatINeed: ["distribuidores"] })).bloqueio).toBeUndefined();
+    expect(calculateCompatibilityScore(perfil({ primarySpecialty: "legal", activityArea: "Indústria farmacêutica" }), perfil({ whatINeed: ["distribuidores"] })).bloqueio)
+      .toBeUndefined();
+  });
+
+  it("'o que tenho' preenchido manda: a especialidade não é lida por cima dele", () => {
+    // A fazenda atende "fornecedores"; a especialidade jurídica não entra na conta.
+    const r = calculateCompatibilityScore(perfil({ whatIHave: ["fazenda"], primarySpecialty: "legal" }), perfil({ whatINeed: ["fornecedores"] }));
+    expect(r.bloqueio).toBeUndefined();
+    expect(r.complementarity).toBe(60);
+  });
+
+  it("a opção fixa 'Logística' passou a serviço (decisão de 14/09): casa com quem declarou distribuidores, não com quem procura compradores", () => {
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["logistica"] }), perfil({ whatINeed: ["distribuidores"] })).bloqueio).toBeUndefined();
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["logistica"] }), perfil({ whatINeed: ["compradores"] })).bloqueio)
+      .toBe("servico-sem-demanda-expressa");
+  });
+});
+
+describe("matchesBloqueadosPelaDemandaExpressa — a especialidade chega à leitura (14/09)", () => {
+  it("pede a área de atuação e a especialidade ao banco, e esconde o par sustentado só por elas", async () => {
+    const donaSemTenho = { userId: 1, whatIHave: [], whatINeed: [], primarySpecialty: "Advocacia tributária", activityArea: null };
+    filas.push([donaSemTenho], [
+      { userId: 2, whatIHave: [], whatINeed: ["distribuidores"], activityArea: null, primarySpecialty: null, investmentCapacity: null, lookingForInvestment: false, investmentAmountSeeking: null },
+      { userId: 3, whatIHave: [], whatINeed: ["consultoria"], activityArea: null, primarySpecialty: null, investmentCapacity: null, lookingForInvestment: false, investmentAmountSeeking: null },
+    ]);
+    const bloqueados = await matchesBloqueadosPelaDemandaExpressa(1, [2, 3]);
+    expect([...bloqueados]).toEqual([2]);
+    for (const colunas of colunasPedidas) {
+      expect(colunas).toContain("activityArea");
+      expect(colunas).toContain("primarySpecialty");
+    }
+  });
+});
+
+describe("calculateCompatibilityScore — revisão de 15/09 dos consertos da #127 (116bb56, portada)", () => {
+  it("nos idiomas novos, o desconhecido não vira genérico diante de especialidade entendida, e o pedido que não é de serviço não solta o portão", () => {
+    for (const [have, need] of [
+      ["Consultoria tributária", "Консультация по логистике"], ["Consultoria tributária", "Консультация по маркетингу"], ["税务咨询", "招聘咨询"],
+      ["Advocacia", "Juristische Person"], ["Contabilidade", "Software für Buchhaltung"], ["Consultoria", "Conseil d'administration"],
+      ["Consultoria em segurança do trabalho / 安全咨询", "Consultoria trabalhista"],
+    ] as Array<[string, string]>) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] })).bloqueio, `${have} × ${need}`).toBe("servico-sem-demanda-expressa");
+    }
+    // O que a classificação não chama de serviço (a loja, o abacate) não é barrado, e o mesmo serviço escrito de outro jeito atende.
+    for (const [have, need] of [
+      ["Expert-comptable", "Expertise comptable"], ["Boutique de joias de design", "Joias finas"], ["Avocats Hass export international", "Importateur de fruits"],
+      ["Contabilidade para pequenas empresas", "Contador"], ["Empresa de gestão contábil", "Contador"],
+    ] as Array<[string, string]>) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] })).bloqueio, `${have} × ${need}`).toBeUndefined();
+    }
+  });
+});
+
+describe("calculateCompatibilityScore — idiomas novos (e6ddfa4 e 116bb56 da #127, portadas)", () => {
+  it("o mesmo serviço escrito de outro jeito atende; o que as listas não leem não bloqueia; o presumido segue bloqueado", () => {
+    const ru = calculateCompatibilityScore(perfil({ whatIHave: ["Налоговый консалтинг"] }), perfil({ whatINeed: ["Налоговая консультация"] }));
+    expect(ru.bloqueio).toBeUndefined();
+    expect(ru.complementarity).toBe(60);
+    // Como na main: sem bloqueio, e sem contar como necessidade atendida.
+    const naoLe = calculateCompatibilityScore(perfil({ whatIHave: ["Steuerberatung für Erbschaften"] }), perfil({ whatINeed: ["Steuerberater für Erbschaftsteuer"] }));
+    expect(naoLe.bloqueio).toBeUndefined();
+    expect(naoLe.complementarity).toBe(20);
+    for (const [have, need] of [["Steuerberatung", "Maschinen"], ["税务咨询", "买家"], ["Налоговый консалтинг", "Юрист"]] as Array<[string, string]>) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] })).bloqueio, `${have} × ${need}`).toBe("servico-sem-demanda-expressa");
+    }
+  });
+
+  it("o mesmo serviço entre idiomas atende, e a exceção vale também para a especialidade que é a oferta", () => {
+    const zh = calculateCompatibilityScore(perfil({ whatIHave: ["税务咨询"] }), perfil({ whatINeed: ["Consultoria tributária"] }));
+    expect(zh.bloqueio).toBeUndefined();
+    expect(zh.complementarity).toBe(60);
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Steuerberatung"] }), perfil({ whatINeed: ["Steuerberaterin gesucht"] })).bloqueio).toBeUndefined();
+    // Nesta branch, com "o que tenho" vazio a especialidade é a oferta (lacuna depois da #127): o par que a regra não lê
+    // num idioma novo também não é bloqueado por ela.
+    const naEspecialidade = calculateCompatibilityScore(perfil({ primarySpecialty: "Steuerberatung für Erbschaften" }), perfil({ whatINeed: ["Steuerberater für Erbschaftsteuer"] }));
+    expect(naEspecialidade.bloqueio).toBeUndefined();
+    const presumido = calculateCompatibilityScore(perfil({ primarySpecialty: "Steuerberatung" }), perfil({ whatINeed: ["Maschinen"] }));
+    expect(presumido.bloqueio).toBe("servico-sem-demanda-expressa");
+  });
+});
+
+describe("calculateCompatibilityScore — revisão de 15/09 do porte da #127", () => {
+  it("o par que a regra não lê num idioma novo não conta como necessidade atendida, nem pelo assunto curado", () => {
+    for (const [have, need] of [
+      ["Conseil en fiscalité", "Conseil en fiscalité des entreprises"], ["Conseil en fiscalité internationale", "Conseil en fiscalité des entreprises"],
+      ["استشارات ضريبية دولية", "استشارات ضريبية للشركات"],
+    ] as Array<[string, string]>) {
+      const r = calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] }));
+      expect(r.bloqueio, `${have} × ${need}`).toBeUndefined();
+      expect(r.complementarity, `${have} × ${need}`).toBe(20);
+    }
+    // O mesmo par em português segue bloqueado.
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria tributária"] }), perfil({ whatINeed: ["Consultoria tributária de empresas"] })).bloqueio)
+      .toBe("servico-sem-demanda-expressa");
+  });
+
+  it("'les' em espanhol não joga a descrição nos idiomas novos: o serviço presumido segue bloqueado", () => {
+    const descricao = "Necesitamos una consultoría de recursos humanos que les ayude a los gerentes a contratar";
+    const detalhada = perfil({ whatINeed: ["especialistas_servicos"], whatINeedDetails: [{ id: "d1", category: "especialistas_servicos", service: "recursos_humanos", description: descricao }] } as unknown as Partial<UserProfile>);
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria em comércio exterior"] }), detalhada).bloqueio).toBe("servico-sem-demanda-expressa");
+    expect(calculateCompatibilityScore(perfil({ primarySpecialty: "Consultoria em comércio exterior" }), detalhada).bloqueio).toBe("servico-sem-demanda-expressa");
+    const outra = perfil({ seekingTypes: ["outra_necessidade"], seekingOtherNeed: descricao } as unknown as Partial<UserProfile>);
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria em comércio exterior"] }), outra).bloqueio).toBe("servico-sem-demanda-expressa");
+  });
+
+  it("R&D, I+D e o serviço em chinês com a cidade seguem serviço e não casam com a contraparte", () => {
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["R&D tax consulting"] }), perfil({ whatINeed: ["Distribuidor para expansão na África"] })).bloqueio).toBe("servico-sem-demanda-expressa");
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria tributária"] }), perfil({ whatINeed: ["Consultoría en I+D"] })).bloqueio).toBe("servico-sem-demanda-expressa");
+    const distribuidores = perfil({ whatINeed: ["distribuidores"], whatINeedDetails: [{ id: "d1", category: "distribuidores", description: "寻找非洲市场的经销商" }] } as unknown as Partial<UserProfile>);
+    expect(calculateCompatibilityScore(perfil({ primarySpecialty: "律师事务所（北京）" }), distribuidores).bloqueio).toBe("servico-sem-demanda-expressa");
   });
 });

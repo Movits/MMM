@@ -12,7 +12,7 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  * serviço sem citação conferida não sai da tela nem vira alerta, seja qual
  * for a nota. Os outros tipos passam como antes.
  */
-const { citacaoConfere, cortarEmPalavra, exigeCitacao, normalizarTipo, passaNoPortao, reconhecerTipo, REGRA_DA_DEMANDA_EXPRESSA, textoEscritoPelaPessoa, TIPOS_PARA_A_IA } = await import("./portao-da-demanda-expressa");
+const { citacaoAmarradaAoPerfil, citacaoConfere, cortarEmPalavra, exigeCitacao, normalizarTipo, passaNoPortao, perfilDeclarouPrecisarDoServico, reconhecerTipo, REGRA_DA_DEMANDA_EXPRESSA, textoEscritoPelaPessoa, TIPOS_PARA_A_IA } = await import("./portao-da-demanda-expressa");
 
 describe("normalizarTipo — a grafia do modelo vira o enum", () => {
   it("aceita variações e sinônimos", () => {
@@ -127,7 +127,12 @@ describe("passaNoPortao — só serviço precisa de citação", () => {
       expect(exigeCitacao({ tipoDaOferta: tipo, necessidadeExpressa: "" }, soServico), String(tipo)).toBe(true);
       expect(passaNoPortao({ tipoDaOferta: tipo, necessidadeExpressa: "" }, fonte, soServico), String(tipo)).toBe(false);
     }
-    expect(passaNoPortao({ tipoDaOferta: "produto", necessidadeExpressa: "busca distribuidor para expansão na África" }, fonte, soServico)).toBe(true);
+    // Com citação, o piso abre — desde que a citação peça o serviço. Até 14/09 esta linha usava "busca distribuidor
+    // para expansão na África" e passava: é o exemplo 2 da spec da Glenda (serviço tributário × quem procura
+    // distribuidor), e a citação de CONTRAPARTE passou a barrar.
+    expect(passaNoPortao({ tipoDaOferta: "produto", necessidadeExpressa: "busca distribuidor para expansão na África" }, fonte, soServico)).toBe(false);
+    const fonteTributaria = "Revisão fiscal | Precisamos revisar nossos tributos e identificar créditos fiscais";
+    expect(passaNoPortao({ tipoDaOferta: "produto", necessidadeExpressa: "revisar nossos tributos e identificar créditos fiscais" }, fonteTributaria, soServico)).toBe(true);
   });
 
   it("o piso não fecha quando há outra base declarada: necessidade, busca ou 'busco investimento'", () => {
@@ -309,7 +314,7 @@ describe("matching.getRecommendedOpportunities — o portão na recomendação",
 });
 
 describe("notifyHighCompatibilityForOpportunity — o portão no alerta", () => {
-  it("avisa quem tem citação conferida ou oferta que não é serviço; retém o serviço presumido", async () => {
+  it("avisa quem oferece o que a oportunidade pede; retém o serviço presumido e o serviço que cita a contraparte", async () => {
     const oportunidade = oportunidades[1]; // distribuidor para a África
     filas.push([oportunidade], [
       { userId: 2, role: "silver", whatIHave: ["Advocacia tributária"], whatINeed: [], sector: "Jurídico", seekingTypes: [], interestSectors: [], activityArea: null },
@@ -329,8 +334,11 @@ describe("notifyHighCompatibilityForOpportunity — o portão no alerta", () => 
     // A descrição vai inteira ao alerta (não mais 300 caracteres).
     const chamada = invokeLLM.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
     expect(chamada.messages.find(m => m.role === "user")!.content).toContain(oportunidade.description);
-    expect(r).toEqual({ notified: 2 });
-    expect(createNotification.mock.calls.map(c => (c[0] as { userId: number }).userId)).toEqual([3, 4]);
+    // A consultoria em distribuição (userId 4) era avisada até 14/09: a citação estava na oportunidade. Mas o que ela
+    // declara é precisar de um DISTRIBUIDOR — a contraparte, que serviço nenhum entrega (exemplo 2 da spec da Glenda;
+    // o mesmo critério de `perfilDeclarouPrecisarDoServico` no sentido oposto). Quem TEM a rede de distribuição segue avisada.
+    expect(r).toEqual({ notified: 1 });
+    expect(createNotification.mock.calls.map(c => (c[0] as { userId: number }).userId)).toEqual([3]);
   });
 
   it("o piso no alerta: perfil só de serviço e sem busca declarada é retido mesmo quando o modelo diz 'produto'", async () => {
@@ -345,5 +353,270 @@ describe("notifyHighCompatibilityForOpportunity — o portão no alerta", () => 
     silencio.mockRestore();
     expect(r).toEqual({ notified: 0 });
     expect(createNotification).not.toHaveBeenCalled();
+  });
+});
+
+describe("citacaoAmarradaAoPerfil — a citação precisa pedir um serviço que o perfil oferece (defeito c da #101, 13/09)", () => {
+  const fonte = textoEscritoPelaPessoa("Crescimento da marca", [], "Precisamos de consultoria em marketing digital para lançar a marca no Brasil.");
+  const servico = (citacao: string) => ({ tipoDaOferta: "servico", necessidadeExpressa: citacao });
+  const oferece = (...ofertas: string[]) => ({ whatIHave: ofertas, whatINeed: [] });
+
+  it("a citação de OUTRO serviço não passa, nem cortada antes da especialidade", () => {
+    expect(passaNoPortao(servico("consultoria em marketing"), fonte, oferece("Consultoria jurídica"))).toBe(false);
+    expect(passaNoPortao(servico("Precisamos de consultoria"), fonte, oferece("Consultoria jurídica"))).toBe(false);
+  });
+
+  it("o mesmo serviço passa, inclusive quando a necessidade é mais específica que a oferta", () => {
+    expect(passaNoPortao(servico("consultoria em marketing digital"), fonte, oferece("Consultoria em marketing"))).toBe(true);
+    expect(passaNoPortao(servico("consultoria em marketing digital"), fonte, oferece("Consultoria jurídica", "Consultoria em marketing"))).toBe(true);
+  });
+
+  it("a mesma coisa escrita de outro jeito passa; outra profissão com a mesma especialidade não", () => {
+    const advogado = "Busca | Precisamos de advogado tributarista para o ICMS";
+    const contador = "Busca | Precisamos de contador tributário";
+    expect(passaNoPortao(servico("Precisamos de advogado tributarista"), advogado, oferece("Advocacia tributária"))).toBe(true);
+    expect(passaNoPortao(servico("Precisamos de contador tributário"), contador, oferece("Advocacia tributária"))).toBe(false);
+  });
+
+  it("paráfrase sem palavra de serviço fica com a IA, como antes", () => {
+    const revisao = "Revisão fiscal | Precisamos revisar nossos tributos e identificar créditos fiscais";
+    expect(passaNoPortao(servico("Precisamos revisar nossos tributos e identificar créditos fiscais"), revisao, oferece("Advocacia tributária"))).toBe(true);
+  });
+
+  it("sem perfil, ou perfil sem serviço, a amarração não se aplica", () => {
+    expect(citacaoAmarradaAoPerfil("consultoria em marketing", fonte)).toBe(true);
+    expect(citacaoAmarradaAoPerfil("consultoria em marketing", fonte, oferece("Soja"))).toBe(true);
+    expect(citacaoAmarradaAoPerfil(undefined, fonte, oferece("Consultoria jurídica"))).toBe(true);
+  });
+});
+
+describe("Portão da IA — revisão adversarial da correção (13/09)", () => {
+  const citando = (descricao: string, citacao: string, perfil: Record<string, unknown>) =>
+    passaNoPortao({ tipoDaOferta: "servico", necessidadeExpressa: citacao }, textoEscritoPelaPessoa("Oportunidade", [], descricao), { whatINeed: [], ...perfil });
+  const oferece = (...ofertas: string[]) => ({ whatIHave: ofertas });
+
+  it("perfil cuja especialidade é 'legal' (o que o onboarding grava) passa com 'Precisamos de um advogado'", () => {
+    expect(citando("Precisamos de um advogado para montar a holding.", "Precisamos de um advogado", { whatIHave: [], primarySpecialty: "legal" })).toBe(true);
+    expect(citando("Precisamos de consultoria em marketing digital.", "consultoria em marketing digital", { whatIHave: [], primarySpecialty: "legal" })).toBe(false);
+  });
+
+  it("paráfrase com palavra de serviço incidental na mesma frase continua passando", () => {
+    expect(citando("Precisamos recuperar créditos de ICMS e contratar um contador.", "recuperar créditos de ICMS", oferece("Advocacia tributária"))).toBe(true);
+    expect(citando("Precisamos de agência de marketing e precisamos revisar nossos tributos.", "precisamos revisar nossos tributos", oferece("Advocacia tributária"))).toBe(true);
+    expect(citando("Cooperativa precisa de apoio para exportação, com atendimento em inglês.", "precisa de apoio para exportação", oferece("Consultoria em exportação"))).toBe(true);
+  });
+
+  it("assessoria + profissão, enumeração com vírgula e artigo em inglês passam para quem oferece o serviço", () => {
+    expect(citando("Precisamos de assessoria contábil para sair do MEI.", "Precisamos de assessoria contábil", oferece("Contabilidade"))).toBe(true);
+    expect(citando("We need legal support for our expansion into Brazil.", "We need legal support", oferece("Corporate lawyer"))).toBe(true);
+    expect(citando("Startup precisa de advogado, contador e designer.", "precisa de advogado, contador e designer", oferece("Advocacia empresarial"))).toBe(true);
+    expect(citando("Looking for an accountant for our subsidiary.", "looking for an accountant", oferece("Contabilidade internacional"))).toBe(true);
+    expect(citando("We need help with our marketing.", "We need help with our marketing", oferece("Marketing digital"))).toBe(true);
+  });
+
+  it("assunto ou público em comum não aprova outro serviço, e citação montada com palavras soltas não serve", () => {
+    expect(citando("Buscamos assessoria contábil para pequenas empresas.", "assessoria contábil para pequenas empresas", oferece("Consultoria jurídica para pequenas empresas"))).toBe(false);
+    expect(citando("Precisamos de assessoria trabalhista para reduzir passivo.", "assessoria trabalhista para reduzir passivo", oferece("Treinamento em segurança do trabalho"))).toBe(false);
+    expect(citando("Precisamos de consultoria com foco em marketing digital.", "consultoria com foco em marketing digital", oferece("Consultoria jurídica"))).toBe(false);
+    expect(citando("Startup jurídica busca parceria. Precisamos de consultoria em marketing digital.", "consultoria jurídica", oferece("Consultoria jurídica"))).toBe(false);
+  });
+
+  it("a mesma citação em duas frases: vale a ocorrência em que as palavras estão juntas", () => {
+    const descricao = "Startup jurídica busca consultoria de marketing. Também precisamos de consultoria jurídica para os termos de uso.";
+    expect(citando(descricao, "consultoria jurídica", oferece("Consultoria jurídica"))).toBe(true);
+    expect(citando("Advogado tributarista | para planejamento de holding", "Advogado tributarista para planejamento de holding", oferece("Advocacia tributária"))).toBe(true);
+  });
+});
+
+
+describe("Portão da IA — revisão adversarial da correção empilhada sobre a #124 (14/09)", () => {
+  const citando = (descricao: string, citacao: string, perfil: Record<string, unknown>) =>
+    passaNoPortao({ tipoDaOferta: "servico", necessidadeExpressa: citacao }, textoEscritoPelaPessoa("Oportunidade", [], descricao), { whatINeed: [], ...perfil });
+  const oferece = (...ofertas: string[]) => ({ whatIHave: ofertas });
+
+  it("pedido da família com palavra que as listas não leem fica com o modelo", () => {
+    expect(citando("Precisamos de um advogado também.", "Precisamos de um advogado também", oferece("Advocacia tributária"))).toBe(true);
+    expect(citando("We need a lawyer who speaks Portuguese.", "We need a lawyer", oferece("Tax lawyer"))).toBe(true);
+    expect(citando("Nous cherchons un avocat pour notre filiale au Brésil.", "Nous cherchons un avocat", oferece("Tax lawyer"))).toBe(true);
+    expect(citando("Precisamos de um advogado para a nossa empresa.", "Precisamos de um advogado para a nossa empresa", oferece("Advocacia tributária"))).toBe(true);
+    expect(citando("Precisamos de um advogado e buscamos parceiros comerciais.", "Precisamos de um advogado", oferece("Advocacia empresarial"))).toBe(true);
+    expect(citando("Marketing agency requires a lawyer.", "Marketing agency requires a lawyer", oferece("Tax lawyer"))).toBe(true);
+    expect(citando("Precisamos de um advogado para montar a holding.", "Precisamos de um advogado", oferece("Consultoria jurídica"))).toBe(true);
+  });
+
+  it("outro serviço entendido continua barrado", () => {
+    expect(citando("Precisamos de consultoria em marketing jurídico.", "consultoria em marketing jurídico", oferece("Consultoria jurídica"))).toBe(false);
+    expect(citando("Precisamos de consultoria em marketing e buscamos parceiros.", "consultoria em marketing", oferece("Consultoria jurídica"))).toBe(false);
+    expect(citando("Buscamos consultoria em e-commerce.", "consultoria em e-commerce", oferece("Consultoria jurídica"))).toBe(false);
+  });
+});
+
+describe("passaNoPortao — oportunidade que oferece serviço exige declaração que possa ser ELE (lacuna depois da #127, 14/09)", () => {
+  // Até aqui bastava o perfil ter declarado qualquer coisa: "Consultoria
+  // tributária" oferecida passava para quem só procurava distribuidores, com o
+  // modelo dizendo "nenhuma".
+  const fonte = "Consultoria tributária para indústrias | revisão de tributos e recuperação de créditos";
+  const semApoio = { tipoDaOferta: "nenhuma", necessidadeExpressa: "" };
+  const oferta = (title: string) => ({ type: "offer", title });
+  const tributaria = oferta("Consultoria tributária");
+
+  it("o defeito medido: distribuidores, compradores, investidores e capital não pedem serviço", () => {
+    for (const necessidade of ["distribuidores", "compradores", "investidores", "financiamento", "parceiros", "Distribuidor para a África", "Compradores na Europa", "Galpão em Santos", "Capital de giro"]) {
+      expect(passaNoPortao(semApoio, fonte, { whatIHave: ["fazenda"], whatINeed: [necessidade] }, tributaria), necessidade).toBe(false);
+    }
+    expect(passaNoPortao(semApoio, fonte, { whatIHave: ["fazenda"], lookingForInvestment: true }, tributaria)).toBe(false);
+    expect(passaNoPortao(semApoio, fonte, { whatIHave: ["fazenda"], seekingTypes: ["investor", "strategic_partner"] }, tributaria)).toBe(false);
+  });
+
+  it("outro serviço que o texto entende não é este", () => {
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["Consultoria em marketing"] }, tributaria)).toBe(false);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["Transporte de cargas"] }, tributaria)).toBe(false);
+  });
+
+  it("a declaração que nomeia o serviço, ou a opção fixa que ele atende, passa", () => {
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["consultoria"] }, tributaria)).toBe(true);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["Consultor tributário"] }, tributaria)).toBe(true);
+    // Basta uma declaração: distribuidores E consultoria.
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["distribuidores", "consultoria"] }, tributaria)).toBe(true);
+  });
+
+  it("o que o texto não entende fica com o modelo, como antes (a regra está no prompt)", () => {
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["Aprovação do registro na Anvisa"] }, oferta("Consultoria regulatória"))).toBe(true);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["Planejamento tributário"] }, tributaria)).toBe(true);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["Suporte para obter autorização regulatória"] }, oferta("Consultoria regulatória"))).toBe(true);
+  });
+
+  it("a opção fixa 'consultoria' é da assessoria; 'mentor' é da mentoria; logística atende distribuidores", () => {
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["consultoria"] }, oferta("Tradução juramentada"))).toBe(false);
+    expect(passaNoPortao(semApoio, fonte, { seekingTypes: ["mentor"] }, oferta("Mentoria para fundadoras"))).toBe(true);
+    expect(passaNoPortao(semApoio, fonte, { seekingTypes: ["mentor"] }, tributaria)).toBe(false);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["distribuidores"] }, oferta("Transporte rodoviário de cargas"))).toBe(true);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["compradores"] }, oferta("Transporte rodoviário de cargas"))).toBe(false);
+  });
+
+  it("não mexe no que não é oferta de serviço", () => {
+    expect(perfilDeclarouPrecisarDoServico({ whatINeed: ["distribuidores"] }, "Consultoria tributária")).toBe(false);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["distribuidores"] }, { type: "demand", title: "Consultoria tributária" })).toBe(true);
+    expect(passaNoPortao(semApoio, fonte, { whatINeed: ["distribuidores"] }, oferta("Café especial da Bahia"))).toBe(true);
+  });
+});
+
+describe("Portão da IA — imóvel pedido pela cabeça (porte da d7fac93 na #135, medição do cético de 15/09)", () => {
+  // A d7fac93 tirou casa, sala, loja, vaga e flat da lista IMOVEL, que classifica a OFERTA: ali sobrar palavra tira o
+  // item do portão. Do lado do PEDIDO a conta é a oposta, e sem uma leitura própria esses pedidos passavam como
+  // necessidade de "Consultoria jurídica" — na #135 antes do porte eram barrados.
+  const perfil = { whatIHave: ["Consultoria jurídica"], whatINeed: [], seekingTypes: [] };
+
+  it("o trecho citado que pede imóvel não sustenta o serviço", () => {
+    for (const trecho of ["loja de rua no centro", "sala comercial no centro", "casa para a nova filial", "vaga de garagem", "galpão em Santos", "apartamento para a diretora"]) {
+      const fonte = `Empresa de cosméticos procura ${trecho} para expandir.`;
+      expect(passaNoPortao({ tipoDaOferta: "servico", necessidadeExpressa: trecho }, fonte, perfil), trecho).toBe(false);
+    }
+  });
+
+  it("a demanda detalhada de Imóveis / Estrutura não declara precisar do serviço, e a oportunidade que o oferece não vai para ela", () => {
+    const oportunidade = { type: "offer", title: "Consultoria jurídica" };
+    const semApoio = { tipoDaOferta: "nenhuma", necessidadeExpressa: "" };
+    for (const descricao of ["Loja de rua no centro de Campinas", "Sala comercial de 40 m² no centro", "Casa para montar escritório", "Vaga de garagem perto do escritório", "Galpão de 500 m² em Santos"]) {
+      const quemPediu = { whatINeed: ["imoveis_estrutura"], whatINeedDetails: [{ id: "d1", category: "imoveis_estrutura", subcategory: "loja", description: descricao }], seekingTypes: [] };
+      expect(perfilDeclarouPrecisarDoServico(quemPediu, "Consultoria jurídica"), descricao).toBe(false);
+      expect(passaNoPortao(semApoio, "Consultoria jurídica para empresas", quemPediu, oportunidade), descricao).toBe(false);
+    }
+  });
+
+  it("mas só no sentido de imóvel: casa de consultoria, casa de câmbio, loja virtual, sala de reunião e vaga de emprego não são", () => {
+    // "Casa de consultoria" nomeia o serviço; os outros não são imóvel e ficam com o modelo, como antes.
+    expect(perfilDeclarouPrecisarDoServico({ whatINeed: ["Casa de consultoria"] }, "Consultoria jurídica")).toBe(true);
+    for (const necessidade of ["Loja virtual", "Casa de software", "Sala de reunião", "Vaga de emprego"]) {
+      expect(perfilDeclarouPrecisarDoServico({ whatINeed: [necessidade] }, "Desenvolvimento de sites"), necessidade).toBe(true);
+    }
+  });
+});
+
+/**
+ * 9e866b9 da #127 (item 6 da revisão de 14/09, portada): chinês e japonês não
+ * separam palavras, e a citação inteira chegava como UMA palavra — menos que as
+ * duas exigidas. O serviço nunca passava nesses idiomas, nem com a necessidade
+ * declarada. E a 0d6643d (revisão de 15/09): a conferência literal vale só para
+ * a citação de fato chinesa ou japonesa, não para a frase latina com um nome.
+ */
+describe("Portão da IA — citação em chinês e japonês, sem espaço (9e866b9 e 0d6643d da #127, portadas)", () => {
+  it("confere quando o trecho está literalmente na fonte e tem ao menos quatro caracteres", () => {
+    expect(citacaoConfere("我们需要税务咨询服务", "我们需要税务咨询服务")).toBe(true);
+    expect(citacaoConfere("我们需要税务咨询服务", "新工厂项目 | 我们需要税务咨询服务，以便处理进口关税。")).toBe(true);
+    expect(citacaoConfere("税務コンサルティングが必要です", "当社は税務コンサルティングが必要です。")).toBe(true);
+    // Trecho que não está na fonte, ou curto demais para ser declaração, não confere.
+    expect(citacaoConfere("我们需要法律咨询服务", "我们需要税务咨询服务")).toBe(false);
+    expect(citacaoConfere("咨询", "我们需要税务咨询服务")).toBe(false);
+    expect(citacaoConfere("新工厂项目我们需要", "新工厂项目 | 我们需要税务咨询服务")).toBe(false);
+  });
+
+  it("e o match apoiado nela passa no portão; citação inventada não", () => {
+    const passa = (oferta: string, citacao: string, fonte: string) =>
+      passaNoPortao({ tipoDaOferta: "servico", necessidadeExpressa: citacao }, fonte, { whatIHave: [oferta], whatINeed: [] });
+    expect(passa("税务咨询", "我们需要税务咨询服务", "新工厂项目 | 我们需要税务咨询服务")).toBe(true);
+    expect(passa("税務コンサルティング", "税務コンサルティングが必要です", "当社は税務コンサルティングが必要です。")).toBe(true);
+    expect(passa("税务咨询", "我们需要法律咨询服务", "新工厂项目 | 我们需要税务咨询服务")).toBe(false);
+  });
+
+  it("frase latina com um nome curto em chinês ou japonês segue a regra das palavras, e o nome só precisa estar na fonte (0d6643d)", () => {
+    // Antes o "東京" (dois caracteres) levava a citação inteira para a conferência literal e ela não conferia.
+    expect(citacaoConfere("Precisamos de consultoria tributária para a filial de 東京", "Nova filial | Precisamos de consultoria tributária para a filial de 東京")).toBe(true);
+    expect(citacaoConfere("We need tax consulting for our 日本橋 office", "New office | We need tax consulting for our 日本橋 office")).toBe(true);
+    // A tolerância de uma palavra ausente continua valendo, também com o nome japonês na frase.
+    expect(citacaoConfere("Precisamos urgentemente de consultoria tributária para 株式会社トヨタ", "Precisamos de consultoria tributária para 株式会社トヨタ")).toBe(true);
+    // O nome que não está na fonte não confere.
+    expect(citacaoConfere("Precisamos de consultoria tributária para a filial de 東京", "Precisamos de consultoria tributária para a filial")).toBe(false);
+    // Parte latina inventada: com duas palavras cai na regra de sempre; com uma, na conferência literal.
+    expect(citacaoConfere("我们需要税务咨询服务 transfer pricing", "我们需要税务咨询服务")).toBe(false);
+    expect(citacaoConfere("我们需要税务咨询服务 pricing", "我们需要税务咨询服务")).toBe(false);
+    expect(passaNoPortao(
+      { tipoDaOferta: "servico", necessidadeExpressa: "Precisamos de consultoria tributária para a filial de 東京" },
+      "Nova filial | Precisamos de consultoria tributária para a filial de 東京",
+      { whatIHave: ["Consultoria tributária"], whatINeed: [] },
+    )).toBe(true);
+  });
+
+  it("os invariantes da #135 continuam valendo com a citação em chinês: a contraparte e o serviço lido e diferente barram", () => {
+    // O serviço em chinês agora é lido (e6ddfa4): "税务咨询" diante de "consultoria em marketing" é barrado como
+    // "Consultoria tributária" seria.
+    expect(passaNoPortao(
+      { tipoDaOferta: "servico", necessidadeExpressa: "Precisamos de consultoria em marketing" },
+      "Nova loja | Precisamos de consultoria em marketing digital",
+      { whatIHave: ["税务咨询"], whatINeed: [] },
+    )).toBe(false);
+    // A citação que pede a contraparte segue barrada, com o perfil em chinês.
+    expect(passaNoPortao(
+      { tipoDaOferta: "servico", necessidadeExpressa: "busca distribuidor para expansão na África" },
+      "Indústria farmacêutica | busca distribuidor para expansão na África",
+      { whatIHave: ["税务咨询"], whatINeed: [] },
+    )).toBe(false);
+  });
+
+  it("e com a CITAÇÃO em chinês ou japonês o portão fecha por padrão: só passa o pedaço que nomeia um serviço do perfil (revisão de 15/09 do porte)", () => {
+    // O resto do portão não lê essa escrita: contraparte, capital, imóvel, autodescrição e outro serviço caíam em "não
+    // nomeia serviço" e passavam — em português são barrados.
+    const passa = (oferta: string, citacao: string, fonte = `新项目 | ${citacao}。`, tipo = "servico") =>
+      passaNoPortao({ tipoDaOferta: tipo, necessidadeExpressa: citacao }, fonte, { whatIHave: [oferta], whatINeed: [] });
+    for (const oferta of ["Consultoria tributária", "税务咨询"]) {
+      for (const [citacao, fonte] of [
+        ["我们需要分销商", undefined], ["我们需要投资者", undefined], ["我们需要寻找买家", undefined], ["我们是一家国际贸易公司", undefined],
+        ["我们需要律师", undefined], ["我们需要营销咨询", undefined],
+        ["非洲扩张的经销商", "寻找非洲扩张的经销商"], ["有国际业务的巴西公司", "我们是一家有国际业务的巴西公司"],
+        ["投资者扩建工厂", "寻找投资者扩建工厂"], ["上海的办公室", "我们需要上海的办公室"], ["市场营销咨询", "我们需要市场营销咨询"],
+      ] as Array<[string, string | undefined]>) {
+        expect(passa(oferta, citacao, fonte), `${oferta} :: ${citacao}`).toBe(false);
+      }
+    }
+    expect(passa("Consultoria em internacionalização", "我们需要分销商")).toBe(false);
+    expect(passa("税務コンサルティング", "販売代理店を探しています")).toBe(false);
+    expect(passa("税務コンサルティング", "弁護士が必要です")).toBe(false);
+    // O piso: perfil só de serviço e o modelo dizendo "produto".
+    expect(passa("Consultoria tributária", "我们需要寻找买家", undefined, "produto")).toBe(false);
+    // O pedido do serviço oferecido, lido pelo fim do termo, continua passando.
+    expect(passa("税务咨询", "我们需要税务咨询服务")).toBe(true);
+    expect(passa("Consultoria tributária", "我们需要税务咨询服务")).toBe(true);
+    expect(passa("税務コンサルティング", "税務コンサルティングが必要です")).toBe(true);
+    expect(passa("会计师事务所", "我们需要会计服务")).toBe(true);
   });
 });

@@ -2,75 +2,92 @@
   "nav": {
     "howItWorks": "工作原理",
     "opportunities": "机会",
-    "security": "安全",
+    "smartNetwork": "我的智能人脉",
     "login": "登录",
     "startFree": "创建账户",
     "myDashboard": "我的仪表板",
     "beta": "测试版"
   },
   "hero": {
-    "badge": "全球机遇生态系统",
-    "headline1": "连接。",
-    "headline2": "成长。",
-    "headline3": "征服。",
-    "headline4": "您的未来从这里开始。",
-    "subtitle": "告诉我们您是谁、您在寻找什么以及您能提供什么。我们的人工智能深度分析您的档案，将您与高度真实兼容性的领导者和机遇相连接::远远超越简单的关键词匹配。",
-    "cta": "创建我的档案 →",
-    "ctaSecondary": "了解更多",
+    "badge": "会员之间的全球商业网络 • +30 个国家 • 无限可能",
+    "headline1": "智能，连接",
+    "headline2": "真正发生的生意",
+    "subtitle": "想象一个网络，能识别出您需要认识的人 — 以及需要认识您的人。",
+    "globalBefore": "我们在",
+    "globalHighlight": "30 个以上国家",
+    "globalAfter": "拥有大使，将您与人脉、机遇和生意连接在一个无国界的全球网络中。",
+    "ai": "我们的人工智能交叉比对档案、兴趣、需求与机遇，揭示您独自可能永远发现不了的战略性连接。",
+    "hook": "您的下一笔大生意，也许就在这里。",
+    "discover": "发现与您契合的人、地点与机遇。",
+    "closing": "找到您的 Business Match。",
+    "cta": "找到您的 BUSINESS MATCH",
+    "ctaSecondary": "了解运作方式",
     "motionOn": "动效已开启",
     "motionOff": "动效已关闭",
     "motionTurnOn": "开启背景动效",
     "motionTurnOff": "关闭背景动效"
   },
   "stats": {
-    "users": "已连接会员",
-    "opportunities": "已创造机会",
+    "users": "已注册人数",
+    "opportunities": "有效机会",
     "satisfaction": "社区满意度",
-    "connections": "成功连接"
+    "connections": "已建立的连接",
+    "countries": "参与国家"
   },
   "steps": {
     "title": "工作原理",
     "subtitle": "简单、智能、专属。",
+    "closing": "在我们的网络中，也许正有人在寻找你所拥有的东西。",
     "step1": {
-      "title": "创建您的个人资料",
-      "desc": "突出您的技能、抱负和您正在寻找的东西。"
+      "eyebrow": "把你拥有的，和你寻找的，告诉世界。",
+      "title": "创建你的战略档案",
+      "desc": "几分钟内，告诉我们你是谁、你能提供什么、你在找什么。平台越了解你，就越接近那个能促成下一笔生意的连接。"
     },
     "step2": {
-      "title": "获得智能匹配",
-      "desc": "我们的算法将您与推动您成长的会员连接起来。"
+      "eyebrow": "技术能找到你独自找不到的人。",
+      "title": "智能为你工作",
+      "desc": "在你拓展人脉的同时，我们的人工智能将你的档案与人、企业、需求和机会逐一比对，在覆盖 30 个以上国家的网络中识别战略性连接。"
     },
     "step3": {
-      "title": "连接并征服",
-      "desc": "开始对话，探索机会，建立您的帝国。"
+      "eyebrow": "这不只是一次连接，而是一个商业机会。",
+      "title": "发现你最好的连接",
+      "desc": "获得依据你拥有什么、需要什么、寻找什么而筛选出的连接。了解每个连接被推荐的原因，找到那个能为你的下一笔大生意打开门的人。"
     }
   },
   "opportunities": {
-    "title": "无限机会",
-    "subtitle": "找到您需要的一切，超越自我。",
-    "society": {
-      "label": "社会影响",
-      "desc": "通过有意义的项目为更美好的世界做出贡献。"
+    "title": "您的下一笔生意能走多远？",
+    "subtitle": "与合适的人建立联系，去销售、拓展、投资，把机会变成生意 — 在巴西，也在全世界。",
+    "reach": {
+      "city": "在您的城市",
+      "state": "在其他地区",
+      "country": "在其他国家",
+      "markets": "在新的市场"
     },
-    "investment": {
-      "label": "投资",
-      "desc": "寻找投资者或投资机会。"
+    "internationalize": {
+      "label": "让您的业务走向国际",
+      "desc": "找到战略性人脉，进入新的国家、打开市场，把业务拓展到国界之外。"
     },
-    "mentorship": {
-      "label": "导师制",
-      "desc": "接受或提供成功指导。"
+    "sellProducts": {
+      "label": "销售您的产品",
+      "desc": "将您的公司与潜在买家、经销商、代理商和贸易伙伴连接起来。"
     },
-    "partnership": {
-      "label": "合作伙伴关系",
-      "desc": "建立战略联盟并进行合作。"
+    "sellServices": {
+      "label": "销售您的服务",
+      "desc": "把您的专业能力展示给真正需要的人。让您的服务对接真实且契合的需求。"
     },
-    "projects": {
-      "label": "项目",
-      "desc": "发现并参与创新项目。"
+    "findInvestment": {
+      "label": "获得投资",
+      "desc": "让企业和项目与兴趣、行业和目标相契合的投资者走到一起。"
     },
-    "jobs": {
-      "label": "专属职位",
-      "desc": "获得领导职位和高影响力工作。"
-    }
+    "partnerships": {
+      "label": "建立战略合作",
+      "desc": "寻找合伙人、合作伙伴和互补企业，共同创造新业务、加速项目进展。"
+    },
+    "findOpportunities": {
+      "label": "寻找机会",
+      "desc": "发现与您能提供或正在寻找的内容相契合的项目、需求和人脉。"
+    },
+    "closing": "您说出想去哪里。我们的智能系统为您找到能帮您到达那里的人。"
   },
   "testimonials": {
     "title": "我们的会员怎么说",
@@ -88,42 +105,47 @@
       "name": "Camila V.",
       "text": "我收到了3个来自高管的指导提案，这些是我通过其他方式永远找不到的。AI准确理解了我的需求。"
     },
-    "match": "匹配度"
+    "match": "契合度"
   },
-  "security": {
-    "title": "您的安全是我们的首要任务",
-    "subtitle": "我们保护您的数据和隐私。",
-    "encryption": {
-      "title": "高级加密",
-      "desc": "您的数据受到最高技术的保护。"
+  "smartNetwork": {
+    "label": "我的智能人脉",
+    "title": "您还记得自己人脉中存在的所有机会吗？",
+    "subtitle": "每一次会议都可能隐藏着未来的机会。我们的智能会记录、整理并连接您所建立关系的价值。",
+    "impact": "您知道的机会，比您记得的更多。",
+    "record": {
+      "title": "录下来，不遗忘",
+      "desc": "免费录制并转写最长 10 分钟的会议，把对话变成战略记忆。"
     },
-    "verification": {
-      "title": "严格验证",
-      "desc": "所有会员都经过验证，确保社区的真实性。"
+    "organize": {
+      "title": "AI 为您整理",
+      "desc": "智能从对话中识别「我是谁」「我拥有什么」「我需要什么」— 并指出还缺少哪些信息。"
     },
-    "control": {
-      "title": "您的数据，您的控制权",
-      "desc": "完全控制您的个人信息和隐私设置。"
+    "discover": {
+      "title": "在自己的人脉中发现生意",
+      "desc": "智能比对您已认识的人之间的需求与机会，揭示可能被忽略的连接。"
     },
-    "rateLimit": {
-      "title": "速率限制",
-      "desc": "防御攻击保护"
-    }
+    "value": {
+      "title": "让您的人脉创造价值",
+      "desc": "以匿名方式将联系人开放给网络中的机会，当您的连接促成新生意时参与居间撮合。"
+    },
+    "closingQuestion": "此刻，在您已认识的人之间隐藏着多少生意？",
+    "closingLine": "把会议变成记忆。把记忆变成智能。把智能变成连接。把连接变成生意。",
+    "cta": "启用我的智能人脉"
   },
   "cta": {
-    "title": "准备好提升您的职业生涯了吗？",
-    "subtitle": "加入 MMM，与志同道合的会员建立联系。",
+    "title": "准备好寻找您的下一批连接了吗？",
+    "subtitle": "加入已经在建立商业连接的人们",
     "button": "创建账户"
   },
   "footer": {
-    "tagline": "赋能女性，共创未来。",
+    "tagline": "Connections • Business • Impact • Purpose",
     "rights": "保留所有权利。",
     "privacy": "隐私政策",
     "terms": "条款",
     "contact": "联系我们"
   },
   "onboarding": {
-    "title": "欢迎来到 MMM",
+    "title": "欢迎来到 WRW",
     "subtitle": "连接非凡会员的人工智能",
     "step": "第 {{current}} 步，共 {{total}} 步",
     "next": "下一步",
@@ -193,15 +215,13 @@
       "s5_title": "生活与价值观",
       "s5_sub": "定义您的东西",
       "s6_title": "一切就绪！",
-      "s6_sub": "审查并找到您的匹配",
+      "s6_sub": "核对您的资料，查看您的连接",
       "s7_title": "我是谁",
       "s7_sub": "职业数据与人脉网络",
       "s8_title": "我拥有什么",
       "s8_sub": "可用资产与资源",
       "s9_title": "我需要什么",
-      "s9_sub": "需求与诉求",
-      "s10_title": "条款和条件",
-      "s10_sub": "阅读并接受我们的条款"
+      "s9_sub": "需求与诉求"
     },
     "specialties": {
       "tech": "技术与软件",
@@ -294,7 +314,7 @@
       "home": "首页",
       "continue": "继续",
       "analyzing": "分析中...",
-      "findMatches": "找到我的匹配"
+      "findMatches": "保存并查看我的连接"
     },
     "fields": {
       "displayName": "您希望被如何称呼？*",
@@ -306,7 +326,7 @@
       "selectPlaceholder": "请选择...",
       "age": "您的年龄",
       "agePlaceholder": "例如：32",
-      "ageHint": "可选: 有助于找到更匹配的联系",
+      "ageHint": "可选: 有助于找到更契合的连接",
       "bio": "用一句话描述您自己？",
       "bioPlaceholder": "例如：连续创业者，在金融科技领域有10年经验...",
       "bioHint": "真实表达: AI用此了解您的本质",
@@ -431,61 +451,49 @@
       "selectedPlural": "已选择",
       "selectedF": "已选择",
       "selectedFPlural": "已选择"
-    },
-    "terms": {
-      "title": "使用条款和佣金协议",
-      "accept": "我同意使用条款",
-      "required": "您必须同意条款",
-      "clause1_title": "1. 目的",
-      "clause1_text": "MMM 是会员之间的对接平台。它把兴趣互补的人介绍给彼此，并记录由这些介绍产生的交易。平台不是交易的当事方：签约的是会员彼此之间。",
-      "clause2_title": "2. 佣金",
-      "clause2_text": "经平台介绍而产生的交易，需按以下条件向 MMM 支付佣金：",
-      "clause2_item1": "百分比由商务部门逐案确定;",
-      "clause2_item2": "上限为该交易中介服务费的50%;",
-      "clause2_item3": "在此版本中，付款在平台之外完成；网站仅记录交易和应付佣金。",
-      "clause3_title": "3. 有效期与变更",
-      "clause3_text": "本文本为临时版本，正在法务审核中。最终版本发布时将通知您，并需要您重新接受。本次接受的日期和确切文本将被记录。"
     }
   },
   "dashboard": {
+    "networkTitle": "当前网络",
+    "networkDesc": "整个平台的真实数据，不只是你的个人资料。",
     "title": "你好",
-    "matches": "您的匹配",
-    "connections": "联系",
+    "matches": "推荐连接",
+    "connections": "连接",
     "profile": "我的资料",
     "noMatches": "准备好迎接下一个重要联系了吗？",
     "noMatchesDesc": "我们的AI将从6个维度分析您的资料，找到与您真正最兼容的会员。",
     "redeAutorizandoTitulo": "您的人脉正在路上",
-    "redeAutorizandoDesc": "已有与您匹配的档案，但只有双方都授权智能匹配后，匹配才会显示 — 这些会员尚未授权。这并非缺乏匹配度：只需稍作等待。",
+    "redeAutorizandoDesc": "已有与您契合的档案，但只有双方都授权智能比对后，推荐连接才会显示 — 这些会员尚未授权。这并非缺乏契合度：只需稍作等待。",
     "compatibility": "平均分数",
     "connect": "表达兴趣",
-    "dismiss": "匹配已隐藏。随时生成新匹配。",
-    "regenerate": "新匹配",
+    "dismiss": "建议已隐藏。您可以随时生成新的建议。",
+    "regenerate": "查找新的推荐连接",
     "logout": "退出登录",
-    "topMatches": "顶级匹配 (80%+)",
-    "interestSent": "已表达兴趣！分发人会先核实匹配度再转交。只有当对方也表达兴趣时，才会看到你的姓名。",
+    "topMatches": "推荐连接 (80%+)",
+    "interestSent": "已表达兴趣！分发人会先核实契合度再转交。只有当对方也表达兴趣时，才会看到你的姓名。",
     "interestError": "无法发送兴趣。请重试。",
-    "connectionAccepted": "连接已接受！你们现在都能看到对方的姓名。",
+    "connectionAccepted": "新连接！你们现在都能看到对方的姓名。",
     "connectionDeclined": "请求已拒绝。",
-    "newMatches_one": "✨ 找到 {{count}} 个新匹配！",
-    "newMatches_other": "✨ 找到 {{count}} 个新匹配！",
-    "newMatches_zero": "✨ 找到 {{count}} 个新匹配！",
-    "newMatches_two": "✨ 找到 {{count}} 个新匹配！",
-    "newMatches_few": "✨ 找到 {{count}} 个新匹配！",
-    "newMatches_many": "✨ 找到 {{count}} 个新匹配！",
-    "analysisDone": "分析完成:这次没有新的匹配。新成员和更新的资料会带来新的连接。",
+    "newMatches_one": "✨ 找到 {{count}} 个新的推荐连接！",
+    "newMatches_other": "✨ 找到 {{count}} 个新的推荐连接！",
+    "newMatches_zero": "✨ 找到 {{count}} 个新的推荐连接！",
+    "newMatches_two": "✨ 找到 {{count}} 个新的推荐连接！",
+    "newMatches_few": "✨ 找到 {{count}} 个新的推荐连接！",
+    "newMatches_many": "✨ 找到 {{count}} 个新的推荐连接！",
+    "analysisDone": "分析完成:这次没有新的推荐连接。新成员和更新的资料会带来新的连接。",
     "distribution": "兼容性分布",
-    "distributionDesc": "您的匹配按分数范围的分布情况",
+    "distributionDesc": "您在每个契合度区间内的连接建议数量",
     "analyzing": "分析中...",
-    "generateMatches": "✨ 分析并生成我的匹配",
+    "generateMatches": "✨ 为我寻找连接",
     "decline": "拒绝",
     "connected": "✓ 已连接",
     "pending": "⏳ 等待回复",
     "declined": "✕ 未接受",
     "profileComplete": "资料完整度",
     "editProfile": "编辑完整资料",
-    "reanalyze": "↻ 重新分析匹配",
+    "reanalyze": "↻ 重新分析连接",
     "noProfile": "未找到资料",
-    "noProfileDesc": "完善您的资料以开始接收匹配。",
+    "noProfileDesc": "完善您的资料以开始接收推荐连接。",
     "createProfile": "创建我的资料",
     "years_one": "{{count}} 年",
     "years_other": "{{count}} 年",
@@ -494,13 +502,13 @@
     "years_few": "{{count}} 年",
     "years_many": "{{count}} 年",
     "workStyle": "工作方式",
-    "topMatch": "最佳匹配",
+    "topMatch": "最佳连接",
     "loading": "正在加载您的面板",
     "loadingDesc": "正在获取您的机会...",
     "restricted": "访问受限",
     "opportunities": "机会",
-    "goldBannerTitle": "恭喜！您获得了黄金徽章！",
-    "goldBannerBody": "一位 MMM 黄金会员授予了您黄金机构专属徽章。",
+    "goldBannerTitle": "欢迎开通黄金身份！",
+    "goldBannerBody": "您的黄金身份（WRW 的高级会员类别）现已生效。",
     "close": "关闭",
     "userFallback": "用户",
     "aiPrefix": "AI:",
@@ -525,7 +533,7 @@
     "recommendedSubtitle": "由 AI 根据您的资料和兴趣挑选",
     "recommendedEmpty": "暂无推荐。网络中新发布的机会将显示在这里。",
     "exploreOpportunities": "探索机会",
-    "compatible": "匹配度",
+    "compatible": "契合度",
     "viewOpportunity": "查看机会 →",
     "myRooms": "我的洽谈室",
     "allRoomsGold": "全部洽谈室（黄金）",
@@ -550,20 +558,20 @@
     "pendingInvites_two": "{{count}} 个邀请待回复",
     "pendingInvites_few": "{{count}} 个邀请待回复",
     "pendingInvites_many": "{{count}} 个邀请待回复",
-    "greetingUnseen_one": "{{count}} 个新匹配",
-    "greetingUnseen_other": "{{count}} 个新匹配",
-    "greetingUnseen_zero": "{{count}} 个新匹配",
-    "greetingUnseen_two": "{{count}} 个新匹配",
-    "greetingUnseen_few": "{{count}} 个新匹配",
-    "greetingUnseen_many": "{{count}} 个新匹配",
+    "greetingUnseen_one": "{{count}} 个新的推荐连接",
+    "greetingUnseen_other": "{{count}} 个新的推荐连接",
+    "greetingUnseen_zero": "{{count}} 个新的推荐连接",
+    "greetingUnseen_two": "{{count}} 个新的推荐连接",
+    "greetingUnseen_few": "{{count}} 个新的推荐连接",
+    "greetingUnseen_many": "{{count}} 个新的推荐连接",
     "greetingUnseenSuffix": "等待您的关注",
-    "greetingTotal_one": "为您找到 {{count}} 个匹配的机会",
-    "greetingTotal_other": "为您找到 {{count}} 个匹配的机会",
-    "greetingTotal_zero": "为您找到 {{count}} 个匹配的机会",
-    "greetingTotal_two": "为您找到 {{count}} 个匹配的机会",
-    "greetingTotal_few": "为您找到 {{count}} 个匹配的机会",
-    "greetingTotal_many": "为您找到 {{count}} 个匹配的机会",
-    "greetingWelcome": "欢迎使用 MMM！在下方生成您的第一批匹配",
+    "greetingTotal_one": "为您找到 {{count}} 个契合的机会",
+    "greetingTotal_other": "为您找到 {{count}} 个契合的机会",
+    "greetingTotal_zero": "为您找到 {{count}} 个契合的机会",
+    "greetingTotal_two": "为您找到 {{count}} 个契合的机会",
+    "greetingTotal_few": "为您找到 {{count}} 个契合的机会",
+    "greetingTotal_many": "为您找到 {{count}} 个契合的机会",
+    "greetingWelcome": "欢迎使用 WRW！在下方生成您的第一批推荐连接",
     "anonTitle": "网络成员",
     "anonAvatarAlt": "身份已隐藏",
     "anonListNotice": "出于隐私考虑，只有在双方都表达兴趣后才会显示姓名。",
@@ -572,7 +580,7 @@
     "acceptReveal": "接受并公开",
     "acceptRevealHint": "接受后，你们双方都会看到对方的姓名。",
     "revealedBadge": "身份已公开",
-    "revealedNote": "你们双方都表达了兴趣。对方也能看到你的姓名。",
+    "revealedNote": "你们建立了连接！双方都表达了兴趣。对方也能看到你的姓名。",
     "interestDeclined": "兴趣未被接受",
     "interestInReview": "分发人审核中",
     "interestNotForwarded": "兴趣未被转交",
@@ -671,7 +679,9 @@
     "dim1": "您的主要专业",
     "dim2": "您正在寻找什么",
     "dim3": "价值观与目标",
-    "dim4": "投资能力"
+    "dim4": "投资能力",
+    "badgeTitle": "AI 连接",
+    "badgeDesc": "六项标准分析"
   },
   "aiSection": {
     "label": "人工智能",
@@ -684,30 +694,39 @@
   },
   "governance": {
     "label": "治理",
-    "title1": "一个具有",
-    "title2": "机构诚信的平台",
-    "subtitle": "MMM的访问权限不可购买，需要赢得。",
+    "subtitle": "完善您的档案，拓展您的可能性，并决定您想走多远。",
     "silver": {
       "title": "银牌会员",
-      "desc": "所有在平台注册的用户都以银牌会员身份加入。完全访问匹配系统、公开机会以及与网络中其他会员的连接。",
-      "access": "通过注册访问::无费用，无筛选"
+      "desc": "高质量的档案让我们的智能更好地理解您是谁、能提供什么、在寻找什么 — 从而提升为您呈现的连接与机遇的精准度。",
+      "stage": "高质量档案",
+      "tagline": "更多信息。更高精准度。更好的连接。",
+      "highlight": "高质量档案，带来战略性连接和更精准的 Business Match。"
     },
     "gold": {
-      "badge": "认可",
-      "title": "黄金状态",
-      "desc": "基于功绩授予的机构认可。访问受限战略机会、国际使命和高影响力群体。",
-      "access": "不能被请求、购买或通过订阅获得。仅由平台黄金会员凭功绩授予。"
-    },
-    "president": {
-      "title": "黄金会员",
-      "desc": "治理的守护者。他们批准和撤销黄金状态，认可地区领导人并验证战略机会。他们代表网络的诚信。",
-      "access": "在平台内凭功绩授予的认可"
+      "title": "黄金身份",
+      "desc": "黄金身份为希望更接近我们国内与国际网络中最佳机遇、连接和战略场合的人，提供尊享体验。",
+      "stage": "尊享体验 + 战略通道",
+      "tagline": "身处重大机遇最先抵达之处。",
+      "benefits": {
+        "b1": "第一时间获取精选的国内与国际商业机遇。",
+        "b2": "优先获取网络提供的战略性连接与机遇。",
+        "b3": "受邀参加由网络举办或精选的国内与国际战略会面。",
+        "b4": "高端的交流体验与社交场合。",
+        "b5": "优先获知专属黄金类别的独家机遇。"
+      },
+      "highlight": "有些机遇，并不会同时抵达每一个人。",
+      "closing": "黄金，意味着离连接与大生意发生的地方更近。",
+      "fee": "按月付费的尊享类别。"
     },
     "bronze": {
       "title": "铜牌会员",
-      "desc": "平台新成员。可访问公开机会、基础匹配和MMM社区。这是在网络中成长的起点。",
-      "access": "通过注册获得访问权限: 所有会员的初始级别"
-    }
+      "desc": "您已经是这个网络的一员。现在，您的档案越完整、质量越高，我们的智能就越能识别与您契合的连接。",
+      "stage": "档案完善中",
+      "tagline": "您的起点。",
+      "highlight": "完善「我是谁」「我拥有什么」「我需要什么」，提升您的 Business Match 精准度。"
+    },
+    "title": "平台越了解您，您的连接就越精准。",
+    "noFee": "无月费。对于通过平台居间而实际达成的交易，平台将按照每笔交易适用的条件参与其中。"
   },
   "profile": {
     "sections": {
@@ -742,10 +761,10 @@
       "sizeSmall": "小型企业",
       "sizeMedium": "中型企业",
       "sizeLarge": "大型企业",
-      "cnpj": "CNPJ",
-      "cnpjPlaceholder": "00.000.000/0000-00",
-      "cnpjHint": "如有则填写。",
-      "cnpjInvalid": "请输入有效的 CNPJ。"
+      "registrationNumber": "企业注册号",
+      "registrationNumberPlaceholder": "仅限字母和数字",
+      "registrationNumberHint": "MEI、企业和非营利组织必须填写。",
+      "registrationNumberRequired": "请输入企业注册号。"
     }
   },
   "network": {
@@ -763,7 +782,7 @@
     "nivelPrivadoDescricao": "只有您可以看到。所有联系人的默认设置。",
     "nivelOuroRotulo": "已授权（黄金会员）",
     "nivelOuroDescricao": "黄金会员用户可以在黄金资源库中看到姓名、公司和职位、领域、所在地以及拥有/寻找的内容——并且您的姓名会显示为分享者。绝不会显示电话、邮箱、社交账号或备注。您可以随时改回私密：效果立即生效。",
-    "nivelPublicoRotulo": "在MMM公开",
+    "nivelPublicoRotulo": "在WRW公开",
     "nivelPublicoDescricao": "机会信息（拥有/寻找的内容、城市和国家）将进入生态系统展示墙。个人数据绝不会显示。",
     "badgeIA": "AI",
     "badgeOuro": "黄金",
@@ -813,7 +832,7 @@
     "abaPerfil": "资料",
     "abaHistoricoIA": "AI 记录",
     "detalheNivelOuro": "已与黄金会员用户共享",
-    "detalheNivelPublico": "在MMM公开（仅机会信息）",
+    "detalheNivelPublico": "在WRW公开（仅机会信息）",
     "detalheNivelPrivado": "私密——只有您可以看到",
     "tituloComunicacao": "联系方式",
     "tituloPresencaDigital": "数字形象",
@@ -947,7 +966,7 @@
     "voltarContextos": "时间线",
     "botaoEditar": "编辑",
     "confirmExcluirContexto": "删除此背景？",
-    "contextoCatalogoMmm": "MMM目录背景",
+    "contextoCatalogoMmm": "WRW目录背景",
     "tituloContatosVinculados": "已关联联系人（{{count}}）",
     "botaoAdicionar": "添加",
     "nenhumContatoVinculado": "尚未关联任何联系人。",
@@ -1179,7 +1198,8 @@
     "guideline2": "完整准确的信息",
     "guideline3": "承诺保证回报",
     "guideline4": "传销或多层次营销计划",
-    "guideline5": "非法产品或服务"
+    "guideline5": "非法产品或服务",
+    "toastDescriptionTooLong": "描述过长（最多5000个字符，当前{{atual}}个）"
   },
   "opportunityDetail": {
     "typeOffer": "提供",
@@ -1243,7 +1263,7 @@
     "ndaItem1Title": "1. 保密义务：",
     "ndaItem1Text": "各方承诺不将保密信息用于与本次洽谈无关的目的，不得披露或复制，违者将承担法律规定的处罚。",
     "ndaItem2Title": "2. 反规避条款（防欺诈）：",
-    "ndaItem2TextPre": "各方明确承诺，不在MMM生态系统之外进行因此次接触而产生的任何交易、协议或业务往来，并承认必须支付",
+    "ndaItem2TextPre": "各方明确承诺，不在WRW生态系统之外进行因此次接触而产生的任何交易、协议或业务往来，并承认必须支付",
     "ndaItem2Strong": "成功费（success fee）",
     "ndaItem2TextPost": "，适用于因本次联系达成的任何交易。",
     "ndaItem3Title": "3. 有效期：",
@@ -1282,7 +1302,7 @@
     "ndaClause1Title": "1. 保密义务：",
     "ndaClause1Text": "各方承诺不将保密信息用于与本次洽谈无关的目的，不得披露或复制，违者将承担法律规定的处罚。",
     "ndaClause2Title": "2. 反规避条款（防欺诈）：",
-    "ndaClause2Text": "各方明确承诺，不在MMM生态系统之外进行因此次接触而产生的任何交易、协议或业务往来，并承认必须支付",
+    "ndaClause2Text": "各方明确承诺，不在WRW生态系统之外进行因此次接触而产生的任何交易、协议或业务往来，并承认必须支付",
     "ndaClause2Fee": "成功费（success fee）",
     "ndaClause2TextEnd": "，适用于因本次联系达成的任何交易。",
     "ndaClause3Title": "3. 有效期：",
@@ -1411,13 +1431,14 @@
     "reprocessError": "无法重新处理该会议。",
     "recordingExpiredNoTranscript": "此会议没有保存音频。音频最多保存30天。",
     "decisionsPaused": "处理完成后即可操作。",
-    "storedAudioMissing": "未找到此会议已保存的音频。"
+    "storedAudioMissing": "未找到此会议已保存的音频。",
+    "audioDurationUnreadable": "无法读取此音频的时长。请上传MP3或M4A格式的文件。"
   },
   "connections": {
     "messageSent": "消息已发送",
     "sendMessageError": "消息发送失败",
     "goldRestrictedTitle": "黄金身份专属访问",
-    "goldRestrictedDescription": "战略连接功能仅面向拥有黄金身份的会员开放，这是由平台黄金会员根据贡献授予的机构认可。",
+    "goldRestrictedDescription": "战略连接仅限黄金身份专享，这是按月付费的高级类别。",
     "goldAccessListTitle": "您将获得以下访问权限：",
     "goldAccessItemMessages": "与其他领导者直接私信",
     "goldAccessItemGroups": "按行业和国家划分的战略群组",
@@ -1444,18 +1465,19 @@
     "noGroups": "尚无群组",
     "noGroupsHint": "战略群组让同一行业或国家的领导者能够进行有针对性的协作。",
     "membersCount": "{{count}} 位会员",
-    "defaultGroupDescription": "FRAUEN战略群组"
+    "defaultGroupDescription": "WRW战略群组"
   },
   "intelligentMatches": {
     "seloMutuo": "↔ 双向连接",
     "seloCategoria": "同一类别",
+    "seloFamilia": "同类服务",
     "seloSignificados": "含义相近",
-    "seloOfertaProcura": "供需匹配",
-    "seloTagExata": "标签完全匹配",
-    "toastRevogado": "授权已撤销。智能匹配已关闭。",
+    "seloOfertaProcura": "供给与需求",
+    "seloTagExata": "精确标签",
+    "toastRevogado": "授权已撤销。智能比对已关闭。",
     "erroRevogar": "无法撤销。",
     "toastRecalculado": "已分析 {{total}} 个机会。",
-    "erroAtualizarMatches": "无法更新匹配结果。",
+    "erroAtualizarMatches": "无法更新推荐连接。",
     "toastItemRemovido": "项目已删除，建议已更新。",
     "erroRemoverItem": "无法删除该项目。",
     "toastOfertaSalva": "完成！我们已保存供给信息并更新了建议。",
@@ -1469,8 +1491,8 @@
     "erroCarregarTermo": "无法加载授权协议。",
     "avisoAutorizacaoExistente": "如果您之前已授权，该授权仍然有效。请稍后再试。",
     "botaoTentarNovo": "重试",
-    "explicacao": "记录每位联系人能提供什么、正在寻找什么。MMM会比对这些信息，建议谁可以帮助谁。",
-    "avisoServico": "服务（咨询、法律等）只有在另一位联系人在“寻找什么”中明确表示需要时才会生成连接。MMM不会根据行业、规模或业务推断需求。",
+    "explicacao": "记录每位联系人能提供什么、正在寻找什么。WRW会比对这些信息，建议谁可以帮助谁。",
+    "avisoServico": "服务（咨询、法律等）只有在另一位联系人在“寻找什么”中明确表示需要时才会生成连接。WRW不会根据行业、规模或业务推断需求。",
     "abaPossui": "拥有什么",
     "abaProcura": "寻找什么",
     "registrandoPrefixo": "正在记录",
@@ -1493,7 +1515,7 @@
     "carregandoOportunidades": "正在加载机会……",
     "semOportunidadesTitulo": "尚无机会",
     "semOportunidadesTexto": "在上方登记一位联系人提供的内容和另一位联系人寻找的内容，连接建议将显示在这里。",
-    "percentualCompatibilidade": "{{score}}% 匹配度",
+    "percentualCompatibilidade": "{{score}}% 契合度",
     "contatoAFallback": "联系人A",
     "contatoBFallback": "联系人B",
     "rotuloOferece": "提供：",
@@ -1502,10 +1524,10 @@
     "botaoDispensar": "忽略",
     "statusAceita": "连接已接受",
     "statusDispensada": "已忽略",
-    "autorizadoTexto": "您已授权智能匹配功能",
+    "autorizadoTexto": "您已授权智能比对功能",
     "autorizadoDesde": "自 {{data}} 起",
     "botaoRevogar": "撤销授权",
-    "avisoRevogar": "仅关闭智能匹配功能。联系人、机会和会议功能不受影响。",
+    "avisoRevogar": "仅关闭智能比对功能。联系人、机会和会议功能不受影响。",
     "ocultarHistorico": "隐藏",
     "verHistoricoBotao": "查看",
     "registroAutorizacoesLabel": "授权记录（{{count}}）",
@@ -1515,7 +1537,64 @@
     "versaoLabel": "版本",
     "aceitaEm": "接受于",
     "revogadaEmData": "· 撤销于 {{data}}",
-    "termoMudouAviso": "· 此后条款已发生变更"
+    "termoMudouAviso": "· 此后条款已发生变更",
+    "seloMesmoServico": "相同服务"
+  },
+  "networkPanel": {
+    "eyebrow": "您的私人人脉",
+    "title": "我的智能人脉",
+    "subtitle": "您已建立起宝贵的人脉。我们的智能帮助您不忘其中蕴藏的价值。",
+    "loading": "加载中…",
+    "meetings": "我的会议",
+    "meetingsDetail": "已转写：{{transcritas}}",
+    "contacts": "我的联系人",
+    "contactsDetail": "默认私密",
+    "incomplete": "信息不完整",
+    "incompleteDetail": "缺少资料的联系人",
+    "internalMatches": "推荐的内部连接",
+    "internalMatchesDetail": "新增：{{novos}}",
+    "internalMatchesNoConsent": "开启智能连接后即可查看",
+    "minutesTitle": "会议分钟数",
+    "minutesUsed": "已保存的会议",
+    "minutesUsedHelp": "仍保存在您账户中的已转写会议的总时长。",
+    "minutesLimit": "每场会议的免费上限",
+    "minutesLimitHelp": "适用于每次录音和每个上传的音频文件。",
+    "minutesValue": "{{minutos}} 分钟",
+    "moreTime": "需要更多时间？扩充您的会议分钟数。",
+    "moreTimeUnavailable": "按月订阅扩充分钟数的功能尚未开放。目前每场会议最长 {{minutos}} 分钟。",
+    "actionsTitle": "从这里开始",
+    "actionRecord": "录制或上传会议",
+    "actionRecordDesc": "每场会议最长 {{minutos}} 分钟，附带转写和所提及联系人的建议。",
+    "consentNotice": "录音前，您有责任征得所有参与者的同意，并遵守适用的隐私规定。",
+    "actionContacts": "整理我的联系人",
+    "actionContactsDesc": "您的私人联系人库。联系人不会成为会员，也不会在平台上拥有个人资料。",
+    "actionSearch": "搜索我的人脉",
+    "actionSearchDesc": "用您自己的话提问，例如「我认识哪些医药行业的人？」。搜索只在您的人脉中进行。",
+    "actionMatches": "我人脉中的机会",
+    "actionMatchesDesc": "在您现有联系人之间的业务建议。",
+    "incompleteTitle": "信息缺失的联系人",
+    "alert": "缺少重要信息，补全后这位联系人对您的智能人脉会更有用。",
+    "alertLabel": "缺失信息",
+    "missing": "缺少：",
+    "complete": "补全信息",
+    "incompleteMore": "显示 {{mostrados}} / {{total}}。",
+    "seeAllContacts": "查看全部联系人",
+    "incompleteEmpty": "您所有联系人的「我是谁」「我拥有什么」「我需要什么」都已填写。",
+    "noContacts": "您还没有联系人。录制一场会议或添加第一位联系人吧。",
+    "dashboardCard": "您私人人脉中的会议、联系人、缺失信息与机会。",
+    "open": "打开",
+    "whoAmI": "我是谁",
+    "statusMissing": "缺少",
+    "fields": {
+      "nome": "姓名或公司名称",
+      "telefone": "电话",
+      "email": "电子邮箱",
+      "tenho": "我拥有什么",
+      "preciso": "我需要什么"
+    },
+    "completeByText": "通过文字补全",
+    "completeHint": "回答下方助手的问题：它只保存您确认的内容。电话和电子邮箱也可以通过「编辑」填写。",
+    "contactNotFound": "在您的人脉中找不到这位联系人。"
   },
   "inactivityGuard": {
     "warningTitle_one": "⏰ 会话将在 {{count}} 分钟后过期",
@@ -1558,7 +1637,9 @@
       "memory": "AI 记忆",
       "memoryDesc": "向您的历史记录提问",
       "intelligentMatches": "智能连接",
-      "intelligentMatchesDesc": "联系人之间的匹配建议"
+      "intelligentMatchesDesc": "联系人之间的连接建议",
+      "smartNetwork": "我的智能人脉",
+      "smartNetworkDesc": "您人脉中的会议、联系人与机会"
     }
   },
   "conta": {
@@ -1582,6 +1663,581 @@
       "confirmar": "永久删除",
       "excluindo": "正在删除...",
       "sucesso": "你的账户和数据已删除。"
+    }
+  },
+  "termoGeral": {
+    "etapaTitulo": "通用使用条款",
+    "etapaSubtitulo": "阅读并接受后即可完成注册",
+    "titulo": "通用使用、数据保护与数字中介条款",
+    "versao": "第 {{versao}} 版，发布于 {{data}}",
+    "textoIntegral": "通用使用条款全文",
+    "avisoIdioma": "本条款以葡萄牙语撰写，如有歧义，以葡萄牙语版本为准（第 25.6 条）。",
+    "aceite": "本人已阅读并完全接受本通用使用、数据保护与数字中介条款。",
+    "obrigatorio": "不接受本条款将无法完成注册。",
+    "carregando": "正在加载条款…",
+    "erroCarregar": "无法加载通用使用条款。",
+    "erroCarregarDica": "没有保存任何内容。请稍后再试。",
+    "tentarDeNovo": "重试",
+    "naoPublicado": "通用使用条款尚未发布。",
+    "naoPublicadoDica": "没有该条款无法完成注册。请联系支持并稍后再试；您填写的内容仍保留在此页面。",
+    "versaoMudou": "您阅读期间条款已更新。请阅读新版本并重新勾选接受。",
+    "erroAceite": "无法记录您对条款的接受。没有保存任何内容；请重试。"
+  },
+  "assistenteTexto": {
+    "gravar": "录制语音",
+    "gravarDica": "用语音录下您的回答，文字会出现在输入框中供您检查。",
+    "parar": "停止并转写",
+    "gravando": "正在录音 {{tempo}} / {{limite}}",
+    "transcrevendo": "正在转写…",
+    "transcricaoPronta": "语音文字已填入输入框。继续之前请检查并编辑。",
+    "semSuporte": "此浏览器无法录音。请直接输入文字。",
+    "microfoneNegado": "无法使用麦克风。请检查浏览器权限。",
+    "audioVazio": "没有录到任何声音。请重试。",
+    "audioGrande": "录音文件过大。请录制更短的语音。",
+    "erroTranscrever": "无法转写语音。请重试或直接输入文字。",
+    "revisar": "校对文字",
+    "revisarDica": "修正拼写、语法和标点，不改变您写的内容。",
+    "revisando": "正在校对…",
+    "sugestaoTitulo": "校对建议",
+    "sugestaoDica": "仅限拼写、语法和标点。使用前请确认。",
+    "usar": "使用校对后的文字",
+    "descartar": "放弃",
+    "semCorrecoes": "无需修改。",
+    "erroRevisar": "目前无法校对文字。没有任何改动。",
+    "revisaoRecusada": "该建议改动超出了文字书写本身，已被放弃。没有任何改动。",
+    "textoCurto": "请先输入内容再申请校对。",
+    "muitosPedidos": "连续请求过多。请等待几分钟后再试。",
+    "contador": "{{atual}}/{{maximo}}",
+    "textoLongo": "文字超过 {{maximo}} 个字符的上限。请缩短后再继续。"
+  },
+  "governanca": {
+    "dashboard": {
+      "title": "各等级会员",
+      "bronze": "铜牌会员",
+      "silver": "银牌会员",
+      "gold": "金牌会员"
+    },
+    "perfil": {
+      "titulo": "铜牌会员：您的资料正在完善中",
+      "texto": "您的资料越完整、越有质量，您的连接就越精准。要成为银牌会员，还需要：",
+      "prontoParaPrata": "您的资料已符合银牌会员的标准。保存资料即可完成变更。",
+      "semMensalidade": "铜牌和银牌没有月费。保存合格的资料后，将自动升级为银牌。",
+      "completar": "完善资料",
+      "promovida": "恭喜！您的合格资料现已成为银牌会员。"
+    },
+    "pendencias": {
+      "nome": "显示名称",
+      "cidade": "城市",
+      "atuacao": "您的业务领域",
+      "apresentacao": "一段至少 {{minimo}} 个词的自我介绍，说明您是谁、做什么",
+      "oQueTenho": "“我拥有什么”中至少一项",
+      "oQuePreciso": "“我需要什么”中至少一项"
+    }
+  },
+  "oQueBusca": {
+    "opcoes": {
+      "expandir_negocio": {
+        "titulo": "拓展我的业务",
+        "descricao": "新的市场、城市或国家"
+      },
+      "parceiro_estrategico": {
+        "titulo": "战略合作伙伴",
+        "descricao": "合伙人、商业或机构合作伙伴"
+      },
+      "investimento_capital": {
+        "titulo": "投资 / 资本",
+        "descricao": "投资人、基金或融资渠道"
+      },
+      "clientes_compradores": {
+        "titulo": "客户 / 买家",
+        "descricao": "需要您所提供产品或服务的人"
+      },
+      "fornecedores_produtos": {
+        "titulo": "供应商 / 产品",
+        "descricao": "产品、原料、制造商或经销商"
+      },
+      "internacionalizacao": {
+        "titulo": "国际化",
+        "descricao": "进入或拓展其他国家市场"
+      },
+      "conexoes_institucionais": {
+        "titulo": "机构人脉",
+        "descricao": "机构、协会和战略性圈子"
+      },
+      "tecnologia_solucoes": {
+        "titulo": "技术 / 解决方案",
+        "descricao": "面向业务的技术、创新或解决方案"
+      },
+      "talentos_especialistas": {
+        "titulo": "人才 / 专家",
+        "descricao": "专业人士或特定能力"
+      },
+      "servico_especializado": {
+        "titulo": "专业服务",
+        "descricao": "法律、税务、合规、营销等"
+      },
+      "visibilidade_posicionamento": {
+        "titulo": "曝光 / 定位",
+        "descricao": "活动、媒体、品牌和战略人脉"
+      },
+      "outra_necessidade": {
+        "titulo": "其他需求",
+        "descricao": "准确描述您要寻找的内容"
+      }
+    },
+    "outraNecessidadeRotulo": "描述您要寻找的内容",
+    "outraNecessidadePlaceholder": "例如：我需要在桑托斯找一个冷藏仓库来出口水果",
+    "outraNecessidadeObrigatoria": "勾选“其他需求”时必填。"
+  },
+  "networkInteligente": {
+    "contact": {
+      "personType": "主体类型",
+      "personFisica": "个人",
+      "personJuridica": "企业",
+      "personUnknown": "未提供",
+      "anonymousId": "匿名 ID",
+      "anonymousIdHelp": "平台上看到的就是这个 ID。只有您能看到 ID 与“我是谁”之间的对应关系。",
+      "editInNetwork": "在我的人脉中编辑",
+      "emptyItems": "暂无记录。",
+      "meetingsTitle": "关联的会议",
+      "meetingsEmpty": "此联系人没有关联的会议。",
+      "topics": "话题：{{lista}}",
+      "connectionsTitle": "连接与撮合",
+      "connectionsNoConsent": "开启智能连接后即可查看此联系人的连接。",
+      "searchGlobal": "在全球网络中查找此联系人的连接"
+    },
+    "availability": {
+      "title": "将此联系人开放给网络中的机会",
+      "yes": "是",
+      "no": "否",
+      "help": "选择“是”后，平台只使用匿名 ID、“我拥有的”和“我需要的”。姓名、电话、邮箱、音频、转写和个人备注绝不会被共享。您可以随时撤回授权。",
+      "saved": "开放设置已更新。",
+      "error": "无法更新开放设置。",
+      "changedAt": "于 {{data}} 修改"
+    },
+    "suggestions": {
+      "title": "待确认的 AI 建议",
+      "subtitle": "未经您确认，任何内容都不会写入联系人。如有需要，请在确认前修改。",
+      "empty": "没有待确认的建议。",
+      "originMeeting": "来自会议",
+      "originVoice": "来自您的语音",
+      "originText": "来自您的文字",
+      "confidence": "置信度 {{pct}}%",
+      "valueLabel": "建议的值",
+      "evidence": "原文：“{{trecho}}”",
+      "confirm": "确认",
+      "ignore": "忽略",
+      "confirmed": "信息已确认。",
+      "ignored": "已忽略该建议。",
+      "error": "无法保存您的决定。"
+    },
+    "complete": {
+      "title": "补充信息",
+      "byText": "文字补充",
+      "byVoice": "语音补充",
+      "textPlaceholder": "写下您了解的情况：此人或企业做什么、提供什么、在寻找什么，以及如何联系。",
+      "interpret": "解析",
+      "interpreting": "解析中…",
+      "created": "已生成待您确认的建议：{{quantidade}} 条。",
+      "noneCreated": "此内容中没有发现新信息。AI 不会补充未提到的内容。",
+      "error": "暂时无法解析。",
+      "record": "录音（最长 2 分钟）",
+      "stop": "停止并发送",
+      "sending": "正在转写并解析…",
+      "heard": "识别到的内容：“{{texto}}”",
+      "voiceNotStored": "音频不会被保存：转写后即被丢弃。",
+      "micError": "无法使用麦克风。",
+      "unsupported": "此浏览器不支持录音。"
+    },
+    "timeline": {
+      "title": "关系记忆",
+      "subtitle": "私密时间线：仅您可见。",
+      "created": "已添加联系人",
+      "meeting": "会议：{{titulo}}",
+      "context": "相识场合：{{nome}}",
+      "have": "我拥有的：{{valor}}",
+      "need": "我需要的：{{valor}}",
+      "confirmed": "已确认“我是谁”：{{valor}}",
+      "availableYes": "已开放给网络中的机会",
+      "availableNo": "已撤回对网络的授权",
+      "connection": "平台已记录连接",
+      "stage": "连接阶段：{{etapa}}"
+    },
+    "connections": {
+      "title": "已记录的连接",
+      "subtitle": "平台识别出的每个连接都会连同来源、阶段和佣金状态一起记录。联系人的身份始终受到保护。",
+      "empty": "暂无已记录的连接。",
+      "noConsent": "要查看和记录连接，请开启智能连接。",
+      "internalAlert": "我们在您自己的人脉中发现了一个机会。",
+      "memberSide": "平台成员",
+      "contactSide": "其他人脉中的联系人（{{codigo}}）",
+      "itemLine": "拥有：{{tem}} · 需要：{{precisa}}",
+      "registeredAt": "记录于 {{data}}",
+      "platformCommission": "平台佣金：{{status}}",
+      "originatorCommission": "您作为引荐人的份额：{{status}}",
+      "discard": "放弃",
+      "stepSaved": "阶段已记录。",
+      "stepError": "无法记录该阶段。",
+      "commissionNotice": "佣金按照平台的商业和合同规则以状态形式记录。不会自动适用任何比例、金额或扣款。",
+      "status": {
+        "identificada": "已识别",
+        "apresentacao": "已引荐",
+        "negociacao": "洽谈中",
+        "fechada": "已成交",
+        "descartada": "已放弃"
+      },
+      "origin": {
+        "PLATFORM_MATCH": "平台成员之间",
+        "NETWORK_PLATFORM_MATCH": "您的人脉 × 平台成员",
+        "PRIVATE_NETWORK_MATCH": "您的人脉内部",
+        "NETWORK_NETWORK_MATCH": "您的人脉 × 其他人脉"
+      },
+      "commission": {
+        "sem_negocio": "无交易",
+        "a_apurar": "待核定",
+        "devida": "应付",
+        "nao_devida": "不适用"
+      },
+      "next": {
+        "apresentacao": "记录引荐",
+        "negociacao": "记录洽谈",
+        "fechada": "记录成交"
+      },
+      "closingAwaiting": "您已确认成交，正在等待另一方确认。",
+      "discardConfirmTitle": "放弃此连接？",
+      "discardConfirmText": "放弃后无法撤销：该连接对您将保持已放弃状态，无法再进入下一阶段。",
+      "discardConfirmButton": "放弃连接",
+      "discardConfirmCancel": "取消"
+    },
+    "global": {
+      "description": "您开放的联系人会与平台成员以及其他已授权的人脉进行比对——只使用匿名 ID、“我拥有的”和“我需要的”。姓名、电话、邮箱、音频、转写和备注绝不会外泄。",
+      "search": "在全球网络中查找连接",
+      "searching": "查找中…",
+      "found": "已找到并记录的连接：{{quantidade}} 个。",
+      "noneFound": "目前与全球网络暂无新的连接。",
+      "noneAvailable": "您还没有开放任何联系人。请打开一个联系人，在“将此联系人开放给网络中的机会”中选择“是”。",
+      "error": "暂时无法查找。"
+    },
+    "search": {
+      "title": "我的人脉智能搜索",
+      "onlyYourNetwork": "用您自己的话提问。搜索只在您的私人人脉中进行。",
+      "placeholder": "例如：我认识的人里谁在找经销商？",
+      "button": "搜索",
+      "searching": "搜索中…",
+      "noContacts": "您的人脉中没有与此问题相关的联系人。",
+      "error": "暂时无法搜索。",
+      "pending": "您的人脉仍在建立索引（排队中的记录：{{quantidade}}）。回答可能不完整，请稍后再问一次。",
+      "truncated": "未纳入搜索的记录：{{quantidade}}。您的账户已超过记忆的文档上限，搜索无法看到这些记录。"
+    },
+    "panel": {
+      "registryLabel": "连接、撮合与交易",
+      "availableContacts": "已开放的联系人",
+      "availableContactsDetail": "仅匿名 ID、“我拥有的”和“我需要的”",
+      "globalConnections": "与全球网络的连接",
+      "globalConnectionsDetail": "与成员及其他已授权人脉",
+      "opportunities": "发现的机会",
+      "opportunitiesDetail": "已记录且未放弃的连接",
+      "intermediations": "撮合",
+      "intermediationsDetail": "已记录引荐的连接",
+      "dealsInProgress": "进行中的交易",
+      "dealsInProgressDetail": "引荐或洽谈中",
+      "dealsClosed": "已完成的交易",
+      "dealsClosedDetail": "已记录的成交",
+      "commissions": "佣金",
+      "commissionsDetail": "平台核定中，未设定金额",
+      "internalRegistered": "已记录的内部连接",
+      "internalRegisteredDetail": "您自己人脉中的联系人之间"
+    },
+    "minutes": {
+      "usedThisMonth": "本月已用",
+      "usedThisMonthHelp": "自 1 日起转写的会议和语音补充。",
+      "monthlyLimit": "每月上限",
+      "noMonthlyLimit": "无每月上限",
+      "noMonthlyLimitHelp": "免费方案按每场会议限制。",
+      "dependsOnPayment": "月度方案依赖平台尚未具备的支付集成。目前不收取任何费用。"
+    },
+    "detailLink": {
+      "availableYes": "开放给网络中的机会：是",
+      "availableNo": "开放给网络中的机会：否",
+      "open": "打开档案、AI 建议、语音补充和历史"
+    },
+    "meetingProposal": {
+      "pendingAfterCreate": "创建联系人后，“我拥有的”和“我需要的”会在其档案中等待您确认。",
+      "review": "在我的智能人脉中查看"
+    },
+    "dashboard": {
+      "minutesLine": "本月已用 {{usados}} 分钟 · 每场会议最多 {{limite}} 分钟",
+      "expandSoon": "扩容取决于未来的集成"
+    }
+  },
+  "oQuePreciso": {
+    "textoExplicativo": "勾选您在发展、连接或拓展业务方面需要的内容。",
+    "fraseDiscreta": "您描述得越具体，您的连接就越智能。",
+    "demandaN": "需求 {{n}}",
+    "adicionarDemanda": "再添加一项需求",
+    "concluir": "完成",
+    "editar": "编辑",
+    "remover": "删除",
+    "desmarcarCategoria": "取消选择该类别",
+    "sim": "是",
+    "nao": "否",
+    "descricaoCurta": "请至少用 {{minimo}} 个字符描述。",
+    "servicoObrigatorio": "请选择服务或专家。",
+    "categoriaSemDemanda": "请至少详细描述一项需求：仅选择类别不会产生连接。",
+    "faltaDetalhar": "要继续，请详细填写：{{categorias}}。",
+    "demandasDetalhadas": "已详述的需求：{{n}}",
+    "limiteDaCategoria": "每个类别最多 {{maximo}} 项需求。",
+    "limiteTotal": "总共最多 {{maximo}} 项需求。",
+    "categoriasAnteriores": "新列表之前选择的项目",
+    "categoriaAntigaSemDetalhe": "为该类别补充详情，让您的连接更精准。",
+    "institucionalAviso": "我们寻求合法、专业的机构连接。",
+    "semDemandaDetalhada": "暂无详细需求。",
+    "categorias": {
+      "compradores": {
+        "titulo": "买家 / 客户",
+        "descricao": "找到需要我所销售或提供之物的人。",
+        "pergunta": "您想销售什么？需要找到谁？",
+        "exemplo": "例如：寻找有意分销巴西产品的非洲连锁药店。"
+      },
+      "distribuidores": {
+        "titulo": "分销商 / 代理商",
+        "descricao": "分销、商业代理和销售渠道。",
+        "pergunta": "您在寻找哪种分销商或代理商？",
+        "exemplo": "例如：寻找在东非分销药品的合作伙伴。"
+      },
+      "fornecedores": {
+        "titulo": "供应商 / 制造商",
+        "descricao": "产品、原料、工业与生产。",
+        "pergunta": "您需要采购或生产什么？",
+        "exemplo": "例如：需要具备食品认证的玻璃包装制造商。"
+      },
+      "parceiros": {
+        "titulo": "战略合作伙伴",
+        "descricao": "合资企业、联盟、股东和商业伙伴。",
+        "pergunta": "您在寻找哪种合作？",
+        "exemplo": "例如：寻找有零售经验的股东，在巴西东北部开设门店。"
+      },
+      "investidores": {
+        "titulo": "投资者",
+        "descricao": "投资、股权、基金和私人资本。",
+        "pergunta": "您在寻找哪种投资？",
+        "exemplo": "例如：寻求投资以扩建工厂、使产能翻倍。"
+      },
+      "financiamento": {
+        "titulo": "信贷 / 融资",
+        "descricao": "银行、信贷额度和项目融资。",
+        "pergunta": "您在寻找哪种融资？",
+        "exemplo": "例如：用于咖啡出口流动资金的信贷额度。"
+      },
+      "expansao_internacionalizacao": {
+        "titulo": "扩张 / 国际化",
+        "descricao": "进入新的州、国家或市场。",
+        "pergunta": "您希望在哪里、以何种方式扩张？",
+        "exemplo": "例如：将制药业务拓展到莫桑比克。"
+      },
+      "conexoes_institucionais": {
+        "titulo": "机构连接",
+        "descricao": "机构、协会、商会和机构对话。",
+        "pergunta": "您需要哪种机构连接？",
+        "exemplo": "例如：联系商会，参加赴葡萄牙的商务考察团。"
+      },
+      "licencas": {
+        "titulo": "许可 / 监管",
+        "descricao": "许可证、注册、认证和审批。",
+        "pergunta": "您需要哪种许可证、注册、认证或审批？",
+        "exemplo": "例如：为一条护发产品线在巴西卫生监督局（ANVISA）注册化妆品。"
+      },
+      "tecnologia": {
+        "titulo": "技术 / 创新",
+        "descricao": "系统、人工智能、技术、创新和数字化转型。",
+        "pergunta": "您在寻找哪种技术或解决方案？",
+        "exemplo": "例如：与电商和库存打通的管理系统。"
+      },
+      "especialistas_servicos": {
+        "titulo": "专家 / 服务",
+        "descricao": "法律、税务、会计、合规、营销、外贸及其他专业服务。",
+        "pergunta": "您需要聘请哪种服务或专家？",
+        "exemplo": "例如：寻找专门为巴西工业企业追回税收抵免的律师事务所。"
+      },
+      "talentos_equipe": {
+        "titulo": "人才 / 团队",
+        "descricao": "高管、专业人士和特定能力。",
+        "pergunta": "您在寻找哪类专业人士或能力？",
+        "exemplo": "例如：有对欧出口经验的销售总监。"
+      },
+      "imoveis_estrutura": {
+        "titulo": "房产 / 设施",
+        "descricao": "场地、房产、工厂、办公室和基础设施。",
+        "pergunta": "您需要什么设施？",
+        "exemplo": "例如：桑托斯港附近 2000 平方米的仓库，用于仓储。"
+      },
+      "logistica_comercio_exterior": {
+        "titulo": "物流 / 外贸",
+        "descricao": "运输、仓储、进口、出口和国际业务。",
+        "pergunta": "您需要实现哪项业务操作？",
+        "exemplo": "例如：从巴西到荷兰的水果冷链运输。"
+      },
+      "midia_visibilidade": {
+        "titulo": "媒体 / 曝光",
+        "descricao": "传播、活动、新闻、定位和推广。",
+        "pergunta": "您希望获得哪种曝光？",
+        "exemplo": "例如：在欧洲时尚活动中推广品牌。"
+      },
+      "conhecimento_mentoria": {
+        "titulo": "知识 / 导师指导",
+        "descricao": "专家、培训、建议和经验。",
+        "pergunta": "您在寻找哪方面的知识或经验？",
+        "exemplo": "例如：公司治理方面的导师指导，为引入投资者做准备。"
+      },
+      "outra_necessidade": {
+        "titulo": "其他需求",
+        "descricao": "自由描述您在寻找的内容。",
+        "pergunta": "请准确告诉我们您需要什么。",
+        "exemplo": "例如：在圣保罗举办 200 位来宾活动的场地。"
+      }
+    },
+    "campos": {
+      "produtoOuServico": "产品或服务",
+      "tipoDeComprador": "买家/客户类型",
+      "setor": "行业",
+      "paisRegiaoDeInteresse": "感兴趣的国家/地区",
+      "volumeOuCapacidade": "大致数量或产能（如适用）",
+      "descricao": "描述",
+      "produtoServico": "产品/服务",
+      "paisRegiao": "国家/地区",
+      "exclusividade": "独家",
+      "descricaoDaNecessidade": "需求描述",
+      "produtoInsumo": "产品/原料",
+      "quantidadeAproximada": "大致数量",
+      "certificacoes": "所需认证（如有）",
+      "descricaoDetalhada": "详细描述",
+      "valorAproximado": "大致金额",
+      "pais": "国家",
+      "estagio": "企业/项目阶段",
+      "modalidade": "期望的方式",
+      "descricaoDoProjeto": "项目描述",
+      "finalidade": "用途",
+      "empresaProjeto": "企业/项目",
+      "prazoDesejado": "期望期限",
+      "paisRegiaoDeDestino": "目标国家/地区",
+      "objetivoDaExpansao": "扩张目标",
+      "objetivoDaConexao": "连接目的",
+      "tipo": "类型",
+      "produtoEmpresa": "产品/企业",
+      "orgaoEntidade": "主管机构（如知道）",
+      "descricaoDoServico": "请准确描述您需要的服务。",
+      "cargoEspecialidade": "职位/专长",
+      "localizacao": "地点",
+      "tipoDeParticipacao": "参与方式",
+      "cidade": "城市",
+      "estadoRegiao": "州/地区",
+      "areaAproximada": "大致面积",
+      "origem": "起运地",
+      "destino": "目的地",
+      "area": "领域",
+      "objetivo": "目标",
+      "paisRegiaoSeRelevante": "国家/地区（如相关）",
+      "conteExatamente": "请准确告诉我们您需要什么。"
+    },
+    "opcoes": {
+      "parceiros": {
+        "socio": "股东",
+        "parceiro_comercial": "商业伙伴",
+        "joint_venture": "合资企业",
+        "representacao": "代理",
+        "distribuicao": "分销",
+        "desenvolvimento_de_projeto": "项目开发",
+        "parceiro_institucional": "机构合作伙伴",
+        "outro": "其他"
+      },
+      "investidores": {
+        "equity": "股权",
+        "fundo": "基金",
+        "investidor_estrategico": "战略投资者",
+        "outro": "其他"
+      },
+      "expansao_internacionalizacao": {
+        "vender": "销售",
+        "distribuir": "分销",
+        "abrir_empresa": "设立公司",
+        "instalar_operacao": "建立运营",
+        "encontrar_parceiro_local": "寻找当地合作伙伴",
+        "encontrar_investidores": "寻找投资者",
+        "importar": "进口",
+        "exportar": "出口",
+        "outro": "其他"
+      },
+      "conexoes_institucionais": {
+        "associacao_empresarial": "企业协会",
+        "camara_de_comercio": "商会",
+        "entidade_setorial": "行业组织",
+        "universidade": "大学",
+        "instituicao_financeira": "金融机构",
+        "organismo_internacional": "国际组织",
+        "outra_instituicao": "其他机构"
+      },
+      "tecnologia": {
+        "software": "软件",
+        "inteligencia_artificial": "人工智能",
+        "automacao": "自动化",
+        "plataforma": "平台",
+        "desenvolvimento": "开发",
+        "integracao": "集成",
+        "equipamentos": "设备",
+        "healthtech": "医疗科技",
+        "fintech": "金融科技",
+        "outro": "其他"
+      },
+      "especialistas_servicos": {
+        "juridico": "法律",
+        "tributario": "税务",
+        "contabil": "会计",
+        "regulatorio": "合规",
+        "comercio_exterior": "外贸",
+        "marketing": "营销",
+        "tecnologia": "技术",
+        "estrategia": "战略",
+        "financeiro": "财务",
+        "recursos_humanos": "人力资源",
+        "engenharia": "工程",
+        "arquitetura": "建筑设计",
+        "outro": "其他"
+      },
+      "imoveis_estrutura": {
+        "terreno": "土地",
+        "escritorio": "办公室",
+        "loja": "店铺",
+        "galpao": "仓库",
+        "planta_industrial": "工厂",
+        "laboratorio": "实验室",
+        "clinica": "诊所",
+        "centro_de_distribuicao": "配送中心",
+        "outro": "其他"
+      },
+      "logistica_comercio_exterior": {
+        "importacao": "进口",
+        "exportacao": "出口",
+        "transporte_internacional": "国际运输",
+        "transporte_nacional": "国内运输",
+        "armazenagem": "仓储",
+        "desembaraco_aduaneiro": "清关",
+        "freight_forwarder": "货运代理",
+        "distribuicao": "分销",
+        "outro": "其他"
+      },
+      "midia_visibilidade": {
+        "imprensa": "新闻媒体",
+        "eventos": "活动",
+        "relacoes_publicas": "公共关系",
+        "posicionamento_de_marca": "品牌定位",
+        "influenciadores": "网红达人",
+        "patrocinio": "赞助",
+        "divulgacao_internacional": "国际推广",
+        "outro": "其他"
+      }
+    },
+    "legado": {
+      "consultoria": "咨询"
     }
   }
 }

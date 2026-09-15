@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "@/i18n";
@@ -30,12 +30,12 @@ type Opcoes = { onSuccess?: (data: unknown, vars: unknown) => void; onError?: (e
 // vi.mock é içado para o topo do arquivo; o que as fábricas usam precisa
 // nascer em vi.hoisted, senão é lido antes de existir.
 const duble = vi.hoisted(() => {
-  const mutacoes: Record<string, { opcoes: Opcoes; mutate: ReturnType<typeof vi.fn> }> = {};
+  const mutacoes: Record<string, { opcoes: Opcoes; mutate: ReturnType<typeof vi.fn>; mutateAsync: ReturnType<typeof vi.fn> }> = {};
   const registrar = (nome: string) => ({
     useMutation: (opcoes: Opcoes = {}) => {
-      const m = (mutacoes[nome] ??= { opcoes, mutate: vi.fn() });
+      const m = (mutacoes[nome] ??= { opcoes, mutate: vi.fn(), mutateAsync: vi.fn() });
       m.opcoes = opcoes;
-      return { mutate: m.mutate, mutateAsync: vi.fn(), isPending: false };
+      return { mutate: m.mutate, mutateAsync: m.mutateAsync, isPending: false };
     },
   });
   return {
@@ -43,7 +43,12 @@ const duble = vi.hoisted(() => {
     registrar,
     list: vi.fn(),
     get: vi.fn(),
-    utils: { meetings: { list: { invalidate: vi.fn() }, get: { invalidate: vi.fn(), setData: vi.fn() } } },
+    pendencias: vi.fn(),
+    duracao: vi.fn(),
+    utils: {
+      meetings: { list: { invalidate: vi.fn() }, get: { invalidate: vi.fn(), setData: vi.fn() } },
+      networkInteligente: { pendencias: { reset: vi.fn() } },
+    },
   };
 });
 
@@ -64,11 +69,19 @@ vi.mock("@/lib/trpc", () => ({
       delete: duble.registrar("delete"),
       reprocess: duble.registrar("reprocess"),
     },
+    // Meu Network Inteligente: as sugestões de Tenho/Preciso por pessoa da reunião.
+    networkInteligente: {
+      pendencias: { useQuery: (...args: unknown[]) => duble.pendencias(...args) },
+    },
   },
 }));
+// O jsdom não carrega mídia: a leitura da duração pelo navegador é dublada
+// (e provada em lib/duracao-no-navegador.test.ts).
+vi.mock("@/lib/duracao-no-navegador", () => ({ lerDuracaoNoNavegador: (...args: unknown[]) => duble.duracao(...args) }));
 
 beforeEach(() => {
-  for (const m of Object.values(duble.mutacoes)) m.mutate.mockReset();
+  for (const m of Object.values(duble.mutacoes)) { m.mutate.mockReset(); m.mutateAsync.mockReset(); }
+  duble.pendencias.mockReturnValue({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() });
 });
 
 // Erro como o servidor devolve (envelope tRPC, com data.code): é a mensagem
@@ -344,6 +357,21 @@ describe("Detalhe da reunião — enquanto processa", () => {
     expect(screen.getByRole("button", { name: /Criar contato/ })).toBeInTheDocument();
   });
 
+  it("decisão recusada (já decidida em outra aba): mostra a frase do servidor e relê a sugestão", () => {
+    abrirDetalhe({ status: "ready" }, { suggestions: [sugestaoPendente] });
+    fireEvent.click(abaContatos());
+    fireEvent.click(screen.getByRole("button", { name: /Criar contato/ }));
+    expect(duble.mutacoes.decideContactSuggestion.mutate).toHaveBeenCalledWith({ suggestionId: sugestaoPendente.id, action: "create" });
+    duble.utils.meetings.get.invalidate.mockClear();
+    const frase = "Esta pessoa já foi decidida. Atualize a tela para ver como ficou.";
+    act(() => {
+      duble.mutacoes.decideContactSuggestion.opcoes.onError?.({ message: frase, data: { code: "CONFLICT" } }, undefined);
+      duble.mutacoes.decideContactSuggestion.opcoes.onSettled?.();
+    });
+    expect(toast.error).toHaveBeenCalledWith(frase);
+    expect(duble.utils.meetings.get.invalidate).toHaveBeenCalledWith({ meetingId: REUNIAO.id });
+  });
+
   it("detalhe e lista só consultam sozinhos enquanto há reunião processando", () => {
     abrirDetalhe({ status: "failed" });
     const detalhe = duble.get.mock.calls[0][1] as { refetchInterval: (consulta: unknown) => number | false };
@@ -478,5 +506,97 @@ describe("Detalhe da reunião — enquanto processa", () => {
     } finally {
       await i18n.changeLanguage("pt-BR");
     }
+  });
+});
+
+describe("Envio de arquivo — a duração não é inventada", () => {
+  // Revisão adversarial de 15/09: sem ler a duração, a tela mandava 60 s, e um
+  // .webm de 25 minutos passava pela conferência dos 10 minutos.
+  async function enviarArquivo(duracaoLida: number | null) {
+    duble.list.mockReturnValue({ data: [], isLoading: false });
+    duble.duracao.mockResolvedValue(duracaoLida);
+    duble.mutacoes.create?.mutateAsync.mockResolvedValue({ id: "reuniao-nova" });
+    render(<Meetings />);
+    fireEvent.click(screen.getByRole("button", { name: /Nova reunião/ }));
+    duble.mutacoes.create.mutateAsync.mockResolvedValue({ id: "reuniao-nova" });
+    fireEvent.change(screen.getByPlaceholderText("Ex.: Conversa com investidor"), { target: { value: "Conversa com a Ana" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    const arquivo = new File(["audio"], "reuniao.webm", { type: "audio/webm" });
+    fireEvent.change(document.querySelector("input[type=file]")!, { target: { files: [arquivo] } });
+    await waitFor(() => expect(duble.duracao).toHaveBeenCalledWith(arquivo));
+  }
+
+  it("o navegador não lê a duração: recusa com a frase, sem criar a reunião nem enviar o áudio", async () => {
+    await enviarArquivo(null);
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Não foi possível ler a duração deste áudio. Envie o arquivo em MP3 ou M4A."));
+    expect(duble.mutacoes.create.mutateAsync).not.toHaveBeenCalled();
+    expect(duble.mutacoes.submitRecording.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("25 minutos lidos: recusa pelo limite", async () => {
+    await enviarArquivo(25 * 60);
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("No modo atual, o áudio deve ter no máximo 10 minutos."));
+    expect(duble.mutacoes.create.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("duração legível dentro do limite: envia com a duração lida", async () => {
+    await enviarArquivo(301);
+    await waitFor(() => expect(duble.mutacoes.submitRecording.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ meetingId: "reuniao-nova", mimeType: "audio/webm", durationSeconds: 301 }),
+    ));
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("Detalhe da reunião — pendências de Tenho/Preciso na aba Contatos", () => {
+  const abaContatos = () => screen.getByRole("button", { name: /Contatos/ });
+  // Quem Sou completo: todo FALTANDO na tela vem de Tenho/Preciso.
+  const pessoaCompleta = { ...sugestaoPendente, phone: "+55 11 99999-0000", email: "ana@vinicola.com.br", existingContactId: null };
+  const alertaDeFalta = () => screen.queryByText(/Faltam informações importantes/);
+
+  it("lidas e vazias: FALTANDO em O Que Tenho e O Que Preciso, com o alerta", () => {
+    abrirDetalhe({ status: "ready" }, { suggestions: [pessoaCompleta] });
+    fireEvent.click(abaContatos());
+    expect(screen.getAllByText("FALTANDO")).toHaveLength(2);
+    expect(alertaDeFalta()).toBeInTheDocument();
+  });
+
+  it("ainda carregando: nenhum FALTANDO nem alerta, e a aba diz que carrega", () => {
+    duble.pendencias.mockReturnValue({ data: undefined, isLoading: true, isError: false, error: null, refetch: vi.fn() });
+    abrirDetalhe({ status: "ready" }, { suggestions: [pessoaCompleta] });
+    fireEvent.click(abaContatos());
+    expect(screen.queryByText("FALTANDO")).not.toBeInTheDocument();
+    expect(alertaDeFalta()).not.toBeInTheDocument();
+    expect(screen.getByText("Carregando…")).toBeInTheDocument();
+  });
+
+  it("consulta falhou: erro com tentar de novo, em vez de afirmar que falta informação", () => {
+    const refetch = vi.fn();
+    duble.pendencias.mockReturnValue(emErro(refetch));
+    abrirDetalhe({ status: "ready" }, { suggestions: [pessoaCompleta] });
+    fireEvent.click(abaContatos());
+    expect(screen.getByRole("alert")).toHaveTextContent(MENSAGEM);
+    expect(screen.queryByText("FALTANDO")).not.toBeInTheDocument();
+    expect(alertaDeFalta()).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "↻ Tentar novamente" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("o reprocessamento termina: as pendências DESTA reunião são relidas do zero (reset), não ficam as da tentativa anterior", () => {
+    const meeting = { ...REUNIAO, status: "processing" };
+    const detalheCom = (status: string) => ({
+      data: { meeting: { ...meeting, status }, transcript: null, entities: [], suggestions: [pessoaCompleta], recording: null, recordingExpired: false },
+      isLoading: false,
+    });
+    duble.list.mockReturnValue({ data: [meeting], isLoading: false });
+    duble.get.mockReturnValue(detalheCom("processing"));
+    const { rerender } = render(<Meetings />);
+    fireEvent.click(screen.getByRole("button", { name: /Reunião com a vinícola/ }));
+    expect(duble.utils.networkInteligente.pendencias.reset).not.toHaveBeenCalled();
+    expect(duble.pendencias).toHaveBeenCalledWith({ meetingId: REUNIAO.id }, expect.anything());
+
+    duble.get.mockReturnValue(detalheCom("ready"));
+    rerender(<Meetings />);
+    expect(duble.utils.networkInteligente.pendencias.reset).toHaveBeenCalledWith({ meetingId: REUNIAO.id });
   });
 });

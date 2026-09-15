@@ -69,6 +69,7 @@ const {
   CHAVES,
   planejarLimpeza,
   planejarFaxinaDuravel,
+  planejarColetaDeConexoes,
 } = limpezaMod as any;
 
 const AQUI: string = (import.meta as any).dirname ?? path.dirname(fileURLToPath(import.meta.url));
@@ -560,7 +561,7 @@ describe("limpeza, direção A: todo par do plano existe em drizzle/schema.ts", 
   // Chave "id"/"opp" só cabe em coluna inteira; "openId"/"email" só em varchar. Uma
   // chave trocada gera `WHERE owner_id IN (1, 2)` contra varchar: zero linhas, em
   // silêncio. É o defeito 5 da auditoria com outra roupa.
-  const TIPO_POR_CHAVE: Record<string, string[]> = { id: ["int", "bigint"], opp: ["int", "bigint"], openId: ["varchar"], email: ["varchar"] };
+  const TIPO_POR_CHAVE: Record<string, string[]> = { id: ["int", "bigint"], opp: ["int", "bigint"], openId: ["varchar"], email: ["varchar"], conexao: ["varchar"] };
 
   it("cada par tem chave conhecida E do tipo certo, ação apagar/alertar e aparece uma vez só", () => {
     const vistos = new Set<string>();
@@ -611,7 +612,10 @@ describe("limpeza, direção B: tabela nova com coluna de usuária (owner_id, us
     // qual coluna de usuária sumiu do parse.
     // 57: a etapa 13 somou nda_acceptances.userId (trilha de aceite do NDA).
     // 58: o distribuidor do Smart Match somou connections.moderatedBy.
-    expect(paresDeUsuariaNoSchema).toHaveLength(58);
+    // 63: o Meu Network Inteligente somou network_sugestoes.owner_id,
+    // conexoes_participantes.owner_id e .userId, consumo_de_minutos.owner_id e
+    // assinaturas_de_minutos.userId.
+    expect(paresDeUsuariaNoSchema).toHaveLength(63);
     expect(paresDeUsuariaNoSchema).toContainEqual({ tabela: "private_contacts", coluna: "ownerId" });
     expect(paresDeUsuariaNoSchema).toContainEqual({ tabela: "gold_access_grants", coluna: "revokedBy" });
     expect(paresDeUsuariaNoSchema).toContainEqual({ tabela: "nda_acceptances", coluna: "userId" });
@@ -635,7 +639,8 @@ describe("limpeza, direção B: tabela nova com coluna de usuária (owner_id, us
 describe("planejarLimpeza: SQL parametrizado, sem LIKE global, users por último", () => {
   const ids = [1, 2];
   const openIds = ["qa_exame_presidente", "qa_exame_prata"];
-  const comandos = planejarLimpeza({ ids, openIds, emails: ["A@Exame.invalid"], oppIds: [77] });
+  const conexaoIds = ["conexao-1", "conexao-2"];
+  const comandos = planejarLimpeza({ ids, openIds, emails: ["A@Exame.invalid"], oppIds: [77], conexaoIds });
   const todosOsParams: unknown[] = comandos.flatMap((c: any) => c.params);
 
   it("um comando por par do plano mais os três de oportunidade/usuárias", () => {
@@ -763,6 +768,43 @@ describe("planejarLimpeza: SQL parametrizado, sem LIKE global, users por último
     expect(planejarLimpeza()).toEqual([]);
   });
 
+  it("conexoes_registradas (sem coluna de usuária, fora da direção B) está no plano e sai por id ANTES dos participantes", () => {
+    // O recálculo do motor privado grava um cabeçalho PRIVATE_NETWORK_MATCH por par
+    // do exame; sem este par ele ficava órfão, com `lados: []`, a cada execução.
+    expect(PLANO_DE_LIMPEZA).toContainEqual({ tabela: "conexoes_registradas", coluna: "id", chave: "conexao", acao: "apagar" });
+    const descricoes = comandos.map((c: any) => c.descricao);
+    const cabecalho = descricoes.indexOf("conexoes_registradas.id (conexao)");
+    expect(cabecalho).toBeGreaterThanOrEqual(0);
+    expect(comandos[cabecalho].sql).toBe("DELETE FROM `conexoes_registradas` WHERE `id` IN (?, ?)");
+    expect(comandos[cabecalho].params).toEqual(conexaoIds);
+    // Participante apagado primeiro = cabeçalho impossível de achar se a execução morrer no meio.
+    expect(cabecalho).toBeLessThan(descricoes.indexOf("conexoes_participantes.owner_id (openId)"));
+    expect(cabecalho).toBeLessThan(descricoes.indexOf("conexoes_participantes.userId (id)"));
+    // Sem coleta, nenhum DELETE no cabeçalho: nunca um DELETE sem WHERE de id.
+    expect(planejarLimpeza({ ids, openIds }).some((c: any) => c.sql.includes("`conexoes_registradas`"))).toBe(false);
+  });
+
+  it("planejarColetaDeConexoes: só conexão sem participante de fora das QA, com NULL tratado como 'não é QA'", () => {
+    const coleta = planejarColetaDeConexoes({ ids, openIds });
+    expect(coleta.sql).toBe(
+      "SELECT DISTINCT `conexao_id` AS id FROM `conexoes_participantes` WHERE (`owner_id` IN (?, ?) OR `userId` IN (?, ?))" +
+      " AND `conexao_id` NOT IN (SELECT `conexao_id` FROM `conexoes_participantes` WHERE (`owner_id` IS NULL OR `owner_id` NOT IN (?, ?)) AND (`userId` IS NULL OR `userId` NOT IN (?, ?)))",
+    );
+    expect(coleta.params).toEqual([...openIds, ...ids, ...openIds, ...ids]);
+    expect(contarInterrogacoes(coleta.sql)).toBe(coleta.params.length);
+    expect(coleta.sql).not.toMatch(/\bLIKE\b|DELETE|UPDATE/i);
+
+    // Conta QA já apagada (sem ids): a coleta segue pelos openIds.
+    const soOpenIds = planejarColetaDeConexoes({ openIds });
+    expect(soOpenIds.sql).toBe(
+      "SELECT DISTINCT `conexao_id` AS id FROM `conexoes_participantes` WHERE (`owner_id` IN (?, ?))" +
+      " AND `conexao_id` NOT IN (SELECT `conexao_id` FROM `conexoes_participantes` WHERE (`owner_id` IS NULL OR `owner_id` NOT IN (?, ?)))",
+    );
+    expect(soOpenIds.params).toEqual([...openIds, ...openIds]);
+    expect(planejarColetaDeConexoes({})).toBeNull();
+    expect(planejarColetaDeConexoes()).toBeNull();
+  });
+
   it("planejarFaxinaDuravel: 2 DELETEs, o primeiro por body com aspas + título", () => {
     const faxina = planejarFaxinaDuravel({ tituloDaOportunidade: "X" });
     expect(faxina).toHaveLength(2);
@@ -814,5 +856,47 @@ describe("sintaxe: node --check nos três .mjs do exame (arquivo ausente também
     const caminho = path.resolve(RAIZ, arquivo);
     expect(existsSync(caminho), `${arquivo} não existe`).toBe(true);
     expect(checarSintaxe(caminho)).toBe("");
+  });
+});
+
+// ═══════════════════════════ 10. Termo Geral de Uso vigente ═════════════════
+// Sem versão vigente, profile.completeOnboarding barra todo cadastro novo, e a
+// 0013 só abre o enum: o exame pós-deploy saía verde com o cadastro travado.
+describe("Termo Geral de Uso vigente: o exame reprova sem exatamente uma versão", () => {
+  const { avaliarTermoGeralVigente, COMANDO_PUBLICAR_TERMO_GERAL } = relatorioMod as any;
+
+  it("uma versão vigente passa", () => {
+    expect(avaliarTermoGeralVigente(1)).toEqual({ ok: true, detalhe: "1 versão vigente" });
+  });
+
+  it("nenhuma versão reprova e diz como publicar (arquivo que existe, sem aviso, com confirmação)", () => {
+    const r = avaliarTermoGeralVigente(0);
+    expect(r.ok).toBe(false);
+    expect(r.detalhe).toContain("NENHUMA");
+    expect(r.detalhe).toContain(COMANDO_PUBLICAR_TERMO_GERAL);
+    expect(COMANDO_PUBLICAR_TERMO_GERAL).toContain("termo_geral_de_uso docs/termos/termo-geral-de-uso.md");
+    expect(COMANDO_PUBLICAR_TERMO_GERAL).toContain("--sem-aviso");
+    expect(COMANDO_PUBLICAR_TERMO_GERAL).toContain("--confirmo-producao");
+    expect(existsSync(path.resolve(RAIZ, "docs", "termos", "termo-geral-de-uso.md"))).toBe(true);
+  });
+
+  it("mais de uma versão vigente também reprova", () => {
+    expect(avaliarTermoGeralVigente(2).ok).toBe(false);
+    expect(avaliarTermoGeralVigente(2).detalhe).toContain("2 versões vigentes");
+  });
+
+  it("dentro de uma FALHA de verdade: o relatório reprova com código 1", () => {
+    const r = new Relatorio();
+    const t = avaliarTermoGeralVigente(0);
+    r.ok("Termo Geral de Uso vigente", t.ok, t.detalhe);
+    expect(r.codigoDeSaida()).toBe(1);
+    expect(r.linhas.at(-1).tipo).toBe("falha");
+  });
+
+  it("checar-producao.mjs roda a checagem contra o tipo certo", () => {
+    const fonte = readFileSync(path.resolve(RAIZ, "scripts", "checar-producao.mjs"), "utf8");
+    expect(fonte).toMatch(
+      /avaliarTermoGeralVigente\(\s*await contar\("SELECT COUNT\(\*\) n FROM `document_versions` WHERE `type` = \? AND `isCurrent` = 1", \["termo_geral_de_uso"\]\)/,
+    );
   });
 });

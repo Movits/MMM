@@ -196,7 +196,7 @@ export const enrichmentRouter = router({
       const historyAsc = [...history].reverse();
 
       const { invokeLLM } = await import("../_core/llm");
-      const systemPrompt = `Você é o Assistente de Enriquecimento do MMM. Sua única função é extrair dados estruturados de respostas em português e conduzir um roteiro de 6 perguntas.
+      const systemPrompt = `Você é o Assistente de Enriquecimento da WRW (Women Rocking the World). Sua única função é extrair dados estruturados de respostas em português e conduzir um roteiro de 6 perguntas.
 
 ROTEIRO OBRIGATÓRIO (nunca fuja disso):
 1. phone → "Qual é o telefone dele/dela?"
@@ -355,6 +355,8 @@ FORMATO DE SAÍDA (JSON obrigatório):
       if (sug.fieldType === "assets" || sug.fieldType === "needs") {
         try {
           if (await hasValidConsent(ctx.user.id, "termo_smart_match")) {
+            // Meu Network Inteligente, item 16: a conexão interna que acabou
+            // de nascer é registrada pela plataforma no fim do próprio recálculo.
             await recalculatePrivateMatches(ctx.user.openId, ctx.user.email);
           }
         } catch (erro) {

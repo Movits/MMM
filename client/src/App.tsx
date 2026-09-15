@@ -32,6 +32,8 @@ const Contexts = lazy(() => import("./pages/Contexts"));
 const Meetings = lazy(() => import("./pages/Meetings"));
 const Memory = lazy(() => import("./pages/Memory"));
 const IntelligentMatches = lazy(() => import("./pages/IntelligentMatches"));
+const MeuNetworkInteligente = lazy(() => import("./pages/MeuNetworkInteligente"));
+const PerfilDoContatoNetwork = lazy(() => import("./pages/PerfilDoContatoNetwork"));
 
 // Skeleton de loading global
 function PageLoader() {
@@ -42,7 +44,7 @@ function PageLoader() {
           <div className="w-12 h-12 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin" />
           <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-amber-500/10 border-b-amber-400/50 animate-spin" style={{ animationDirection: "reverse", animationDuration: "1.5s" }} />
         </div>
-        <span className="text-sm font-medium tracking-wide text-white">MMM</span>
+        <span className="text-sm font-medium tracking-wide text-white">WRW</span>
       </div>
     </div>
   );
@@ -67,7 +69,7 @@ function Router() {
 
         {/* Rota de onboarding - protegida mas sem InactivityGuard */}
         <Route path={"/onboarding"}>
-          <ProtectedRoute>
+          <ProtectedRoute permitirCadastroIncompleto>
             <Onboarding />
           </ProtectedRoute>
         </Route>
@@ -199,6 +201,27 @@ function Router() {
           <ProtectedRoute>
             <InactivityGuard>
               <IntelligentMatches />
+            </InactivityGuard>
+          </ProtectedRoute>
+        </Route>
+
+        {/* Meu Network Inteligente — perfil de um contato: Quem Sou, O Que
+            Tenho, O Que Preciso, ID anônimo, sugestões da IA, conexões e a
+            memória de relacionamento (spec de 14/09, itens 20 e 22) */}
+        <Route path="/meu-network-inteligente/contatos/:id">
+          <ProtectedRoute>
+            <InactivityGuard>
+              <PerfilDoContatoNetwork />
+            </InactivityGuard>
+          </ProtectedRoute>
+        </Route>
+
+        {/* Meu Network Inteligente — painel da rede particular: reuniões,
+            contatos, informações faltando e matches internos */}
+        <Route path="/meu-network-inteligente">
+          <ProtectedRoute>
+            <InactivityGuard>
+              <MeuNetworkInteligente />
             </InactivityGuard>
           </ProtectedRoute>
         </Route>

@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, Briefcase, Brain, ChevronDown, Crown, LogOut,
-  MapPin, Menu as MenuIcon, Mic, ShieldCheck, Sparkles, Users,
+  MapPin, Menu as MenuIcon, Mic, Network, ShieldCheck, Sparkles, Users,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -29,6 +29,7 @@ type Traduzir = (key: string) => string;
 // sair em pt-BR para as outras 9 línguas, ao lado de um título já traduzido.
 export function getMenuItems(t: Traduzir) {
   return [
+    { href: "/meu-network-inteligente", icon: Network, label: t("appHeader.menu.smartNetwork"), desc: t("appHeader.menu.smartNetworkDesc") },
     { href: "/opportunities", icon: Briefcase, label: t("appHeader.menu.opportunities"), desc: t("appHeader.menu.opportunitiesDesc") },
     { href: "/verification", icon: ShieldCheck, label: t("appHeader.menu.verification"), desc: t("appHeader.menu.verificationDesc") },
     { href: "/network", icon: Users, label: t("appHeader.menu.network"), desc: t("appHeader.menu.networkDesc") },
@@ -174,7 +175,7 @@ export function AppHeader({ title, backTo, actions }: {
         )}
         {title && <h1 className="text-white font-semibold text-sm sm:text-base truncate">{title}</h1>}
       </div>
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         {actions}
         <GlobalMenu />
         <NotificationBell />

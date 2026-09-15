@@ -96,7 +96,7 @@ export const opportunitiesRouter = router({
           messages: [
             {
               role: "system",
-              content: `Você é a IA de Compliance e Due Diligence do ecossistema global "Mulheres que Movem o Mundo" (MMM).
+              content: `Você é a IA de Compliance e Due Diligence do ecossistema global "Women Rocking the World" (WRW).
 
 Sua tarefa ao analisar uma oportunidade de negócio:
 1. Identificar os riscos preliminares da transação (campo: riskAnalysis — parágrafo curto em português)
@@ -269,7 +269,7 @@ Retorne um JSON estruturado com os campos: complianceLevel, explanation, riskAna
           messages: [
             {
               role: "system",
-              content: `Você é a IA de Compliance e Due Diligence do ecossistema global "Mulheres que Movem o Mundo" (MMM).
+              content: `Você é a IA de Compliance e Due Diligence do ecossistema global "Women Rocking the World" (WRW).
 Analise a oportunidade de negócio e retorne um JSON com:
 - dynamicQuestion: uma pergunta direta e específica para quem publicou sobre como comprovar que esta oportunidade existe (ex: "Você possui contrato de fornecimento ou carta de intenção assinada?")
 - suggestedDocuments: lista de 3 a 5 documentos específicos para este nicho/setor (ex: para Commodities → SGS, BL, Contrato de Fornecimento; para Tecnologia → Licença de Software, Termos de Uso, NDA)
@@ -327,7 +327,7 @@ Analise a oportunidade de negócio e retorne um JSON com:
           messages: [
             {
               role: "system",
-              content: `Você é o sistema de compliance FRAUEN. Sugira documentos necessários para validar uma oportunidade de negócio.\nRetorne JSON com:\n- suggestions: lista de até 6 documentos recomendados\n- priority: lista de prioridades correspondentes ("essential", "recommended", "optional")\n- reason: explicação breve de por que cada documento é importante`,
+              content: `Você é o sistema de compliance da WRW (Women Rocking the World). Sugira documentos necessários para validar uma oportunidade de negócio.\nRetorne JSON com:\n- suggestions: lista de até 6 documentos recomendados\n- priority: lista de prioridades correspondentes ("essential", "recommended", "optional")\n- reason: explicação breve de por que cada documento é importante`,
             },
             {
               role: "user",
@@ -404,7 +404,7 @@ Analise a oportunidade de negócio e retorne um JSON com:
         const docNames = docs.map(d => d.name).join(", ");
         const aiResp = await invokeLLM({
           messages: [
-            { role: "system", content: `Você é a IA de Compliance e Due Diligence do ecossistema global "Mulheres que Movem o Mundo" (MMM). Reclassifique a oportunidade considerando os documentos enviados. Retorne JSON com: complianceLevel ("green"/"yellow"/"orange"/"red"), riskAnalysis (parágrafo curto sobre riscos), explanation (justificativa do nível de confiança), trustScore (0-100).` },
+            { role: "system", content: `Você é a IA de Compliance e Due Diligence do ecossistema global "Women Rocking the World" (WRW). Reclassifique a oportunidade considerando os documentos enviados. Retorne JSON com: complianceLevel ("green"/"yellow"/"orange"/"red"), riskAnalysis (parágrafo curto sobre riscos), explanation (justificativa do nível de confiança), trustScore (0-100).` },
             { role: "user", content: `Título: ${opp.title}\nDescrição: ${opp.description}\nDocumentos enviados: ${docNames || 'nenhum'}` },
           ],
           response_format: { type: "json_schema", json_schema: { name: "reanalysis", strict: true, schema: { type: "object", properties: { complianceLevel: { type: "string", enum: ["green","yellow","orange","red"] }, riskAnalysis: { type: "string" }, explanation: { type: "string" }, trustScore: { type: "number" } }, required: ["complianceLevel","riskAnalysis","explanation","trustScore"], additionalProperties: false } } },
@@ -433,7 +433,7 @@ Analise a oportunidade de negócio e retorne um JSON com:
             yellow: '🟡 Confiabilidade Média',
             green: '🟢 Alta Confiabilidade',
           };
-          const scoreMsg = `Frauen Trust Score: ${Math.round(r.trustScore)}%`;
+          const scoreMsg = `Nota de confiança: ${Math.round(r.trustScore)}%`;
           await createNotification({
             userId: opp.publishedBy,
             type: 'compliance_update',

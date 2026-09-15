@@ -1,3 +1,5 @@
+import { chaveAtualDaBusca, ehChaveOQueBusca } from "@shared/o-que-busca";
+
 // Interesses de negócio no cartão de match (Dashboard). O perfil guarda a
 // CHAVE da opção ("agribusiness", "investor") ou, em dados antigos, texto
 // livre ("roupas", "tech", "food", "Alimentos & Bebidas"). Este módulo casa o
@@ -69,4 +71,23 @@ export function rotuloDeInteresse(
 ): string {
   const chave = chaveDeInteresse(termoCru);
   return chave ? t(`dashboard.interests.${chave}`) : semSinonimo(termoCru);
+}
+
+/**
+ * Rótulo de uma resposta de "O que você busca?" (shared/o-que-busca.ts), ou
+ * null quando o valor não é uma delas.
+ *
+ * Perfis gravados antes da troca de 14/09 têm as chaves antigas e NÃO foram
+ * migrados: investor, strategic_partner e team saem com o rótulo da opção nova
+ * equivalente; job, mentor (e outras antigas, como be_mentor) seguem com o
+ * rótulo antigo de onboarding.seeking.*.
+ */
+export function rotuloDaBusca(
+  t: (chave: string, opcoes?: Record<string, unknown>) => string,
+  valor: string,
+): string | null {
+  const chave = chaveAtualDaBusca(valor);
+  if (ehChaveOQueBusca(chave)) return t(`oQueBusca.opcoes.${chave}.titulo`);
+  const legado = t(`onboarding.seeking.${valor}`, { defaultValue: "" });
+  return legado || null;
 }

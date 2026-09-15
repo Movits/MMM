@@ -18,7 +18,16 @@ vi.mock("@/lib/trpc", () => ({
       get: { useQuery: () => ({ data: null, isLoading: false }) },
       completeOnboarding: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
     },
-    consent: { accept: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } },
+    consent: {
+      accept: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      // Termo Geral de Uso da última etapa; aqui o teste nem chega lá.
+      status: { useQuery: () => ({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() }) },
+    },
+    // "Gravar áudio" e "Revisar texto" do campo "Quem é você em uma frase?".
+    assistenteTexto: {
+      revisar: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
+      transcrever: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
+    },
     useUtils: () => ({ consent: { status: { invalidate } } }),
   },
 }));

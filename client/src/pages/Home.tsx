@@ -5,35 +5,21 @@ import { useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/i18n";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { trpc } from "@/lib/trpc";
+// Ícone da seção Meu Network Inteligente. Import próprio, fora do bloco de ícones
+// abaixo, para não encostar na linha que a PR #117 (Hero) altera.
+import { Mic } from "lucide-react";
 import { montarPracasDoGlobo, type Ligacao, type Praca } from "@/lib/pracas-do-globo";
 import {
-  Briefcase, HandCoins, GraduationCap, Handshake, Rocket, Lightbulb,
-  Lock, ShieldCheck, BadgeCheck, KeyRound,
-  UserRound, BrainCircuit, Zap, Sparkles, ArrowRight, ChevronDown, Star, Send,
+  Package, BriefcaseBusiness, HandCoins, Handshake, Radar,
+  MapPin, MapIcon, Plane, Earth,
+  ShieldCheck, BadgeCheck, Check, ArrowDown,
+  UserRound, BrainCircuit, Zap, Sparkles, ArrowRight, ChevronDown, Star, Send, Globe,
 } from "lucide-react";
 
 // Imagem do hero (client/public/images). O mapa bordado em fio de ouro sobre
 // tecido escuro: a base do quadro é vazia de propósito, porque o gradiente do
 // container e o cartão flutuante caem justamente ali.
 const HERO_IMG = "/images/hero-globo.webp";
-
-// Animated counter hook
-function useCounter(target: number, duration = 2000, start = false) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!start) return;
-    let startTime: number | null = null;
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(eased * target));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [target, duration, start]);
-  return count;
-}
 
 // Intersection observer hook
 function useInView(threshold = 0.2) {
@@ -263,8 +249,11 @@ function LanguageSelector() {
 // para dúvidas fora desta lista.
 const FAQ_ITEMS = [
   {
+    // Respostas dos níveis reescritas com as palavras da spec de Governança
+    // (Glenda, 14/09): Bronze e Prata medem a qualificação do perfil e não têm
+    // mensalidade; Ouro é categoria premium mediante mensalidade. Sem preço.
     q: "Quais são os níveis de membro da plataforma?",
-    a: "São três: Bronze, Prata e Ouro. Toda conta nova começa no Bronze e já pode montar a base de contatos, participar de reuniões e explorar as oportunidades públicas. O Prata vem com a verificação de identidade. O Ouro é o nível de maior confiança e abre as oportunidades confidenciais.",
+    a: "São três: Bronze, Prata e Ouro. Bronze e Prata não são planos de assinatura: representam o nível de qualificação das informações do seu perfil em Quem Sou, O Que Tenho e O Que Preciso. Toda conta começa no Bronze, e o Prata vem quando essas informações atingem os critérios de completude e qualidade da plataforma. Nenhum dos dois tem mensalidade. O Ouro é uma categoria premium, mediante mensalidade, com benefícios exclusivos.",
   },
   {
     q: "Como funciona o acordo de confidencialidade (NDA) na Deal Room?",
@@ -276,7 +265,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "O que é o nível Ouro e como consigo?",
-    a: "O Ouro identifica os membros de maior confiança da rede. Quem tem o selo enxerga também as oportunidades confidenciais e vê quem demonstrou interesse nas suas publicações. A concessão passa pela governança da plataforma, que considera a verificação de identidade e a participação na comunidade.",
+    a: "O Status Ouro é a categoria premium da rede, mediante mensalidade: acesso em primeira mão a oportunidades selecionadas de negócios nacionais e internacionais, convites para encontros estratégicos e prioridade na comunicação de oportunidades exclusivas da categoria. Ele não é uma evolução automática do Prata: depende da adesão à categoria premium e das regras específicas da plataforma.",
   },
   {
     q: "Quais oportunidades posso encontrar na plataforma?",
@@ -463,7 +452,6 @@ function FundoDoPlaneta({ progresso, animar, pracas, ligacoes }: {
 export default function Home() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
-  const { ref: statsRef, inView: statsInView } = useInView();
   const { ref: stepsRef, inView: stepsInView } = useInView();
   const { ref: oppsRef, inView: oppsInView } = useInView();
   const heroRef = useParallax<HTMLElement>();
@@ -479,8 +467,9 @@ export default function Home() {
     });
   };
 
-  // Números reais da plataforma — nunca valores fictícios.
-  const { data: stats } = trpc.stats.platform.useQuery();
+  // A Home pública não consulta mais stats.platform: os quatro indicadores e as
+  // contagens de Bronze, Prata e Ouro moram no Dashboard (spec da Glenda, 14/09).
+  // A consulta continua existindo no servidor; só deixou de ser exibida aqui.
 
   // Praças do globo: agregado por país das usuárias reais. staleTime infinito
   // porque o dado muda no ritmo de cadastros, não de rolagem — refetch em foco
@@ -489,10 +478,6 @@ export default function Home() {
   // manter identidade entre renders.
   const { data: presenca } = trpc.stats.presencaPorPais.useQuery(undefined, { staleTime: Infinity });
   const { pracas, ligacoes } = useMemo(() => montarPracasDoGlobo(presenca), [presenca]);
-  const users = useCounter(stats?.users ?? 0, 1600, statsInView && !!stats);
-  const opps = useCounter(stats?.opportunities ?? 0, 1600, statsInView && !!stats);
-  const countries = useCounter(stats?.countries ?? 0, 1400, statsInView && !!stats);
-  const connections = useCounter(stats?.connections ?? 0, 1600, statsInView && !!stats);
 
   const [activeStep, setActiveStep] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -510,18 +495,27 @@ export default function Home() {
   }, [stepsInView]);
 
   const steps = [
-    { num: "01", Icon: UserRound, title: t("steps.step1.title"), desc: t("steps.step1.desc") },
-    { num: "02", Icon: BrainCircuit, title: t("steps.step2.title"), desc: t("steps.step2.desc") },
-    { num: "03", Icon: Zap, title: t("steps.step3.title"), desc: t("steps.step3.desc") },
+    { num: "01", Icon: UserRound, chamada: t("steps.step1.eyebrow"), title: t("steps.step1.title"), desc: t("steps.step1.desc") },
+    { num: "02", Icon: BrainCircuit, chamada: t("steps.step2.eyebrow"), title: t("steps.step2.title"), desc: t("steps.step2.desc") },
+    { num: "03", Icon: Zap, chamada: t("steps.step3.eyebrow"), title: t("steps.step3.title"), desc: t("steps.step3.desc") },
   ];
 
   const opportunityTypes = [
-    { Icon: Briefcase, key: "society" },
-    { Icon: HandCoins, key: "investment" },
-    { Icon: GraduationCap, key: "mentorship" },
-    { Icon: Handshake, key: "partnership" },
-    { Icon: Rocket, key: "projects" },
-    { Icon: Lightbulb, key: "jobs" },
+    { Icon: Globe, key: "internationalize" },
+    { Icon: Package, key: "sellProducts" },
+    { Icon: BriefcaseBusiness, key: "sellServices" },
+    { Icon: HandCoins, key: "findInvestment" },
+    { Icon: Handshake, key: "partnerships" },
+    { Icon: Radar, key: "findOpportunities" },
+  ];
+
+  // Até onde o negócio chega, da cidade ao mercado ainda sem acesso. MapIcon e
+  // não Map: o nome do ícone esconderia o Map do JavaScript neste arquivo.
+  const reachSteps = [
+    { Icon: MapPin, key: "city" },
+    { Icon: MapIcon, key: "state" },
+    { Icon: Plane, key: "country" },
+    { Icon: Earth, key: "markets" },
   ];
 
   return (
@@ -540,9 +534,9 @@ export default function Home() {
             <span className="text-[10px] uppercase tracking-wider bg-[#c98f70]/10 text-[#c98f70] border border-[#c98f70]/20 px-2 py-0.5 rounded-full font-semibold">{t("nav.beta")}</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/50">
-            <button onClick={() => scrollTo('como-funciona')} className="hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.howItWorks")}</button>
-            <button onClick={() => scrollTo('oportunidades')} className="hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.opportunities")}</button>
-            <button onClick={() => scrollTo('seguranca')} className="hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.security")}</button>
+            <button onClick={() => scrollTo('como-funciona')} className="whitespace-nowrap hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.howItWorks")}</button>
+            <button onClick={() => scrollTo('oportunidades')} className="whitespace-nowrap hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.opportunities")}</button>
+            <button onClick={() => scrollTo('network-inteligente')} className="whitespace-nowrap hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.smartNetwork")}</button>
           </div>
           {/* Mobile hamburger button */}
           <button
@@ -584,7 +578,7 @@ export default function Home() {
         <div className={`flex flex-col items-center justify-center h-full gap-8 transition-all duration-300 ${mobileMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'}`}>
           <button onClick={() => scrollTo('como-funciona')} className="text-2xl font-bold text-white hover:text-[#c98f70] transition-colors duration-200 bg-transparent border-none cursor-pointer">{t("nav.howItWorks")}</button>
           <button onClick={() => scrollTo('oportunidades')} className="text-2xl font-bold text-white hover:text-[#c98f70] transition-colors duration-200 bg-transparent border-none cursor-pointer">{t("nav.opportunities")}</button>
-          <button onClick={() => scrollTo('seguranca')} className="text-2xl font-bold text-white hover:text-[#c98f70] transition-colors duration-200 bg-transparent border-none cursor-pointer">{t("nav.security")}</button>
+          <button onClick={() => scrollTo('network-inteligente')} className="text-2xl font-bold text-white hover:text-[#c98f70] transition-colors duration-200 bg-transparent border-none cursor-pointer text-center px-6">{t("nav.smartNetwork")}</button>
           <LanguageSelector />
           <div className="w-16 h-px bg-white/15 my-2" />
           {isAuthenticated ? (
@@ -638,30 +632,126 @@ export default function Home() {
                 o suficiente para as duas se descolarem durante a rolagem. */}
             <div className="will-change-transform"
               style={{ transform: "translate3d(0, calc(var(--p, 0) * var(--k, 1) * 22px), 0)" }}>
-              <div className="inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.08] rounded-full px-4 py-1.5 mb-8 text-xs text-white/60 font-medium"
+              <div className="inline-flex max-w-full lg:w-max lg:max-w-none items-center gap-2 bg-white/[0.03] border border-white/[0.08] rounded-full px-4 py-1.5 mb-8 text-xs text-white/60 font-medium"
                 style={{ animation: "fadeInDown 0.8s cubic-bezier(0.23,1,0.32,1) both" }}>
-                <span className="w-1.5 h-1.5 bg-[#c98f70] rounded-full animate-pulse" />
-                {t("hero.badge")}
+                <span className="w-1.5 h-1.5 shrink-0 bg-[#c98f70] rounded-full animate-pulse" />
+                {/* O selo vem em trechos separados por " • ". Quando a linha não
+                    comporta a frase inteira (celular), a quebra cai ENTRE trechos,
+                    e o separador que abriria a linha nova fica na margem negativa
+                    recortada pelo overflow-hidden: nenhuma linha começa com "•".
+                    Se um trecho sozinho não cabe (telas de ~320 px), o recuo deslocado
+                    (pl + -indent de 1em) faz a continuação começar fora do recorte;
+                    o marcador zera o indent, que é herdado e o empurraria 1em à esquerda.
+                    Os marcadores são aria-hidden, mas o t("hero.badge") cru ainda
+                    tem os " • ", e o leitor de tela os lê em voz alta; por isso o
+                    sr-only troca cada separador por vírgula e lê só os trechos.
+
+                    No desktop o selo mede a frase inteira (w-max) e cabe em UMA
+                    linha. A largura muda com a fonte do sistema, porque o selo
+                    herda a pilha ui-sans-serif/system-ui do Tailwind, não a Inter.
+                    Com os textos desta Hero, no Chrome do Windows (Segoe UI), o
+                    selo mais largo dos 10 idiomas é o alemão: 539,6 px (o pt-BR
+                    mede 484). Medido em 15/09 com "33+"; "+30" usa os mesmos
+                    caracteres, e os algarismos da Segoe UI têm a mesma largura.
+                    A coluna de texto tem 548 px a partir de 1280, então cabe com
+                    só 8 px de folga — quem for traduzir o selo tem esses 548 px de
+                    orçamento, e uma fonte mais larga que a Segoe UI já passa.
+                    Entre 1024 e 1279 o utilitário `container` troca de max-width e
+                    a coluna cai para 460 (um pouco menos logo acima de 1024, onde a
+                    barra de rolagem come parte da janela): aí o selo alemão
+                    TRANSBORDA uns 80 px (82,6 em 1024), mais que os 56 px de
+                    `gap-14`. Não bate em nada hoje porque a coluna da direita
+                    não é renderizada (MOSTRAR_CARTAO_DO_HERO = false, lá em cima);
+                    o globo que aparece ali é o FundoDoPlaneta, fixo atrás da
+                    página inteira, não aquele cartão. Quem religar o cartão troca
+                    `lg:` por `xl:` nas duas classes do selo: ele passa a quebrar
+                    em duas linhas de 1024 a 1279 px e não invade em largura alguma. */}
+                <span className="sr-only">{t("hero.badge").split(" • ").join(", ")}</span>
+                <span aria-hidden="true" className="min-w-0 overflow-hidden">
+                  <span className="-ml-[1em] flex flex-wrap">
+                    {t("hero.badge").split(" • ").map((trecho, i) => (
+                      <span key={i} className="pl-[1em] -indent-[1em]">
+                        <span className="inline-block w-[1em] indent-0 text-center">•</span>
+                        {trecho}
+                      </span>
+                    ))}
+                  </span>
+                </span>
               </div>
 
-              <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.05] mb-6 tracking-tight"
+              {/* Hierarquia da Hero, do mais forte ao botão: o título é o maior
+                  elemento; a frase "quem você precisa conhecer" vem logo abaixo,
+                  em corpo intermediário; alcance e IA são duas linhas de apoio com
+                  ícone, a do alcance mais clara (o país em destaque) e a da IA mais
+                  discreta, para não competir com o título; o gatilho de
+                  curiosidade ganha a rampa do ouro rosé e o filete lateral; o
+                  fechamento fica colado ao botão. Tudo com as cores, os raios e a
+                  entrada fadeInUp que a Hero já usava.
+                  Medido no navegador: com o título em 6xl na coluna estreita das
+                  duas colunas (lg+), ele quebrava em 4 linhas e o botão caía abaixo
+                  da primeira tela em 1280×800 e 1440×900; em lg ele fica em 5xl
+                  (continua de longe o maior texto). O título é "Inteligência que
+                  conecta negócios que acontecem" (pedido do Rosber, 14/09), no lugar
+                  de "Grandes negócios começam com acesso às pessoas certas." da spec.
+                  As duas metades têm quase o mesmo tamanho, então o título quebra
+                  equilibrado (text-balance) em vez de forçar o destaque num bloco
+                  inline-block: pela conta de largura, com o bloco "conecta" ficaria
+                  sozinho numa linha em md (conta, não medição no navegador). As margens
+                  entre os blocos são um degrau menores que as antigas para o botão
+                  caber na primeira tela em 1280×800, e o texto do botão quebra
+                  equilibrado no celular ("ENCONTRE SEU / BUSINESS MATCH"). O espaço
+                  entre as duas partes do título mora no fim de hero.headline1, e
+                  não aqui: japonês e chinês não separam palavras com espaço. */}
+              <h1 className="text-4xl md:text-6xl lg:text-5xl font-extrabold leading-[1.05] mb-5 tracking-tight text-balance"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.1s both" }}>
-                <span className="text-white">{t("hero.headline1")} </span>
+                <span className="text-white">{t("hero.headline1")}</span>
                 <span className="text-[#c98f70]">{t("hero.headline2")}</span>
-                <br />
-                <span className="text-white">{t("hero.headline3")} </span>
-                <span className="text-white/30">{t("hero.headline4")}</span>
               </h1>
 
-              <p className="text-base md:text-lg text-white/45 max-w-xl mb-10 leading-relaxed"
+              <p className="text-lg md:text-xl text-white/75 max-w-xl mb-5 leading-relaxed"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.2s both" }}>
                 {t("hero.subtitle")}
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-3 mb-14"
+              <div className="max-w-xl space-y-3 mb-5"
+                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.25s both" }}>
+                <div className="flex items-start gap-3">
+                  <span className="w-9 h-9 shrink-0 rounded-xl bg-[#c98f70]/10 border border-[#c98f70]/25 flex items-center justify-center" aria-hidden="true">
+                    <Globe className="w-4 h-4 text-[#c98f70]" />
+                  </span>
+                  <p className="text-sm md:text-base text-white/70 leading-relaxed">
+                    {t("hero.globalBefore")}<strong className="font-semibold text-white">{t("hero.globalHighlight")}</strong>{t("hero.globalAfter")}
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="w-9 h-9 shrink-0 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center" aria-hidden="true">
+                    <Sparkles className="w-4 h-4 text-white/50" />
+                  </span>
+                  <p className="text-sm text-white/45 leading-relaxed">
+                    {t("hero.ai")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="max-w-xl border-s-2 border-[#c98f70]/60 ps-4 mb-5"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.3s both" }}>
+                <p className="text-xl md:text-2xl font-bold leading-snug bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+                  {t("hero.hook")}
+                </p>
+                <p className="text-sm md:text-base text-white/55 mt-2 leading-relaxed">
+                  {t("hero.discover")}
+                </p>
+              </div>
+
+              <p className="text-base font-semibold text-white mb-3"
+                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.35s both" }}>
+                {t("hero.closing")}
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3 mb-14"
+                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.4s both" }}>
                 <Link href={isAuthenticated ? "/dashboard" : "/register"}>
-                  <button className="group w-full sm:w-auto bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-7 py-3.5 rounded-2xl text-base transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-2">
+                  <button className="group w-full sm:w-auto bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-7 py-3.5 rounded-2xl text-base text-balance transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-2">
                     {t("hero.cta")}
                     <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </button>
@@ -674,21 +764,13 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Stats minimalistas */}
-              <div ref={statsRef} className="flex flex-wrap gap-x-10 gap-y-6"
-                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.4s both" }}>
-                {[
-                  { value: users.toLocaleString(), label: t("stats.users") },
-                  { value: opps.toLocaleString(), label: t("stats.opportunities") },
-                  { value: connections.toLocaleString(), label: t("stats.connections") },
-                  { value: countries.toLocaleString(), label: "Países representados" },
-                ].map((s, i) => (
-                  <div key={i}>
-                    <div className="text-2xl font-extrabold text-white tracking-tight">{s.value}</div>
-                    <div className="text-xs text-white/35 mt-0.5">{s.label}</div>
-                  </div>
-                ))}
-              </div>
+              {/* Os quatro indicadores da plataforma (pessoas, oportunidades,
+                  conexões e países) moravam aqui, logo abaixo do botão. Saíram
+                  da primeira tela pública para a área logada, em Dashboard.tsx:
+                  na Hero eles disputavam a atenção com a mensagem e com o globo,
+                  e um número baixo de rede nova enfraquece o convite justamente
+                  para quem ainda não entrou. Nada foi apagado: a mesma consulta
+                  stats.platform alimenta agora os cartões do Dashboard. */}
             </div>
 
             {/* Imagem */}
@@ -729,8 +811,8 @@ export default function Home() {
                     <Sparkles className="w-5 h-5 text-[#c98f70]" />
                   </div>
                   <div>
-                    <div className="text-white font-bold text-sm leading-none">Match por IA</div>
-                    <div className="text-white/40 text-[11px] mt-1.5">Análise em seis critérios</div>
+                    <div className="text-white font-bold text-sm leading-none">{t("aiEngine.badgeTitle")}</div>
+                    <div className="text-white/40 text-[11px] mt-1.5">{t("aiEngine.badgeDesc")}</div>
                   </div>
                 </div>
               </div>
@@ -768,11 +850,44 @@ export default function Home() {
                     </div>
                     <span className="text-white/15 font-extrabold text-sm tracking-widest">{step.num}</span>
                   </div>
+                  {/* Três degraus de leitura no cartão: chamada, título, explicação.
+                      A chamada fica em ouro rosé, o mesmo tratamento do SectionLabel
+                      logo acima (uppercase por CSS, não em caixa alta no JSON).
+                      É de propósito: caixa alta guardada no texto faz leitor de tela
+                      soletrar, e japonês, chinês, árabe e híndi não têm caixa — nesses
+                      a frase sai como foi escrita, que é o certo. O tracking é menor
+                      que o do SectionLabel porque aqui é uma frase, não um rótulo de
+                      duas palavras. */}
+                  <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#c98f70]/90 leading-snug mb-2.5">{step.chamada}</p>
                   <h3 className="text-lg font-bold text-white mb-2.5">{step.title}</h3>
                   <p className="text-white/40 text-sm leading-relaxed">{step.desc}</p>
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Fechamento da jornada: as três etapas explicam o mecanismo, esta
+              frase devolve a pergunta para quem lê ("quem está procurando o que
+              eu tenho?") e o botão responde. O destaque é o mesmo gradiente ouro
+              rosé que a Hero já usa no gatilho dela — nenhuma cor nova.
+              O botão NÃO é um CTA novo: é o mesmo elemento do CTA final desta
+              página (mesmo Link, mesma rota, mesmas classes) e lê a MESMA chave
+              hero.cta do botão da Hero, para os dois nunca divergirem. */}
+          <div className="max-w-3xl mx-auto mt-16 text-center"
+            style={{
+              opacity: stepsInView ? 1 : 0,
+              transform: stepsInView ? "translateY(0)" : "translateY(40px)",
+              transition: "all 0.7s cubic-bezier(0.23,1,0.32,1) 0.45s",
+            }}>
+            <p className="text-2xl md:text-3xl font-extrabold leading-snug text-balance bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+              {t("steps.closing")}
+            </p>
+            <Link href={isAuthenticated ? "/dashboard" : "/register"}>
+              <button className="group mt-8 bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-9 py-4 rounded-2xl text-lg text-balance transition-all duration-200 active:scale-[0.97] inline-flex items-center gap-2.5">
+                {t("hero.cta")}
+                <ArrowRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
+              </button>
+            </Link>
           </div>
         </div>
       </section>
@@ -832,141 +947,262 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── TIPOS DE OPORTUNIDADE ─── */}
+      {/* ─── OPORTUNIDADES ─── */}
       <section id="oportunidades" className="py-28 relative border-t border-white/[0.04]">
         <div className="relative container mx-auto px-6">
-          <div ref={oppsRef} className="relative text-center mb-16">
+          <div ref={oppsRef} className="relative text-center mb-12">
             <SectionLabel>{t("nav.opportunities")}</SectionLabel>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-white">
+            <h2 className="text-4xl md:text-5xl font-extrabold text-white text-balance max-w-3xl mx-auto">
               {t("opportunities.title")}
             </h2>
-            <p className="text-white/40 mt-4 max-w-xl mx-auto">{t("opportunities.subtitle")}</p>
+            <p className="text-white/55 md:text-lg mt-5 max-w-2xl mx-auto leading-relaxed text-balance">{t("opportunities.subtitle")}</p>
           </div>
-          <div className="relative grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+
+          {/* Alcance: responde ao título sem parágrafo institucional. Quatro
+              marcos numa linha, da própria cidade ao mercado novo, acendendo da
+              esquerda para a direita (da direita para a esquerda em árabe, por
+              isso os rtl: na linha). O último marco leva o ouro rosé: é ali que
+              o título aponta. Os círculos são opacos para a linha passar POR
+              TRÁS deles, como uma rota ligando escalas. */}
+          <div className="relative max-w-2xl mx-auto mb-14">
+            <span aria-hidden="true"
+              className="absolute top-[18px] left-[12.5%] right-[12.5%] h-px bg-gradient-to-r rtl:bg-gradient-to-l from-white/10 via-[#c98f70]/40 to-[#c98f70] origin-left rtl:origin-right"
+              style={{
+                transform: oppsInView ? "scaleX(1)" : "scaleX(0)",
+                transition: "transform 1.1s cubic-bezier(0.23,1,0.32,1) 0.15s",
+              }} />
+            <ol className="relative grid grid-cols-4">
+              {reachSteps.map((passo, i) => {
+                const destino = i === reachSteps.length - 1;
+                return (
+                  <li key={passo.key} className="relative flex flex-col items-center gap-2.5 px-1 text-center"
+                    style={{
+                      opacity: oppsInView ? 1 : 0,
+                      transform: oppsInView ? "translateY(0)" : "translateY(12px)",
+                      transition: `all 0.6s cubic-bezier(0.23,1,0.32,1) ${0.15 + i * 0.22}s`,
+                    }}>
+                    <span aria-hidden="true"
+                      className={`w-9 h-9 rounded-full bg-[#211e1b] border flex items-center justify-center ${destino ? "border-[#c98f70]/60 shadow-[0_0_24px_rgba(201,143,112,0.35)]" : "border-white/10"}`}>
+                      <passo.Icon className={`w-4 h-4 ${destino ? "text-[#c98f70]" : "text-white/50"}`} />
+                    </span>
+                    {/* A sombra na cor do fundo separa o rótulo do contorno do
+                        planeta, que gira atrás e cruza esta linha. */}
+                    <span className={`text-xs sm:text-sm leading-snug text-balance [text-shadow:0_1px_10px_rgba(21,19,18,0.95)] ${destino ? "font-semibold text-[#efcba8]" : "text-white/65"}`}>
+                      {t(`opportunities.reach.${passo.key}`)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+
+          {/* Uma coluna no celular, com o ícone ao lado do texto para os seis
+              cartões não virarem uma torre; duas no tablet; três no desktop.
+              Os textos são frases inteiras, por isso o corpo subiu de xs/sm
+              para sm/base — no tamanho antigo não eram legíveis no celular. */}
+          <div className="relative grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
             {opportunityTypes.map((opp, i) => (
-              <div key={i}
-                className="group p-6 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] hover:border-[#c98f70]/30 hover:bg-[#c98f70]/[0.03] transition-all duration-300 cursor-default"
+              <div key={opp.key}
+                className="group flex items-start gap-4 sm:flex-col sm:gap-0 h-full p-6 md:p-7 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] hover:border-[#c98f70]/30 hover:bg-[#c98f70]/[0.03] transition-all duration-300 cursor-default"
                 style={{
                   opacity: oppsInView ? 1 : 0,
                   transform: oppsInView ? "scale(1)" : "scale(0.95)",
                   transition: `all 0.6s cubic-bezier(0.23,1,0.32,1) ${i * 0.08}s`,
                 }}>
-                <div className="w-11 h-11 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center mb-4 group-hover:border-[#c98f70]/30 transition-colors duration-300">
+                <div className="w-11 h-11 shrink-0 rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center sm:mb-5 group-hover:border-[#c98f70]/30 transition-colors duration-300">
                   <opp.Icon className="w-5 h-5 text-white/50 group-hover:text-[#c98f70] transition-colors duration-300" />
                 </div>
-                <div className="font-bold text-white mb-1 text-sm">
-                  {t(`opportunities.${opp.key}.label`)}
-                </div>
-                <div className="text-xs text-white/35 leading-relaxed">
-                  {t(`opportunities.${opp.key}.desc`)}
+                <div className="min-w-0">
+                  <h3 className="font-bold text-white text-base md:text-lg leading-snug mb-1.5">
+                    {t(`opportunities.${opp.key}.label`)}
+                  </h3>
+                  <p className="text-sm text-white/45 leading-relaxed">
+                    {t(`opportunities.${opp.key}.desc`)}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Fechamento no mesmo molde do de "Como funciona": frase no gradiente
+              ouro rosé e o MESMO botão (mesmo Link, mesma rota, mesmas classes,
+              mesma chave hero.cta). Não é CTA novo nem rota nova. */}
+          <div className="max-w-3xl mx-auto mt-16 text-center"
+            style={{
+              opacity: oppsInView ? 1 : 0,
+              transform: oppsInView ? "translateY(0)" : "translateY(40px)",
+              transition: "all 0.7s cubic-bezier(0.23,1,0.32,1) 0.55s",
+            }}>
+            <p className="text-2xl md:text-3xl font-extrabold leading-snug text-balance bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+              {t("opportunities.closing")}
+            </p>
+            <Link href={isAuthenticated ? "/dashboard" : "/register"}>
+              <button className="group mt-8 bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-9 py-4 rounded-2xl text-lg text-balance transition-all duration-200 active:scale-[0.97] inline-flex items-center gap-2.5">
+                {t("hero.cta")}
+                <ArrowRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
+              </button>
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* ─── SEGURANÇA ─── */}
-      <section id="seguranca" className="py-28 relative border-t border-white/[0.04]">
+      {/* ─── MEU NETWORK INTELIGENTE ───
+          Substitui a antiga seção "Segurança" (13/09/2026). Era só propaganda: os
+          mecanismos reais (limite de requisições, bloqueio de login, CSP, SIVC)
+          continuam no servidor, e o card "criptografia ponta a ponta" prometia o
+          que não existe. A seção apresenta o recurso da área logada; o CTA leva
+          quem não tem conta ao cadastro de sempre e quem já entrou ao painel
+          Meu Network Inteligente (/meu-network-inteligente). */}
+      <section id="network-inteligente" className="py-28 relative border-t border-white/[0.04]">
         <div className="relative container mx-auto px-6">
-          <div className="max-w-4xl mx-auto text-center">
-            <SectionLabel>{t("nav.security")}</SectionLabel>
-            <h2 className="text-4xl font-extrabold text-white mb-2">
-              {t("security.title")}
+          <div className="max-w-5xl mx-auto text-center">
+            <SectionLabel>{t("smartNetwork.label")}</SectionLabel>
+            <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-5 tracking-tight text-balance max-w-4xl mx-auto">
+              {t("smartNetwork.title")}
             </h2>
-            <p className="text-[#c98f70] text-lg font-semibold mb-12">{t("security.subtitle")}</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <p className="text-base md:text-lg text-white/50 max-w-2xl mx-auto mb-6 leading-relaxed">
+              {t("smartNetwork.subtitle")}
+            </p>
+            <p className="text-xl md:text-2xl font-bold leading-snug bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent mb-12 text-balance max-w-3xl mx-auto">
+              {t("smartNetwork.impact")}
+            </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-start">
               {[
-                { Icon: Lock, label: t("security.encryption.title"), desc: t("security.encryption.desc") },
-                { Icon: ShieldCheck, label: t("security.rateLimit.title"), desc: t("security.rateLimit.desc") },
-                { Icon: BadgeCheck, label: t("security.verification.title"), desc: t("security.verification.desc") },
-                { Icon: KeyRound, label: t("security.control.title"), desc: t("security.control.desc") },
-              ].map((item, i) => (
-                <div key={i} className="p-6 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] text-center hover:border-white/15 transition-colors duration-300">
-                  <div className="w-10 h-10 mx-auto rounded-2xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center mb-3">
-                    <item.Icon className="w-4.5 h-4.5 text-[#c98f70]" />
+                { num: "01", Icon: Mic, key: "record" },
+                { num: "02", Icon: BrainCircuit, key: "organize" },
+                { num: "03", Icon: Handshake, key: "discover" },
+                { num: "04", Icon: HandCoins, key: "value" },
+              ].map((card) => (
+                <div key={card.key} className="h-full p-6 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] hover:border-[#c98f70]/30 transition-colors duration-300">
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="w-10 h-10 rounded-2xl bg-[#c98f70]/10 border border-[#c98f70]/25 flex items-center justify-center">
+                      <card.Icon className="w-5 h-5 text-[#c98f70]" aria-hidden="true" />
+                    </div>
+                    <span className="text-white/15 font-extrabold text-sm tracking-widest" aria-hidden="true">{card.num}</span>
                   </div>
-                  <div className="font-bold text-white text-sm">{item.label}</div>
-                  <div className="text-xs text-white/35 mt-1.5 leading-relaxed">{item.desc}</div>
+                  <h3 className="font-extrabold text-white text-sm tracking-wide mb-2 leading-snug">{t(`smartNetwork.${card.key}.title`)}</h3>
+                  <p className="text-sm text-white/45 leading-relaxed">{t(`smartNetwork.${card.key}.desc`)}</p>
                 </div>
               ))}
             </div>
+            <p className="text-2xl md:text-4xl font-extrabold text-white mt-16 mb-5 tracking-tight text-balance max-w-3xl mx-auto">
+              {t("smartNetwork.closingQuestion")}
+            </p>
+            <p className="text-base md:text-lg text-white/55 max-w-2xl mx-auto mb-10 leading-relaxed">
+              {t("smartNetwork.closingLine")}
+            </p>
+            <Link href={isAuthenticated ? "/meu-network-inteligente" : "/register"}>
+              <button className="group bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-8 py-4 rounded-2xl text-base text-balance transition-all duration-200 active:scale-[0.97] inline-flex items-center justify-center gap-2.5">
+                {t("smartNetwork.cta")}
+                <ArrowRight className="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:translate-x-1" />
+              </button>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* ─── GOVERNANÇA: BRONZE / PRATA / OURO ─── */}
+      {/* ─── GOVERNANÇA: BRONZE / PRATA / OURO ───
+          Novo conceito (spec da Glenda, 14/09): Bronze e Prata medem a
+          QUALIFICAÇÃO das informações do perfil (Quem Sou, O Que Tenho, O Que
+          Preciso) e não têm mensalidade; Ouro é outra coisa, uma categoria
+          premium mediante mensalidade, e NÃO a continuação automática do Prata.
+          Por isso a seta liga só Bronze a Prata, e o Ouro fica num cartão à
+          parte, com mais destaque (sem cara de anúncio: nada de preço, selo
+          "oferta" ou botão de assinar — não existe cobrança implementada).
+          As contagens de membros por nível saíram daqui para o Dashboard; a
+          Home pública não mostra mais número de membros. */}
       <section id="governanca" className="py-28 relative border-t border-white/[0.04]">
         <div className="relative container mx-auto px-6">
-          <div className="max-w-4xl mx-auto text-center mb-14">
+          <div className="max-w-3xl mx-auto text-center mb-14">
             <SectionLabel>{t("governance.label")}</SectionLabel>
-            <h2 className="text-4xl font-extrabold text-white mb-4">
-              {t("governance.title1")}{" "}
-              <span className="text-[#c98f70]">{t("governance.title2")}</span>
+            <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-5 tracking-tight text-balance">
+              {t("governance.title")}
             </h2>
-            <p className="text-white/40 text-lg">
+            <p className="text-base md:text-lg text-white/50 leading-relaxed text-balance">
               {t("governance.subtitle")}
             </p>
-            <div className="flex justify-center gap-10 mt-8">
-              <div className="text-center">
-                <div className="text-2xl font-extrabold" style={{ color: "#c98f70" }}>{stats?.bronze ?? 0}</div>
-                <div className="text-xs text-white/35 mt-1">Bronze</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-extrabold text-slate-300">{stats?.silver ?? 0}</div>
-                <div className="text-xs text-white/35 mt-1">Prata</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-extrabold text-amber-400">{stats?.gold ?? 0}</div>
-                <div className="text-xs text-white/35 mt-1">Ouro</div>
-              </div>
-            </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
-            {/* BRONZE */}
-            <div className="p-8 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] transition-all duration-300 hover:border-[#8e5a3f]/30">
-              <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-5 border" style={{ background: "rgba(205,127,50,0.08)", borderColor: "rgba(205,127,50,0.25)" }}>
-                <BadgeCheck className="w-5 h-5" style={{ color: "#c98f70" }} />
+          {/* Desktop: Bronze → Prata ocupam três quintos, o Ouro dois. Tablet:
+              Bronze e Prata lado a lado, o Ouro inteiro embaixo. Celular: uma
+              coluna, e a seta vira para baixo. */}
+          <div className="grid lg:grid-cols-5 gap-5 max-w-6xl mx-auto">
+            <div className="lg:col-span-3 flex flex-col gap-4">
+              <div className="grid sm:grid-cols-[1fr_auto_1fr] gap-3 flex-1">
+                {([
+                  {
+                    key: "bronze", Icon: BadgeCheck,
+                    icone: "bg-[#c98f70]/10 border-[#c98f70]/25 text-[#c98f70]",
+                    titulo: "text-[#c98f70]", destaque: "border-[#c98f70]/50 text-[#efcba8]",
+                    borda: "hover:border-[#c98f70]/30",
+                  },
+                  null,
+                  {
+                    key: "silver", Icon: ShieldCheck,
+                    icone: "bg-slate-500/10 border-slate-400/25 text-slate-300",
+                    titulo: "text-slate-200", destaque: "border-slate-300/50 text-slate-200",
+                    borda: "hover:border-white/20",
+                  },
+                ] as const).map(nivel => nivel === null ? (
+                  <div key="seta" className="flex items-center justify-center" aria-hidden="true">
+                    <span className="w-9 h-9 rounded-full bg-[#211e1b] border border-white/10 flex items-center justify-center">
+                      <ArrowDown className="w-4 h-4 text-white/45 sm:hidden" />
+                      <ArrowRight className="w-4 h-4 text-white/45 hidden sm:block rtl:rotate-180" />
+                    </span>
+                  </div>
+                ) : (
+                  <div key={nivel.key}
+                    className={`h-full flex flex-col p-6 md:p-7 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] transition-colors duration-300 ${nivel.borda}`}>
+                    <div className="flex items-center gap-3 mb-5">
+                      <span className={`w-11 h-11 shrink-0 rounded-2xl border flex items-center justify-center ${nivel.icone}`} aria-hidden="true">
+                        <nivel.Icon className="w-5 h-5" />
+                      </span>
+                      <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-white/40 leading-snug">
+                        {t(`governance.${nivel.key}.stage`)}
+                      </span>
+                    </div>
+                    <h3 className={`text-lg font-extrabold tracking-wide leading-snug mb-1.5 ${nivel.titulo}`}>{t(`governance.${nivel.key}.title`)}</h3>
+                    <p className="text-base font-semibold text-white leading-snug mb-3">{t(`governance.${nivel.key}.tagline`)}</p>
+                    <p className="text-sm text-white/45 leading-relaxed mb-5">{t(`governance.${nivel.key}.desc`)}</p>
+                    <p className={`mt-auto border-s-2 ps-3 text-sm font-medium leading-relaxed ${nivel.destaque}`}>
+                      {t(`governance.${nivel.key}.highlight`)}
+                    </p>
+                  </div>
+                ))}
               </div>
-              <h3 className="text-lg font-extrabold mb-3" style={{ color: "#c98f70" }}>{t("governance.bronze.title")}</h3>
-              <p className="text-white/40 text-sm leading-relaxed mb-5">
-                {t("governance.bronze.desc")}
-              </p>
-              <div className="text-xs border-t border-white/[0.06] pt-4 text-white/30">
-                {t("governance.bronze.access")}
+              <div className="flex items-start gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 py-4">
+                <HandCoins className="w-5 h-5 shrink-0 mt-0.5 text-[#c98f70]" aria-hidden="true" />
+                <p className="text-sm text-white/60 leading-relaxed">{t("governance.noFee")}</p>
               </div>
             </div>
 
-            {/* PRATA */}
-            <div className="p-8 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] hover:border-white/20 transition-all duration-300">
-              <div className="w-11 h-11 rounded-2xl bg-slate-500/10 border border-slate-400/25 flex items-center justify-center mb-5">
-                <ShieldCheck className="w-5 h-5 text-slate-300" />
+            <div className="lg:col-span-2 h-full flex flex-col p-6 md:p-8 rounded-3xl bg-[#c98f70]/[0.05] border border-amber-400/30 hover:border-amber-400/50 transition-colors duration-300 shadow-[0_0_60px_-24px_rgba(251,191,36,0.35)]">
+              <div className="flex items-center gap-3 mb-5">
+                <span className="w-11 h-11 shrink-0 rounded-2xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center" aria-hidden="true">
+                  <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+                </span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-amber-400/75 leading-snug">
+                  {t("governance.gold.stage")}
+                </span>
               </div>
-              <h3 className="text-lg font-extrabold text-slate-200 mb-3">{t("governance.silver.title")}</h3>
-              <p className="text-white/40 text-sm leading-relaxed mb-5">
-                {t("governance.silver.desc")}
+              <h3 className="text-lg font-extrabold tracking-wide leading-snug text-amber-300 mb-1.5">{t("governance.gold.title")}</h3>
+              <p className="text-base font-semibold text-white leading-snug mb-3">{t("governance.gold.tagline")}</p>
+              <p className="text-sm text-white/50 leading-relaxed mb-5">{t("governance.gold.desc")}</p>
+              <ul className="space-y-2.5 mb-6">
+                {(["b1", "b2", "b3", "b4", "b5"] as const).map(b => (
+                  <li key={b} className="flex items-start gap-2.5 text-sm text-white/70 leading-relaxed">
+                    <Check className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" aria-hidden="true" />
+                    <span>{t(`governance.gold.benefits.${b}`)}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-lg font-bold leading-snug bg-gradient-to-r from-amber-200 to-amber-400 bg-clip-text text-transparent mb-2">
+                {t("governance.gold.highlight")}
               </p>
-              <div className="text-xs text-white/30 border-t border-white/[0.06] pt-4">
-                {t("governance.silver.access")}
-              </div>
-            </div>
-
-            {/* OURO */}
-            <div className="p-8 rounded-3xl bg-[#c98f70]/[0.04] border border-[#c98f70]/25 hover:border-[#c98f70]/45 transition-all duration-300 relative">
-              <div className="absolute top-5 right-5 text-[10px] uppercase tracking-wider font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/25">
-                {t("governance.gold.badge")}
-              </div>
-              <div className="w-11 h-11 rounded-2xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center mb-5">
-                <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
-              </div>
-              <h3 className="text-lg font-extrabold text-amber-300 mb-3">{t("governance.gold.title")}</h3>
-              <p className="text-white/40 text-sm leading-relaxed mb-5">
-                {t("governance.gold.desc")}
+              <p className="text-sm text-white/60 leading-relaxed mb-6">{t("governance.gold.closing")}</p>
+              <p className="mt-auto border-t border-amber-400/15 pt-4 text-sm font-medium text-amber-200/85">
+                {t("governance.gold.fee")}
               </p>
-              <div className="text-xs text-amber-400/50 border-t border-amber-400/15 pt-4">
-                {t("governance.gold.access")}
-              </div>
             </div>
           </div>
         </div>
@@ -1004,7 +1240,7 @@ export default function Home() {
           </a>
           <div className="text-center">
             <div className="text-white/40 text-xs mb-1">{t("footer.tagline")}</div>
-            <div>© 2026 MMM. {t("footer.rights")}</div>
+            <div>© 2026 WRW — Women Rocking the World. {t("footer.rights")}</div>
           </div>
           <div className="flex gap-6">
             {/* O link de contato volta quando houver e-mail ou WhatsApp

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { hasValidConsent, usersComConsentimento } from "./consent";
+import { insightParaExibir } from "../vocabulario-da-conexao";
 
 // ============================================================
 // MATCHES DE PERFIS (sistema original MMM)
@@ -51,7 +52,9 @@ export const profileMatchesRouter = router({
           incomeScore: m.incomeScore,
           locationScore: m.locationScore,
           valuesScore: m.valuesScore,
-          aiInsight: m.aiInsight,
+          // Insight gravado pelo prompt antigo que fala em "match" não vai à tela
+          // (14/09: "match" virou "conexão"); a próxima rodada o refaz.
+          aiInsight: insightParaExibir(m.aiInsight),
           userSeen: m.userSeen,
           createdAt: m.createdAt,
           city: m.city,

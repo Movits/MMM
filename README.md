@@ -1,4 +1,6 @@
-# MMM — Mulheres que Movem o Mundo
+# WRW — Women Rocking the World
+
+> O repositório, o serviço no Render e o bucket continuam com o nome técnico MMM (Mulheres que Movem o Mundo, nome anterior da marca). A marca passou a WRW em 15/09/2026.
 
 Uma empresária entra na plataforma e cadastra a base de contatos que ela já tem na
 agenda. Para cada contato, anota duas coisas: **o que aquela pessoa tem** para

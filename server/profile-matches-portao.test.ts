@@ -51,6 +51,15 @@ describe("profileMatches.list — serviço casado por presunção não volta à 
     expect(lista.map(m => m.matchId)).toEqual([2, 3]);
   });
 
+  it("insight gravado pelo prompt antigo que fala em \"match\" não vai à tela; o que fala em conexão vai", async () => {
+    getMatchesForUser.mockResolvedValueOnce([
+      { matchId: 1, matchedUserId: 2, overallScore: 90, aiInsight: "Este match une vinho e capital." },
+      { matchId: 2, matchedUserId: 4, overallScore: 85, aiInsight: "Esta conexão sugerida une vinho e capital." },
+    ] as never);
+    const lista = await profileMatchesRouter.createCaller(ctx).list({ limit: 20 });
+    expect(lista.map(m => [m.matchId, m.aiInsight])).toEqual([[1, null], [2, "Esta conexão sugerida une vinho e capital."]]);
+  });
+
   it("só os ids COM termo chegam ao portão: o perfil de quem revogou não é cruzado nem para decidir", async () => {
     matchesBloqueados.mockClear();
     usersComConsentimento.mockResolvedValueOnce(new Set([2]));

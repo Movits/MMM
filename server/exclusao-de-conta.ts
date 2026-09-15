@@ -54,6 +54,7 @@ import {
   platformNotifications, presidentValidations, privateContacts, savedOpportunities,
   securityEvents, sessions, sivcChecks, sivcConsents, sivcDocuments, sivcVerifications,
   strategicGroups, trustedDevices, userProfiles, users,
+  networkSugestoes, conexoesParticipantes, consumoDeMinutos, assinaturasDeMinutos,
 } from "../drizzle/schema";
 
 /**
@@ -145,10 +146,19 @@ export const PLANO_DE_EXCLUSAO: PassoDeExclusao[] = [
   { tabela: contextParticipants, coluna: contextParticipants.ownerId, origem: "openId" },
   { tabela: contactContexts, coluna: contactContexts.ownerId, origem: "openId" },
   { tabela: contexts, coluna: contexts.ownerId, origem: "openId" },
+  // Meu Network Inteligente: pendências da IA (com trechos das reuniões), o
+  // lado da conta nas conexões registradas e o contador de minutos. O
+  // cabeçalho da conexão (conexoes_registradas) não tem coluna de usuária:
+  // fica só com IDs anônimos e rótulos, sem ninguém a quem apontar.
+  { tabela: networkSugestoes, coluna: networkSugestoes.ownerId, origem: "openId" },
+  { tabela: conexoesParticipantes, coluna: conexoesParticipantes.ownerId, origem: "openId" },
+  { tabela: consumoDeMinutos, coluna: consumoDeMinutos.ownerId, origem: "openId" },
   { tabela: privateContacts, coluna: privateContacts.ownerId, origem: "openId" },
 
   // ── módulo institucional: chave id ────────────────────────────────────────
   { tabela: consents, coluna: consents.userId, origem: "id" },
+  { tabela: conexoesParticipantes, coluna: conexoesParticipantes.userId, origem: "id" },
+  { tabela: assinaturasDeMinutos, coluna: assinaturasDeMinutos.userId, origem: "id" },
   { tabela: sivcDocuments, coluna: sivcDocuments.userId, origem: "id" },
   { tabela: sivcConsents, coluna: sivcConsents.userId, origem: "id" },
   { tabela: sivcVerifications, coluna: sivcVerifications.userId, origem: "id" },

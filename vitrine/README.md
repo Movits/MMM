@@ -1,6 +1,8 @@
 # Vitrine pública
 
-Página estática de apresentação do MMM, publicada no GitHub Pages.
+Página estática de apresentação da WRW — Women Rocking the World (a marca desde
+15/09/2026; MMM segue só como nome do repositório e do endereço), publicada no GitHub
+Pages.
 
 Não é a aplicação. O Pages entrega apenas arquivos prontos ao navegador — não roda
 servidor nem banco — e login, matches por IA, cofre e upload dependem dos dois. Esta
@@ -28,7 +30,9 @@ GitHub Pages* → **Run workflow**.
 
 `index.html` é um arquivo só, com o CSS embutido e sem etapa de build — dá para abrir
 direto no navegador para conferir. A ilustração `hero-women.svg` é a mesma da home da
-aplicação.
+aplicação. As artes de `brand/` são cópias, com o mesmo nome, das que a vitrine usa de
+`client/public/brand/` (geradas dos originais em `docs/identidade-visual/wrw/`): troque
+nas duas pastas juntas.
 
 Quando a hospedagem estiver de pé, trocar a nota do fim da página por um botão
 "Entrar na plataforma" apontando para o endereço real.

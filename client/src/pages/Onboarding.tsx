@@ -6,8 +6,34 @@ import { useTranslation } from "react-i18next";
 import { BrainCircuit, CheckCircle } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
-import { exigeCnpj, formatCnpj, isValidCnpj } from "@shared/business-registration";
+import { exigeCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
+import {
+  CHAVE_OUTRA_NECESSIDADE,
+  CHAVE_QUERO_MENTORAR,
+  LIMITE_OUTRA_NECESSIDADE,
+  OPCOES_O_QUE_BUSCA,
+  outraNecessidadeValida,
+} from "@shared/o-que-busca";
+import { AssistenteDeTexto } from "@/components/AssistenteDeTexto";
+import { EtapaTermoGeralDeUso } from "@/components/TermoGeralDeUso";
+import { rotuloDaBusca } from "@/lib/interesses";
+import { EditorDoQuePreciso } from "@/components/OQuePreciso";
+import { categoriasPendentes, demandasParaGravar, type DemandaDetalhada } from "@shared/o-que-preciso";
+
+// Tetos do servidor (routers/profile.ts) para os campos livres: o ditado pode
+// passar deles, e sem contador o erro só aparecia no último passo.
+const LIMITE_BIO = 1000;
+const LIMITE_META = 2000;
+
+/**
+ * Última etapa: o Termo Geral de Uso (components/TermoGeralDeUso.tsx). É a
+ * ÚNICA etapa de termos do cadastro: substituiu a antiga "Termos e Condições"
+ * (contrato de comissão), porque o termo do Dr. Ronei já cobre intermediação e
+ * remuneração nas cláusulas 12 a 15 (Rosber, 14/09 21:34).
+ */
+const ETAPA_TERMO_GERAL = 9;
+const TIPO_TERMO_GERAL = "termo_geral_de_uso" as const;
 
 
 // ─── Tags "O que tenho" ───────────────────────────────────────────────────────
@@ -25,18 +51,10 @@ const WHAT_I_HAVE_OPTIONS = [
   { id: "canais_comerciais", label: "Canais Comerciais", icon: "🤝" },
 ];
 
-// ─── Tags "O que preciso" ─────────────────────────────────────────────────────
-const WHAT_I_NEED_OPTIONS = [
-  { id: "fornecedores", label: "Fornecedores", icon: "🏪" },
-  { id: "investidores", label: "Investidores", icon: "💸" },
-  { id: "compradores", label: "Compradores", icon: "🛒" },
-  { id: "distribuidores", label: "Distribuidores", icon: "📤" },
-  { id: "parceiros", label: "Parceiros Estratégicos", icon: "🤝" },
-  { id: "tecnologia", label: "Tecnologia", icon: "⚙️" },
-  { id: "financiamento", label: "Financiamento", icon: "🏦" },
-  { id: "licencas", label: "Licenças & Aprovações", icon: "✅" },
-  { id: "consultoria", label: "Consultoria", icon: "💡" },
-];
+// ─── "O que preciso" ──────────────────────────────────────────────────────────
+// As 17 categorias e a segunda camada de detalhamento (Rosber, 14/09 21:24) vivem
+// em shared/o-que-preciso.ts e components/OQuePreciso.tsx, que o Perfil reusa.
+// "Consultoria" saiu: genérica demais; "Especialistas / Serviços" no lugar.
 
 const INTEREST_SECTORS = [
   "Tecnologia", "Saúde", "Educação", "Finanças", "Agronegócio",
@@ -47,10 +65,12 @@ const INTEREST_SECTORS = [
 ];
 
 interface FormData {
-  displayName: string; age: number | null; city: string; country: string; bio: string;
+  // Idade saiu do cadastro (Rosber, 14/09 20:31: "Suprimir"); a coluna e o dado
+  // antigo continuam no banco, só não se pede mais.
+  displayName: string; city: string; country: string; bio: string;
   primarySpecialty: string; primarySpecialties: string[]; customSpecialty: string; secondarySpecialties: string[]; experienceYears: number | null;
-  educationLevel: string; currentRole: string; currentCompany: string;
-  seekingTypes: string[]; shortTermGoal: string; longTermGoal: string;
+  educationLevel: string;
+  seekingTypes: string[]; seekingOtherNeed: string; shortTermGoal: string; longTermGoal: string;
   sector: string; businessInterests: string[]; preferredCompanySize: string;
   openToRemote: boolean; availableForTravel: boolean;
   incomeRange: string; investmentCapacity: string; lookingForInvestment: boolean;
@@ -65,15 +85,21 @@ interface FormData {
   company: string; jobTitle: string; activityArea: string;
   institutionalNetwork: string; interestSectors: string[];
   whatIHave: string[]; whatINeed: string[];
-  // Contrato e termos
-  agreedToTerms: boolean;
+  /** As demandas detalhadas de "O que preciso", cada uma separada (whatINeedDetails). */
+  whatINeedDetails: DemandaDetalhada[];
+  // Termo Geral de Uso (única etapa de termos do cadastro): o id da VERSÃO que
+  // estava na tela quando a caixa foi marcada, não um booleano. Se o
+  // consent.status trocar a versão exibida (refetch ao voltar à etapa, ao
+  // reconectar), a caixa aparece desmarcada e o envio trava: o aceite nunca vai
+  // para uma versão que a pessoa não marcou.
+  termoGeralAceitoId: string | null;
 }
 
 const INITIAL: FormData = {
-  displayName: "", age: null, city: "", country: "BR", bio: "",
+  displayName: "", city: "", country: "BR", bio: "",
   primarySpecialty: "", primarySpecialties: [], customSpecialty: "", secondarySpecialties: [], experienceYears: null,
-  educationLevel: "", currentRole: "", currentCompany: "",
-  seekingTypes: [], shortTermGoal: "", longTermGoal: "",
+  educationLevel: "",
+  seekingTypes: [], seekingOtherNeed: "", shortTermGoal: "", longTermGoal: "",
   sector: "", businessInterests: [], preferredCompanySize: "",
   openToRemote: false, availableForTravel: false,
   incomeRange: "", investmentCapacity: "none", lookingForInvestment: false,
@@ -85,8 +111,8 @@ const INITIAL: FormData = {
   // Novos campos v2
   company: "", jobTitle: "", activityArea: "",
   institutionalNetwork: "", interestSectors: [],
-  whatIHave: [], whatINeed: [],
-  agreedToTerms: false,
+  whatIHave: [], whatINeed: [], whatINeedDetails: [],
+  termoGeralAceitoId: null,
 };
 
 // ─── Componentes reutilizáveis ────────────────────────────────────────────────
@@ -141,7 +167,9 @@ function TagButton({ icon, label, selected, onClick }: {
 }
 
 function TextInput({ label, value, onChange, placeholder, type = "text", hint, min, max, list, required }: {
-  label: string; value: string | number; onChange: (v: string) => void;
+  // `compondo`: o IME (japonês, chinês) ainda está montando o texto; quem
+  // transforma o valor deve esperar o fim da composição, que chama de novo.
+  label: string; value: string | number; onChange: (v: string, compondo?: boolean) => void;
   placeholder?: string; type?: string; hint?: string; min?: number; max?: number; list?: string; required?: boolean;
 }) {
   return (
@@ -149,22 +177,42 @@ function TextInput({ label, value, onChange, placeholder, type = "text", hint, m
       <label className="block text-sm font-medium text-white/70 mb-2">{label}{required && <span className="text-[#c98f70]"> *</span>}</label>
       <input type={type} value={value ?? ""} min={min} max={max} list={list}
         inputMode={type === "number" ? "numeric" : undefined}
-        onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        onChange={e => onChange(e.target.value, (e.nativeEvent as InputEvent).isComposing === true)}
+        onCompositionEnd={e => onChange(e.currentTarget.value, false)} placeholder={placeholder}
         className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#c98f70]/60 focus:bg-white/8 transition-all duration-200 text-sm"/>
       {hint && <p className="text-xs text-white/30 mt-1">{hint}</p>}
     </div>
   );
 }
 
-function TextareaInput({ label, value, onChange, placeholder, hint }: {
+function TextareaInput({ label, value, onChange, placeholder, hint, required, limite, assistente }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; hint?: string;
+  required?: boolean;
+  /** Teto do servidor: mostra o contador e avisa quando o texto (digitado ou ditado) passa dele. */
+  limite?: number;
+  /** "Gravar áudio" e "Revisar texto" embaixo do campo. */
+  assistente?: boolean;
 }) {
+  const { t } = useTranslation();
+  const passou = limite !== undefined && value.length > limite;
   return (
     <div>
-      <label className="block text-sm font-medium text-white/70 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-white/70 mb-2">{label}{required && <span className="text-[#c98f70]"> *</span>}</label>
       <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={3}
-        className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#c98f70]/60 focus:bg-white/8 transition-all duration-200 text-sm resize-none"/>
-      {hint && <p className="text-xs text-white/30 mt-1">{hint}</p>}
+        aria-invalid={passou || undefined}
+        className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:bg-white/8 transition-all duration-200 text-sm resize-none ${passou ? "border-red-400/60 focus:border-red-400/80" : "border-white/15 focus:border-[#c98f70]/60"}`}/>
+      {assistente && <AssistenteDeTexto valor={value} onChange={onChange}/>}
+      {(hint || limite !== undefined) && (
+        <div className="flex items-start justify-between gap-3 mt-1">
+          {hint ? <p className="text-xs text-white/30">{hint}</p> : <span/>}
+          {limite !== undefined && (
+            <span className={`text-[11px] tabular-nums shrink-0 ${passou ? "text-red-400" : "text-white/25"}`}>
+              {t("assistenteTexto.contador", { atual: value.length, maximo: limite })}
+            </span>
+          )}
+        </div>
+      )}
+      {passou && <p className="text-xs text-red-400/80 mt-1">{t("assistenteTexto.textoLongo", { maximo: limite })}</p>}
     </div>
   );
 }
@@ -244,16 +292,16 @@ export default function Onboarding() {
     { key: "gastronomy", icon: "🍽️" }, { key: "startups", icon: "🚀" },
   ].map(o => ({ ...o, label: t("onboarding.specialties." + o.key) }));
 
-  // Lista enxugada a partir do QA de 30/08: "Advisor" e "Mentora" eram o
-  // mesmo papel, "Socia estrategica" e "Parceira comercial" se sobrepunham, e
-  // "Ser mentora" e oferta, nao busca -- virou a pergunta propria logo abaixo.
-  const SEEKING_TYPES = [
-    { key: "strategic_partner", icon: "🤝" },
-    { key: "investor", icon: "💰" },
-    { key: "mentor", icon: "🎓" },
-    { key: "team", icon: "👥" },
-    { key: "job", icon: "💼" },
-  ].map(o => ({ ...o, label: t("onboarding.seeking." + o.key), desc: t("onboarding.seeking." + o.key + "_desc") }));
+  // "O que você busca?": as 12 opções do Lucas (grupo, 14/09 20:58), na ordem
+  // dele e com "Outra necessidade" por último — não em ordem alfabética. As
+  // chaves, os emojis e o legado (investor, team, job...) vivem em
+  // shared/o-que-busca.ts. "Quero também mentorar" é oferta, não busca, e
+  // continua como o botão próprio logo abaixo.
+  const SEEKING_TYPES = OPCOES_O_QUE_BUSCA.map(o => ({
+    key: o.chave, icon: o.emoji,
+    label: t(`oQueBusca.opcoes.${o.chave}.titulo`),
+    desc: t(`oQueBusca.opcoes.${o.chave}.descricao`),
+  }));
 
   const SECTORS = [
     "agribusiness", "construction", "education", "energy", "entertainment",
@@ -340,7 +388,8 @@ export default function Onboarding() {
     t("onboarding.aiAnalysis.values"), t("onboarding.aiAnalysis.sectors"),
   ];
 
-  // 8 etapas: Vida & Valores foi integrada a “O que você busca”.
+  // 9 etapas: Vida & Valores foi integrada a “O que você busca”, e o Termo Geral
+  // de Uso (última) substituiu a antiga "Termos e Condições".
   const STEPS = [
     { id: 1, title: t("onboarding.steps.s1_title"), subtitle: t("onboarding.steps.s1_sub"), icon: "👤" },
     { id: 2, title: t("onboarding.steps.s2_title"), subtitle: t("onboarding.steps.s2_sub"), icon: "⚡" },
@@ -350,39 +399,41 @@ export default function Onboarding() {
     { id: 6, title: t("onboarding.steps.s8_title"), subtitle: t("onboarding.steps.s8_sub"), icon: "✦" },
     { id: 7, title: t("onboarding.steps.s9_title"), subtitle: t("onboarding.steps.s9_sub"), icon: "◈" },
     { id: 8, title: t("onboarding.steps.s6_title"), subtitle: t("onboarding.steps.s6_sub"), icon: "🚀" },
-    { id: 9, title: t("onboarding.steps.s10_title"), subtitle: t("onboarding.steps.s10_sub"), icon: "📋" },
+    // Termo Geral de Uso do Dr. Ronei: "última etapa do processo de
+    // cadastramento", e a única de termos. A etapa "Termos e Condições" (contrato
+    // de comissão) saiu do cadastro; o tipo `contrato_comissao` e os aceites já
+    // gravados continuam no servidor.
+    { id: ETAPA_TERMO_GERAL, title: t("termoGeral.etapaTitulo"), subtitle: t("termoGeral.etapaSubtitulo"), icon: "📜" },
   ];
 
-  // O aceite dos Termos precisa deixar RASTRO no servidor. A caixinha marcada
-  // só no navegador não prova nada: numa discussão sobre comissão, o que vale é
-  // saber quem aceitou, quando, de qual endereço e QUAL texto estava no ar.
-  // Reusamos a trilha que já existe (consents + document_versions), a mesma do
-  // termo do Smart Match, que grava IP, user-agent e o hash do texto vigente.
-  const registrarAceiteDosTermos = trpc.consent.accept.useMutation();
+  // Termo Geral de Uso: o texto é o da versão PUBLICADA, lido quando a pessoa
+  // chega à última etapa. Sem versão publicada, `document` vem null (e
+  // `accepted: true`, a regra dos outros termos) — aqui isso NÃO libera: a
+  // etapa mostra que o termo não está disponível e o botão final fica travado.
+  const termoGeralQuery = trpc.consent.status.useQuery(
+    { type: TIPO_TERMO_GERAL },
+    { enabled: step === ETAPA_TERMO_GERAL, refetchOnWindowFocus: false },
+  );
+  const documentoTermoGeral = termoGeralQuery.data?.document ?? null;
+  const aceitouTermoGeral = documentoTermoGeral !== null && form.termoGeralAceitoId === documentoTermoGeral.id;
+  const aceitarTermoGeral = trpc.consent.accept.useMutation();
 
+  const utils = trpc.useUtils();
   const concluir = () => {
+    // O servidor acabou de gravar onboardingCompleted = true, mas o auth.me em
+    // cache ainda diz false: sem isto o ProtectedRoute do /dashboard mandaria a
+    // pessoa de volta a /onboarding (cadastro incompleto vai para lá).
+    utils.auth.me.setData(undefined, atual => (atual ? { ...atual, onboardingCompleted: true } : atual));
+    void utils.auth.me.invalidate();
     toast.success(t("onboarding.successMsg"));
     navigate("/dashboard");
   };
 
+  // O aceite que deixa rastro no servidor (IP, user-agent, hash do texto) é o do
+  // Termo Geral, registrado em handleSubmit ANTES de salvar o perfil. O cadastro
+  // não registra mais o contrato_comissao: a etapa dele saiu (Rosber, 14/09 21:34).
   const saveOnboarding = trpc.profile.completeOnboarding.useMutation({
-    onSuccess: () => {
-      // Enquanto o contrato_comissao não tiver versão publicada, o servidor
-      // responde NOT_FOUND: não há texto vigente para consentir. Isso NÃO pode
-      // travar o cadastro de quem acabou de preencher tudo — o perfil já foi
-      // salvo. Segue para o Dashboard nos dois casos; a falha vai para o
-      // console e o cartão do termo provisório cuida da publicação.
-      registrarAceiteDosTermos.mutate(
-        { type: "contrato_comissao" },
-        {
-          onSuccess: concluir,
-          onError: (erro: { message: string }) => {
-            console.error("[Onboarding] Não foi possível registrar o aceite dos Termos:", erro.message);
-            concluir();
-          },
-        },
-      );
-    },
+    onSuccess: concluir,
     onError: (err: { message: string }) => {
       toast.error(t("onboarding.errorMsg") + " " + (err.message || ""));
     },
@@ -419,31 +470,66 @@ export default function Onboarding() {
   };
 
   const canProceed = () => {
-    if (step === 1) return form.displayName.trim().length >= 2 && form.city.trim().length >= 2;
+    if (step === 1) return form.displayName.trim().length >= 2 && form.city.trim().length >= 2 && form.bio.length <= LIMITE_BIO;
     if (step === 2) {
       const temEspecialidade = form.primarySpecialties.length > 0 || form.customSpecialty.trim().length > 0;
-      // Quem se declara MEI, pessoa juridica ou sem fins lucrativos tem CNPJ por definicao (A7).
-      const cnpjOk = !exigeCnpj(form.personType) || isValidCnpj(form.companyCnpj);
-      return temEspecialidade && cnpjOk;
+      // Quem se declara MEI, pessoa juridica ou sem fins lucrativos tem cadastro empresarial por definicao (A7).
+      const cadastroOk = !exigeCadastroEmpresarial(form.personType) || normalizarCadastroEmpresarial(form.companyCnpj).length > 0;
+      return temEspecialidade && cadastroOk;
     }
-    if (step === 3) return form.seekingTypes.length > 0 && form.incomeRange.length > 0 && form.workStyle.length > 0;
+    if (step === 3) {
+      const textosCabem = form.shortTermGoal.length <= LIMITE_META && form.longTermGoal.length <= LIMITE_META
+        && form.currentResources.length <= LIMITE_META;
+      return form.seekingTypes.length > 0 && form.incomeRange.length > 0 && form.workStyle.length > 0
+        && outraNecessidadeValida(form.seekingTypes, form.seekingOtherNeed) && textosCabem;
+    }
     if (step === 4) return form.sector.length > 0;
-    if (step === 9) return form.agreedToTerms;
+    // "O que preciso": marcar nada continua valendo, mas categoria marcada precisa
+    // de ao menos uma demanda detalhada e válida — a seleção sozinha não gera conexão.
+    if (step === 7) return categoriasPendentes(form.whatINeed, form.whatINeedDetails).length === 0;
+    if (step === ETAPA_TERMO_GERAL) return aceitouTermoGeral;
     // Etapas profissionais e de ativos são opcionais — sempre pode avançar
     return true;
   };
 
+  // Ordem: primeiro o aceite do Termo Geral (com a versão que a tela mostrou),
+  // depois o perfil. Ao contrário, o perfil ficaria salvo e o cadastro marcado
+  // como concluído sem o termo — e o servidor também recusa concluir sem ele.
   const handleSubmit = () => {
+    if (!canProceed() || !documentoTermoGeral) return;
+    aceitarTermoGeral.mutate(
+      { type: TIPO_TERMO_GERAL, documentVersionId: documentoTermoGeral.id },
+      {
+        onSuccess: salvarPerfil,
+        onError: (erro: { data?: { code?: string } | null }) => {
+          if (erro.data?.code === "CONFLICT") {
+            // Publicaram versão nova enquanto ela lia: o aceite não cobre o
+            // texto novo. Recarrega, desmarca e pede para ler de novo.
+            set("termoGeralAceitoId", null);
+            void termoGeralQuery.refetch();
+            toast.error(t("termoGeral.versaoMudou"));
+            return;
+          }
+          toast.error(t("termoGeral.erroAceite"));
+        },
+      },
+    );
+  };
+
+  const salvarPerfil = () => {
     const selectedSpecialties = normalizePrimarySpecialties(form.primarySpecialties, form.customSpecialty);
     saveOnboarding.mutate({
-      displayName: form.displayName, age: form.age ?? undefined, city: form.city, country: form.country, bio: form.bio,
+      displayName: form.displayName, city: form.city, country: form.country, bio: form.bio,
       primarySpecialty: selectedSpecialties[0], secondarySpecialties: selectedSpecialties.slice(1),
       experienceYears: form.experienceYears ?? undefined,
       educationLevel: form.educationLevel as "high_school" | "bachelor" | "master" | "phd" | "other" | undefined,
-      currentRole: form.currentRole, currentCompany: form.currentCompany,
       // seekingTypes nunca era enviado: o campo alimenta a dimensao "objetivos",
       // que vale 30% do score de match, e ficava vazio para todo mundo.
       seekingTypes: form.seekingTypes,
+      // Necessidade declarada de "Outra necessidade"; sem a opção, o servidor grava null.
+      seekingOtherNeed: form.seekingTypes.includes(CHAVE_OUTRA_NECESSIDADE) ? form.seekingOtherNeed.trim() : undefined,
+      shortTermGoal: form.shortTermGoal.trim() || undefined,
+      longTermGoal: form.longTermGoal.trim() || undefined,
       sector: form.sector === OTHER_SECTOR_LABEL && form.customSector.trim() ? form.customSector.trim() : form.sector,
       businessInterests: form.businessInterests,
       preferredCompanySize: form.preferredCompanySize as "startup" | "small" | "medium" | "large" | "any" | undefined,
@@ -454,7 +540,7 @@ export default function Onboarding() {
       gender: form.gender || undefined,
       personType: form.personType || undefined,
       companySize: form.personType === "mei" ? "mei" : form.companySize || undefined,
-      companyCnpj: form.personType !== "individual" ? form.companyCnpj || undefined : undefined,
+      companyCnpj: form.personType !== "individual" ? normalizarCadastroEmpresarial(form.companyCnpj) || undefined : undefined,
       currentResources: form.currentResources || undefined,
       workStyle: form.workStyle as "remote" | "hybrid" | "onsite" | "flexible" | undefined,
       values: form.values, languages: form.languages,
@@ -466,6 +552,8 @@ export default function Onboarding() {
       interestSectors: form.interestSectors.length > 0 ? form.interestSectors : undefined,
       whatIHave: form.whatIHave.length > 0 ? form.whatIHave : undefined,
       whatINeed: form.whatINeed.length > 0 ? form.whatINeed : undefined,
+      // Cada demanda separada, sem as em branco; o servidor valida de novo.
+      whatINeedDetails: form.whatINeed.length > 0 ? demandasParaGravar(form.whatINeed, form.whatINeedDetails) : undefined,
     });
   };
 
@@ -535,17 +623,13 @@ export default function Onboarding() {
             {step === 1 && (
               <div className="flex flex-col gap-5">
                 {(() => {
-                  const labels = [t("onboarding.fields.displayName"), t("onboarding.fields.city"), t("profile.gender.label"), t("onboarding.fields.age"), t("onboarding.fields.bio")];
+                  // "Sua idade" saiu (Rosber, 14/09 20:31). O servidor ainda aceita
+                  // `age` opcional, e o dado de quem já informou continua no banco.
                   return <>
                     <div>
-                      {/* Sem limite máximo de idade: usuárias podem ter qualquer idade acima de 16 (validação de testes) */}
-                      <TextInput label={t("onboarding.fields.age")} value={form.age ?? ""} type="number" min={16}
-                        onChange={v => set("age", v ? parseInt(v) : null)}
-                        placeholder={t("onboarding.fields.agePlaceholder")} hint={t("onboarding.fields.ageHint")}/>
-                    </div>
-                    <div>
                       <TextareaInput label={t("onboarding.fields.bio")} value={form.bio} onChange={v => set("bio", v)}
-                        placeholder={t("onboarding.fields.bioPlaceholder")} hint={t("onboarding.fields.bioHint")}/>
+                        placeholder={t("onboarding.fields.bioPlaceholder")} hint={t("onboarding.fields.bioHint")}
+                        limite={LIMITE_BIO} assistente/>
                     </div>
                     <div>
                       <div className="grid grid-cols-2 gap-4">
@@ -610,7 +694,7 @@ export default function Onboarding() {
                 <div className="rounded-2xl border border-[#c98f70]/25 bg-[#c98f70]/5 p-5 space-y-4">
                   <div>
                     <h2 className="text-white font-semibold text-base">{t("profile.business.personType")}</h2>
-                    <p className="text-xs text-white/45 mt-1">{t("profile.business.cnpjHint")}</p>
+                    <p className="text-xs text-white/45 mt-1">{t("profile.business.registrationNumberHint")}</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {sortOptionsAlphabetically([
@@ -627,7 +711,7 @@ export default function Onboarding() {
                         }} icon={option.icon} label={option.label}/>
                     ))}
                   </div>
-                  {exigeCnpj(form.personType) && (
+                  {exigeCadastroEmpresarial(form.personType) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                       <SelectInput label={t("profile.business.companySize")} value={form.companySize}
                         onChange={value => set("companySize", value as FormData["companySize"])}
@@ -639,16 +723,18 @@ export default function Onboarding() {
                               { value: "medium", label: t("profile.business.sizeMedium") },
                               { value: "large", label: t("profile.business.sizeLarge") },
                             ], i18n.language)} placeholder={t("onboarding.fields.selectPlaceholder")}/>
-                      <TextInput label={t("profile.business.cnpj")} required value={form.companyCnpj}
-                        onChange={value => set("companyCnpj", formatCnpj(value))}
-                        placeholder={t("profile.business.cnpjPlaceholder")} hint={t("profile.business.cnpjHint")}/>
+                      <TextInput label={t("profile.business.registrationNumber")} required value={form.companyCnpj}
+                        onChange={(value, compondo) => set("companyCnpj", compondo ? value : normalizarCadastroEmpresarial(value))}
+                        placeholder={t("profile.business.registrationNumberPlaceholder")} hint={t("profile.business.registrationNumberHint")}/>
                     </div>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <TextInput label={t("onboarding.fields.currentRole")} value={form.currentRole} onChange={v => set("currentRole", v)}
+                  {/* Cargo e empresa gravam em jobTitle/company, os mesmos campos da
+                      tela de Perfil (consolidação das colunas duplicadas). */}
+                  <TextInput label={t("onboarding.fields.currentRole")} value={form.jobTitle} onChange={v => set("jobTitle", v)}
                     placeholder={t("onboarding.fields.currentRolePlaceholder")}/>
-                  <TextInput label={t("onboarding.fields.currentCompany")} value={form.currentCompany} onChange={v => set("currentCompany", v)}
+                  <TextInput label={t("onboarding.fields.currentCompany")} value={form.company} onChange={v => set("company", v)}
                     placeholder={t("onboarding.fields.currentCompanyPlaceholder")}/>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -669,29 +755,41 @@ export default function Onboarding() {
                     {t("onboarding.fields.seekingTypes")} <span className="text-white/30 font-normal">{t("onboarding.fields.selectAll")}</span>
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {sortOptionsAlphabetically(SEEKING_TYPES, i18n.language).map(s => (
+                    {SEEKING_TYPES.map(s => (
                       <CardOption key={s.key} selected={form.seekingTypes.includes(s.key)}
                         onClick={() => toggleArray("seekingTypes", s.key)} icon={s.icon} label={s.label} desc={s.desc}/>
                     ))}
                   </div>
-                  <button type="button" onClick={() => toggleArray("seekingTypes", "be_mentor")}
-                    className={"mt-3 w-full p-4 rounded-xl border text-left transition-all duration-200 " + (form.seekingTypes.includes("be_mentor") ? "bg-[#c98f70]/15 border-[#c98f70]" : "bg-white/5 border-white/10")}>
+                  {form.seekingTypes.includes(CHAVE_OUTRA_NECESSIDADE) && (
+                    <div className="mt-3">
+                      <TextareaInput label={t("oQueBusca.outraNecessidadeRotulo")} required
+                        value={form.seekingOtherNeed} onChange={v => set("seekingOtherNeed", v)}
+                        placeholder={t("oQueBusca.outraNecessidadePlaceholder")}
+                        hint={form.seekingOtherNeed.trim().length < 3 ? t("oQueBusca.outraNecessidadeObrigatoria") : undefined}
+                        limite={LIMITE_OUTRA_NECESSIDADE} assistente/>
+                    </div>
+                  )}
+                  <button type="button" onClick={() => toggleArray("seekingTypes", CHAVE_QUERO_MENTORAR)}
+                    className={"mt-3 w-full p-4 rounded-xl border text-left transition-all duration-200 " + (form.seekingTypes.includes(CHAVE_QUERO_MENTORAR) ? "bg-[#c98f70]/15 border-[#c98f70]" : "bg-white/5 border-white/10")}>
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">🤲</span>
                       <div>
-                        <div className={"font-semibold text-sm " + (form.seekingTypes.includes("be_mentor") ? "text-[#c98f70]" : "text-white")}>{t("onboarding.seeking.be_mentor")}</div>
+                        <div className={"font-semibold text-sm " + (form.seekingTypes.includes(CHAVE_QUERO_MENTORAR) ? "text-[#c98f70]" : "text-white")}>{t("onboarding.seeking.be_mentor")}</div>
                         <div className="text-xs text-white/40">{t("onboarding.seeking.be_mentor_desc")}</div>
                       </div>
                     </div>
                   </button>
                 </div>
-                {/* Metas de curto/longo prazo ficam ocultas por enquanto: não
-                    existem colunas para elas e o texto digitado era descartado
-                    em silêncio. Voltam quando o schema ganhar os campos
-                    (tarefa de consolidação do cadastro). */}
+                <TextareaInput label={t("onboarding.fields.shortTermGoal")} value={form.shortTermGoal} onChange={v => set("shortTermGoal", v)}
+                  placeholder={t("onboarding.fields.shortTermGoalPlaceholder")} hint={t("onboarding.fields.shortTermGoalHint")}
+                  limite={LIMITE_META} assistente/>
+                <TextareaInput label={t("onboarding.fields.longTermGoal")} value={form.longTermGoal} onChange={v => set("longTermGoal", v)}
+                  placeholder={t("onboarding.fields.longTermGoalPlaceholder")} hint={t("onboarding.fields.longTermGoalHint")}
+                  limite={LIMITE_META} assistente/>
                 <div>
                   <TextareaInput label={t("onboarding.fields.currentResources")} value={form.currentResources} onChange={v => set("currentResources", v)}
-                    placeholder={t("onboarding.fields.currentResourcesPlaceholder")} hint={t("onboarding.fields.currentResourcesHint")}/>
+                    placeholder={t("onboarding.fields.currentResourcesPlaceholder")} hint={t("onboarding.fields.currentResourcesHint")}
+                    limite={LIMITE_META} assistente/>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 flex flex-col gap-6">
                   <div>
@@ -848,27 +946,16 @@ export default function Onboarding() {
             {/* STEP 7 — O QUE PRECISO */}
             {step === 7 && (
               <div className="space-y-5">
-                <p className="text-white/40 text-sm -mt-4 mb-2">
-                  {t("onboarding.misc.step8_hint")} <span className="text-white/25">{t("onboarding.misc.optional")}</span>
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {sortOptionsAlphabetically(WHAT_I_NEED_OPTIONS, i18n.language).map(opt => (
-                    <TagButton
-                      key={opt.id}
-                      icon={opt.icon}
-                      label={opt.label}
-                      selected={form.whatINeed.includes(opt.id)}
-                      onClick={() => toggleArray("whatINeed", opt.id)}
-                    />
-                  ))}
+                {/* Texto explicativo e frase discreta do Rosber (14/09 21:24; "conexões", não "Match", 21:34). */}
+                <div className="-mt-4 mb-2">
+                  <p className="text-white/40 text-sm">{t("oQuePreciso.textoExplicativo")}</p>
+                  <p className="text-white/25 text-xs mt-1">{t("oQuePreciso.fraseDiscreta")}</p>
                 </div>
-                {form.whatINeed.length > 0 && (
-                  <div className="mt-4 p-3 rounded-xl bg-blue-500/8 border border-blue-500/20">
-                    <p className="text-xs text-blue-400/70 font-medium">
-                      ◈ {form.whatINeed.length} {form.whatINeed.length === 1 ? t("onboarding.misc.demandSelected") : t("onboarding.misc.demandsSelected")}
-                    </p>
-                  </div>
-                )}
+                {/* Cartões na ordem da mensagem (não alfabética), contador e segunda camada no componente. */}
+                <EditorDoQuePreciso
+                  valor={{ categorias: form.whatINeed, demandas: form.whatINeedDetails }}
+                  onChange={({ categorias, demandas }) => setForm(prev => ({ ...prev, whatINeed: categorias, whatINeedDetails: demandas }))}
+                />
               </div>
             )}
 
@@ -881,8 +968,8 @@ export default function Onboarding() {
                     { label: t("onboarding.review.location"), value: `${form.city}, ${form.country}`, icon: "📍" },
                     ...(form.gender ? [{ label: t("profile.gender.label"), value: t(`profile.gender.${form.gender === "prefer_not_to_say" ? "preferNotToSay" : form.gender}`), icon: "⚥" }] : []),
                     { label: t("onboarding.review.specialty"), value: normalizePrimarySpecialties(form.primarySpecialties, form.customSpecialty).map(k => t("onboarding.specialties." + k, { defaultValue: k })).join(", "), icon: "⚡" },
-                    { label: t("onboarding.misc.company"), value: form.company || form.currentCompany || "-", icon: "🏢" },
-                    { label: t("onboarding.review.seeking"), value: form.seekingTypes.slice(0, 2).map(k => t("onboarding.seeking." + k, { defaultValue: k })).join(", ") + (form.seekingTypes.length > 2 ? "..." : ""), icon: "🎯" },
+                    { label: t("onboarding.misc.company"), value: form.company || "-", icon: "🏢" },
+                    { label: t("onboarding.review.seeking"), value: form.seekingTypes.slice(0, 2).map(k => rotuloDaBusca(t, k) ?? k).join(", ") + (form.seekingTypes.length > 2 ? "..." : ""), icon: "🎯" },
                     ...(form.currentResources ? [{ label: t("onboarding.fields.currentResources"), value: form.currentResources, icon: "✦" }] : []),
                     { label: t("onboarding.review.sector"), value: form.sector, icon: "🌐" },
                     ...(form.personType ? [{ label: t("profile.business.personType"), value: t(`profile.business.${form.personType === "legal_entity" ? "legalEntity" : form.personType}`), icon: "🏢" }] : []),
@@ -930,45 +1017,16 @@ export default function Onboarding() {
               </div>
             )}
 
-            {step === 9 && (
-              <div className="space-y-6">
-                <div className="rounded-2xl border border-[#c98f70]/25 bg-[#c98f70]/5 p-6 space-y-4 max-h-[600px] overflow-y-auto">
-                  <h2 className="text-white font-semibold text-lg mb-4">{t("onboarding.terms.title")}</h2>
-
-                  <div className="space-y-4 text-sm text-white/70 leading-relaxed">
-                    <div>
-                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause1_title")}</h3>
-                      <p>{t("onboarding.terms.clause1_text")}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause2_title")}</h3>
-                      <p>{t("onboarding.terms.clause2_text")}</p>
-                      <ul className="list-disc list-inside space-y-1 mt-2 text-xs">
-                        <li>{t("onboarding.terms.clause2_item1")}</li>
-                        <li>{t("onboarding.terms.clause2_item2")}</li>
-                        <li>{t("onboarding.terms.clause2_item3")}</li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause3_title")}</h3>
-                      <p>{t("onboarding.terms.clause3_text")}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200" style={{borderColor: form.agreedToTerms ? "#c98f70" : "rgba(255,255,255,0.1)", backgroundColor: form.agreedToTerms ? "rgba(201,143,112,0.1)" : "rgba(255,255,255,0.02)"}}>
-                    <input type="checkbox" checked={form.agreedToTerms} onChange={e => set("agreedToTerms", e.target.checked)} className="w-5 h-5 mt-0.5 cursor-pointer accent-[#c98f70]"/>
-                    <span className="text-sm text-white font-medium">{t("onboarding.terms.accept")}</span>
-                  </label>
-
-                  {!form.agreedToTerms && (
-                    <p className="text-xs text-red-400/70 text-center">{t("onboarding.terms.required")}</p>
-                  )}
-                </div>
-              </div>
+            {/* ETAPA 9 — Termo Geral de Uso (última e única etapa de termos) */}
+            {step === ETAPA_TERMO_GERAL && (
+              <EtapaTermoGeralDeUso
+                carregando={termoGeralQuery.isLoading}
+                erro={termoGeralQuery.isError}
+                documento={documentoTermoGeral}
+                aceito={aceitouTermoGeral}
+                onAceitoChange={aceito => set("termoGeralAceitoId", aceito && documentoTermoGeral ? documentoTermoGeral.id : null)}
+                onTentarDeNovo={() => { void termoGeralQuery.refetch(); }}
+              />
             )}
 
             {/* Navigation */}
@@ -977,7 +1035,9 @@ export default function Onboarding() {
                 className="flex items-center gap-2 text-white/50 hover:text-white text-sm transition-colors duration-200">
                 ← {step > 1 ? t("onboarding.nav.back") : t("onboarding.nav.home")}
               </button>
-              <div className="flex items-center gap-2">
+              {/* Com 9 etapas as bolinhas empurravam o botão para fora da tela no
+                  celular; lá o topo já mostra "etapa / total". */}
+              <div className="hidden sm:flex items-center gap-2">
                 {STEPS.map((_, i) => (
                   <div key={i} className={`rounded-full transition-all duration-300 ${i + 1 === step ? "w-6 h-2 bg-[#c98f70]" : i + 1 < step ? "w-2 h-2 bg-[#c98f70]/60" : "w-2 h-2 bg-white/15"}`}/>
                 ))}
@@ -988,9 +1048,10 @@ export default function Onboarding() {
                   {t("onboarding.nav.continue")} →
                 </button>
               ) : (
-                <button type="button" onClick={handleSubmit} disabled={saveOnboarding.isPending}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-lg shadow-[#c98f70]/20 disabled:opacity-60">
-                  {saveOnboarding.isPending
+                <button type="button" onClick={handleSubmit}
+                  disabled={saveOnboarding.isPending || aceitarTermoGeral.isPending || !canProceed()}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-lg shadow-[#c98f70]/20 disabled:opacity-60 disabled:cursor-not-allowed">
+                  {saveOnboarding.isPending || aceitarTermoGeral.isPending
                     ? <><span className="animate-spin">⏳</span> {t("onboarding.nav.analyzing")}</>
                     : <>🚀 {t("onboarding.nav.findMatches")}</>}
                 </button>

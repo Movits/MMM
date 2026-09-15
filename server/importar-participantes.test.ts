@@ -411,12 +411,29 @@ describe("o INSERT da carga casa com o schema", () => {
     }
   });
 
-  it("a conta nasce sem senha, prata e com onboarding pendente — igual ao registerUser", () => {
-    const { colunas } = insertDoScript("users");
+  it("a conta nasce sem senha, Bronze e com onboarding pendente — igual ao registerUser", () => {
+    const { colunas, valores } = insertDoScript("users");
     expect(colunas).toContain("passwordHash");
     expect(fonteScript).toMatch(/VALUES \(\?, \?, \?, NULL,/);   // passwordHash nulo
-    expect(fonteScript).toContain("'silver'");
     expect(fonteScript).toContain('"email_" + crypto.randomBytes(16).toString("hex")');
+
+    // O valor NA POSIÇÃO da coluna role, não um 'bronze' solto em qualquer
+    // lugar do arquivo. Governança de 14/09: todo cadastro nasce Bronze e a
+    // Prata vem da régua do perfil; a carga gravava 'silver' fixo e as contas
+    // importadas nunca passavam por reavaliarNivelPeloPerfil, que só sobe Bronze.
+    expect(valores[colunas.indexOf("role")]).toBe("'bronze'");
+    expect(valores[colunas.indexOf("onboardingCompleted")]).toBe("0");
+    expect(fonteScript).not.toContain("'silver'");
+
+    // E o mesmo papel que o cadastro pela tela grava: se um dos dois mudar
+    // sozinho, o comentário "igual ao registerUser" do script volta a mentir.
+    const fonteAuth = readFileSync(pathResolve(raiz, "server", "auth.ts"), "utf8");
+    // Até a função seguinte: "\n}" pararia no fim do tipo dos parâmetros.
+    const registerUser = entre(fonteAuth, "export async function registerUser", "export async function loginUser");
+    expect(registerUser, "registerUser não encontrado em server/auth.ts").not.toBeNull();
+    const papelDaTela = /\brole:\s*"(\w+)"/.exec(registerUser!.texto)?.[1];
+    expect(papelDaTela).toBe("bronze");
+    expect(valores[colunas.indexOf("role")]).toBe(`'${papelDaTela}'`);
   });
 
   it("grava os dois nomes de cada campo duplicado, senão metade do produto fica cega", () => {

@@ -8,11 +8,15 @@
 //   (contexts, contact_assets, ai_match_suggestions...) usam `owner_id`. Um nome
 //   errado aqui não dá erro de sintaxe no MySQL: dá "Unknown column" que o exame
 //   antigo engolia, ou zero linhas apagadas em silêncio.
-// - Não há FOREIGN KEY em nenhuma das 50 tabelas, então nenhuma ordem é obrigatória
-//   e nada cascateia: o que não estiver listado aqui vira órfão para sempre.
+// - Não há FOREIGN KEY em nenhuma das 50 tabelas, então nada cascateia: o que não
+//   estiver listado aqui vira órfão para sempre. A única ordem que importa é a do
+//   cabeçalho de conexão, que sai ANTES dos participantes (ver "conexao" abaixo).
 // - Chaves: "openId" (varchar, módulo da rede particular), "id" (int, módulo
-//   institucional), "email" (login_attempts guarda o e-mail em `identifier`) e
-//   "opp" (id da oportunidade que o exame cria).
+//   institucional), "email" (login_attempts guarda o e-mail em `identifier`),
+//   "opp" (id da oportunidade que o exame cria) e "conexao" (id varchar de
+//   conexoes_registradas ocupada só pelas QA, colhido por planejarColetaDeConexoes
+//   antes da limpeza: o cabeçalho não tem coluna de usuária e só se acha pelos
+//   participantes, que a própria limpeza apaga).
 // - Ação: "apagar" para linhas de AUTORIA da conta QA (dona, remetente, publicadora);
 //   "alertar" para colunas em que a QA aparece como ator secundário em registro
 //   alheio (moderadora, concedente, revogadora). Nessas, a linha é de outra pessoa e
@@ -20,7 +24,7 @@
 // - Este módulo é PURO: não importa mysql2, dotenv nem node:fs, não lê process.env
 //   e não tem efeito de topo. Quem abre conexão é só checar-producao.mjs.
 
-export const CHAVES = ["openId", "id", "email", "opp"];
+export const CHAVES = ["openId", "id", "email", "opp", "conexao"];
 
 export const ACOES_DE_AUDITORIA_PRESERVADAS = ["GOLD_ACERVO_READ", "REVOKED_SESSION_ACCESS_ATTEMPT"];
 
@@ -45,6 +49,14 @@ export const PLANO_DE_LIMPEZA = [
   { tabela: "context_participants", coluna: "owner_id", chave: "openId", acao: "apagar" },
   { tabela: "contact_contexts", coluna: "owner_id", chave: "openId", acao: "apagar" },
   { tabela: "contexts", coluna: "owner_id", chave: "openId", acao: "apagar" },
+  { tabela: "network_sugestoes", coluna: "owner_id", chave: "openId", acao: "apagar" },
+  // Cabeçalho da conexão registrada (o recálculo do motor privado grava um por par
+  // PRIVATE_NETWORK_MATCH). Sem coluna de usuária, escapa à direção B do teste; sai
+  // por id e ANTES dos participantes, só quando todos os lados são QA. O de conexão
+  // com gente real fica, como na exclusão de conta.
+  { tabela: "conexoes_registradas", coluna: "id", chave: "conexao", acao: "apagar" },
+  { tabela: "conexoes_participantes", coluna: "owner_id", chave: "openId", acao: "apagar" },
+  { tabela: "consumo_de_minutos", coluna: "owner_id", chave: "openId", acao: "apagar" },
   { tabela: "private_contacts", coluna: "ownerId", chave: "openId", acao: "apagar" },
 
   // ── oportunidade do exame: chave opp ────────────────────────────────────
@@ -59,6 +71,8 @@ export const PLANO_DE_LIMPEZA = [
 
   // ── módulo institucional: chave id (int) ────────────────────────────────
   { tabela: "consents", coluna: "userId", chave: "id", acao: "apagar" },
+  { tabela: "conexoes_participantes", coluna: "userId", chave: "id", acao: "apagar" },
+  { tabela: "assinaturas_de_minutos", coluna: "userId", chave: "id", acao: "apagar" },
   { tabela: "sivc_documents", coluna: "userId", chave: "id", acao: "apagar" },
   { tabela: "sivc_consents", coluna: "userId", chave: "id", acao: "apagar" },
   { tabela: "sivc_verifications", coluna: "userId", chave: "id", acao: "apagar" },
@@ -137,12 +151,13 @@ function placeholders(valores) {
  * Devolve [{ descricao, acao, sql, params }], na ordem de execução; não executa nada.
  *
  * - ids: users.id das contas QA; openIds: users.openId; emails: users.email;
- *   oppIds: ids das oportunidades criadas pelo exame.
+ *   oppIds: ids das oportunidades criadas pelo exame; conexaoIds: o que
+ *   planejarColetaDeConexoes devolveu ANTES da limpeza.
  * - `users` vem por último e exige as duas chaves (id E openId com prefixo qa_exame),
  *   para um id errado nunca apagar conta de gente.
  */
-export function planejarLimpeza({ ids = [], openIds = [], emails = [], oppIds = [], prefixoQa = "qa_exame" } = {}) {
-  const valoresPor = { id: ids, openId: openIds, email: emails.map(e => e.toLowerCase()), opp: oppIds };
+export function planejarLimpeza({ ids = [], openIds = [], emails = [], oppIds = [], conexaoIds = [], prefixoQa = "qa_exame" } = {}) {
+  const valoresPor = { id: ids, openId: openIds, email: emails.map(e => e.toLowerCase()), opp: oppIds, conexao: conexaoIds };
   const comandos = [];
 
   for (const par of PLANO_DE_LIMPEZA) {
@@ -210,6 +225,43 @@ export function planejarLimpeza({ ids = [], openIds = [], emails = [], oppIds = 
   }
 
   return comandos;
+}
+
+/**
+ * SELECT que colhe os ids de conexoes_registradas em que as QA participam e em que
+ * NENHUM participante é de fora das QA. Roda antes de planejarLimpeza: depois que
+ * os participantes saem, o cabeçalho não tem mais como ser achado.
+ *
+ * "De fora" é o participante cujo owner_id e userId não são QA; NULL conta como
+ * "não é QA" (contato tem userId nulo, membro tem owner_id nulo), e por isso o
+ * `IS NULL OR ... NOT IN`: um `NOT IN` sozinho daria NULL e esconderia o
+ * participante real, apagando a conexão de alguém. Devolve null sem chave.
+ */
+export function planejarColetaDeConexoes({ ids = [], openIds = [] } = {}) {
+  const daQa = [];
+  const deFora = [];
+  const paramsDaQa = [];
+  const paramsDeFora = [];
+  if (openIds.length) {
+    daQa.push("`owner_id` IN (" + placeholders(openIds) + ")");
+    paramsDaQa.push(...openIds);
+    deFora.push("(`owner_id` IS NULL OR `owner_id` NOT IN (" + placeholders(openIds) + "))");
+    paramsDeFora.push(...openIds);
+  }
+  if (ids.length) {
+    daQa.push("`userId` IN (" + placeholders(ids) + ")");
+    paramsDaQa.push(...ids);
+    deFora.push("(`userId` IS NULL OR `userId` NOT IN (" + placeholders(ids) + "))");
+    paramsDeFora.push(...ids);
+  }
+  if (!daQa.length) return null;
+  return {
+    descricao: "conexoes_registradas.id (coleta: só participantes QA)",
+    sql:
+      "SELECT DISTINCT `conexao_id` AS id FROM `conexoes_participantes` WHERE (" + daQa.join(" OR ") + ")" +
+      " AND `conexao_id` NOT IN (SELECT `conexao_id` FROM `conexoes_participantes` WHERE " + deFora.join(" AND ") + ")",
+    params: [...paramsDaQa, ...paramsDeFora],
+  };
 }
 
 /**

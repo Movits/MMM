@@ -14,11 +14,16 @@ export const DOCUMENT_TYPES = [
   "termo_gravacao",
   // Etapa 10: autorização da dona para a leitura Ouro da sua base particular.
   "termo_acesso_ouro",
+  // Termo Geral de Uso (Dr. Ronei, 14/09/2026): última etapa do cadastro.
+  "termo_geral_de_uso",
 ] as const;
 
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
 const documentTypeInput = z.enum(DOCUMENT_TYPES);
+
+export const MENSAGEM_TERMO_GERAL_NAO_REVOGAVEL =
+  "O Termo Geral de Uso é condição para usar a plataforma e não se revoga à parte. Para deixar de aceitá-lo, exclua a sua conta no Perfil.";
 
 // A classe mora em ../banco-indisponivel (db.ts também precisa dela e importar
 // daqui viraria ciclo); o reexport mantém quem já importa deste módulo,
@@ -159,11 +164,23 @@ export const consentRouter = router({
     }),
 
   accept: protectedProcedure
-    .input(z.object({ type: documentTypeInput }))
+    .input(z.object({
+      type: documentTypeInput,
+      // A versão que a TELA mostrou. Sem ela, quem abriu o texto da versão 1 e
+      // clicou depois de a versão 2 ser publicada gravava aceite da 2, que
+      // nunca leu. Opcional para as telas que já existiam continuarem iguais.
+      documentVersionId: z.string().max(36).optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       const document = await getCurrentDocument(input.type);
       if (!document) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Não há versão vigente deste documento." });
+      }
+      if (input.documentVersionId !== undefined && input.documentVersionId !== document.id) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "O texto foi atualizado enquanto você lia. Leia a versão nova antes de aceitar.",
+        });
       }
 
       const db = await exigirDb();
@@ -199,6 +216,13 @@ export const consentRouter = router({
   revoke: protectedProcedure
     .input(z.object({ type: documentTypeInput }))
     .mutation(async ({ ctx, input }) => {
+      // O Termo Geral de Uso é condição de adesão (cláusula 3.1), não uma
+      // autorização avulsa: revogá-lo à parte deixaria a conta usando a
+      // plataforma sem o termo, porque a trava é o cadastro concluído
+      // (server/cadastro-concluido.ts). Quem não aceita mais sai excluindo a conta.
+      if (input.type === "termo_geral_de_uso") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: MENSAGEM_TERMO_GERAL_NAO_REVOGAVEL });
+      }
       const document = await getCurrentDocument(input.type);
       if (!document) return { success: true };
 

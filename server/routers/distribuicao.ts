@@ -7,8 +7,10 @@ import {
   listarPedidosEmAnalise, lerPedidoDeMatch, decidirPedidoDeMatch, listarHistoricoDeDistribuicao, idsDeContasAtivas,
 } from "../db";
 import { createAuditLog } from "../security";
-import { registrarRevelacao } from "./connections";
+import { avisarNovaConexao, registrarRevelacao } from "./connections";
+import { insightParaExibir } from "../vocabulario-da-conexao";
 import { mascararContatosEmTexto } from "@shared/contato-em-texto";
+import { textoDaOutraNecessidade } from "@shared/o-que-busca";
 
 // ============================================================
 // DISTRIBUIÇÃO DO SMART MATCH
@@ -24,7 +26,7 @@ import { mascararContatosEmTexto } from "@shared/contato-em-texto";
 
 const TITULO_CONCEDIDO = "Você agora é distribuidor do Smart Match";
 const CORPO_CONCEDIDO =
-  "Um membro Ouro do MMM concedeu a você o poder de distribuição: a partir de agora, " +
+  "Um membro Ouro da WRW concedeu a você o poder de distribuição: a partir de agora, " +
   "os pedidos de interesse do Smart Match passam pela sua análise antes de chegar à outra pessoa. " +
   "A fila de análise fica no Painel Ouro, na aba Distribuição.";
 const TITULO_REVOGADO = "Poder de distribuição revogado";
@@ -35,7 +37,14 @@ type PerfilCru = Awaited<ReturnType<typeof listarPedidosEmAnalise>>[number]["sol
 // ou links: o que a consulta não seleciona não precisa ser escondido aqui; a bio
 // é texto livre da pessoa e sai mascarada contra telefone e e-mail (A13).
 function perfilParaAnalise(perfil: PerfilCru) {
-  return { ...perfil, bio: perfil.bio ? mascararContatosEmTexto(perfil.bio) : null };
+  // "Outra necessidade" só vale com a opção marcada (como em necessidadesEscritasDoPerfil) e é texto livre: mascarada como a bio.
+  const buscas = Array.isArray(perfil.seekingTypes) ? perfil.seekingTypes.filter((busca): busca is string => typeof busca === "string") : [];
+  const outraNecessidade = textoDaOutraNecessidade(buscas, perfil.seekingOtherNeed);
+  return {
+    ...perfil,
+    bio: perfil.bio ? mascararContatosEmTexto(perfil.bio) : null,
+    seekingOtherNeed: outraNecessidade ? mascararContatosEmTexto(outraNecessidade) : null,
+  };
 }
 
 export const distribuicaoRouter = router({
@@ -84,7 +93,7 @@ export const distribuicaoRouter = router({
       try {
         await createNotification({
           userId: input.userId, type: "system", title: TITULO_REVOGADO,
-          body: `Seu poder de distribuição do Smart Match foi revogado por um membro Ouro do MMM. Motivo: ${input.reason}`,
+          body: `Seu poder de distribuição do Smart Match foi revogado por um membro Ouro da WRW. Motivo: ${input.reason}`,
           actionUrl: "/dashboard",
         });
       } catch (_) { /* não bloquear se a notificação falhar */ }
@@ -117,7 +126,10 @@ export const distribuicaoRouter = router({
       reciprocado: p.reciprocatedAt !== null,
       solicitante: perfilParaAnalise(p.solicitante),
       destinataria: perfilParaAnalise(p.destinataria),
-      compatibilidade: p.compatibilidade && p.compatibilidade.overallScore !== null ? p.compatibilidade : null,
+      // O insight do prompt antigo que fala em "match" não vai à tela (14/09: "match" virou "conexão").
+      compatibilidade: p.compatibilidade && p.compatibilidade.overallScore !== null
+        ? { ...p.compatibilidade, aiInsight: insightParaExibir(p.compatibilidade.aiInsight) }
+        : null,
       bloqueadoPeloPortao: bloqueados[i],
       termoOk: { solicitante: comTermo.has(p.requesterId), destinataria: comTermo.has(p.recipientId) },
       ativas: { solicitante: p.solicitante.isActive === true, destinataria: p.destinataria.isActive === true },
@@ -201,14 +213,8 @@ export const distribuicaoRouter = router({
             actionUrl: "/dashboard",
           });
         } else if (statusFinal === "accepted") {
-          for (const userId of [pedido.requesterId, pedido.recipientId]) {
-            await createNotification({
-              userId, type: "interest_received",
-              title: "Interesse mútuo: nomes revelados",
-              body: "Vocês dois demonstraram interesse e o distribuidor encaminhou o match. Os nomes já aparecem na aba Conexões.",
-              actionUrl: "/dashboard",
-            });
-          }
+          // As duas partes: nenhuma delas agiu agora, quem virou a chave foi o distribuidor.
+          await avisarNovaConexao([pedido.requesterId, pedido.recipientId]);
         } else {
           await createNotification({
             userId: pedido.requesterId, type: "system",

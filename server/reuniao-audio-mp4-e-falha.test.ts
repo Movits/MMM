@@ -90,10 +90,18 @@ vi.mock("./db", () => ({
       if (afetadas && tabela === schema.meetings) Object.assign(reuniaoNoBanco, valores);
       return [{ affectedRows: afetadas }];
     } }) }),
-    insert: (tabela: unknown) => ({ values: async (valores: Record<string, unknown> | Record<string, unknown>[]) => {
-      const erro = recusarInsert?.(tabela);
-      if (erro) throw erro;
-      insercoes.push({ tabela, valores: Array.isArray(valores) ? valores : [valores] });
+    // Preguiçoso como o builder do Drizzle: grava ao ser aguardado, ou pelo
+    // onDuplicateKeyUpdate do contador de minutos (registrarConsumoDeMinutos).
+    insert: (tabela: unknown) => ({ values: (valores: Record<string, unknown> | Record<string, unknown>[]) => {
+      const gravar = async () => {
+        const erro = recusarInsert?.(tabela);
+        if (erro) throw erro;
+        insercoes.push({ tabela, valores: Array.isArray(valores) ? valores : [valores] });
+      };
+      return {
+        then: (ok: (valor: unknown) => unknown, falha: (erro: unknown) => unknown) => gravar().then(ok, falha),
+        onDuplicateKeyUpdate: () => gravar(),
+      };
     } }),
     delete: (tabela: unknown) => ({ where: async (condicao?: SQL) => { delecoes.push({ tabela, ...renderizar(condicao) }); } }),
   }),
@@ -108,6 +116,10 @@ vi.mock("./storage", async importOriginal => ({
   storageGetSignedUrl: async () => "https://assinada",
 }));
 let falhaDoGemini: Error | null = null;
+// O que o Gemini "ouviu". Telefone e e-mail da sugestão só passam se a
+// transcrição os sustenta (spec da Glenda de 14/09, item 6: QUEM SOU não se
+// inventa) — por isso os testes de fronteira põem os valores na fala.
+let textoDaTranscricao = "transcrição";
 // As CLASSES de erro vêm do módulo real: meeting-service faz `instanceof
 // GeminiIndisponivelError` para decidir o que passa inteiro para a tela, e um
 // dublê com classes próprias provaria o instanceof contra a classe errada.
@@ -115,7 +127,7 @@ vi.mock("./gemini", async importOriginal => ({
   ...await importOriginal<typeof import("./gemini")>(),
   transcribeWithGemini: async () => {
     if (falhaDoGemini) throw falhaDoGemini;
-    return { text: "transcrição", segments: [], language: "pt" };
+    return { text: textoDaTranscricao, segments: [], language: "pt" };
   },
   embedWithGemini: async () => [], embedManyWithGemini: async () => [],
 }));
@@ -125,8 +137,12 @@ vi.mock("./_core/llm", () => ({
     return { choices: [{ message: { content: JSON.stringify(respostaDaIA) } }] };
   },
 }));
+// Os bytes daqui são texto, não áudio: a medição (provada em
+// duracao-do-audio.test.ts com contêineres de verdade) é dublada.
+let duracaoMedida: number | null = 30;
+vi.mock("./duracao-do-audio", () => ({ medirDuracaoDoAudio: () => duracaoMedida }));
 
-const { decodeMeetingAudio, processMeetingRecording, LIMITE_SUGESTAO, LIMITE_VALOR_NORMALIZADO, ReuniaoForaDoEstado, ReuniaoTomadaPorOutraExecucao } = await import("./meeting-service");
+const { decodeMeetingAudio, processMeetingRecording, LIMITE_SUGESTAO, LIMITE_VALOR_NORMALIZADO, ReuniaoForaDoEstado, ReuniaoTomadaPorOutraExecucao, MENSAGEM_DURACAO_ILEGIVEL, MENSAGEM_REUNIAO_LONGA_DEMAIS } = await import("./meeting-service");
 const { MENSAGEM_ERRO_DE_CONSULTA } = await import("./banco-indisponivel");
 const { GeminiCotaEsgotadaError, GeminiRecusouChamadaError } = await import("./gemini");
 
@@ -151,6 +167,9 @@ beforeEach(() => {
   respostaDaIA = { entities: [], contacts: [] };
   falhaDaIA = null;
   falhaDoGemini = null;
+  // O nome da sugestão também precisa estar na fala (nomeSustentadoPelaTranscricao).
+  textoDaTranscricao = "transcrição: conversa com a Ana Souza";
+  duracaoMedida = 30;
   storagePut.mockReset();
   storagePut.mockImplementation(async () => ({ key: "k", url: "/manus-storage/k" }));
   storageDelete.mockClear();
@@ -204,7 +223,7 @@ describe("processMeetingRecording — áudio recusado vira reunião com falha, n
   });
 
   it("áudio válido segue o caminho normal: processing → ready", async () => {
-    await expect(processMeetingRecording(entradaValida)).resolves.toMatchObject({ transcript: "transcrição" });
+    await expect(processMeetingRecording(entradaValida)).resolves.toMatchObject({ transcript: "transcrição: conversa com a Ana Souza" });
     expect(storagePut).toHaveBeenCalledTimes(1);
     expect(atualizacoes.map(a => a.status)).toEqual(["processing", "ready"]);
     // A tomada só vale para a reunião da dona que espera áudio; o 'ready', só
@@ -215,6 +234,31 @@ describe("processMeetingRecording — áudio recusado vira reunião com falha, n
     // As duas leituras de meetings (entrada e releitura antes das escritas)
     // são da reunião DA dona.
     expect(leiturasDe(schema.meetings)).toEqual([REUNIAO_DA_DONA, REUNIAO_DA_DONA]);
+  });
+
+  it("a duração que vale é a MEDIDA nos bytes: declarada 30 s e medida 25 min recusa, marca a falha e não chega ao bucket nem à IA", async () => {
+    duracaoMedida = 25 * 60;
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow(MENSAGEM_REUNIAO_LONGA_DEMAIS);
+    expect(storagePut).not.toHaveBeenCalled();
+    expect(insercoes).toEqual([]);
+    expect(atualizacoes).toEqual([expect.objectContaining({ status: "failed", processingError: MENSAGEM_REUNIAO_LONGA_DEMAIS })]);
+    expect(escopos[0]).toEqual(REUNIAO_DA_DONA_ESPERANDO_AUDIO);
+  });
+
+  it("sem duração legível nos bytes: recusa com a frase para a dona, em vez de assumir um valor", async () => {
+    duracaoMedida = null;
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow(MENSAGEM_DURACAO_ILEGIVEL);
+    expect(storagePut).not.toHaveBeenCalled();
+    expect(atualizacoes).toEqual([expect.objectContaining({ status: "failed", processingError: MENSAGEM_DURACAO_ILEGIVEL })]);
+  });
+
+  it("até 5 s acima dos 10 minutos passa (o gravador fecha o contêiner depois do relógio); gravação, transcrição e contador levam a duração medida", async () => {
+    duracaoMedida = 603.4;
+    await processMeetingRecording(entradaValida);
+    const valoresDe = (tabela: unknown) => insercoes.filter(operacao => operacao.tabela === tabela).flatMap(operacao => operacao.valores);
+    expect(valoresDe(schema.meetingRecordings)).toEqual([expect.objectContaining({ durationSeconds: 603 })]);
+    expect(valoresDe(schema.meetingTranscripts)).toEqual([expect.objectContaining({ durationSeconds: 603 })]);
+    expect(valoresDe(schema.consumoDeMinutos)).toEqual([expect.objectContaining({ origem: "reuniao", referencia: "reuniao-1", segundos: 603 })]);
   });
 
   it("o 'ready' grava processing_error null: reunião pronta nunca carrega motivo de falha", async () => {
@@ -236,6 +280,30 @@ describe("processMeetingRecording — áudio recusado vira reunião com falha, n
     await processMeetingRecording(entradaValida);
     const [gravacao] = insercoes.find(operacao => operacao.tabela === schema.meetingRecordings)!.valores;
     expect(gravacao.expiresAt).toBe(Number(fichaGravada()) + 30 * 24 * 60 * 60 * 1000);
+  });
+});
+
+describe("processMeetingRecording — o contador de minutos é gravado antes do 'ready'", () => {
+  it("banco fora do ar ao gravar o consumo: a reunião não fica pronta sem a linha do contador — vira falha, e o reprocessamento conta", async () => {
+    // Pronta, ela não se reprocessaria, e resumoDeMinutos subcontaria o mês para sempre.
+    recusarInsert = tabela => tabela === schema.consumoDeMinutos
+      ? new DrizzleQueryError("insert into `consumo_de_minutos` (`id`, `owner_id`) values (?, ?)", ["uuid", "dona-1"],
+        Object.assign(new Error("connect ECONNREFUSED 10.0.0.5:3306"), { code: "ECONNREFUSED" }))
+      : null;
+    await expect(processMeetingRecording(entradaValida)).rejects.toBeInstanceOf(DrizzleQueryError);
+    expect(atualizacoes.map(a => a.status)).toEqual(["processing", "failed"]);
+    expect(escopos[1]).toEqual(REUNIAO_DA_DONA_COM_FICHA(fichaGravada()));
+    expect(tabelasInseridas()).not.toContain(schema.consumoDeMinutos);
+  });
+
+  it("erro do contador com o banco de pé (bug nosso, não queda): a reunião pronta não vira erro na tela, e o motivo fica no log", async () => {
+    recusarInsert = tabela => tabela === schema.consumoDeMinutos
+      ? Object.assign(new Error("Table 'consumo_de_minutos' doesn't exist"), { code: "ER_NO_SUCH_TABLE", errno: 1146 })
+      : null;
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(processMeetingRecording(entradaValida)).resolves.toBeTruthy();
+    expect(atualizacoes.map(a => a.status)).toEqual(["processing", "ready"]);
+    expect(aviso).toHaveBeenCalledWith(expect.stringContaining("contador de minutos"), expect.stringContaining("consumo_de_minutos"));
   });
 });
 
@@ -340,6 +408,7 @@ describe("processMeetingRecording — o que a IA devolve cabe nas colunas", () =
 
   it("nome de 250 caracteres é cortado em 200 (full_name é varchar(200), e em modo estrito estourar é erro)", async () => {
     respostaDaIA = { entities: [], contacts: [{ ...ana, fullName: "A".repeat(250) }] };
+    textoDaTranscricao = `Falei com ${"A".repeat(200)}.`;
     await expect(processMeetingRecording(entradaValida)).resolves.toBeTruthy();
     const [sugestao] = insercoes.find(operacao => operacao.tabela === schema.meetingContactSuggestions)!.valores;
     expect(String(sugestao.fullName)).toHaveLength(LIMITE_SUGESTAO.fullName);
@@ -348,9 +417,38 @@ describe("processMeetingRecording — o que a IA devolve cabe nas colunas", () =
 
   it("telefone e e-mail dentro do teto passam inteiros — o corte não é 'sempre null'", async () => {
     respostaDaIA = { entities: [], contacts: [ana] };
+    textoDaTranscricao = `Sou a Ana Souza, meu telefone é ${ana.phone} e o e-mail ${ana.email}.`;
     await processMeetingRecording(entradaValida);
     const [sugestao] = insercoes.find(operacao => operacao.tabela === schema.meetingContactSuggestions)!.valores;
     expect(sugestao).toMatchObject({ phone: ana.phone, email: ana.email, jobTitle: "Diretora", company: "Vinhos do Sul" });
+  });
+
+  it("telefone e e-mail que a transcrição NÃO sustenta ficam vazios: a IA não inventa o Quem Sou", async () => {
+    respostaDaIA = { entities: [], contacts: [ana] };
+    textoDaTranscricao = "Conversei com a Ana Souza sobre vinhos; ela passa o contato depois.";
+    await processMeetingRecording(entradaValida);
+    const [sugestao] = insercoes.find(operacao => operacao.tabela === schema.meetingContactSuggestions)!.valores;
+    expect(sugestao).toMatchObject({ fullName: "Ana Souza", phone: null, email: null });
+  });
+
+  it("nome também não se inventa: a fala diz só 'Carlos', o modelo devolve 'Carlos Mendes', e a sugestão grava 'Carlos'", async () => {
+    respostaDaIA = { entities: [], contacts: [{ ...ana, fullName: "Carlos Mendes" }] };
+    textoDaTranscricao = "Falei com o Carlos sobre o galpão.";
+    await processMeetingRecording(entradaValida);
+    const [sugestao] = insercoes.find(operacao => operacao.tabela === schema.meetingContactSuggestions)!.valores;
+    expect(sugestao.fullName).toBe("Carlos");
+  });
+
+  it("nome sem nenhuma palavra na fala: a pessoa não vira sugestão, nem as pendências de Tenho/Preciso dela", async () => {
+    respostaDaIA = { entities: [], contacts: [{
+      ...ana, fullName: "Carlos Mendes",
+      oQueTenho: [{ texto: "Galpão em Curitiba", categoria: null, trecho: "um galpão em Curitiba", confianca: 0.9 }],
+    }] };
+    textoDaTranscricao = "A diretora tem um galpão em Curitiba.";
+    await expect(processMeetingRecording(entradaValida)).resolves.toBeTruthy();
+    expect(tabelasInseridas()).not.toContain(schema.meetingContactSuggestions);
+    expect(tabelasInseridas()).not.toContain(schema.networkSugestoes);
+    expect(atualizacoes.map(a => a.status)).toEqual(["processing", "ready"]);
   });
 
   it("na fronteira: empresa de exatamente 200 e e-mail de exatamente 320 passam inteiros; 201 e 321 não", async () => {
@@ -361,6 +459,7 @@ describe("processMeetingRecording — o que a IA devolve cabe nas colunas", () =
       { ...ana, company: empresaNoTeto, email: emailNoTeto },
       { ...ana, fullName: "Bia", company: `${empresaNoTeto}X`, email: `a${emailNoTeto}` },
     ] };
+    textoDaTranscricao = `Contatos da Ana Souza e da Bia: ${emailNoTeto} e a${emailNoTeto}.`;
 
     await processMeetingRecording(entradaValida);
 
@@ -458,8 +557,8 @@ describe("processMeetingRecording — excluída no meio, a reunião não deixa �
 
     expect(tabelasInseridas()).toEqual(expect.arrayContaining([schema.meetingTranscripts, schema.meetingEntities, schema.meetingContactSuggestions]));
     const derivadas = {
-      meeting_contact_suggestions: schema.meetingContactSuggestions, meeting_entities: schema.meetingEntities,
-      meeting_transcripts: schema.meetingTranscripts, meeting_transcript_translations: schema.meetingTranscriptTranslations,
+      meeting_contact_suggestions: schema.meetingContactSuggestions, network_sugestoes: schema.networkSugestoes,
+      meeting_entities: schema.meetingEntities, meeting_transcripts: schema.meetingTranscripts, meeting_transcript_translations: schema.meetingTranscriptTranslations,
       meeting_recordings: schema.meetingRecordings,
     };
     for (const [nome, tabela] of Object.entries(derivadas)) {
@@ -498,7 +597,7 @@ describe("processMeetingRecording — excluída no meio, a reunião não deixa �
     await expect(processMeetingRecording(entradaValida)).rejects.toThrow("Reunião excluída durante o processamento.");
 
     expect(tabelasApagadas()).toEqual([
-      schema.meetingContactSuggestions, schema.meetingEntities, schema.meetingTranscripts,
+      schema.meetingContactSuggestions, schema.networkSugestoes, schema.meetingEntities, schema.meetingTranscripts,
       schema.meetingTranscriptTranslations, schema.meetingRecordings,
     ]);
     expect(atualizacoes.map(a => a.status)).not.toContain("failed");
