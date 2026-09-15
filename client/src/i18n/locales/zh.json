@@ -454,6 +454,8 @@
     }
   },
   "dashboard": {
+    "networkTitle": "当前网络",
+    "networkDesc": "整个平台的真实数据，不只是你的个人资料。",
     "title": "你好",
     "matches": "您的匹配",
     "connections": "联系",

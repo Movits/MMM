@@ -454,6 +454,8 @@
     }
   },
   "dashboard": {
+    "networkTitle": "Le réseau aujourd'hui",
+    "networkDesc": "Chiffres réels de toute la plateforme, pas seulement de votre profil.",
     "title": "Bonjour",
     "matches": "Vos Matches",
     "connections": "Connexions",

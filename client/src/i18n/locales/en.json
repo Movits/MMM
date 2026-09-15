@@ -454,6 +454,8 @@
     }
   },
   "dashboard": {
+    "networkTitle": "The network today",
+    "networkDesc": "Real numbers for the whole platform, not just your profile.",
     "title": "Hello",
     "matches": "Your Matches",
     "connections": "Connections",

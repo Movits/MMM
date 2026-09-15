@@ -454,6 +454,8 @@
     }
   },
   "dashboard": {
+    "networkTitle": "A rede hoje",
+    "networkDesc": "Números reais da plataforma inteira, não só do seu perfil.",
     "title": "Olá",
     "matches": "Conexões Sugeridas",
     "connections": "Conexões",
