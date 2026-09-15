@@ -302,7 +302,8 @@ export function filtrarPelaFonte(proposta: PerfilProposto, fonte: string, identi
     .filter(item => !itemIdentificaOContato(item.texto, quem))
     .map(item => ({
       texto: item.texto.trim().slice(0, LIMITES_DO_CAMPO.tenho),
-      categoria: typeof item.categoria === "string" && item.categoria.trim() ? item.categoria.trim().slice(0, 120) : null,
+      // Categoria do modelo não passa: nenhum portão a confere, a dona não a vê e ela daria match por categoria.
+      categoria: null,
       trecho: item.trecho.trim().slice(0, 1000),
       confianca: confiancaValida(item.confianca),
     }))
@@ -334,11 +335,10 @@ const ESQUEMA_DO_ITEM = {
   type: "object",
   properties: {
     texto: { type: "string", maxLength: 200 },
-    categoria: { type: ["string", "null"], maxLength: 120 },
     trecho: { type: "string", maxLength: 1000 },
     confianca: { type: "number" },
   },
-  required: ["texto", "categoria", "trecho", "confianca"],
+  required: ["texto", "trecho", "confianca"],
   additionalProperties: false,
 } as const;
 
@@ -616,7 +616,8 @@ export async function confirmarPendencia(ownerId: string, id: string, valorCorri
           .where(and(eq(tabela.ownerId, ownerId), eq(tabela.contactId, contactId), or(eq(tabela.tagSlug, slug), eq(tabela.tagLabel, valor))))
           .limit(1);
         if (existente) return false;
-        await tx.insert(tabela).values({ ownerId, contactId, tagSlug: slug, tagLabel: valor, category: pendencia.categoria, description: null, createdAt: agora, updatedAt: agora });
+        // A dona confirma só o texto; categoria que ela não viu não vira dado (e daria match por categoria).
+        await tx.insert(tabela).values({ ownerId, contactId, tagSlug: slug, tagLabel: valor, category: null, description: null, createdAt: agora, updatedAt: agora });
         return true;
       }
     }

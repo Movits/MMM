@@ -171,11 +171,10 @@ const ITEM_DO_PERFIL = {
   type: "object",
   properties: {
     texto: { type: "string", maxLength: 200 },
-    categoria: { type: ["string", "null"], maxLength: 120 },
     trecho: { type: "string", maxLength: 1000 },
     confianca: { type: "number" },
   },
-  required: ["texto", "categoria", "trecho", "confianca"],
+  required: ["texto", "trecho", "confianca"],
   additionalProperties: false,
 } as const;
 const ORCAMENTO_DA_EXTRACAO_MS = 60_000;

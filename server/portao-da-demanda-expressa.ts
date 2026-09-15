@@ -30,7 +30,8 @@
 import { nomeiamAMesmaCoisa, slugDoTermo, tokensDoTermo } from "@shared/direcao-do-termo";
 import { CHAVE_OUTRA_NECESSIDADE, CHAVE_QUERO_MENTORAR, opcaoDaBusca } from "@shared/o-que-busca";
 import {
-  chavesQueValemComoNecessidade, demandaValida, lerDemandas, necessidadesDasDemandas, qualificadoresDaDemanda, rotuloDoQuePreciso,
+  CATEGORIAS_CUJA_DESCRICAO_E_OFERTA, chavesQueValemComoNecessidade, demandaValida, lerDemandas, necessidadesDasDemandas, qualificadoresDaDemanda,
+  rotuloDoQuePreciso,
 } from "@shared/o-que-preciso";
 import {
   citacaoPedeServicoOferecido, classificarOferta, ehServico, ehServicoDeAssessoria, familiaDoServico, necessidadeNomeiaOServico,
@@ -83,7 +84,7 @@ export const REGRA_DA_DEMANDA_EXPRESSA = `REGRA DA DEMANDA EXPRESSA (obrigatóri
 2. Um item do tipo SERVIÇO (advocacia, consultoria, assessoria, contabilidade, marketing, treinamento...) só sustenta compatibilidade quando o outro lado DECLARA, com todas as letras, que precisa desse serviço ou de uma solução semanticamente equivalente. As palavras podem ser outras: "advocacia tributária" atende "precisamos revisar nossos tributos e identificar créditos fiscais"; "consultoria para registro de medicamentos" atende "suporte para obter autorização regulatória do nosso medicamento".
 3. NÃO conta como necessidade: setor ou atividade econômica, porte, localização, cargo, problemas típicos do segmento, obrigações legais que normalmente se aplicam, serviços que "seriam úteis", necessidades prováveis ou oportunidades comerciais genéricas. Uma indústria farmacêutica que procura "distribuidor para a África" NÃO é match para um serviço tributário, ainda que toda indústria tenha impostos. Essas informações só podem aumentar a nota de um match que JÁ passou por esta regra; nunca criá-lo.
 4. Sem necessidade expressa compatível, o serviço não gera match: não o liste. Vale nos dois sentidos: uma OPORTUNIDADE que oferece um serviço só é compatível com quem DECLAROU precisar dele em "preciso" — nunca com quem "poderia precisar" por causa do setor. Quem procura distribuidor, comprador, fornecedor ou investidor pede a contraparte, não um serviço; e a frase que só descreve a empresa ("empresa com operações internacionais") não é necessidade.
-5. "Buscando" são as opções marcadas em "O que você busca?". "Serviço Especializado" é genérica: não declara necessidade de nenhum serviço e nunca sustenta sozinha um match de serviço. As demais opções (investimento, parceiro, clientes, fornecedores, talentos, conexões, visibilidade, expandir o negócio, internacionalização, tecnologia) não pedem serviço. O texto de "Outra necessidade" é necessidade declarada, como "preciso". Em "Demandas detalhadas" (a segunda camada de "O que preciso"), vale a DESCRIÇÃO de cada demanda, que já vai em "preciso": a categoria sozinha não declara necessidade ("Especialistas / Serviços" sem descrição é genérica, como "Serviço Especializado"), e setor, país, região, cidade, valor e prazo só qualificam uma demanda — nunca a criam.
+5. "Buscando" são as opções marcadas em "O que você busca?". "Serviço Especializado" é genérica: não declara necessidade de nenhum serviço e nunca sustenta sozinha um match de serviço. As demais opções (investimento, parceiro, clientes, fornecedores, talentos, conexões, visibilidade, expandir o negócio, internacionalização, tecnologia) não pedem serviço. O texto de "Outra necessidade" é necessidade declarada, como "preciso". Em "Demandas detalhadas" (a segunda camada de "O que preciso"), vale a DESCRIÇÃO de cada demanda, que já vai em "preciso" (a de "Compradores / Clientes" não: descreve o que a pessoa vende, não é necessidade, e por isso nem aparece ali): a categoria sozinha não declara necessidade ("Especialistas / Serviços" sem descrição é genérica, como "Serviço Especializado"), e setor, país, região, cidade, valor e prazo só qualificam uma demanda — nunca a criam.
 6.Em cada resultado informe "tipoDaOferta": o tipo do item de "tenho" em que o match se apoia — ou "nenhuma" quando o match se apoia no que a pessoa PRECISA (o outro lado oferece o que ela declarou procurar). Quando "tipoDaOferta" for "servico", copie em "necessidadeExpressa" o trecho LITERAL do título, das tags ou da descrição do outro lado que declara a necessidade (as mesmas palavras, sem parafrasear, pelo menos duas palavras; setor e tipo não são necessidade); nos demais casos deixe "necessidadeExpressa" vazio.
 Princípio: não fazemos match porque alguém poderia precisar; fazemos match porque alguém declarou que precisa.`;
 
@@ -272,7 +273,9 @@ export function necessidadesEscritasDoPerfil(perfil: PerfilNoPortao): string[] {
 export function descreverDemandasParaIA(perfil: PerfilNoPortao): string {
   const marcadas = lista(perfil.whatINeed);
   return lerDemandas(perfil.whatINeedDetails)
-    .filter(demanda => marcadas.includes(demanda.category) && demandaValida(demanda))
+    // Compradores descreve o que ela vende: a mesma exclusão de necessidadesDasDemandas, senão o prompt
+    // diria ao modelo que é necessidade.
+    .filter(demanda => marcadas.includes(demanda.category) && !CATEGORIAS_CUJA_DESCRICAO_E_OFERTA.has(demanda.category) && demandaValida(demanda))
     .map((demanda, indice) => {
       const qualificadores = qualificadoresDaDemanda(demanda);
       // JSON.stringify: o texto é da membra; aspas e quebras de linha não podem desmontar a linha do prompt.

@@ -325,6 +325,29 @@ describe("pendências — confirmar e ignorar", () => {
     expect(insert.params).toEqual(expect.arrayContaining(["dona-1", 5, "Distribuição de medicamentos"]));
   });
 
+  it("categoria que a IA propôs não vira dado: nem o esquema pede, nem o portão deixa passar, nem a confirmação grava", async () => {
+    expect(Object.keys(ESQUEMA_DO_PERFIL.properties.oQueTenho.items.properties)).not.toContain("categoria");
+    expect(Object.keys(ESQUEMA_DO_PERFIL.properties.oQuePreciso.items.properties)).not.toContain("categoria");
+    const filtrado = filtrarPelaFonte({
+      quemSou: { tipoPessoa: "nao_informado", nome: null, telefone: null, email: null },
+      oQueTenho: [{ texto: "Distribuição de medicamentos no Brasil", categoria: "Saúde", trecho: "atua na distribuição de medicamentos em todo o Brasil", confianca: 0.9 }],
+      oQuePreciso: [],
+    }, TRANSCRICAO);
+    expect(filtrado.oQueTenho).toHaveLength(1);
+    expect(filtrado.oQueTenho[0].categoria).toBeNull();
+
+    // Pendência gravada antes desta correção, ainda com a categoria do modelo na coluna.
+    const comCategoria = ["p-1", "dona-1", 5, null, null, "texto", "tenho", "Distribuição de medicamentos", "Saúde", "trecho", "0.900", "pendente", null, 1, 1];
+    estado.responder = sql => {
+      if (/from `network_sugestoes`/.test(sql)) return [comCategoria];
+      if (/from `private_contacts`/.test(sql)) return contato;
+      return undefined;
+    };
+    await confirmarPendencia("dona-1", "p-1");
+    const insert = estado.consultas.find(c => /^insert into `contact_assets`/.test(c.sql))!;
+    expect(insert.params).not.toContain("Saúde");
+  });
+
   it("tenho que o contato já tem (mesmo slug ou mesmo rótulo): confirma sem inserir de novo e não pede recálculo", async () => {
     estado.responder = sql => {
       if (/from `network_sugestoes`/.test(sql)) return [linha("tenho", "Distribuição de Medicamentos")];

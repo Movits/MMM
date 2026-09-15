@@ -459,18 +459,28 @@ export function demandasParaGravar(categorias: readonly string[], demandas: read
 }
 
 /**
+ * Categorias cuja descrição conta o que a própria membra VENDE ("O que você
+ * deseja vender e quem precisa encontrar?"), não o que ela precisa. A chave
+ * continua valendo como necessidade (precisar de compradores), mas a descrição
+ * não: lida como "o que preciso", ela conectava duas prestadoras do mesmo
+ * serviço sem nenhuma declarar precisar dele (revisão da PR #135).
+ */
+export const CATEGORIAS_CUJA_DESCRICAO_E_OFERTA: ReadonlySet<string> = new Set<ChaveOQuePreciso>(["compradores"]);
+
+/**
  * As necessidades DECLARADAS nas demandas detalhadas, para os motores: a
  * descrição de cada demanda válida cuja categoria está marcada em `whatINeed`
  * (desmarcar a categoria tira as demandas dela, como desmarcar "Outra
  * necessidade" apaga o texto). Só a descrição: o serviço escolhido ("Jurídico")
  * não entra sozinho — nomeia a família, não a necessidade, e "Palavra igual não
  * é serviço igual" —, e setor, país, região e cidade nunca são necessidade.
- * "Especialistas / Serviços" sem descrição não chega aqui (a demanda é inválida).
+ * "Especialistas / Serviços" sem descrição não chega aqui (a demanda é inválida),
+ * nem a descrição das categorias que descrevem a oferta.
  */
 export function necessidadesDasDemandas(whatINeed: unknown, whatINeedDetails: unknown): string[] {
   const marcadas = Array.isArray(whatINeed) ? whatINeed.filter((item): item is string => typeof item === "string") : [];
   return lerDemandas(whatINeedDetails)
-    .filter(demanda => marcadas.includes(demanda.category) && demandaValida(demanda))
+    .filter(demanda => marcadas.includes(demanda.category) && !CATEGORIAS_CUJA_DESCRICAO_E_OFERTA.has(demanda.category) && demandaValida(demanda))
     .map(demanda => demanda.description as string);
 }
 

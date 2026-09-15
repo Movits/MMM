@@ -184,6 +184,14 @@ describe("a validação mínima de uma demanda", () => {
     expect(qualificadoresDaDemanda(detalhes[2] as compartilhado.DemandaDetalhada)).toEqual(["País/região: África Oriental"]);
     expect(qualificadoresDaDemanda(detalhes[0] as compartilhado.DemandaDetalhada)).toEqual(["Serviço: Tributário"]);
   });
+
+  it("a descrição de 'Compradores / Clientes' é o que a membra vende: não vira necessidade, e a chave continua valendo", () => {
+    const vende = { id: "a", category: "compradores", description: "Consultoria tributária para indústrias farmacêuticas do Nordeste" };
+    const distribuidor = { id: "b", category: "distribuidores", description: "Parceiro para distribuir medicamentos na África Oriental", region: "África Oriental" };
+    expect(necessidadesDasDemandas(["compradores", "distribuidores"], [vende, distribuidor])).toEqual(["Parceiro para distribuir medicamentos na África Oriental"]);
+    expect(necessidadesDasDemandas(["compradores"], [vende])).toEqual([]);
+    expect(chavesQueValemComoNecessidade(["compradores"])).toEqual(["compradores"]);
+  });
 });
 
 describe("prepararOQuePreciso", () => {

@@ -109,6 +109,35 @@ describe("demanda de serviço DESCRITA é necessidade declarada", () => {
   });
 });
 
+describe("a descrição de 'Compradores / Clientes' é o que a membra VENDE, não necessidade (revisão da PR #135)", () => {
+  // A pergunta da categoria é "O que você deseja vender e quem precisa encontrar?".
+  const VENDE_CONSULTORIA_TRIBUTARIA = {
+    whatINeed: ["compradores"],
+    whatINeedDetails: [{ id: "d1", category: "compradores", description: "Consultoria tributária para indústrias farmacêuticas do Nordeste" }],
+  };
+  const VENDE_ADVOCACIA_TRABALHISTA = {
+    whatINeed: ["compradores"],
+    whatINeedDetails: [{ id: "d1", category: "compradores", description: "Advocacia trabalhista para empresas de tecnologia" }],
+  };
+
+  it("não chega aos motores como 'o que preciso' e não declara precisar do serviço que ela mesma vende", () => {
+    expect(necessidadesEscritasDoPerfil(VENDE_CONSULTORIA_TRIBUTARIA)).toEqual(["compradores"]);
+    // Nem chega ao prompt da IA como demanda detalhada.
+    expect(descreverDemandasParaIA(VENDE_CONSULTORIA_TRIBUTARIA)).toBe("");
+    expect(perfilDeclarouPrecisarDoServico(VENDE_CONSULTORIA_TRIBUTARIA, "Consultoria tributária")).toBe(false);
+    expect(perfilDeclarouPrecisarDoServico(VENDE_ADVOCACIA_TRABALHISTA, "Advocacia trabalhista")).toBe(false);
+  });
+
+  it("duas prestadoras do mesmo serviço não se conectam no motor de perfis", () => {
+    const consultora = calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria tributária"] }), perfil(VENDE_CONSULTORIA_TRIBUTARIA));
+    expect(consultora.bloqueio).toBeDefined();
+    expect(consultora.overall).toBe(0);
+    const advogada = calculateCompatibilityScore(perfil({ whatIHave: ["Advocacia trabalhista"] }), perfil(VENDE_ADVOCACIA_TRABALHISTA));
+    expect(advogada.bloqueio).toBeDefined();
+    expect(advogada.overall).toBe(0);
+  });
+});
+
 describe("categoria de serviço SEM descrição não casa", () => {
   it("'Especialistas / Serviços' com o serviço escolhido e sem descrição: genérica, nos três motores", () => {
     expect(necessidadesEscritasDoPerfil(SERVICO_SEM_DESCRICAO)).toEqual([]);

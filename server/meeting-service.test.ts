@@ -102,6 +102,10 @@ describe("Assistente de Reuniões — tetos das chamadas de IA", () => {
     expect(invokeLLM).toHaveBeenCalledTimes(1);
     // Mutantes "sem os parâmetros" (padrão 60/120) e "teto de 300 s".
     expect(invokeLLM).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 45_000, orcamentoMs: 60_000 }));
+    // Categoria que a dona não vê não é pedida ao modelo (a confirmação grava category null de todo jeito).
+    const { response_format } = invokeLLM.mock.calls[0][0] as { response_format: unknown };
+    expect(JSON.stringify(response_format)).toContain("\"trecho\"");
+    expect(JSON.stringify(response_format)).not.toContain("\"categoria\"");
   });
 
   it("a tradução da transcrição inteira (até 48 000 caracteres de saída) vai com 180 s por tentativa e 200 s de orçamento", async () => {

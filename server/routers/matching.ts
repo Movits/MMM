@@ -49,7 +49,8 @@ export const matchingRouter = router({
       // "O que preciso" leva também o texto de "Outra necessidade": é necessidade declarada (14/09).
       necessidadesEscritasDoPerfil(profile).length ? `O que preciso: ${JSON.stringify(necessidadesEscritasDoPerfil(profile))}` : "",
       // A segunda camada de "O que preciso" (14/09): cada demanda com a categoria e os qualificadores
-      // rotulados. A descrição já foi em "O que preciso"; setor, país e região só qualificam (regra 5).
+      // rotulados. A descrição já foi em "O que preciso" (a de Compradores não: é o que ela vende); setor,
+      // país e região só qualificam (regra 5).
       descreverDemandasParaIA(profile) ? `Demandas detalhadas:\n${descreverDemandasParaIA(profile)}` : "",
       // As buscas vão pelo rótulo, com "Serviço Especializado" marcada como genérica (a regra 5 do prompt).
       rotularBuscas(profile.seekingTypes) ? `Buscando: ${rotularBuscas(profile.seekingTypes)}` : "",
