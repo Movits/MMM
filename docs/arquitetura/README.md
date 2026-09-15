@@ -130,8 +130,9 @@ outro jeito é a mesma necessidade:** família (o lema: advocacia, consultoria, 
 tradução...) e especialidade (lemas curados: tributário = tributarista = fiscal = tax =
 ICMS) iguais dão 100 no motor privado e satisfazem o de perfis — também entre consultoria e
 assessoria e no apoio que nomeia a profissão ("Assessoria jurídica tributária" diante de
-"Advocacia tributária"); a necessidade que nomeia só a família ("Advogado" diante de
-"Advocacia tributária") vale 60. **Palavra igual não é serviço
+"Advocacia tributária"), e quando os dois lados nomeiam a família e nada mais
+("Contabilidade" e "Serviços contábeis" diante de "Contador"); a necessidade que nomeia só a
+família ("Advogado" diante de "Advocacia tributária") vale 60. **Palavra igual não é serviço
 igual, e na dúvida não casa:** o motor só afirma equivalência do que entende. Palavra
 fora das listas precisa aparecer igual dos dois lados, e a oferta não pode ter palavra
 desconhecida a mais: "Consultoria em segurança do trabalho" não atende "Consultoria
@@ -217,6 +218,50 @@ Limites aceitos e decisões pendentes (revisão adversarial de 13/09/2026):
   decisão pendente do time;
 - em chinês e japonês só a família é lida: a oferta atende a necessidade genérica escrita
   em outro idioma ("律师" × "Advogado"), e nenhuma especialidade;
+- na oferta, o público que leva a 100 diante da necessidade que só nomeia o serviço é o
+  destinatário (pequenas empresas, MEI, PMEs, startups, pessoa física: `DESTINATARIOS_COMUNS`);
+  setor, finalidade e grupo depois de "para" ("para restaurantes", "para exportação", "para
+  fundadoras") ficam em 60, como a mesma especialidade escrita com "em" — lista de destinatários
+  a confirmar com o Roberto (revisão de 15/09 na #127);
+- "avocat" só é o advogado com qualificador jurídico ("Avocat fiscaliste", "Avocat d'affaires",
+  "Cabinet d'avocats"); sem ele é o abacate, e a categoria decide ("Avocats Hass export
+  international" [Fruits] casa pela categoria). "Conseil" e "conseiller" de órgão ("Conseil
+  d'administration", "Conseiller municipal") não são a consultoria;
+- boutique, casa, ateliê, studio, instituto e hub são a casa de quem presta só com o genitivo e o
+  substantivo de serviço logo depois ("Boutique de advocacia tributária" × "Advogado tributarista"
+  = 100, "Casa de consultoria" [Consultoria] × "Consultoria" = 100); "Boutique de joias de design"
+  e "Casa de câmbio" seguem casando pela categoria, e "Hub" não decide a classificação pelo texto
+  ("Hub logístico" e "Hub de logística" em [Imóveis] são o galpão). Cabeça fora dessa lista com o serviço
+  depois do genitivo ("Escola de design" [Design]) segue sem leitura do serviço e é barrada diante
+  do próprio profissional: ler qualquer cabeça faria "Peças de manutenção" procurada casar com
+  "Manutenção de peças". A cabeça neutra colada depois do serviço também é quem presta ("Tax law
+  firm" × "Tax lawyer" = 100);
+- o adjetivo de serviço depois de cabeça desconhecida é lido ("Gestão contábil" [Contabilidade] ×
+  "Contador" = 60), salvo quando a cabeça é o conceito que ele qualifica: "Pessoa jurídica",
+  "Estrutura jurídica" e "Documento contábil" oferecidos com categoria de serviço são barrados;
+- "estratégica" ao lado de especialidade reconhecida sai da oferta ("Advocacia tributária
+  estratégica" × "Advogado tributarista" = 100); sozinha é o assunto, e "Consultoria tributária
+  estratégica" × "Consultoria estratégica" = 0;
+- o complemento da cabeça neutra é lido como a classificação o lê ("Empresa de gestão contábil"
+  é contabilidade, e vale a nota da família diante de "Contador"); "Perícia contábil" é a
+  família perícia, e não atende "Contador";
+- casa, house, sala, loja, store, flat, vaga e cobertura não são imóvel na OFERTA (#124, 9615971 e
+  d7fac93): "Vaga de emprego", "Casa de câmbio" e "Consulting house" com categoria de serviço
+  caem no portão, como na main. Faltar palavra em imóvel só mantém o que havia; sobrar palavra
+  tira o item do portão. No PEDIDO a conta é a oposta, e o portão da IA tem leitura própria da
+  cabeça (`necessidadePedeImovel`): casa, loja e flat pedidos, sala comercial e vaga de garagem
+  são imóvel e não sustentam serviço ("loja de rua no centro" citada, a demanda "Sala comercial
+  de 40 m²"); "Casa de consultoria", "Casa de software", "Loja virtual", "Sala de reunião" e
+  "Vaga de emprego" não;
+- nos idiomas novos as listas leem a forma usual do profissional (femininos alemães em -in,
+  "Kanzlei", "juriste", "traductrice", acusativo e genitivo russos, o artigo árabe colado,
+  "مستشار", "लेखा"), mas a regra segue estrita: palavra de pedido que as listas não leem
+  ("Steuerberaterin GESUCHT", "लेखाकार चाहिए") é especialidade desconhecida, e o par é barrado. A
+  exceção da #127 para o que as listas não leem (`regraNaoLeOPar`, e6ddfa4), a leitura do chinês e
+  do japonês pelo fim do termo (9e027bf, e6ddfa4, 0d6643d) e o selo "Mesmo serviço" (9e866b9) não
+  foram portados para a #135 — decisão pendente do Roberto e do Nicolas (15/09): "税务咨询" ×
+  "Consultoria tributária" e "Steuerberatung" × "Steuerberaterin gesucht" dão 0 aqui e 100 na #127,
+  e o 100 pelo mesmo serviço aparece como "Tag exata";
 - no motor privado, "Consultoria" digitada não é atendida por advocacia nem por
   contabilidade; no de perfis, a opção fixa "Consultoria" é atendida pela família da
   cabeça (advocacia, contabilidade, auditoria, mentoria, coaching);

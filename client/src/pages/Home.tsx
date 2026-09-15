@@ -642,11 +642,31 @@ export default function Home() {
                     Se um trecho sozinho não cabe (telas de ~320 px), o recuo deslocado
                     (pl + -indent de 1em) faz a continuação começar fora do recorte;
                     o marcador zera o indent, que é herdado e o empurraria 1em à esquerda.
-                    Leitor de tela recebe a frase inteira, sem os marcadores.
-                    No desktop (lg+) o selo mede a frase inteira (w-max): entre 1024
-                    e 1279 px a coluna de texto tem ~460 px e a frase pede ~483, que
-                    cabem na folga de 56 px até a coluna do globo, em uma linha só. */}
-                <span className="sr-only">{t("hero.badge")}</span>
+                    Os marcadores são aria-hidden, mas o t("hero.badge") cru ainda
+                    tem os " • ", e o leitor de tela os lê em voz alta; por isso o
+                    sr-only troca cada separador por vírgula e lê só os trechos.
+
+                    No desktop o selo mede a frase inteira (w-max) e cabe em UMA
+                    linha. A largura muda com a fonte do sistema, porque o selo
+                    herda a pilha ui-sans-serif/system-ui do Tailwind, não a Inter.
+                    Com os textos desta Hero, no Chrome do Windows (Segoe UI), o
+                    selo mais largo dos 10 idiomas é o alemão: 539,6 px (o pt-BR
+                    mede 484). Medido em 15/09 com "33+"; "+30" usa os mesmos
+                    caracteres, e os algarismos da Segoe UI têm a mesma largura.
+                    A coluna de texto tem 548 px a partir de 1280, então cabe com
+                    só 8 px de folga — quem for traduzir o selo tem esses 548 px de
+                    orçamento, e uma fonte mais larga que a Segoe UI já passa.
+                    Entre 1024 e 1279 o utilitário `container` troca de max-width e
+                    a coluna cai para 460 (um pouco menos logo acima de 1024, onde a
+                    barra de rolagem come parte da janela): aí o selo alemão
+                    TRANSBORDA uns 80 px (82,6 em 1024), mais que os 56 px de
+                    `gap-14`. Não bate em nada hoje porque a coluna da direita
+                    não é renderizada (MOSTRAR_CARTAO_DO_HERO = false, lá em cima);
+                    o globo que aparece ali é o FundoDoPlaneta, fixo atrás da
+                    página inteira, não aquele cartão. Quem religar o cartão troca
+                    `lg:` por `xl:` nas duas classes do selo: ele passa a quebrar
+                    em duas linhas de 1024 a 1279 px e não invade em largura alguma. */}
+                <span className="sr-only">{t("hero.badge").split(" • ").join(", ")}</span>
                 <span aria-hidden="true" className="min-w-0 overflow-hidden">
                   <span className="-ml-[1em] flex flex-wrap">
                     {t("hero.badge").split(" • ").map((trecho, i) => (
@@ -1220,7 +1240,7 @@ export default function Home() {
           </a>
           <div className="text-center">
             <div className="text-white/40 text-xs mb-1">{t("footer.tagline")}</div>
-            <div>© 2026 MMM. {t("footer.rights")}</div>
+            <div>© 2026 WRW — Women Rocking the World. {t("footer.rights")}</div>
           </div>
           <div className="flex gap-6">
             {/* O link de contato volta quando houver e-mail ou WhatsApp

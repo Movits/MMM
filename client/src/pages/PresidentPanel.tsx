@@ -1367,7 +1367,7 @@ export default function PresidentPanel() {
               </div>
               <div>
                 <h1 className="text-sm font-bold text-white">Painel Ouro</h1>
-                <p className="text-xs text-amber-400/70">MMM · Backoffice Institucional</p>
+                <p className="text-xs text-amber-400/70">WRW · Backoffice Institucional</p>
               </div>
             </div>
           </div>

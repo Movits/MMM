@@ -79,9 +79,10 @@ afterEach(async () => {
 describe("Home — Hero", () => {
   it("o selo traz a frase inteira com +30 países, e o ponto luminoso continua antes dela", () => {
     const secao = hero();
-    const frase = "Rede mundial de negócios entre membros • +30 países • infinitas possibilidades";
-    // Leitor de tela recebe a frase inteira; na tela ela vem em três trechos
-    // (a quebra do celular cai entre eles).
+    const frase = "Rede mundial de negócios entre membros, +30 países, infinitas possibilidades";
+    // Leitor de tela recebe a frase inteira com vírgula no lugar dos marcadores
+    // (ad81480, portado: o " • " cru era lido em voz alta); na tela ela vem em
+    // três trechos (a quebra do celular cai entre eles).
     const inteira = within(secao).getByText(frase);
     expect(inteira).toHaveClass("sr-only");
     const selo = inteira.parentElement as HTMLElement;
@@ -163,7 +164,7 @@ describe("Home — Hero", () => {
     await i18n.changeLanguage("en");
     const s = within(hero());
     expect(s.getByRole("heading", { level: 1 })).toHaveTextContent("Intelligence that connects deals that happen");
-    expect(s.getByText("Global business network among members • +30 countries • endless possibilities")).toBeInTheDocument();
+    expect(s.getByText("Global business network among members, +30 countries, endless possibilities")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/hero\.\w/);
   });
 });

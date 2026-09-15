@@ -35,7 +35,7 @@
     "countries": "参加国"
   },
   "steps": {
-    "title": "MMMの仕組み",
+    "title": "WRWの仕組み",
     "subtitle": "成功へのシンプルなステップ",
     "closing": "このネットワークのどこかに、あなたが持つものをまさに探している人がいるかもしれません。",
     "step1": {
@@ -91,7 +91,7 @@
   },
   "testimonials": {
     "title": "私たちのコミュニティの声",
-    "subtitle": "MMMがリーダーたちの人生をどのように変えたか",
+    "subtitle": "WRWがリーダーたちの人生をどのように変えたか",
     "score": "平均スコア",
     "t1": {
       "name": "Ana Paula M.",
@@ -138,7 +138,7 @@
     "button": "アカウントを作成"
   },
   "footer": {
-    "tagline": "女性リーダーのための力を与えるつながり。",
+    "tagline": "Connections • Business • Impact • Purpose",
     "rights": "全著作権所有。",
     "privacy": "プライバシー",
     "terms": "利用規約",
@@ -508,7 +508,7 @@
     "restricted": "アクセス制限",
     "opportunities": "オポチュニティ",
     "goldBannerTitle": "ゴールドステータスへようこそ！",
-    "goldBannerBody": "MMMのプレミアムカテゴリーであるゴールドステータスが有効になりました。",
+    "goldBannerBody": "WRWのプレミアムカテゴリーであるゴールドステータスが有効になりました。",
     "close": "閉じる",
     "userFallback": "ユーザー",
     "aiPrefix": "AI:",
@@ -571,7 +571,7 @@
     "greetingTotal_two": "あなたに適合するオポチュニティが{{count}}件見つかりました",
     "greetingTotal_few": "あなたに適合するオポチュニティが{{count}}件見つかりました",
     "greetingTotal_many": "あなたに適合するオポチュニティが{{count}}件見つかりました",
-    "greetingWelcome": "MMMへようこそ！下で最初のおすすめのつながりを生成しましょう",
+    "greetingWelcome": "WRWへようこそ！下で最初のおすすめのつながりを生成しましょう",
     "anonTitle": "ネットワークのメンバー",
     "anonAvatarAlt": "非公開の本人情報",
     "anonListNotice": "プライバシー保護のため、双方が関心を示したときにのみ名前が表示されます。",
@@ -782,7 +782,7 @@
     "nivelPrivadoDescricao": "あなただけが見られます。すべての連絡先の初期設定です。",
     "nivelOuroRotulo": "承認済み（ゴールド）",
     "nivelOuroDescricao": "ゴールドメンバーは、氏名・会社・役職、分野、所在地、そしてゴールド資産で保有・希望しているものを閲覧できます。共有者としてあなたの名前が表示されます。電話番号、メール、SNS、メモが表示されることは決してありません。いつでも非公開に戻せます。変更はすぐに反映されます。",
-    "nivelPublicoRotulo": "MMMで公開",
+    "nivelPublicoRotulo": "WRWで公開",
     "nivelPublicoDescricao": "案件（保有・希望しているもの、都市、国）はエコシステムのショーケースに掲載されます。個人情報が表示されることはありません。",
     "badgeIA": "AI",
     "badgeOuro": "ゴールド",
@@ -832,7 +832,7 @@
     "abaPerfil": "プロフィール",
     "abaHistoricoIA": "AI履歴",
     "detalheNivelOuro": "ゴールドメンバーと共有中",
-    "detalheNivelPublico": "MMMで公開（案件のみ）",
+    "detalheNivelPublico": "WRWで公開（案件のみ）",
     "detalheNivelPrivado": "非公開 — あなただけが見られます",
     "tituloComunicacao": "連絡手段",
     "tituloPresencaDigital": "デジタルプレゼンス",
@@ -966,7 +966,7 @@
     "voltarContextos": "タイムライン",
     "botaoEditar": "編集",
     "confirmExcluirContexto": "このコンテキストを削除しますか？",
-    "contextoCatalogoMmm": "MMMカタログのコンテキスト",
+    "contextoCatalogoMmm": "WRWカタログのコンテキスト",
     "tituloContatosVinculados": "紐付けられた連絡先（{{count}}）",
     "botaoAdicionar": "追加",
     "nenhumContatoVinculado": "紐付けられた連絡先はまだありません。",
@@ -1263,7 +1263,7 @@
     "ndaItem1Title": "1. 守秘義務：",
     "ndaItem1Text": "両当事者は、進行中の商談以外の目的で機密情報を開示・複製・利用しないことを約束し、違反した場合は法律に定める制裁の対象となります。",
     "ndaItem2Title": "2. アンチバイパス条項（不正防止）：",
-    "ndaItem2TextPre": "両当事者は、本連絡から生じるいかなる取引、合意、取引もMMMエコシステムの外で行わないことを明示的に約束し、",
+    "ndaItem2TextPre": "両当事者は、本連絡から生じるいかなる取引、合意、取引もWRWエコシステムの外で行わないことを明示的に約束し、",
     "ndaItem2Strong": "成功報酬（サクセスフィー）",
     "ndaItem2TextPost": "の支払い義務があることを認めます。これは本つながりから成立したあらゆる取引に適用されます。",
     "ndaItem3Title": "3. 有効期間：",
@@ -1302,7 +1302,7 @@
     "ndaClause1Title": "1. 守秘義務：",
     "ndaClause1Text": "両当事者は、進行中の商談以外の目的で機密情報を開示・複製・利用しないことを約束し、違反した場合は法律に定める制裁の対象となります。",
     "ndaClause2Title": "2. アンチバイパス条項（不正防止）：",
-    "ndaClause2Text": "両当事者は、本連絡から生じるいかなる取引、合意、取引もMMMエコシステムの外で行わないことを明示的に約束し、下記の支払い義務があることを認めます：",
+    "ndaClause2Text": "両当事者は、本連絡から生じるいかなる取引、合意、取引もWRWエコシステムの外で行わないことを明示的に約束し、下記の支払い義務があることを認めます：",
     "ndaClause2Fee": "成功報酬（サクセスフィー）",
     "ndaClause2TextEnd": "本つながりから成立したあらゆる取引に適用されます。",
     "ndaClause3Title": "3. 有効期間：",
@@ -1465,7 +1465,7 @@
     "noGroups": "グループはまだありません",
     "noGroupsHint": "戦略グループでは、同じ分野や国のリーダー同士が集中して協力できます。",
     "membersCount": "メンバー{{count}}名",
-    "defaultGroupDescription": "FRAUEN戦略グループ"
+    "defaultGroupDescription": "WRW戦略グループ"
   },
   "intelligentMatches": {
     "seloMutuo": "↔ 相互のつながり",
@@ -1491,8 +1491,8 @@
     "erroCarregarTermo": "許可条項を読み込めませんでした。",
     "avisoAutorizacaoExistente": "既存の許可がある場合はそのまま有効です。しばらくしてからもう一度お試しください。",
     "botaoTentarNovo": "もう一度試す",
-    "explicacao": "各連絡先が提供できるものと探しているものを記録してください。MMMがこの情報を照合し、誰が誰を助けられるかを提案します。",
-    "avisoServico": "サービス（コンサルティング、法務など）は、別の連絡先が「探しているもの」でその必要を明示した場合にのみつながりを生みます。MMMは業種、規模、事業内容から必要性を推測しません。",
+    "explicacao": "各連絡先が提供できるものと探しているものを記録してください。WRWがこの情報を照合し、誰が誰を助けられるかを提案します。",
+    "avisoServico": "サービス（コンサルティング、法務など）は、別の連絡先が「探しているもの」でその必要を明示した場合にのみつながりを生みます。WRWは業種、規模、事業内容から必要性を推測しません。",
     "abaPossui": "保有しているもの",
     "abaProcura": "探しているもの",
     "registrandoPrefixo": "記録中：",

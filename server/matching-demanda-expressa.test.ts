@@ -406,3 +406,22 @@ describe("matchesBloqueadosPelaDemandaExpressa — a especialidade chega à leit
     }
   });
 });
+
+describe("calculateCompatibilityScore — revisão de 15/09 dos consertos da #127 (116bb56, portada)", () => {
+  it("nos idiomas novos, o desconhecido não vira genérico diante de especialidade entendida, e o pedido que não é de serviço não solta o portão", () => {
+    for (const [have, need] of [
+      ["Consultoria tributária", "Консультация по логистике"], ["Consultoria tributária", "Консультация по маркетингу"], ["税务咨询", "招聘咨询"],
+      ["Advocacia", "Juristische Person"], ["Contabilidade", "Software für Buchhaltung"], ["Consultoria", "Conseil d'administration"],
+      ["Consultoria em segurança do trabalho / 安全咨询", "Consultoria trabalhista"],
+    ] as Array<[string, string]>) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] })).bloqueio, `${have} × ${need}`).toBe("servico-sem-demanda-expressa");
+    }
+    // O que a classificação não chama de serviço (a loja, o abacate) não é barrado, e o mesmo serviço escrito de outro jeito atende.
+    for (const [have, need] of [
+      ["Expert-comptable", "Expertise comptable"], ["Boutique de joias de design", "Joias finas"], ["Avocats Hass export international", "Importateur de fruits"],
+      ["Contabilidade para pequenas empresas", "Contador"], ["Empresa de gestão contábil", "Contador"],
+    ] as Array<[string, string]>) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] })).bloqueio, `${have} × ${need}`).toBeUndefined();
+    }
+  });
+});

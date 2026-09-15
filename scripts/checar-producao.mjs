@@ -721,7 +721,7 @@ async function blocoSessao() {
 
 async function blocoIA() {
   const P = estado.sessao.P;
-  const faq = await chamar("POST", "faq.ask", { question: "O que é o MMM?" });
+  const faq = await chamar("POST", "faq.ask", { question: "O que é a WRW?" });
   const faqErro = faq.erro || "";
   const emCota = /429|quota|RESOURCE_EXHAUSTED|limite|rate/i.test(faqErro) || faq.status === 429;
   if (emCota) rel.pulado("IA responde (FAQ)", "cota por minuto do Gemini");

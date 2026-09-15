@@ -234,7 +234,9 @@ objeto do termo → 100, mesmo núcleo → 100, o mesmo serviço escrito de outr
 (só para serviço: a mesma especialidade na mesma família, entre consultoria e assessoria, no
 apoio que nomeia a profissão, na assessoria sobre área da profissão — "Assessoria tributária"
 diante da advocacia ou da contabilidade tributária — ou os dois lados só com a família,
-"Contabilidade" × "Contador", `mesmaFamiliaEEspecialidade`),
+"Contabilidade" × "Contador" e "Serviços contábeis" × "Contador", também com a oferta
+dirigida só a um destinatário comum, "Contabilidade para pequenas empresas" × "Contador",
+`mesmaFamiliaEEspecialidade`),
 necessidade que nomeia só a família do serviço → 60 (`necessidadeGenericaNomeiaOServico`),
 necessidade que declara o ASSUNTO do serviço sem nomeá-lo → 60 com tipo `semantic`
 (`necessidadeDeclaraOAssuntoDoServico`: vocabulário curado de tributário, internacionalização e

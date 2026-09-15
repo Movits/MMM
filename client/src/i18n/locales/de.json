@@ -35,7 +35,7 @@
     "countries": "Vertretene Länder"
   },
   "steps": {
-    "title": "So funktioniert MMM",
+    "title": "So funktioniert WRW",
     "subtitle": "Einfach, sicher und effektiv",
     "closing": "Irgendwo in unserem Netzwerk sucht vielleicht jemand genau das, was Sie haben.",
     "step1": {
@@ -138,14 +138,14 @@
     "button": "Konto erstellen"
   },
   "footer": {
-    "tagline": "Stärke weibliche Führungskräfte weltweit.",
+    "tagline": "Connections • Business • Impact • Purpose",
     "rights": "Alle Rechte vorbehalten.",
     "privacy": "Datenschutz",
     "terms": "Nutzungsbedingungen",
     "contact": "Kontakt"
   },
   "onboarding": {
-    "title": "Willkommen bei MMM",
+    "title": "Willkommen bei WRW",
     "subtitle": "KI, die außergewöhnliche Menschen verbindet",
     "step": "Schritt {{current}} von {{total}}",
     "next": "Weiter",
@@ -508,7 +508,7 @@
     "restricted": "Eingeschränkter Zugang",
     "opportunities": "Möglichkeiten",
     "goldBannerTitle": "Willkommen im Gold-Status!",
-    "goldBannerBody": "Ihr Gold-Status, die Premium-Kategorie von MMM, ist jetzt aktiv.",
+    "goldBannerBody": "Ihr Gold-Status, die Premium-Kategorie von WRW, ist jetzt aktiv.",
     "close": "Schließen",
     "userFallback": "Nutzer",
     "aiPrefix": "KI:",
@@ -571,7 +571,7 @@
     "greetingTotal_two": "{{count}} passende Möglichkeiten für Sie gefunden",
     "greetingTotal_few": "{{count}} passende Möglichkeiten für Sie gefunden",
     "greetingTotal_many": "{{count}} passende Möglichkeiten für Sie gefunden",
-    "greetingWelcome": "Willkommen bei MMM! Erstellen Sie unten Ihre ersten vorgeschlagenen Verbindungen",
+    "greetingWelcome": "Willkommen bei WRW! Erstellen Sie unten Ihre ersten vorgeschlagenen Verbindungen",
     "anonTitle": "Mitglied des Netzwerks",
     "anonAvatarAlt": "Identität verborgen",
     "anonListNotice": "Aus Datenschutzgründen erscheint der Name erst, wenn beide Interesse gezeigt haben.",
@@ -782,7 +782,7 @@
     "nivelPrivadoDescricao": "Nur Sie sehen es. Der Standard für jeden Kontakt.",
     "nivelOuroRotulo": "Autorisierte (Gold)",
     "nivelOuroDescricao": "Gold-Nutzer sehen Name, Unternehmen und Position, Segment, Standort sowie das, was Sie im Gold-Bestand anbieten/suchen — und IHR Name erscheint als Person, die geteilt hat. Nie Telefon, E-Mail, soziale Netzwerke oder Notizen. Stellen Sie jederzeit wieder auf privat: die Wirkung ist sofort.",
-    "nivelPublicoRotulo": "Öffentlich bei MMM",
+    "nivelPublicoRotulo": "Öffentlich bei WRW",
     "nivelPublicoDescricao": "Die Möglichkeit (was Sie anbieten/suchen, Stadt und Land) erscheint im Schaufenster des Ökosystems. Persönliche Daten werden nie angezeigt.",
     "badgeIA": "KI",
     "badgeOuro": "Gold",
@@ -832,7 +832,7 @@
     "abaPerfil": "Profil",
     "abaHistoricoIA": "KI-Verlauf",
     "detalheNivelOuro": "Geteilt mit Gold-Nutzern",
-    "detalheNivelPublico": "Öffentlich bei MMM (nur die Möglichkeit)",
+    "detalheNivelPublico": "Öffentlich bei WRW (nur die Möglichkeit)",
     "detalheNivelPrivado": "Privat — nur Sie sehen es",
     "tituloComunicacao": "Kommunikation",
     "tituloPresencaDigital": "Digitale Präsenz",
@@ -966,7 +966,7 @@
     "voltarContextos": "Zeitleiste",
     "botaoEditar": "Bearbeiten",
     "confirmExcluirContexto": "Diesen Kontext löschen?",
-    "contextoCatalogoMmm": "Kontext aus dem MMM-Katalog",
+    "contextoCatalogoMmm": "Kontext aus dem WRW-Katalog",
     "tituloContatosVinculados": "Verknüpfte Kontakte ({{count}})",
     "botaoAdicionar": "Hinzufügen",
     "nenhumContatoVinculado": "Noch kein Kontakt verknüpft.",
@@ -1263,7 +1263,7 @@
     "ndaItem1Title": "1. Geheimhaltungspflicht:",
     "ndaItem1Text": "Die Parteien verpflichten sich, die vertraulichen Informationen nicht offenzulegen, zu vervielfältigen oder für Zwecke außerhalb der laufenden Verhandlung zu verwenden, unter Androhung der gesetzlich vorgesehenen Sanktionen.",
     "ndaItem2Title": "2. Anti-Umgehungsklausel (Betrugsschutz):",
-    "ndaItem2TextPre": "Die Parteien verpflichten sich ausdrücklich, keine Transaktion, Vereinbarung oder Geschäft, das aus diesem Kontakt entsteht, außerhalb des MMM-Ökosystems abzuwickeln, und erkennen die Zahlungspflicht der ",
+    "ndaItem2TextPre": "Die Parteien verpflichten sich ausdrücklich, keine Transaktion, Vereinbarung oder Geschäft, das aus diesem Kontakt entsteht, außerhalb des WRW-Ökosystems abzuwickeln, und erkennen die Zahlungspflicht der ",
     "ndaItem2Strong": "Erfolgsgebühr (Success Fee)",
     "ndaItem2TextPost": " auf alle Geschäfte an, die aus dieser Verbindung entstanden sind.",
     "ndaItem3Title": "3. Gültigkeitsdauer:",
@@ -1302,7 +1302,7 @@
     "ndaClause1Title": "1. Geheimhaltungspflicht:",
     "ndaClause1Text": "Die Parteien verpflichten sich, die vertraulichen Informationen nicht offenzulegen, zu vervielfältigen oder für Zwecke außerhalb der laufenden Verhandlung zu verwenden, unter Androhung der gesetzlich vorgesehenen Sanktionen.",
     "ndaClause2Title": "2. Anti-Umgehungsklausel (Betrugsschutz):",
-    "ndaClause2Text": "Die Parteien verpflichten sich ausdrücklich, keine Transaktion, Vereinbarung oder Geschäft, das aus diesem Kontakt entsteht, außerhalb des MMM-Ökosystems abzuwickeln, und erkennen die Zahlungspflicht der",
+    "ndaClause2Text": "Die Parteien verpflichten sich ausdrücklich, keine Transaktion, Vereinbarung oder Geschäft, das aus diesem Kontakt entsteht, außerhalb des WRW-Ökosystems abzuwickeln, und erkennen die Zahlungspflicht der",
     "ndaClause2Fee": "Erfolgsgebühr (Success Fee)",
     "ndaClause2TextEnd": "auf alle Geschäfte, die aus dieser Verbindung entstanden sind.",
     "ndaClause3Title": "3. Gültigkeitsdauer:",
@@ -1465,7 +1465,7 @@
     "noGroups": "Noch keine Gruppe",
     "noGroupsHint": "Strategische Gruppen ermöglichen fokussierte Zusammenarbeit zwischen Führungspersönlichkeiten desselben Sektors oder Landes.",
     "membersCount": "{{count}} Mitglieder",
-    "defaultGroupDescription": "Strategische Gruppe FRAUEN"
+    "defaultGroupDescription": "Strategische Gruppe von WRW"
   },
   "intelligentMatches": {
     "seloMutuo": "↔ Gegenseitige Verbindung",
@@ -1491,8 +1491,8 @@
     "erroCarregarTermo": "Die Autorisierungsvereinbarung konnte nicht geladen werden.",
     "avisoAutorizacaoExistente": "Ihre Autorisierung, falls bereits vorhanden, bleibt weiterhin gültig. Versuchen Sie es in Kürze erneut.",
     "botaoTentarNovo": "Erneut versuchen",
-    "explicacao": "Notieren Sie, was jeder Kontakt anzubieten hat und wonach er sucht. MMM vergleicht diese Informationen und schlägt vor, wer wem helfen kann.",
-    "avisoServico": "Eine Dienstleistung (Beratung, Rechtsberatung…) erzeugt nur dann eine Verbindung, wenn ein anderer Kontakt unter „Was gesucht wird“ angegeben hat, sie zu brauchen. MMM leitet keinen Bedarf aus Branche, Größe oder Tätigkeit ab.",
+    "explicacao": "Notieren Sie, was jeder Kontakt anzubieten hat und wonach er sucht. WRW vergleicht diese Informationen und schlägt vor, wer wem helfen kann.",
+    "avisoServico": "Eine Dienstleistung (Beratung, Rechtsberatung…) erzeugt nur dann eine Verbindung, wenn ein anderer Kontakt unter „Was gesucht wird“ angegeben hat, sie zu brauchen. WRW leitet keinen Bedarf aus Branche, Größe oder Tätigkeit ab.",
     "abaPossui": "Was vorhanden ist",
     "abaProcura": "Was gesucht wird",
     "registrandoPrefixo": "Erfassen, was",

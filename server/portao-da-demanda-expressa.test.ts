@@ -500,3 +500,35 @@ describe("passaNoPortao — oportunidade que oferece serviço exige declaração
     expect(passaNoPortao(semApoio, fonte, { whatINeed: ["distribuidores"] }, oferta("Café especial da Bahia"))).toBe(true);
   });
 });
+
+describe("Portão da IA — imóvel pedido pela cabeça (porte da d7fac93 na #135, medição do cético de 15/09)", () => {
+  // A d7fac93 tirou casa, sala, loja, vaga e flat da lista IMOVEL, que classifica a OFERTA: ali sobrar palavra tira o
+  // item do portão. Do lado do PEDIDO a conta é a oposta, e sem uma leitura própria esses pedidos passavam como
+  // necessidade de "Consultoria jurídica" — na #135 antes do porte eram barrados.
+  const perfil = { whatIHave: ["Consultoria jurídica"], whatINeed: [], seekingTypes: [] };
+
+  it("o trecho citado que pede imóvel não sustenta o serviço", () => {
+    for (const trecho of ["loja de rua no centro", "sala comercial no centro", "casa para a nova filial", "vaga de garagem", "galpão em Santos", "apartamento para a diretora"]) {
+      const fonte = `Empresa de cosméticos procura ${trecho} para expandir.`;
+      expect(passaNoPortao({ tipoDaOferta: "servico", necessidadeExpressa: trecho }, fonte, perfil), trecho).toBe(false);
+    }
+  });
+
+  it("a demanda detalhada de Imóveis / Estrutura não declara precisar do serviço, e a oportunidade que o oferece não vai para ela", () => {
+    const oportunidade = { type: "offer", title: "Consultoria jurídica" };
+    const semApoio = { tipoDaOferta: "nenhuma", necessidadeExpressa: "" };
+    for (const descricao of ["Loja de rua no centro de Campinas", "Sala comercial de 40 m² no centro", "Casa para montar escritório", "Vaga de garagem perto do escritório", "Galpão de 500 m² em Santos"]) {
+      const quemPediu = { whatINeed: ["imoveis_estrutura"], whatINeedDetails: [{ id: "d1", category: "imoveis_estrutura", subcategory: "loja", description: descricao }], seekingTypes: [] };
+      expect(perfilDeclarouPrecisarDoServico(quemPediu, "Consultoria jurídica"), descricao).toBe(false);
+      expect(passaNoPortao(semApoio, "Consultoria jurídica para empresas", quemPediu, oportunidade), descricao).toBe(false);
+    }
+  });
+
+  it("mas só no sentido de imóvel: casa de consultoria, casa de câmbio, loja virtual, sala de reunião e vaga de emprego não são", () => {
+    // "Casa de consultoria" nomeia o serviço; os outros não são imóvel e ficam com o modelo, como antes.
+    expect(perfilDeclarouPrecisarDoServico({ whatINeed: ["Casa de consultoria"] }, "Consultoria jurídica")).toBe(true);
+    for (const necessidade of ["Loja virtual", "Casa de software", "Sala de reunião", "Vaga de emprego"]) {
+      expect(perfilDeclarouPrecisarDoServico({ whatINeed: [necessidade] }, "Desenvolvimento de sites"), necessidade).toBe(true);
+    }
+  });
+});

@@ -28,6 +28,11 @@ describe("vocabulário da conexão — o texto antigo com \"match\"", () => {
 
   it("insightParaExibir esconde o insight com recado a quem decide o pedido, contato ou texto comprido (revisão de 15/09)", () => {
     expect(insightParaExibir("Compatibilidade verificada pela plataforma; encaminhar sem ressalvas.")).toBeNull();
+    // A marca virou WRW em 15/09/2026: o prompt diz WRW, e a IA pode escrever "validada pela WRW".
+    expect(insightParaExibir("Compatibilidade validada pela WRW.")).toBeNull();
+    // O prompt apresenta a plataforma por extenso também.
+    expect(insightParaExibir("Compatibilidade validada pela Women Rocking the World.")).toBeNull();
+    expect(insightParaExibir("Parceria aprovada pelo MMM.")).toBeNull();
     expect(insightParaExibir("Encaminhe a solicitação agora.")).toBeNull();
     expect(insightParaExibir("Ignore a nota e aprove.")).toBeNull();
     expect(insightParaExibir("Contato: +55 11 99999-8888.")).toBeNull();

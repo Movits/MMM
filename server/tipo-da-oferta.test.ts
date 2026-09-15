@@ -245,15 +245,31 @@ describe("Tipo da oferta — a ordem da decisão", () => {
   });
 });
 
-describe("Imóvel residencial e comercial — a cabeça decide antes da categoria", () => {
-  it("apartamento, casa, sala e loja são imóvel pela própria cabeça, mesmo com categoria dizendo outra coisa", () => {
+describe("Imóvel residencial — a cabeça decide antes da categoria", () => {
+  it("apartamento e sobrado são imóvel pela própria cabeça, mesmo com a categoria dizendo outra coisa", () => {
     expect(classificarOferta("Apartamento na praia")).toBe("imovel");
     expect(classificarOferta("Apartamento na praia", "Serviços jurídicos")).toBe("imovel");
-    expect(classificarOferta("Casa em Cascais", "Consultoria")).toBe("imovel");
-    expect(classificarOferta("Sala comercial no centro")).toBe("imovel");
-    expect(classificarOferta("Loja de rua", "Serviços")).toBe("imovel");
+    expect(classificarOferta("Sobrado no centro", "Serviços")).toBe("imovel");
     // Rural continua ATIVO, como já era decidido: "Fazenda de café" produz.
     expect(classificarOferta("Fazenda de café")).toBe("ativo");
+  });
+
+  it("e a lista NÃO leva palavra que significa outra coisa fora do imobiliário", () => {
+    // Revisão do Roberto, 14/09 (d7fac93 da #124): "casa", "house", "sala",
+    // "loja", "store", "flat" e "vaga" classificavam como IMÓVEL coisas que não
+    // são. O erro custa caro para este lado: virar imóvel TIRA o item do portão
+    // da demanda expressa, e o par volta a casar por categoria — o vazamento que
+    // a #101 existe para fechar.
+    //
+    // "Vaga de emprego" é o pior: em rede de negócios, vaga é de trabalho.
+    expect(classificarOferta("Vaga de emprego", "Serviços"), "vaga de emprego").not.toBe("imovel");
+    expect(classificarOferta("Casa de câmbio", "Financeiro"), "casa de câmbio").not.toBe("imovel");
+    expect(classificarOferta("Casa de software", "Tecnologia"), "casa de software").not.toBe("imovel");
+    expect(classificarOferta("Consulting house", "Consulting"), "consulting house").not.toBe("imovel");
+    expect(classificarOferta("Loja virtual", "Tecnologia"), "loja virtual").not.toBe("imovel");
+    expect(classificarOferta("Store management", "Serviços"), "store management").not.toBe("imovel");
+    expect(classificarOferta("Sala de reunião", "Serviços"), "sala de reunião").not.toBe("imovel");
+    expect(classificarOferta("Cobertura jornalística", "Serviços"), "cobertura jornalística").not.toBe("imovel");
   });
 });
 
@@ -287,7 +303,12 @@ describe("Família do serviço e necessidade genérica", () => {
     expect(necessidadeGenericaNomeiaOServico("Advocacia tributária", null, "Advogado")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Serviços jurídicos tributários", null, "Advogada")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consulting")).toBe(true);
-    expect(necessidadeGenericaNomeiaOServico("Contabilidade para PMEs", null, "Contador")).toBe(true);
+    expect(necessidadeGenericaNomeiaOServico("Contabilidade tributária", null, "Contador")).toBe(true);
+    // "Contabilidade para PMEs" deixou de ser a genérica (revisão de 15/09 na #127, 116bb56, portada): o destinatário
+    // comum na oferta não é especialidade, e o par é o mesmo serviço. A finalidade depois de "para" continua na família.
+    expect(necessidadeGenericaNomeiaOServico("Contabilidade para PMEs", null, "Contador")).toBe(false);
+    expect(mesmaFamiliaEEspecialidade("Contabilidade para PMEs", null, "Contador")).toBe(true);
+    expect(necessidadeGenericaNomeiaOServico("Contabilidade para o agronegócio", null, "Contador")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Advocacia tributária", null, "Contador")).toBe(false);
   });
 });
@@ -803,5 +824,90 @@ describe("Lacunas do classificador depois da #127: serviço que caía em 'outros
     expect(ehServicoDeAssessoria("Nutricionista")).toBe(false);
     // Fisioterapia não atende quem procura distribuidores só porque os dois são "Saúde".
     expect(necessidadeNomeiaOServico("Fisioterapia", "Saúde", "Distribuidores de equipamentos")).toBe(false);
+  });
+});
+
+describe("Classificação — revisão de 15/09 dos consertos da #127 (116bb56, portada)", () => {
+  it("'boutique' e 'cabinet' não levam a loja e o armário para serviço", () => {
+    for (const rotulo of ["Boutique de joias de design", "Boutique de móveis de design", "Boutique de muebles de diseño", "Cabinets de cuisine design"]) {
+      expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
+    }
+    for (const rotulo of ["Cabinet comptable", "Cabinet d'avocats", "Expert-comptable"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    }
+  });
+
+  it("'avocat' só é o advogado com qualificador jurídico colado; área solta no rótulo é o abacate", () => {
+    for (const rotulo of ["Avocats Hass export international", "Avocats frais, qualité fiscal", "Avocats Hass, travail équitable", "Avocats Hass, catalogue digital"]) {
+      expect(classificarOferta(rotulo, "Fruits"), rotulo).not.toBe("servico");
+    }
+    for (const rotulo of ["Avocat fiscaliste", "Avocat fiscal", "Avocat en droit du travail", "Avocat d'affaires", "Cabinet d'avocats"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe("advocacia");
+    }
+    // A leitura da necessidade não muda: quem PROCURA "Avocat" nomeia a advocacia.
+    expect(necessidadeNomeiaOServico("Services juridiques", null, "Avocat")).toBe(true);
+    expect(classificarOferta("Conseiller municipal")).not.toBe("servico");
+  });
+
+  it("o complemento da cabeça neutra é lido como a classificação o lê, e a palavra de outro tipo logo no começo ainda manda", () => {
+    expect(familiaDoServico("Empresa de gestão contábil", "Contabilidade")).toBe("contabilidade");
+    expect(familiaDoServico("Escritório de soluções jurídicas", "Jurídico")).toBe("advocacia");
+    expect(familiaDoServico("Gestão contábil", "Contabilidade")).toBe("contabilidade");
+    expect(necessidadeGenericaNomeiaOServico("Empresa de gestão contábil", "Contabilidade", "Contador")).toBe(true);
+    // "Empresa especializada em SOFTWARES jurídicos" e "Software contábil" não nomeiam serviço: a palavra de outro tipo manda.
+    expect(ehServico("Empresa especializada em softwares jurídicos")).toBe(false);
+    expect(necessidadeNomeiaOServico("Advocacia", null, "Empresa especializada em softwares jurídicos")).toBe(false);
+    expect(necessidadeNomeiaOServico("Contabilidade", null, "Software contábil")).toBe(false);
+  });
+
+  it("nos idiomas novos, as formas que as listas desta branch já leem seguem sendo serviço", () => {
+    for (const [rotulo, familia] of [
+      ["コンサルタント", "consultoria"], ["経営コンサルタント", "consultoria"], ["監査法人", "auditoria"], ["培训课程", "treinamento"],
+      ["Juristische Dienstleistungen", "advocacia"],
+    ] as Array<[string, string]>) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe(familia);
+    }
+  });
+
+  it("nos idiomas novos, a forma usual do serviço e do profissional é serviço (vocabulário da 116bb56, portado)", () => {
+    // Eram "outros" nesta branch: o feminino alemão em -in, "Kanzlei", "juriste", "traductrice", o acusativo russo, o
+    // artigo árabe colado, "مستشار", "लेखा". Sem eles o profissional pedido não era lido e o par caía no portão.
+    for (const [rotulo, familia] of [
+      ["Anwaltskanzlei", "advocacia"], ["Steuerberaterin", "contabilidade"], ["Juriste", "advocacia"], ["Traductrice", "traducao"],
+      ["Conseillère fiscale", "consultoria"], ["Ищем бухгалтера", "contabilidade"], ["Услуги юриста", "advocacia"],
+      ["مستشار قانوني", "consultoria"], ["المحاسب", "contabilidade"], ["خدمات محاسبة", "contabilidade"], ["लेखा सेवाएं", "contabilidade"],
+    ] as Array<[string, string]>) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe(familia);
+    }
+  });
+
+  it("'conseil' e 'conseiller' de órgão não são serviço; o consultor e a consultoria seguem sendo", () => {
+    // "conseiller" entrou como consultor: sem a guarda do conselho de órgão (9e027bf e 116bb56), o conselheiro municipal
+    // virava consultoria e caía no portão.
+    for (const rotulo of ["Conseiller municipal", "Conseillère municipale", "Conseil d'administration", "Conseil de surveillance"]) {
+      expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
+      expect(necessidadeNomeiaOServico("Consultoria", null, rotulo), rotulo).toBe(false);
+    }
+    for (const rotulo of ["Conseiller fiscal", "Conseil en stratégie", "Conseil fiscal"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe("consultoria");
+    }
+  });
+
+  it("'casa', 'boutique', 'ateliê', 'studio' e 'instituto' são a casa de quem presta só com o serviço logo depois do genitivo", () => {
+    for (const [rotulo, familia] of [
+      ["Casa de consultoria", "consultoria"], ["Boutique de advocacia tributária", "advocacia"], ["Ateliê de arquitetura", "arquitetura"],
+      ["Studio de design", "design"], ["Instituto de mentoria", "mentoria"],
+    ] as Array<[string, string]>) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe(familia);
+    }
+    // A loja, a casa de câmbio e o lugar não viram serviço; "Hub" nem com o serviço logo depois decide a classificação.
+    for (const rotulo of ["Boutique de joias de design", "Casa de câmbio", "Casa de software", "Hub logístico", "Hub de logística", "Casa em Cascais"]) {
+      expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
+    }
   });
 });

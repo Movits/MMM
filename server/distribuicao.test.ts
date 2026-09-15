@@ -207,6 +207,8 @@ describe("distribuicao.conceder", () => {
     expect(aviso).toMatchObject({ userId: 7, type: "system", actionUrl: "/president" });
     expect(String(aviso.title)).toMatch(/distribuidor/i);
     expect(String(aviso.body)).toMatch(/Painel Ouro/);
+    expect(String(aviso.body)).toContain("Um membro Ouro da WRW concedeu");
+    expect(String(aviso.body)).not.toMatch(/\bMMM\b/);
   });
 
   it("é idempotente: quem já tem o poder não gera gravação, auditoria nem aviso", async () => {
@@ -252,6 +254,8 @@ describe("distribuicao.revogar", () => {
     const [aviso] = avisos();
     expect(aviso).toMatchObject({ userId: 8, type: "system" });
     expect(String(aviso.body)).toContain("Saiu da equipe de distribuição");
+    expect(String(aviso.body)).toContain("por um membro Ouro da WRW");
+    expect(String(aviso.body)).not.toMatch(/\bMMM\b/);
   });
 
   it("é idempotente: revogar de quem não tem o poder não grava nem audita", async () => {

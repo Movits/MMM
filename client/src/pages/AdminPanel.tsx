@@ -216,7 +216,7 @@ export default function AdminPanel() {
                 style={playfairStyle}
                 className="text-xl font-bold text-white hover:text-[#C98F70] transition-colors"
               >
-                MMM
+                WRW
               </button>
               <p className="text-xs text-gray-400">Painel Administrativo Seguro</p>
             </div>
@@ -903,7 +903,7 @@ export default function AdminPanel() {
                               {opp.type}
                             </span>
                             <span className={`text-xs px-2 py-0.5 rounded ${cc.bg} ${cc.text} font-medium`}>
-                              FTS {Math.round(opp.frauenTrustScore ?? 0)} · {cc.label}
+                              Nota {Math.round(opp.frauenTrustScore ?? 0)} · {cc.label}
                             </span>
                             {opp.isConfidential && (
                               <span className="text-xs px-2 py-0.5 rounded bg-amber-900/30 text-amber-400">★ Confidencial</span>

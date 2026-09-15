@@ -34,7 +34,7 @@ import {
 } from "@shared/o-que-preciso";
 import {
   citacaoPedeServicoOferecido, classificarOferta, ehServico, ehServicoDeAssessoria, familiaDoServico, necessidadeNomeiaOServico,
-  PALAVRAS_DE_SERVICO, PALAVRAS_VAZIAS_DA_CITACAO, PAPEIS_DE_COMERCIO, servicoDoTermo, TIPOS_DA_OFERTA, trechoNomeiaServicoAtendido, type TipoDaOferta,
+  necessidadePedeImovel, PALAVRAS_DE_SERVICO, PALAVRAS_VAZIAS_DA_CITACAO, PAPEIS_DE_COMERCIO, servicoDoTermo, TIPOS_DA_OFERTA, trechoNomeiaServicoAtendido, type TipoDaOferta,
 } from "@shared/tipo-da-oferta";
 
 /** Os nove tipos mais "nenhuma": o match que se apoia no que a pessoa PRECISA, não no que tem. */
@@ -310,6 +310,9 @@ function necessidadePedeOServico(servico: string, necessidade: string): PedeOSer
   if (servicoDoTermo(servico) !== null && trechoNomeiaServicoAtendido(necessidade, [servico]) === "nao-atende") return "nao";
   if (ehServico(necessidade)) return "talvez";
   if (tokensDoTermo(necessidade).some(palavra => PAPEIS_DE_COMERCIO.has(palavra))) return "nao";
+  // Imóvel pedido pela cabeça ("Loja de rua no centro", "Sala comercial", "Casa para montar escritório"): a lista IMOVEL,
+  // que classifica a OFERTA, ficou curta de propósito (d7fac93), e do lado do pedido faltar palavra soltava o portão.
+  if (necessidadePedeImovel(necessidade)) return "nao";
   return TIPOS_QUE_SERVICO_NAO_ENTREGA.has(classificarOferta(necessidade)) ? "nao" : "talvez";
 }
 

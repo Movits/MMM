@@ -143,7 +143,7 @@ código conseguia assinar uma sessão válida.
 | `LLM_API_URL` | matches, enriquecimento, transcrição | `https://generativelanguage.googleapis.com/v1beta/openai` |
 | `LLM_API_KEY` | a chave do endpoint acima | Google AI Studio |
 | `RESEND_API_KEY` | e-mail de recuperação de senha | resend.com |
-| `EMAIL_FROM` | remetente | `MMM <nao-responda@seudominio>` |
+| `EMAIL_FROM` | remetente | `nao-responda@seudominio` (o nome WRW é posto pelo código) |
 | `LLM_AUDIO_MODEL_RESERVA` | opcional: modelo reserva da transcrição (assume no 503/cota) | padrão `gemini-3.5-flash-lite`; sempre id concreto, nunca alias |
 
 `PORT` o Railway injeta sozinho. Não defina na mão.

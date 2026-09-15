@@ -246,13 +246,13 @@ describe("Dashboard em inglês — nada em português fixo", () => {
     await i18n.changeLanguage("en");
     render(<Dashboard />);
 
-    expect(screen.getByText("Welcome to MMM! Generate your first suggested connections below")).toBeInTheDocument();
+    expect(screen.getByText("Welcome to WRW! Generate your first suggested connections below")).toBeInTheDocument();
     semMatch("boas-vindas em inglês");
     // O banner entra meio segundo depois (tempo real: por isso a ESPERA de 3 s).
     // Ouro é categoria premium (Governança, 14/09/2026): o banner fala de
     // status ativo, não de selo concedido por reconhecimento.
     expect(await screen.findByText("Welcome to Gold Status!", {}, ESPERA)).toBeInTheDocument();
-    expect(screen.getByText("Your Gold Status, MMM's premium tier, is now active.")).toBeInTheDocument();
+    expect(screen.getByText("Your Gold Status, WRW's premium tier, is now active.")).toBeInTheDocument();
     expect(screen.queryByText(/Seal/)).not.toBeInTheDocument();
     expect(screen.getByTitle("Close")).toBeInTheDocument();
     expect(screen.queryByText(/Status Ouro/)).not.toBeInTheDocument();
@@ -290,7 +290,7 @@ describe("Dashboard em português — o que a usuária lia continua igual", () =
     duble.respostas["matches.list"] = { data: [] };
     duble.respostas["connections.list"] = { data: [] };
     render(<Dashboard />);
-    expect(screen.getByText("Boas-vindas ao MMM! Gere suas primeiras conexões sugeridas abaixo")).toBeInTheDocument();
+    expect(screen.getByText("Boas-vindas à WRW! Gere suas primeiras conexões sugeridas abaixo")).toBeInTheDocument();
     semMatch("boas-vindas em português");
   });
 

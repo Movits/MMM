@@ -29,6 +29,7 @@ import { condicaoDeStatusNasListas } from "./oportunidade-acesso";
 import { consolidarPerfil } from "./perfil-consolidado";
 import { avaliarQualificacaoDoPerfil } from "@shared/qualificacao-do-perfil";
 import { contextoParaOferecer } from "./contexto-oferecido";
+import { nomeDoTipoDeContexto } from "./nome-do-tipo-de-contexto";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -1384,7 +1385,8 @@ export async function listVitrineColetiva() {
 
 export async function listContextTypes(): Promise<ContextType[]> {
   const db = await exigirDb();
-  return db.select().from(contextTypes).where(eq(contextTypes.isActive, true)).orderBy(contextTypes.sortOrder);
+  const tipos = await db.select().from(contextTypes).where(eq(contextTypes.isActive, true)).orderBy(contextTypes.sortOrder);
+  return tipos.map(tipo => ({ ...tipo, name: nomeDoTipoDeContexto(tipo.slug, tipo.name) }));
 }
 
 export async function listContexts(
@@ -1446,7 +1448,7 @@ export async function listContexts(
   return {
     data: rows.map(r => ({
       ...r.ctx,
-      typeName: r.typeName ?? undefined,
+      typeName: nomeDoTipoDeContexto(r.typeSlug, r.typeName) ?? undefined,
       typeColor: r.typeColor ?? undefined,
       // Sem o slug a tela não acha o ícone do tipo e — pior — o formulário de
       // edição abre com o tipo vazio e salvar apaga o tipo do contexto.
@@ -1494,7 +1496,7 @@ export async function getContextById(ownerId: string, contextId: string) {
     .orderBy(contextMedia.sortOrder, contextMedia.createdAt);
 
   return {
-    ...row.ctx, typeName: row.typeName, typeColor: row.typeColor, typeSlug: row.typeSlug, typeIcon: row.typeIcon,
+    ...row.ctx, typeName: nomeDoTipoDeContexto(row.typeSlug, row.typeName), typeColor: row.typeColor, typeSlug: row.typeSlug, typeIcon: row.typeIcon,
     links: links.map(l => ({ ...l, contactName: nomePorContato.get(l.contactId) ?? null })),
     participants, media,
   };
@@ -1629,7 +1631,7 @@ export async function listContextsByContact(ownerId: string, contactId: number) 
     city: r.link.city,
     country: r.link.country,
     relationshipType: r.link.relationshipType,
-    typeName: r.typeName ?? undefined,
+    typeName: nomeDoTipoDeContexto(r.typeSlug, r.typeName) ?? undefined,
     typeColor: r.typeColor ?? undefined,
     typeSlug: r.typeSlug ?? undefined,
   }));
