@@ -463,4 +463,3 @@ export function resumo({ participantes, recusadas, avisos, novas = null, existen
   if (semVocabulario) partes.push(`${semVocabulario} com tags fora do vocabulário do cruzamento`);
   return partes.join(" | ");
 }
-isso nao e sintaxe valida ((((
