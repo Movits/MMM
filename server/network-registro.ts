@@ -471,10 +471,14 @@ export function etapaAnteriorExigida(destino: Exclude<EtapaDaConexao, "identific
  * originadora (item 18). Cada lado declara por si, em conexoes_participantes:
  * - DESCARTAR vale para quem descartou (a lista mostra 'descartada' só a ela);
  *   o outro lado segue registrando apresentação e negociação, e a conexão só
- *   vira 'descartada' quando todos os lados descartaram.
+ *   vira 'descartada' quando todos os lados descartaram. Descartar apaga a
+ *   confirmação de fechamento que esse lado tivesse dado.
  * - FECHAR exige a confirmação de todos os lados: cada confirmação fica no lado
  *   de quem confirmou, e só a última põe a conexão em 'fechada' e a comissão da
- *   plataforma e das originadoras em 'a_apurar' — apurar, não cobrar.
+ *   plataforma e das originadoras em 'a_apurar' — apurar, não cobrar. Lado que
+ *   descartou não conta como confirmado (item 6 da revisão da #135: A confirma,
+ *   A descarta, B confirma NÃO fecha — B fica aguardando, como na primeira
+ *   confirmação).
  * Na conexão interna os dois lados são da mesma dona, e um clique basta.
  *
  * Tudo numa transação que começa travando o cabeçalho (FOR UPDATE), e cada
@@ -526,14 +530,17 @@ export async function avancarConexao(
     }
 
     if (destino === "descartada") {
-      await tx.update(conexoesParticipantes).set({ descartadaEm: agora, updatedAt: agora }).where(meusLados);
+      await tx.update(conexoesParticipantes).set({ descartadaEm: agora, fechamentoConfirmadoEm: null, updatedAt: agora }).where(meusLados);
       if (outros.every(lado => lado.descartadaEm != null)) await moverCabecalho({ descartadaEm: agora });
       return { status: "descartada" as const, aguardandoOutroLado: false };
     }
 
     if (meus.every(lado => lado.fechamentoConfirmadoEm != null)) throw new EtapaForaDeOrdem();
     await tx.update(conexoesParticipantes).set({ fechamentoConfirmadoEm: agora, updatedAt: agora }).where(meusLados);
-    if (outros.some(lado => lado.fechamentoConfirmadoEm == null)) return { status: "negociacao" as const, aguardandoOutroLado: true };
+    // Lado descartado não conta como confirmado, ainda que uma confirmação antiga tenha ficado gravada nele.
+    const confirmou = (lado: { descartadaEm: number | null; fechamentoConfirmadoEm: number | null }) =>
+      lado.descartadaEm == null && lado.fechamentoConfirmadoEm != null;
+    if (!outros.every(confirmou)) return { status: "negociacao" as const, aguardandoOutroLado: true };
     await moverCabecalho({ fechamentoEm: agora, statusComissao: "a_apurar" });
     await tx.update(conexoesParticipantes)
       .set({ statusComissaoOriginador: "a_apurar", updatedAt: agora })

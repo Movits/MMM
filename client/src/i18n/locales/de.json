@@ -1730,6 +1730,7 @@
       "cidade": "Stadt",
       "atuacao": "Ihr Tätigkeitsbereich",
       "apresentacao": "Eine Vorstellung mit mindestens {{minimo}} Wörtern darüber, wer Sie sind und was Sie tun",
+      "apresentacaoContagem": "Vorstellung: {{contadas}} von {{minimo}} Inhaltswörtern; kurze Wörter wie „und“ und „für“ zählen nicht",
       "oQueTenho": "Mindestens ein Eintrag unter Was ich habe",
       "oQuePreciso": "Mindestens ein Eintrag unter Was ich brauche"
     }

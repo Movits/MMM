@@ -1730,6 +1730,7 @@
       "cidade": "城市",
       "atuacao": "您的业务领域",
       "apresentacao": "一段至少 {{minimo}} 个词的自我介绍，说明您是谁、做什么",
+      "apresentacaoContagem": "自我介绍：{{contadas}}/{{minimo}} 个有内容的词；两个不同的汉字算一个词，数字和符号不计",
       "oQueTenho": "“我拥有什么”中至少一项",
       "oQuePreciso": "“我需要什么”中至少一项"
     }

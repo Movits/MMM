@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { CheckCircle, Circle } from "lucide-react";
 import {
   avaliarQualificacaoDoPerfil,
-  MINIMO_DE_PALAVRAS_NA_APRESENTACAO,
+  type PendenciaDoPerfil,
   type PerfilParaQualificar,
 } from "@shared/qualificacao-do-perfil";
 
@@ -23,7 +23,18 @@ export function QualificacaoDoPerfil({ role, perfil, onCompletar }: {
   const { t } = useTranslation();
   if (role !== "bronze") return null;
 
-  const { qualificado, pendencias } = avaliarQualificacaoDoPerfil(perfil);
+  const { qualificado, pendencias, detalhes } = avaliarQualificacaoDoPerfil(perfil);
+  const { apresentacao } = detalhes;
+
+  // A apresentação recusada diz quantas palavras de conteúdo a régua contou
+  // ("5 de 6; 'de' e 'para' não contam"), não só o mínimo: quem escreveu 7
+  // palavras e leu "pelo menos 6" não entendia a recusa (revisão da #135,
+  // item 8). Com a contagem no mínimo e a pendência de pé, o motivo é a
+  // repetição, e a contagem enganaria: fica o texto geral.
+  const textoDaPendencia = (pendencia: PendenciaDoPerfil) =>
+    pendencia === "apresentacao" && apresentacao.contadas < apresentacao.minimo
+      ? t("governanca.pendencias.apresentacaoContagem", apresentacao)
+      : t(`governanca.pendencias.${pendencia}`, { minimo: apresentacao.minimo });
 
   return (
     <section
@@ -48,7 +59,7 @@ export function QualificacaoDoPerfil({ role, perfil, onCompletar }: {
                 {pendencias.map(pendencia => (
                   <li key={pendencia} className="flex items-start gap-2 text-sm text-white/75">
                     <Circle size={13} className="mt-1 shrink-0 text-[#c98f70]" aria-hidden="true" />
-                    {t(`governanca.pendencias.${pendencia}`, { minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO })}
+                    {textoDaPendencia(pendencia)}
                   </li>
                 ))}
               </ul>

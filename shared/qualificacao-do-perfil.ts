@@ -102,6 +102,15 @@ export type QualificacaoDoPerfil = {
   /** O que falta, na ordem das seções do Perfil. Vazio quando qualificado. */
   pendencias: PendenciaDoPerfil[];
   dimensoes: { quemSou: boolean; oQueTenho: boolean; oQuePreciso: boolean };
+  /**
+   * O que a régua contou, para a tela explicar a pendência em vez de só
+   * repetir o mínimo (revisão da #135, item 8: "Consultora de marketing digital
+   * para pequenas empresas" tem 7 palavras, 5 de conteúdo, e a tela dizia só
+   * "pelo menos 6"). `contadas` são as palavras de conteúdo DISTINTAS da
+   * apresentação; com `contadas >= minimo` e a pendência ainda de pé, o motivo
+   * é a repetição dominante (ver `leituraComConteudo`).
+   */
+  detalhes: { apresentacao: { contadas: number; minimo: number } };
 };
 
 // Palavras funcionais de 3+ letras dos idiomas de escrita latina da plataforma.
@@ -232,13 +241,17 @@ function lerPalavras(texto: unknown): Leitura {
   };
 }
 
-/** Texto com pelo menos `minimo` palavras de conteúdo diferentes, sem repetição dominante. */
-export function textoComConteudo(texto: unknown, minimo: number): boolean {
-  const { distintas, total } = lerPalavras(texto);
+/** A leitura de um texto tem pelo menos `minimo` palavras de conteúdo diferentes, sem repetição dominante. */
+function leituraComConteudo({ distintas, total }: Leitura, minimo: number): boolean {
   if (distintas < Math.max(1, minimo)) return false;
   // "empresa empresa vendas vendas marketing marketing...": mais repetição que
   // conteúdo não é apresentação.
   return distintas / total >= 0.5;
+}
+
+/** Texto com pelo menos `minimo` palavras de conteúdo diferentes, sem repetição dominante. */
+export function textoComConteudo(texto: unknown, minimo: number): boolean {
+  return leituraComConteudo(lerPalavras(texto), minimo);
 }
 
 /** Itens de O que tenho / O que preciso: distintos (sem acento e caixa) e com conteúdo. */
@@ -278,7 +291,10 @@ export function avaliarQualificacaoDoPerfil(perfil: PerfilParaQualificar | null 
   if (!rotuloComConteudo(p.displayName)) pendencias.push("nome");
   if (!rotuloComConteudo(p.city)) pendencias.push("cidade");
   if (![p.primarySpecialty, p.activityArea, p.sector].some(rotuloComConteudo)) pendencias.push("atuacao");
-  if (!textoComConteudo(p.bio, MINIMO_DE_PALAVRAS_NA_APRESENTACAO)) pendencias.push("apresentacao");
+  // A apresentação é lida uma vez: a mesma leitura decide a pendência e vai
+  // para `detalhes`, para a tela explicar com a contagem que a régua fez.
+  const apresentacao = lerPalavras(p.bio);
+  if (!leituraComConteudo(apresentacao, MINIMO_DE_PALAVRAS_NA_APRESENTACAO)) pendencias.push("apresentacao");
   const quemSou = pendencias.length === 0;
 
   const oQueTenho = itensComConteudo(p.whatIHave).length > 0;
@@ -290,5 +306,6 @@ export function avaliarQualificacaoDoPerfil(perfil: PerfilParaQualificar | null 
     qualificado: pendencias.length === 0,
     pendencias,
     dimensoes: { quemSou, oQueTenho, oQuePreciso },
+    detalhes: { apresentacao: { contadas: apresentacao.distintas, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO } },
   };
 }

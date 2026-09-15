@@ -40,6 +40,8 @@ describe("as três dimensões juntas", () => {
       qualificado: true,
       pendencias: [],
       dimensoes: { quemSou: true, oQueTenho: true, oQuePreciso: true },
+      // "que", "para" e "a" não contam: 8 palavras de conteúdo em APRESENTACAO.
+      detalhes: { apresentacao: { contadas: 8, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO } },
     });
   });
 
@@ -89,6 +91,16 @@ describe("qualidade, não quantidade de caracteres (item 9)", () => {
     expect(textoComConteudo("Consultora de exportação em vinhos portugueses finos tintos", 6)).toBe(true);
   });
 
+  it("a pendência da apresentação vem com a contagem feita e o mínimo, para a tela explicar a recusa (item 8 da revisão da #135)", () => {
+    // 7 palavras escritas, 5 de conteúdo: "de" e "para" não contam. Sem a
+    // contagem, a tela dizia só "pelo menos 6 palavras" a quem escreveu 7.
+    const r = avaliarQualificacaoDoPerfil(com({ bio: "Consultora de marketing digital para pequenas empresas" }));
+    expect(r.pendencias).toEqual(["apresentacao"]);
+    expect(r.detalhes).toEqual({ apresentacao: { contadas: 5, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO } });
+    // Perfil ausente: zero contadas, e o mínimo continua lá para a tela mostrar "0 de 6".
+    expect(avaliarQualificacaoDoPerfil(null).detalhes).toEqual({ apresentacao: { contadas: 0, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO } });
+  });
+
   it("a mesma palavra repetida mil vezes é UMA palavra", () => {
     expect(avaliarQualificacaoDoPerfil(com({ bio: "empresa ".repeat(1000) })).pendencias).toEqual(["apresentacao"]);
   });
@@ -96,6 +108,11 @@ describe("qualidade, não quantidade de caracteres (item 9)", () => {
   it("mais repetição que conteúdo não passa, mesmo com seis palavras diferentes", () => {
     const repetitiva = "vendas vendas vendas marketing marketing marketing digital digital digital varejo varejo varejo moda moda moda luxo luxo luxo";
     expect(textoComConteudo(repetitiva, 6)).toBe(false);
+    // Aqui a contagem atinge o mínimo e a pendência é pela repetição: a tela
+    // não pode dizer "6 de 6 palavras" como se faltasse palavra.
+    const r = avaliarQualificacaoDoPerfil(com({ bio: repetitiva }));
+    expect(r.pendencias).toEqual(["apresentacao"]);
+    expect(r.detalhes.apresentacao).toEqual({ contadas: 6, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO });
   });
 
   it("uma letra só, longa, não é texto", () => {
@@ -200,7 +217,10 @@ describe("não discrimina idioma nem nome curto", () => {
     ["japonês", "家族経営の企業の輸出を支援する税理士です。"],
   ])("apresentação em %s qualifica", (_idioma, bio) => {
     expect(textoComConteudo(bio, MINIMO_DE_PALAVRAS_NA_APRESENTACAO)).toBe(true);
-    expect(avaliarQualificacaoDoPerfil(com({ bio })).qualificado).toBe(true);
+    const r = avaliarQualificacaoDoPerfil(com({ bio }));
+    expect(r.qualificado).toBe(true);
+    // A contagem devolvida é a mesma que qualificou: nunca abaixo do mínimo num perfil qualificado.
+    expect(r.detalhes.apresentacao.contadas).toBeGreaterThanOrEqual(MINIMO_DE_PALAVRAS_NA_APRESENTACAO);
   });
 
   it("nome e cidade curtos valem ('Li', 'Yu', 'Ur'); nome de teste ou letra repetida, não", () => {

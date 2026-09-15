@@ -328,6 +328,12 @@ describe("registro — apresentação, negociação, fechamento (itens 16 e 17)"
   }
   const updates = () => estado.consultas.filter(c => /^update/.test(c.sql));
   const sqls = () => estado.consultas.map(c => c.sql);
+  // O valor que um UPDATE grava numa coluna do SET (os `?` do SET vêm antes dos do WHERE); undefined = a coluna não está no SET.
+  const valorNoSet = (update: { sql: string; params: unknown[] }, coluna: string) => {
+    const colunas = Array.from(update.sql.replace(/ where .*$/, "").matchAll(/`(\w+)` = \?/g), m => m[1]);
+    const posicao = colunas.indexOf(coluna);
+    return posicao === -1 ? undefined : update.params[posicao];
+  };
 
   it("fora de ordem: a etapa é conferida com o cabeçalho TRAVADO, e nada é escrito", async () => {
     conexaoNoBanco("identificada", [DA_DONA(), DA_DONA()]);
@@ -418,6 +424,44 @@ describe("registro — apresentação, negociação, fechamento (itens 16 e 17)"
     const [, cabecalho] = updates();
     expect(cabecalho.sql).toMatch(/^update `conexoes_registradas`/);
     expect(cabecalho.params).toEqual(expect.arrayContaining(["descartada", "c-1"]));
+  });
+
+  it("descartar depois de confirmar o fechamento apaga a confirmação do próprio lado", async () => {
+    conexaoNoBanco("negociacao", [DA_DONA(null, 5), DA_OUTRA_DONA()]);
+    expect(await avancarConexao(DONA, "c-1", "descartada")).toEqual({ status: "descartada", aguardandoOutroLado: false });
+    const [descarte, ...outros] = updates();
+    expect(outros).toHaveLength(0);
+    expect(descarte.sql).toMatch(/^update `conexoes_participantes`/);
+    expect(descarte.params).toEqual(expect.arrayContaining(["c-1", DONA.openId, DONA.id]));
+    expect(valorNoSet(descarte, "descartada_em")).toEqual(expect.any(Number));
+    expect(valorNoSet(descarte, "fechamento_confirmado_em")).toBeNull();
+  });
+
+  it("item 6 da revisão da #135 — A confirma, A descarta, B confirma: a conexão NÃO fecha e a comissão NÃO vai a 'a_apurar'", async () => {
+    const OUTRA_DONA = { id: 2, openId: "dona-2" };
+    // 1. A confirma o fechamento: fica só no lado dela.
+    conexaoNoBanco("negociacao", [DA_DONA(), DA_OUTRA_DONA()]);
+    expect(await avancarConexao(DONA, "c-1", "fechada")).toEqual({ status: "negociacao", aguardandoOutroLado: true });
+
+    // 2. A descarta (o que o descarte grava está no teste acima).
+    estado.consultas = [];
+    conexaoNoBanco("negociacao", [DA_DONA(null, 5), DA_OUTRA_DONA()]);
+    expect(await avancarConexao(DONA, "c-1", "descartada")).toEqual({ status: "descartada", aguardandoOutroLado: false });
+
+    // 3. B confirma. O lado descartado de A não conta como confirmado — nem quando a confirmação
+    //    antiga ficou gravada nele (linha anterior a esta regra): B fica aguardando, como na primeira confirmação.
+    for (const ladoDeA of [DA_DONA(8, null), DA_DONA(8, 5)]) {
+      estado.consultas = [];
+      conexaoNoBanco("negociacao", [ladoDeA, DA_OUTRA_DONA()]);
+      expect(await avancarConexao(OUTRA_DONA, "c-1", "fechada")).toEqual({ status: "negociacao", aguardandoOutroLado: true });
+      const [confirmacao, ...outros] = updates();
+      expect(outros).toHaveLength(0);
+      expect(confirmacao.sql).toMatch(/^update `conexoes_participantes`/);
+      expect(confirmacao.params).toEqual(expect.arrayContaining(["c-1", OUTRA_DONA.openId, OUTRA_DONA.id]));
+      const params = estado.consultas.flatMap(c => c.params);
+      expect(params).not.toContain("fechada");
+      expect(params).not.toContain("a_apurar");
+    }
   });
 
   it("falha ao marcar as originadoras desfaz o fechamento inteiro (rollback): a ação pode ser repetida", async () => {

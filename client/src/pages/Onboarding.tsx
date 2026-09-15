@@ -20,11 +20,25 @@ import { EtapaTermoGeralDeUso } from "@/components/TermoGeralDeUso";
 import { rotuloDaBusca } from "@/lib/interesses";
 import { EditorDoQuePreciso } from "@/components/OQuePreciso";
 import { categoriasPendentes, demandasParaGravar, type DemandaDetalhada } from "@shared/o-que-preciso";
+import { PREFIXO_DO_RASCUNHO_DO_CADASTRO } from "@/_core/hooks/useAuth";
 
 // Tetos do servidor (routers/profile.ts) para os campos livres: o ditado pode
 // passar deles, e sem contador o erro só aparecia no último passo.
 const LIMITE_BIO = 1000;
 const LIMITE_META = 2000;
+
+/** Corta o texto para caber em `limite` unidades UTF-16 (a medida de `.length`,
+ *  a mesma do zod no servidor e de LIMITE_BIO) sem partir um emoji ao meio:
+ *  percorre por code point (Array.from) e para antes do que não cabe. */
+function cortarSemPartirEmoji(texto: string, limite: number): string {
+  if (texto.length <= limite) return texto;
+  let cortado = "";
+  for (const caractere of Array.from(texto)) {
+    if (cortado.length + caractere.length > limite) break;
+    cortado += caractere;
+  }
+  return cortado;
+}
 
 /**
  * Última etapa: o Termo Geral de Uso (components/TermoGeralDeUso.tsx). É a
@@ -114,6 +128,75 @@ const INITIAL: FormData = {
   whatIHave: [], whatINeed: [], whatINeedDetails: [],
   termoGeralAceitoId: null,
 };
+
+// ─── Rascunho do cadastro ─────────────────────────────────────────────────────
+// Sem versão publicada do Termo Geral o botão final trava (ver ETAPA_TERMO_GERAL)
+// e fechar a aba perdia as 8 etapas preenchidas (lista do Nicolas na PR #135,
+// janela C). O formulário fica em localStorage, numa chave por usuária, a cada
+// mudança; volta ao abrir de novo e é apagado ao concluir com sucesso. Sem
+// usuária conhecida nada é gravado: uma chave sem dona mostraria o cadastro de
+// uma conta para outra no mesmo navegador. A caixa do Termo Geral fica de fora:
+// o aceite é ato da sessão que conclui (e a versão exibida pode ter mudado).
+//
+// Privacidade (mesma razão da nota V-03 em _core/hooks/useAuth.ts, que tirou
+// dado de usuária do localStorage): faixa de renda, capacidade de investimento
+// e Número de Cadastro Empresarial NÃO entram no rascunho, a pessoa redigita;
+// o rascunho leva `salvoEm` e vale 7 dias (sem data, ou vencido, é ignorado);
+// sair da conta apaga todos os rascunhos (apagarRascunhosDoCadastro, no logout).
+const CAMPOS_FORA_DO_RASCUNHO: ReadonlySet<keyof FormData> = new Set<keyof FormData>([
+  "termoGeralAceitoId", "incomeRange", "investmentCapacity", "companyCnpj",
+]);
+const VALIDADE_DO_RASCUNHO_MS = 7 * 24 * 60 * 60 * 1000;
+
+function chaveDoRascunhoDa(idDaUsuaria: number | string): string {
+  return PREFIXO_DO_RASCUNHO_DO_CADASTRO + String(idDaUsuaria);
+}
+
+/** Lê o rascunho gravado; só entram os campos com a forma que o formulário
+ *  espera, para um rascunho de versão antiga (ou adulterado) não quebrar a tela. */
+function lerRascunho(chave: string): Partial<FormData> | null {
+  try {
+    const bruto = window.localStorage.getItem(chave);
+    if (!bruto) return null;
+    const dados: unknown = JSON.parse(bruto);
+    if (!dados || typeof dados !== "object" || Array.isArray(dados)) return null;
+    const { salvoEm } = dados as { salvoEm?: unknown };
+    if (typeof salvoEm !== "number" || Date.now() - salvoEm > VALIDADE_DO_RASCUNHO_MS) return null;
+    const rascunho: Partial<FormData> = {};
+    for (const campo of Object.keys(INITIAL) as (keyof FormData)[]) {
+      if (CAMPOS_FORA_DO_RASCUNHO.has(campo)) continue;
+      const valor = (dados as Record<string, unknown>)[campo];
+      const padrao = INITIAL[campo];
+      const compativel = Array.isArray(padrao) ? Array.isArray(valor)
+        : padrao === null ? valor === null || typeof valor === "number"
+        : typeof valor === typeof padrao;
+      if (compativel) (rascunho as Record<string, unknown>)[campo] = valor;
+    }
+    return rascunho;
+  } catch {
+    return null;
+  }
+}
+
+function gravarRascunho(chave: string, form: FormData) {
+  try {
+    const rascunho: Record<string, unknown> = { salvoEm: Date.now() };
+    for (const [campo, valor] of Object.entries(form)) {
+      if (!CAMPOS_FORA_DO_RASCUNHO.has(campo as keyof FormData)) rascunho[campo] = valor;
+    }
+    window.localStorage.setItem(chave, JSON.stringify(rascunho));
+  } catch {
+    // Sem armazenamento (modo privado, cota cheia): o cadastro segue sem rascunho.
+  }
+}
+
+function apagarRascunho(chave: string) {
+  try {
+    window.localStorage.removeItem(chave);
+  } catch {
+    // Idem: nada a fazer sem armazenamento.
+  }
+}
 
 // ─── Componentes reutilizáveis ────────────────────────────────────────────────
 function CardOption({ selected, onClick, icon, label, desc }: {
@@ -244,22 +327,45 @@ export default function Onboarding() {
   const [cityOptions, setCityOptions] = useState<string[]>([]);
   const municipiosRef = useRef<string[] | null>(null);
   const prefilled = useRef(false);
+  // Chave do rascunho em localStorage: existe só depois de saber quem é a
+  // usuária e de restaurar o que ela já tinha (ver "Rascunho do cadastro").
+  const [chaveDoRascunho, setChaveDoRascunho] = useState<string | null>(null);
 
   // Pre-preenche com o que ja existe: o nome dado no cadastro (users.name) e,
   // num re-onboarding, o perfil salvo. Antes o formulario abria vazio e pedia
-  // o nome de novo.
+  // o nome de novo. O rascunho da usuária entra ANTES: campo que ela já
+  // preencheu vence o perfil salvo.
   const profileQuery = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   useEffect(() => {
     if (prefilled.current || !profileQuery.data) return;
-    const { user, profile } = profileQuery.data as { user?: { name?: string | null } | null; profile?: Partial<FormData> & { displayName?: string | null; city?: string | null; country?: string | null } | null };
+    const { user, profile } = profileQuery.data as { user?: { id?: number; name?: string | null } | null; profile?: Partial<FormData> & { displayName?: string | null; city?: string | null; country?: string | null; bio?: string | null } | null };
     prefilled.current = true;
-    setForm(prev => ({
-      ...prev,
-      displayName: prev.displayName || profile?.displayName || user?.name || "",
-      city: prev.city || profile?.city || "",
-      country: profile?.country || prev.country,
-    }));
+    const chave = user?.id != null ? chaveDoRascunhoDa(user.id) : null;
+    const rascunho = chave ? lerRascunho(chave) : null;
+    // Chave e formulário mudam juntos (mesmo lote): o efeito que grava só roda
+    // com o formulário já restaurado, nunca com o vazio do primeiro render.
+    setChaveDoRascunho(chave);
+    setForm(prev => {
+      const base = rascunho ? { ...prev, ...rascunho } : prev;
+      return {
+        ...base,
+        displayName: base.displayName || profile?.displayName || user?.name || "",
+        city: base.city || profile?.city || "",
+        country: rascunho?.country || profile?.country || base.country,
+        // A bio já salva (contas da carga de scripts/importar-participantes.mjs)
+        // não vinha para o formulário e saía vazia ao concluir, apagando-a no
+        // servidor (lista do Nicolas na PR #135, item 10). A carga insere sem
+        // limite e o zod de completeOnboarding aceita até LIMITE_BIO: maior que
+        // isso, o "Continuar" da etapa 1 travava e a conta não concluía.
+        bio: base.bio || cortarSemPartirEmoji(profile?.bio ?? "", LIMITE_BIO),
+      };
+    });
   }, [profileQuery.data]);
+
+  // Grava o rascunho a cada mudança (objeto pequeno; síncrono).
+  useEffect(() => {
+    if (chaveDoRascunho) gravarRascunho(chaveDoRascunho, form);
+  }, [form, chaveDoRascunho]);
 
   // Sugestoes de cidade (IBGE) so quando o pais e o Brasil: filtra em memoria
   // a partir de 2 letras, ignorando acento, e mostra no maximo 50 opcoes para
@@ -420,6 +526,8 @@ export default function Onboarding() {
 
   const utils = trpc.useUtils();
   const concluir = () => {
+    // Cadastro gravado: o rascunho não tem mais razão de existir.
+    if (chaveDoRascunho) apagarRascunho(chaveDoRascunho);
     // O servidor acabou de gravar onboardingCompleted = true, mas o auth.me em
     // cache ainda diz false: sem isto o ProtectedRoute do /dashboard mandaria a
     // pessoa de volta a /onboarding (cadastro incompleto vai para lá).
@@ -519,7 +627,11 @@ export default function Onboarding() {
   const salvarPerfil = () => {
     const selectedSpecialties = normalizePrimarySpecialties(form.primarySpecialties, form.customSpecialty);
     saveOnboarding.mutate({
-      displayName: form.displayName, city: form.city, country: form.country, bio: form.bio,
+      displayName: form.displayName, city: form.city, country: form.country,
+      // Em branco, o campo não vai: `bio: ""` apagava a bio importada, e o
+      // servidor (upsertUserProfile → UPDATE do Drizzle) não toca na coluna
+      // quando o valor está ausente.
+      bio: form.bio.trim() || undefined,
       primarySpecialty: selectedSpecialties[0], secondarySpecialties: selectedSpecialties.slice(1),
       experienceYears: form.experienceYears ?? undefined,
       educationLevel: form.educationLevel as "high_school" | "bachelor" | "master" | "phd" | "other" | undefined,

@@ -260,6 +260,58 @@ describe("medirDuracaoDoAudio — MP4 / M4A", () => {
       trak({ id: 2, manipulador: "soun", escala: 44100, entrada: entradaMp4a(ASC_AAC_LC_44100), amostras: 431, delta: 1024 }));
     expect(medirDuracaoDoAudio(Buffer.concat([ftyp(), moov]))).toBeCloseTo((431 * 1024) / 44100, 6);
   });
+
+  it("MP4 forjado com dezenas de milhares de trak e de tfhd não trava o servidor: desiste em menos de 500 ms e devolve null", () => {
+    // Pior caso do laço: cada trak mínimo (8 bytes) vira uma faixa e cada tfhd
+    // procura a faixa pelo id. Era O(trak × tfhd): 1,28 MB levou 34 s síncronos
+    // (item 9 da revisão do Nicolas na PR #135), e o envio aceita 10 MB.
+    const traks = Buffer.concat(Array.from({ length: 30_000 }, () => caixa("trak")));
+    const fragmentos = Array.from({ length: 30_000 }, () => caixa("moof", caixa("traf", caixaCheia("tfhd", 0, u32be(999)))));
+    const forjado = Buffer.concat([ftyp(), caixa("moov", traks), ...fragmentos]);
+    const inicio = performance.now();
+    const medida = medirDuracaoDoAudio(forjado);
+    const decorrido = performance.now() - inicio;
+    expect(medida).toBeNull();
+    expect(decorrido).toBeLessThan(500);
+  }, 2000);
+
+  it("gravação fragmentada de 10 min (2.400 fragmentos, como o Safari fatiando a cada 250 ms) continua medida; o tfhd acha a faixa de som pelo id", () => {
+    const moov = caixa("moov",
+      trak({ id: 1, manipulador: "vide", escala: 1000, entrada: caixa("avc1", Buffer.alloc(78)), amostras: 0, delta: 0 }),
+      trak({ id: 2, manipulador: "soun", escala: 44100, entrada: entradaMp4a(ASC_AAC_LC_44100), amostras: 0, delta: 0 }),
+      caixa("mvex", caixaCheia("trex", 0, u32be(2), u32be(1), u32be(1024), u32be(0), u32be(0))));
+    // 250 ms a 44,1 kHz são ~10,77 quadros: alterna 10 e 11 para fechar 25.840 quadros em 2.400 fragmentos.
+    const fragmento = (quadros: number) => Buffer.concat([
+      caixa("moof", caixaCheia("mfhd", 0, u32be(1)), caixa("traf", caixaCheia("tfhd", 0, u32be(2)), caixaCheia("tfdt", 0, u32be(0)), caixaCheia("trun", 0x1, u32be(quadros), u32be(0)))),
+      caixa("mdat", Buffer.alloc(8)),
+    ]);
+    const quadrosPorFragmento = Array.from({ length: 2400 }, (_, i) => (i % 13 < 10 ? 11 : 10));
+    const quadros = quadrosPorFragmento.reduce((soma, n) => soma + n, 0);
+    const arquivo = Buffer.concat([ftyp(), moov, ...quadrosPorFragmento.map(fragmento)]);
+    expect(medirDuracaoDoAudio(arquivo)).toBeCloseTo((quadros * 1024) / 44100, 6);
+  });
+
+  it("mais de 200 mil caixas no arquivo: a medição desiste (null), mesmo com uma faixa de som legítima", () => {
+    const moov = caixa("moov", trak({ id: 1, manipulador: "soun", escala: 44100, entrada: entradaMp4a(ASC_AAC_LC_44100), amostras: 431, delta: 1024 }));
+    const livres = Buffer.alloc(8 * 200_001);
+    for (let i = 0; i < 200_001; i++) caixa("free").copy(livres, i * 8);
+    expect(medirDuracaoDoAudio(Buffer.concat([ftyp(), moov, livres]))).toBeNull();
+  });
+
+  // A borda de TETO_DE_FAIXAS_MP4 (64), com a faixa de som legítima por ÚLTIMO para que seja ela a 64ª ou a 65ª.
+  // O par protege o `>=` da guarda: com `>` o 65º trak ainda seria lido e o segundo caso mediria; com o teto um
+  // abaixo, o 64º (a própria faixa de som) já não seria lido e o primeiro caso daria null.
+  const faixaDeSomDepoisDe = (forjados: number) => Buffer.concat([ftyp(), caixa("moov",
+    ...Array.from({ length: forjados }, () => caixa("trak")),
+    trak({ id: 1, manipulador: "soun", escala: 44100, entrada: entradaMp4a(ASC_AAC_LC_44100), amostras: 431, delta: 1024 }))]);
+
+  it("exatamente 64 faixas (63 trak forjados e a de som): ainda mede", () => {
+    expect(medirDuracaoDoAudio(faixaDeSomDepoisDe(63))).toBeCloseTo((431 * 1024) / 44100, 6);
+  });
+
+  it("65 faixas: desiste (null) antes de ler a 65ª, mesmo sendo ela a de som", () => {
+    expect(medirDuracaoDoAudio(faixaDeSomDepoisDe(64))).toBeNull();
+  });
 });
 
 describe("medirDuracaoDoAudio — o que não se mede", () => {

@@ -1730,6 +1730,7 @@
       "cidade": "都市",
       "atuacao": "あなたの活動分野",
       "apresentacao": "あなたが誰で何をしているかを伝える、{{minimo}}語以上の自己紹介",
+      "apresentacaoContagem": "自己紹介：{{contadas}}/{{minimo}}語の内容のある言葉；異なる2文字で1語と数え、数字や記号は含まれません",
       "oQueTenho": "「私が持つもの」に1つ以上の項目",
       "oQuePreciso": "「私が必要なもの」に1つ以上の項目"
     }

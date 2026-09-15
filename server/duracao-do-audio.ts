@@ -22,7 +22,8 @@
  * Codecs que nenhum navegador grava (Vorbis; o que não é AAC dentro de MP4; o
  * que não é Opus dentro de WebM) caem nos carimbos de tempo do contêiner.
  * Formato não reconhecido devolve null, e quem chama recusa: áudio que não se
- * mede não se limita.
+ * mede não se limita. MP4 que estoura os tetos de faixas ou de caixas (forjado
+ * para custar tempo, não para tocar) também devolve null.
  */
 
 const ascii = (b: Buffer, pos: number, n: number) => (pos >= 0 && pos + n <= b.length ? b.toString("latin1", pos, pos + n) : "");
@@ -354,6 +355,16 @@ function duracaoMatroska(b: Buffer): number | null {
 
 const CAIXAS_INICIAIS_MP4 = new Set(["ftyp", "styp", "moov", "mdat", "free", "skip", "wide", "pnot"]);
 const CAIXAS_DE_PASSAGEM_MP4 = new Set(["moov", "mdia", "minf", "stbl", "mvex", "moof"]);
+/**
+ * Tetos contra MP4 forjado (item 9 da revisão da PR #135): cada `trak` de 8
+ * bytes virava uma faixa, e cada `tfhd` percorria a lista inteira — 1,28 MB de
+ * caixas mínimas levou 34 s síncronos, e o envio aceita 10 MB (1,3 milhão de
+ * caixas). Uma gravação real tem uma ou duas faixas; 10 min do Safari fatiados
+ * a cada 250 ms têm uns 2.400 fragmentos de ~7 caixas (17 mil). Ao estourar, a
+ * medição desiste (null) e quem chama recusa, como faz com formato desconhecido.
+ */
+const TETO_DE_FAIXAS_MP4 = 64;
+const TETO_DE_CAIXAS_MP4 = 200_000;
 const TAXAS_AAC = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
 /** Tipos de objeto de áudio MPEG-4 com GASpecificConfig (quadro de 1024 ou 960; 512 ou 480 no LD). */
 const AAC_COM_QUADRO_FIXO = new Set([1, 2, 3, 4, 6, 7, 17, 19, 20, 21, 22, 23]);
@@ -369,6 +380,16 @@ function duracaoMp4(b: Buffer): number | null {
   const duracaoPadraoPorFaixa: Record<number, number> = {};
   let faixa: FaixaMp4 | null = null;
   let fragmento: { faixa: FaixaMp4 | undefined; duracaoPadrao: number } | null = null;
+  let caixasVisitadas = 0;
+  let desistiu = false;
+
+  /** Faixa pelo id, para o `tfhd` achar a sua sem varrer a lista. Havendo duas com o mesmo id, vale a primeira. */
+  const faixaPorId = new Map<number, FaixaMp4>();
+  const indexarFaixa = (f: FaixaMp4, id: number) => {
+    if (faixaPorId.get(f.id) === f) faixaPorId.delete(f.id);
+    f.id = id;
+    if (!faixaPorId.has(id)) faixaPorId.set(id, f);
+  };
 
   const lerAudioSpecificConfig = (f: FaixaMp4, inicio: number, fim: number) => {
     let bit = inicio * 8;
@@ -457,7 +478,8 @@ function duracaoMp4(b: Buffer): number | null {
 
   const percorrer = (inicio: number, fim: number, profundidade: number) => {
     let pos = inicio;
-    while (pos + 8 <= fim && profundidade < 12) {
+    while (!desistiu && pos + 8 <= fim && profundidade < 12) {
+      if (++caixasVisitadas > TETO_DE_CAIXAS_MP4) { desistiu = true; return; }
       let tamanho = u32(b, pos);
       let cabecalho = 8;
       if (tamanho === 1) { tamanho = u32(b, pos + 8) * 4294967296 + u32(b, pos + 12); cabecalho = 16; }
@@ -469,8 +491,10 @@ function duracaoMp4(b: Buffer): number | null {
       const versao = b[dados];
       const flags = u32(b, dados) & 0xffffff;
       if (tipo === "trak") {
+        if (faixas.length >= TETO_DE_FAIXAS_MP4) { desistiu = true; return; }
         faixa = { id: 0, manipulador: "", escala: 0, codec: "", taxaAac: 0, quadroAac: 0, amostrasTabela: 0, amostrasFragmentos: 0, unidades: 0 };
         faixas.push(faixa);
+        indexarFaixa(faixa, 0);
         percorrer(dados, final, profundidade + 1);
         faixa = null;
       } else if (tipo === "traf") {
@@ -480,7 +504,7 @@ function duracaoMp4(b: Buffer): number | null {
       } else if (CAIXAS_DE_PASSAGEM_MP4.has(tipo)) {
         percorrer(dados, final, profundidade + 1);
       } else if (faixa && tipo === "tkhd") {
-        faixa.id = u32(b, dados + (versao === 1 ? 20 : 12));
+        indexarFaixa(faixa, u32(b, dados + (versao === 1 ? 20 : 12)));
       } else if (faixa && tipo === "mdhd") {
         faixa.escala = u32(b, dados + (versao === 1 ? 20 : 12));
       } else if (faixa && tipo === "hdlr" && ascii(b, dados + 4, 4) !== "dhlr") {
@@ -505,7 +529,7 @@ function duracaoMp4(b: Buffer): number | null {
         let p = dados + 8;
         if (flags & 0x1) p += 8;
         if (flags & 0x2) p += 4;
-        fragmento.faixa = faixas.find(f => f.id === id);
+        fragmento.faixa = faixaPorId.get(id);
         fragmento.duracaoPadrao = flags & 0x8 ? u32(b, p) : duracaoPadraoPorFaixa[id] ?? 0;
       } else if (fragmento?.faixa && tipo === "trun") {
         const alvo = fragmento.faixa;
@@ -524,6 +548,7 @@ function duracaoMp4(b: Buffer): number | null {
   };
 
   percorrer(0, b.length, 0);
+  if (desistiu) return null;
 
   let maior = 0;
   for (const f of faixas) {
