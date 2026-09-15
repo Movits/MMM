@@ -443,15 +443,21 @@ const IMOVEL = [
   // cabeça não decidia e a CATEGORIA passava a decidir — "Apartamento na praia"
   // com a categoria "Serviços jurídicos" virava serviço e caía no portão da
   // demanda expressa, que é restrição (defeito relatado depois da #101).
-  "apartamento", "apartamentos", "apartment", "apartments", "flat", "flats",
-  // "cobertura" saiu daqui: fora do mercado imobiliário ela é reportagem,
-  // seguro ou telhado, e classificar "Cobertura jornalística" como IMÓVEL tira
-  // o item do portão da demanda expressa — o par com "Compradores" [Serviços]
-  // passava a valer 60 por categoria, que é exatamente o vazamento que a #101
-  // existe para fechar. Achado na revisão de 14/09.
-  "casa", "casas", "house", "houses", "sobrado", "sobrados",
-  "sala", "salas", "loja", "lojas", "store", "stores",
-  "vaga", "vagas", "garagem", "garagens",
+  //
+  // A lista é CURTA de propósito, e ficou assim depois da revisão de 14/09.
+  // O erro custa caro para este lado: classificar como imóvel TIRA o item do
+  // portão, e o par volta a casar por categoria — o vazamento que a #101 existe
+  // para fechar. Faltar palavra só mantém o que já havia; sobrar palavra abre
+  // buraco. Então só entra o que não significa outra coisa fora do mercado
+  // imobiliário.
+  //
+  // Medido e removido por isso: "casa" (casa de câmbio, casa de software),
+  // "house" (consulting house, publishing house), "loja"/"store" (loja virtual,
+  // store management), "sala" (sala de reunião), "flat" (flat fee), "cobertura"
+  // (reportagem, seguro, telhado) e, o pior deles, "vaga" — em rede de negócios
+  // "Vaga de emprego" é vaga de trabalho, e virava imóvel.
+  "apartamento", "apartamentos", "apartment", "apartments",
+  "sobrado", "sobrados", "garagem", "garagens",
 ];
 
 /**

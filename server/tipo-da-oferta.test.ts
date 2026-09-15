@@ -230,15 +230,31 @@ describe("Tipo da oferta — a ordem da decisão", () => {
   });
 });
 
-describe("Imóvel residencial e comercial — a cabeça decide antes da categoria", () => {
-  it("apartamento, casa, sala e loja são imóvel pela própria cabeça, mesmo com categoria dizendo outra coisa", () => {
+describe("Imóvel residencial — a cabeça decide antes da categoria", () => {
+  it("apartamento e sobrado são imóvel pela própria cabeça, mesmo com a categoria dizendo outra coisa", () => {
     expect(classificarOferta("Apartamento na praia")).toBe("imovel");
     expect(classificarOferta("Apartamento na praia", "Serviços jurídicos")).toBe("imovel");
-    expect(classificarOferta("Casa em Cascais", "Consultoria")).toBe("imovel");
-    expect(classificarOferta("Sala comercial no centro")).toBe("imovel");
-    expect(classificarOferta("Loja de rua", "Serviços")).toBe("imovel");
+    expect(classificarOferta("Sobrado no centro", "Serviços")).toBe("imovel");
     // Rural continua ATIVO, como já era decidido: "Fazenda de café" produz.
     expect(classificarOferta("Fazenda de café")).toBe("ativo");
+  });
+
+  it("e a lista NÃO leva palavra que significa outra coisa fora do imobiliário", () => {
+    // Revisão do Roberto, 14/09: "casa", "house", "sala", "loja", "store",
+    // "flat" e "vaga" tinham entrado aqui nesta PR e classificavam como IMÓVEL
+    // coisas que não são. O erro custa caro para este lado: virar imóvel TIRA o
+    // item do portão da demanda expressa, e o par volta a casar por categoria —
+    // o vazamento que a #101 existe para fechar.
+    //
+    // "Vaga de emprego" é o pior: em rede de negócios, vaga é de trabalho.
+    expect(classificarOferta("Vaga de emprego", "Serviços"), "vaga de emprego").not.toBe("imovel");
+    expect(classificarOferta("Casa de câmbio", "Financeiro"), "casa de câmbio").not.toBe("imovel");
+    expect(classificarOferta("Casa de software", "Tecnologia"), "casa de software").not.toBe("imovel");
+    expect(classificarOferta("Consulting house", "Consulting"), "consulting house").not.toBe("imovel");
+    expect(classificarOferta("Loja virtual", "Tecnologia"), "loja virtual").not.toBe("imovel");
+    expect(classificarOferta("Store management", "Serviços"), "store management").not.toBe("imovel");
+    expect(classificarOferta("Sala de reunião", "Serviços"), "sala de reunião").not.toBe("imovel");
+    expect(classificarOferta("Cobertura jornalística", "Serviços"), "cobertura jornalística").not.toBe("imovel");
   });
 });
 
