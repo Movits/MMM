@@ -19,17 +19,17 @@ const urlFlexivel = z.preprocess(
   z.string().url("Informe uma URL válida (ex.: https://seusite.com.br)").optional().or(z.literal(""))
 );
 
-// O campo `companyCnpj` guarda o número de cadastro empresarial: letras e
+// O campo `companyCnpj` guarda o número do cadastro empresarial: letras e
 // números, sem máscara, sem 14 dígitos fixos e sem dígito verificador (vale
 // para registro de outro país e para o CNPJ alfanumérico). Quem se declara MEI,
 // pessoa jurídica ou organização sem fins lucrativos tem cadastro por definição (A7).
 function conferirCadastroEmpresarial(personType: string | undefined, companyCnpj: string | undefined) {
   const cadastro = companyCnpj ? normalizarCadastroEmpresarial(companyCnpj) : "";
   if (cadastro.length > CADASTRO_EMPRESARIAL_MAX) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: `O número de cadastro empresarial tem no máximo ${CADASTRO_EMPRESARIAL_MAX} letras e números.` });
+    throw new TRPCError({ code: "BAD_REQUEST", message: `O número do cadastro empresarial tem no máximo ${CADASTRO_EMPRESARIAL_MAX} letras e números.` });
   }
   if (exigeCadastroEmpresarial(personType) && !cadastro) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o número de cadastro empresarial: ele é obrigatório para MEI, pessoa jurídica e organização sem fins lucrativos." });
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o número do cadastro empresarial: ele é obrigatório para MEI, pessoa jurídica e organização sem fins lucrativos." });
   }
 }
 

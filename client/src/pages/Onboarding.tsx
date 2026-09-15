@@ -140,14 +140,14 @@ function TagButton({ icon, label, selected, onClick }: {
   );
 }
 
-function TextInput({ label, value, onChange, placeholder, type = "text", hint, min, max, maxLength, list, required }: {
+function TextInput({ label, value, onChange, placeholder, type = "text", hint, min, max, list, required }: {
   label: string; value: string | number; onChange: (v: string) => void;
-  placeholder?: string; type?: string; hint?: string; min?: number; max?: number; maxLength?: number; list?: string; required?: boolean;
+  placeholder?: string; type?: string; hint?: string; min?: number; max?: number; list?: string; required?: boolean;
 }) {
   return (
     <div>
       <label className="block text-sm font-medium text-white/70 mb-2">{label}{required && <span className="text-[#c98f70]"> *</span>}</label>
-      <input type={type} value={value ?? ""} min={min} max={max} maxLength={maxLength} list={list}
+      <input type={type} value={value ?? ""} min={min} max={max} list={list}
         inputMode={type === "number" ? "numeric" : undefined}
         onChange={e => onChange(e.target.value)} placeholder={placeholder}
         className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#c98f70]/60 focus:bg-white/8 transition-all duration-200 text-sm"/>
@@ -640,7 +640,7 @@ export default function Onboarding() {
                               { value: "large", label: t("profile.business.sizeLarge") },
                             ], i18n.language)} placeholder={t("onboarding.fields.selectPlaceholder")}/>
                       <TextInput label={t("profile.business.registrationNumber")} required value={form.companyCnpj}
-                        onChange={value => set("companyCnpj", normalizarCadastroEmpresarial(value))} maxLength={CADASTRO_EMPRESARIAL_MAX}
+                        onChange={value => set("companyCnpj", normalizarCadastroEmpresarial(value).slice(0, CADASTRO_EMPRESARIAL_MAX))}
                         placeholder={t("profile.business.registrationNumberPlaceholder")} hint={t("profile.business.registrationNumberHint")}/>
                     </div>
                   )}

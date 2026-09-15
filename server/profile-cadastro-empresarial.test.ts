@@ -5,7 +5,7 @@ vi.hoisted(() => {
 });
 
 /**
- * O "número de cadastro empresarial" (antes só CNPJ) em `profile.update` e
+ * O "número do cadastro empresarial" (antes só CNPJ) em `profile.update` e
  * `profile.completeOnboarding`, rodados pelo `createCaller`: o servidor tira
  * hífen, ponto, barra e espaço, aceita letras, não corta em 14 dígitos nem confere
  * dígito verificador, e continua exigindo o campo de MEI, pessoa jurídica e
@@ -75,7 +75,7 @@ beforeEach(() => {
   atualizacoes.length = 0;
 });
 
-describe("profile.update: número de cadastro empresarial", () => {
+describe("profile.update: número do cadastro empresarial", () => {
   it("grava sem hífen nem pontuação, com letras e mais de 14 caracteres", async () => {
     await chamadora().profile.update({ personType: "legal_entity", companyCnpj: "B-1234.5678/90AB-CD 12345678901234" });
 
@@ -91,7 +91,7 @@ describe("profile.update: número de cadastro empresarial", () => {
 
   it("recusa campo só com pontuação quando o tipo exige o cadastro, e não grava nada", async () => {
     await expect(chamadora().profile.update({ personType: "nonprofit", companyCnpj: "--/--" }))
-      .rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("Informe o número de cadastro empresarial") });
+      .rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("Informe o número do cadastro empresarial") });
     expect(upsertFalso).not.toHaveBeenCalled();
   });
 
@@ -113,7 +113,7 @@ describe("profile.update: número de cadastro empresarial", () => {
   });
 });
 
-describe("profile.completeOnboarding: número de cadastro empresarial", () => {
+describe("profile.completeOnboarding: número do cadastro empresarial", () => {
   it("grava o cadastro alfanumérico normalizado", async () => {
     await chamadora().profile.completeOnboarding({ ...onboardingBase, personType: "mei", companyCnpj: "12.ABC.345/01DE-35" });
 

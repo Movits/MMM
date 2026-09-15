@@ -16,6 +16,16 @@ describe("dados empresariais", () => {
     expect(normalizarCadastroEmpresarial("---")).toBe("");
   });
 
+  it("converte algarismos de outros teclados em vez de apagá-los e mantém letras acentuadas", () => {
+    // Largura cheia (IME japonês/chinês), árabe-índico, persa e devanágari.
+    expect(normalizarCadastroEmpresarial("１２３-４５")).toBe("12345");
+    expect(normalizarCadastroEmpresarial("١٢٣٤٥٦٧٨٩٠")).toBe("1234567890");
+    expect(normalizarCadastroEmpresarial("۱۲۳۴")).toBe("1234");
+    expect(normalizarCadastroEmpresarial("१२३४-५")).toBe("12345");
+    // RFC mexicano: o Ñ fica; o & é símbolo e sai, como o hífen.
+    expect(normalizarCadastroEmpresarial("ÑA&-850101-AB1")).toBe("ÑA850101AB1");
+  });
+
   it("não corta o número em 14 dígitos nem confere dígito verificador", () => {
     const longo = "1234567890123456789012345";
     expect(normalizarCadastroEmpresarial(longo)).toBe(longo);

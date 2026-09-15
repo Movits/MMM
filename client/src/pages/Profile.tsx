@@ -459,8 +459,7 @@ export default function Profile() {
                   </div>
                   <div>
                     <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.business.registrationNumber")}</label>
-                    <Input value={companyCnpj} onChange={e => setCompanyCnpj(normalizarCadastroEmpresarial(e.target.value))}
-                      maxLength={CADASTRO_EMPRESARIAL_MAX}
+                    <Input value={companyCnpj} onChange={e => setCompanyCnpj(normalizarCadastroEmpresarial(e.target.value).slice(0, CADASTRO_EMPRESARIAL_MAX))}
                       placeholder={t("profile.business.registrationNumberPlaceholder")}
                       className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                   </div>

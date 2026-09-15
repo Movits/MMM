@@ -742,10 +742,10 @@
       "sizeSmall": "Pequena empresa",
       "sizeMedium": "Média empresa",
       "sizeLarge": "Grande empresa",
-      "registrationNumber": "Número de cadastro empresarial",
+      "registrationNumber": "Número do cadastro empresarial",
       "registrationNumberPlaceholder": "Somente letras e números",
-      "registrationNumberHint": "Quem é MEI, tem empresa ou organização sem fins lucrativos precisa informar o número de cadastro empresarial.",
-      "registrationNumberRequired": "Informe o número de cadastro empresarial."
+      "registrationNumberHint": "Quem é MEI, tem empresa ou organização sem fins lucrativos precisa informar o número do cadastro empresarial.",
+      "registrationNumberRequired": "Informe o número do cadastro empresarial."
     }
   },
   "network": {
