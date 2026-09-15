@@ -742,10 +742,10 @@
       "sizeSmall": "شركة صغيرة",
       "sizeMedium": "شركة متوسطة",
       "sizeLarge": "شركة كبيرة",
-      "cnpj": "CNPJ",
-      "cnpjPlaceholder": "00.000.000/0000-00",
-      "cnpjHint": "أدخله فقط إن وُجد.",
-      "cnpjInvalid": "أدخل رقم CNPJ صالحًا."
+      "registrationNumber": "رقم السجل التجاري",
+      "registrationNumberPlaceholder": "أحرف وأرقام فقط",
+      "registrationNumberHint": "إلزامي لـ MEI والشركات والمنظمات غير الربحية.",
+      "registrationNumberRequired": "أدخل رقم السجل التجاري."
     }
   },
   "network": {

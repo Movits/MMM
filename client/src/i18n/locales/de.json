@@ -742,10 +742,10 @@
       "sizeSmall": "Kleines Unternehmen",
       "sizeMedium": "Mittleres Unternehmen",
       "sizeLarge": "Großes Unternehmen",
-      "cnpj": "CNPJ",
-      "cnpjPlaceholder": "00.000.000/0000-00",
-      "cnpjHint": "Nur angeben, falls vorhanden.",
-      "cnpjInvalid": "Geben Sie eine gültige CNPJ ein."
+      "registrationNumber": "Unternehmensregisternummer",
+      "registrationNumberPlaceholder": "Nur Buchstaben und Ziffern",
+      "registrationNumberHint": "Pflichtangabe für MEI, Unternehmen und gemeinnützige Organisationen.",
+      "registrationNumberRequired": "Geben Sie die Unternehmensregisternummer ein."
     }
   },
   "network": {

@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BrandMark } from "@/components/BrandLogo";
 import { ExcluirMinhaConta } from "@/components/ExcluirMinhaConta";
 import { toast } from "sonner";
-import { exigeCnpj, formatCnpj, isValidCnpj, maskCnpj } from "@shared/business-registration";
+import { CADASTRO_EMPRESARIAL_MAX, exigeCadastroEmpresarial, mascararCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
 import {
   ArrowLeft, User, Briefcase, Globe, Link2, Edit2, Save,
@@ -200,8 +200,8 @@ export default function Profile() {
   });
 
   const handleSave = () => {
-    if (companyCnpj && !isValidCnpj(companyCnpj)) {
-      toast.error(t("profile.business.cnpjInvalid"));
+    if (exigeCadastroEmpresarial(personType) && !normalizarCadastroEmpresarial(companyCnpj)) {
+      toast.error(t("profile.business.registrationNumberRequired"));
       return;
     }
     updateMutation.mutate({
@@ -435,7 +435,7 @@ export default function Profile() {
                 </div>
               </div>
 
-              {exigeCnpj(personType) && (
+              {exigeCadastroEmpresarial(personType) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.business.companySize")}</label>
@@ -458,9 +458,10 @@ export default function Profile() {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.business.cnpj")}</label>
-                    <Input value={formatCnpj(companyCnpj)} onChange={e => setCompanyCnpj(formatCnpj(e.target.value))}
-                      placeholder={t("profile.business.cnpjPlaceholder")}
+                    <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.business.registrationNumber")}</label>
+                    <Input value={companyCnpj} onChange={e => setCompanyCnpj(normalizarCadastroEmpresarial(e.target.value))}
+                      maxLength={CADASTRO_EMPRESARIAL_MAX}
+                      placeholder={t("profile.business.registrationNumberPlaceholder")}
                       className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                   </div>
                 </div>
@@ -523,7 +524,7 @@ export default function Profile() {
                   (profile as any)?.activityArea && { icon: <Tag size={13} />, label: (profile as any).activityArea },
                   (profile as any)?.personType && { icon: <Building size={13} />, label: t(`profile.business.${(profile as any).personType === "legal_entity" ? "legalEntity" : (profile as any).personType}`) },
                   (profile as any)?.companySize && { icon: <Building size={13} />, label: t(`profile.business.size${String((profile as any).companySize).charAt(0).toUpperCase()}${String((profile as any).companySize).slice(1)}`) },
-                  (profile as any)?.companyCnpj && { icon: <Building size={13} />, label: `${t("profile.business.cnpj")}: ${maskCnpj((profile as any).companyCnpj)}` },
+                  (profile as any)?.companyCnpj && { icon: <Building size={13} />, label: `${t("profile.business.registrationNumber")}: ${mascararCadastroEmpresarial((profile as any).companyCnpj)}` },
                   (profile?.city || profile?.country) && { icon: <MapPin size={13} />, label: [profile?.city, COUNTRIES.find(c => c.code === profile?.country)?.name].filter(Boolean).join(", ") },
                   (profile as any)?.gender && { icon: <User size={13} />, label: t(`profile.gender.${(profile as any).gender}`) },
                   (profile as any)?.institutionalNetwork && { icon: <Network size={13} />, label: (profile as any).institutionalNetwork },

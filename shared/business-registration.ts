@@ -4,40 +4,27 @@ export const BUSINESS_SIZES = ["mei", "micro", "small", "medium", "large"] as co
 export type BusinessPersonType = (typeof BUSINESS_PERSON_TYPES)[number];
 export type BusinessSize = (typeof BUSINESS_SIZES)[number];
 
-/** Tipos que têm CNPJ por definição (A7): só a pessoa física fica de fora. */
-export function exigeCnpj(personType: string | null | undefined): boolean {
+/**
+ * Teto do número de cadastro empresarial já normalizado. Não é regra de formato
+ * (o campo deixou de ser só CNPJ, que tinha 14 dígitos com verificador): é o
+ * tamanho da coluna `user_profiles.companyCnpj`, folgado para registros de
+ * outros países e para o CNPJ alfanumérico.
+ */
+export const CADASTRO_EMPRESARIAL_MAX = 50;
+
+/** Tipos que têm cadastro empresarial por definição (A7): só a pessoa física fica de fora. */
+export function exigeCadastroEmpresarial(personType: string | null | undefined): boolean {
   return personType === "legal_entity" || personType === "mei" || personType === "nonprofit";
 }
 
-export function normalizeCnpj(value: string): string {
-  return value.replace(/\D/g, "");
+/** Guarda só letras e números: sem hífen, ponto, barra ou espaço. */
+export function normalizarCadastroEmpresarial(value: string): string {
+  return value.replace(/[^0-9A-Za-z]/g, "");
 }
 
-export function formatCnpj(value: string): string {
-  const digits = normalizeCnpj(value).slice(0, 14);
-  return digits
-    .replace(/^(\d{2})(\d)/, "$1.$2")
-    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1/$2")
-    .replace(/(\d{4})(\d)/, "$1-$2");
-}
-
-export function isValidCnpj(value: string): boolean {
-  const cnpj = normalizeCnpj(value);
-  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
-
-  const calculateDigit = (base: string, weights: number[]) => {
-    const sum = base.split("").reduce((total, digit, index) => total + Number(digit) * weights[index], 0);
-    const remainder = sum % 11;
-    return remainder < 2 ? 0 : 11 - remainder;
-  };
-
-  const firstDigit = calculateDigit(cnpj.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-  const secondDigit = calculateDigit(cnpj.slice(0, 12) + firstDigit, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-  return cnpj === `${cnpj.slice(0, 12)}${firstDigit}${secondDigit}`;
-}
-
-export function maskCnpj(value: string): string {
-  const formatted = formatCnpj(value);
-  return formatted.length === 18 ? `**.***.***${formatted.slice(10)}` : formatted;
+/** Na exibição, só os 4 últimos caracteres aparecem. */
+export function mascararCadastroEmpresarial(value: string): string {
+  const cadastro = normalizarCadastroEmpresarial(value);
+  if (cadastro.length <= 4) return cadastro;
+  return "*".repeat(cadastro.length - 4) + cadastro.slice(-4);
 }

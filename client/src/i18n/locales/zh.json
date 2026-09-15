@@ -742,10 +742,10 @@
       "sizeSmall": "小型企业",
       "sizeMedium": "中型企业",
       "sizeLarge": "大型企业",
-      "cnpj": "CNPJ",
-      "cnpjPlaceholder": "00.000.000/0000-00",
-      "cnpjHint": "如有则填写。",
-      "cnpjInvalid": "请输入有效的 CNPJ。"
+      "registrationNumber": "企业注册号",
+      "registrationNumberPlaceholder": "仅限字母和数字",
+      "registrationNumberHint": "MEI、企业和非营利组织必须填写。",
+      "registrationNumberRequired": "请输入企业注册号。"
     }
   },
   "network": {

@@ -742,10 +742,10 @@
       "sizeSmall": "छोटी कंपनी",
       "sizeMedium": "मध्यम कंपनी",
       "sizeLarge": "बड़ी कंपनी",
-      "cnpj": "CNPJ",
-      "cnpjPlaceholder": "00.000.000/0000-00",
-      "cnpjHint": "होने पर ही दर्ज करें।",
-      "cnpjInvalid": "मान्य CNPJ दर्ज करें।"
+      "registrationNumber": "व्यावसायिक पंजीकरण संख्या",
+      "registrationNumberPlaceholder": "केवल अक्षर और अंक",
+      "registrationNumberHint": "MEI, कंपनियों और गैर-लाभकारी संस्थाओं के लिए अनिवार्य।",
+      "registrationNumberRequired": "व्यावसायिक पंजीकरण संख्या दर्ज करें।"
     }
   },
   "network": {
