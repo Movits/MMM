@@ -22,6 +22,7 @@
 // Ao publicar, cada membra recebe uma notificação no sino avisando que há um
 // texto para autorizar — sem isso, ninguém ficava sabendo e cada uma descobria
 // só ao abrir a aba de matches. --sem-aviso desliga (ex.: ensaio em base local).
+// Para os tipos em TIPOS_SEM_AVISO o silêncio é forçado, com ou sem a flag.
 
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -29,6 +30,13 @@ import mysql from "mysql2/promise";
 
 // Espelha o DOCUMENT_TYPES de server/routers/consent.ts (e o enum do banco).
 const TIPOS = ["termo_smart_match", "acordo_intermediacao", "contrato_comissao", "termo_gravacao", "termo_acesso_ouro", "termo_geral_de_uso"];
+
+// Tipos que NUNCA avisam no sino, com ou sem --sem-aviso. O Termo Geral de Uso
+// só é pedido na última etapa do /onboarding: quem já tem conta não tem tela
+// para aceitá-lo, e o aviso a mandaria ao /dashboard sem o que fazer. Antes,
+// bastava esquecer a flag para inserir uma notificação para TODAS as contas
+// (lista do Nicolas na PR #135, janela A).
+const TIPOS_SEM_AVISO = new Set(["termo_geral_de_uso"]);
 
 // Provisório, para a mecânica poder ser construída e testada antes do texto
 // jurídico existir. Descreve o que o sistema realmente faz hoje.
@@ -84,7 +92,7 @@ const [tipo, caminho] = argumentos.filter(a => !a.startsWith("--"));
 const simular = opcoes.includes("--simular");
 const usarProvisorio = opcoes.includes("--texto-provisorio");
 const confirmouProducao = opcoes.includes("--confirmo-producao");
-const semAviso = opcoes.includes("--sem-aviso");
+const semAviso = opcoes.includes("--sem-aviso") || TIPOS_SEM_AVISO.has(tipo);
 
 const morrer = mensagem => { console.error(mensagem); process.exit(1); };
 
@@ -155,7 +163,12 @@ try {
   } else {
     console.log(`impacto:  primeira publicação — a base inteira (${base.n} usuária(s)) passa a precisar aceitar antes de usar o recurso`);
   }
-  console.log(`aviso:    ${semAviso ? "DESLIGADO (--sem-aviso)" : `notificação no sino para ${base.n} usuária(s)`}`);
+  if (TIPOS_SEM_AVISO.has(tipo)) {
+    console.log(`aviso:    SUPRIMIDO para ${tipo}, com ou sem --sem-aviso`);
+    console.log("          motivo: só o /onboarding pede este aceite; quem já tem conta não tem tela para aceitá-lo, e o sino a mandaria ao /dashboard sem o que fazer");
+  } else {
+    console.log(`aviso:    ${semAviso ? "DESLIGADO (--sem-aviso)" : `notificação no sino para ${base.n} usuária(s)`}`);
+  }
 
   if (simular) {
     console.log("\n--simular: nada foi gravado.");
@@ -180,8 +193,8 @@ try {
       contrato_comissao: "O Contrato de Comissão",
       termo_gravacao: "O Termo de Gravação de Reuniões",
       termo_acesso_ouro: "O Termo de Acesso Ouro",
-      // Hoje só o cadastro pede este aceite: o aviso no sino levaria a quem já
-      // tem conta a um "/dashboard" sem tela para aceitar. Publique com --sem-aviso.
+      // Não chega aqui: o tipo está em TIPOS_SEM_AVISO e o silêncio é forçado
+      // lá em cima. Fica no mapa só para acompanhar TIPOS, sem furo.
       termo_geral_de_uso: "O Termo Geral de Uso, Proteção de Dados e Intermediação Digital",
     };
     await conexao.query(

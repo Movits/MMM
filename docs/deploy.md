@@ -213,8 +213,11 @@ ordem é esta:
    node scripts/publicar-documento.mjs termo_geral_de_uso docs/termos/termo-geral-de-uso.md --simular
    node scripts/publicar-documento.mjs termo_geral_de_uso docs/termos/termo-geral-de-uso.md --sem-aviso --confirmo-producao
    ```
-   Use `--sem-aviso`. Só o cadastro pede este aceite, e o aviso no sino mandaria
-   quem já tem conta a um `/dashboard` sem tela para aceitar.
+   Só o cadastro pede este aceite, e o aviso no sino mandaria quem já tem conta a
+   um `/dashboard` sem tela para aceitar. Para `termo_geral_de_uso` o script
+   suprime o aviso sozinho (`TIPOS_SEM_AVISO` em `scripts/publicar-documento.mjs`),
+   com ou sem a flag: o `--sem-aviso` do comando acima é redundante e fica ali só
+   porque o exame o imprime assim.
 4. Rodar o exame. A linha "Termo Geral de Uso vigente" sai FALHA enquanto não
    houver exatamente uma versão vigente.
 
