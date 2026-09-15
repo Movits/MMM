@@ -54,7 +54,7 @@ export const profileRouter = router({
      position: z.string().max(200).optional(),
      personType: z.enum(["individual", "legal_entity", "mei", "nonprofit"]).optional(),
      companySize: z.enum(["mei", "micro", "small", "medium", "large"]).optional(),
-     companyCnpj: z.string().max(200).optional(),
+     companyCnpj: z.string().max(1000).optional(),
      gender: z.enum(["male", "female", "prefer_not_to_say"]).optional(),
      // Novos campos v2
      jobTitle: z.string().max(200).optional(),
@@ -99,7 +99,7 @@ export const profileRouter = router({
      position: z.string().max(200).optional(),
      personType: z.enum(["individual", "legal_entity", "mei", "nonprofit"]).optional(),
      companySize: z.enum(["mei", "micro", "small", "medium", "large"]).optional(),
-     companyCnpj: z.string().max(200).optional(),
+     companyCnpj: z.string().max(1000).optional(),
      gender: z.enum(["male", "female", "prefer_not_to_say"]).optional(),
      // Campos do sistema de matching
      age: z.number().int().min(16).max(120).optional(),

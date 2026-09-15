@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { BrainCircuit, CheckCircle } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
-import { CADASTRO_EMPRESARIAL_MAX, exigeCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
+import { exigeCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
 
 
@@ -640,7 +640,7 @@ export default function Onboarding() {
                               { value: "large", label: t("profile.business.sizeLarge") },
                             ], i18n.language)} placeholder={t("onboarding.fields.selectPlaceholder")}/>
                       <TextInput label={t("profile.business.registrationNumber")} required value={form.companyCnpj}
-                        onChange={value => set("companyCnpj", normalizarCadastroEmpresarial(value).slice(0, CADASTRO_EMPRESARIAL_MAX))}
+                        onChange={value => set("companyCnpj", normalizarCadastroEmpresarial(value))}
                         placeholder={t("profile.business.registrationNumberPlaceholder")} hint={t("profile.business.registrationNumberHint")}/>
                     </div>
                   )}

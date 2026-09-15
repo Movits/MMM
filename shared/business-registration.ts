@@ -5,12 +5,13 @@ export type BusinessPersonType = (typeof BUSINESS_PERSON_TYPES)[number];
 export type BusinessSize = (typeof BUSINESS_SIZES)[number];
 
 /**
- * Teto do número do cadastro empresarial já normalizado. Não é regra de formato
- * (o campo deixou de ser só CNPJ, que tinha 14 dígitos com verificador): é o
- * tamanho da coluna `user_profiles.companyCnpj`, folgado para registros de
- * outros países e para o CNPJ alfanumérico.
+ * Teto do número do cadastro empresarial já normalizado, conferido só no
+ * servidor. Não é regra de formato: cada país tem seu número empresarial, e o
+ * campo não corta o que se digita ou cola. É o tamanho da coluna
+ * `user_profiles.companyCnpj`, uma proteção contra abuso; os maiores números
+ * reais têm cerca de 20 caracteres.
  */
-export const CADASTRO_EMPRESARIAL_MAX = 50;
+export const CADASTRO_EMPRESARIAL_MAX = 255;
 
 /** Tipos que têm cadastro empresarial por definição (A7): só a pessoa física fica de fora. */
 export function exigeCadastroEmpresarial(personType: string | null | undefined): boolean {
@@ -34,7 +35,7 @@ const FORA_DE_LETRA_OU_ALGARISMO = new RegExp("[^\\p{L}\\p{Nd}]", "gu");
 export function normalizarCadastroEmpresarial(value: string): string {
   return value
     .normalize("NFKC")
-    .replace(/[٠-٩۰-۹०-९]/g, algarismo => {
+    .replace(/[\u0660-\u0669\u06F0-\u06F9\u0966-\u096F]/g, algarismo => {
       const codigo = algarismo.charCodeAt(0);
       const zero = ZEROS_DE_OUTRAS_ESCRITAS.find(z => codigo >= z && codigo <= z + 9) ?? codigo;
       return String(codigo - zero);

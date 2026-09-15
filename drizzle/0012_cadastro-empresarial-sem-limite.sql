@@ -1,1 +1,1 @@
-ALTER TABLE `user_profiles` MODIFY COLUMN `companyCnpj` varchar(50);
+ALTER TABLE `user_profiles` MODIFY COLUMN `companyCnpj` varchar(255);

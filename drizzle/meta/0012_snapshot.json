@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "13bff2ae-92bf-4010-aabf-82959ea9ccdc",
+  "id": "1fa007b3-1126-4470-81a6-4ff6a63f6daa",
   "prevId": "07b126cc-e51e-438e-b553-00f4ae641eb4",
   "tables": {
     "ai_match_suggestions": {
@@ -5402,7 +5402,7 @@
         },
         "companyCnpj": {
           "name": "companyCnpj",
-          "type": "varchar(50)",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

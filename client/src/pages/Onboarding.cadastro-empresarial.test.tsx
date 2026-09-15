@@ -8,8 +8,8 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
  * hífen e sem o limite de 14 dígitos do CNPJ. O campo continua obrigatório para
  * esses três tipos: vazio, o botão de avançar não libera.
  *
- * O teto de 50 caracteres (CADASTRO_EMPRESARIAL_MAX) é deliberado; aqui só se
- * prova que ele não corta um número maior que o CNPJ.
+ * O campo não corta o que se digita ou cola; o teto de 255 letras e números
+ * (CADASTRO_EMPRESARIAL_MAX) só existe no servidor, contra abuso.
  */
 
 const invalidate = vi.fn();
@@ -131,12 +131,11 @@ describe("Onboarding — número do cadastro empresarial no lugar do CNPJ", () =
     expect(valor.length).toBeGreaterThan(14);
     expect(valor).not.toContain("-");
     expect(valor).not.toMatch(/[^0-9A-Za-z]/);
-    // Sem maxlength no input: no navegador ele contaria a pontuação colada e
-    // cortaria o número antes da normalização. O teto de 50 vale só para letras e números.
+    // Sem corte ao digitar ou colar: nem maxlength no input, nem slice no onChange.
     expect(campoDoCadastro().hasAttribute("maxlength")).toBe(false);
-    const coladoComPontuacao = Array.from({ length: 40 }, (_, i) => `${i % 10}.-`).join("");
+    const coladoComPontuacao = Array.from({ length: 120 }, (_, i) => `${i % 10}.-`).join("");
     fireEvent.change(campoDoCadastro(), { target: { value: coladoComPontuacao } });
-    expect(campoDoCadastro().value).toHaveLength(40);
+    expect(campoDoCadastro().value).toHaveLength(120);
     expect(botaoAvancar()).toBeEnabled();
 
     // Algarismos de outros teclados (árabe-índico, devanágari, largura cheia) viram 0-9 em vez de sumir.

@@ -83,7 +83,7 @@ export const userProfiles = mysqlTable("user_profiles", {
   company: varchar("company", { length: 200 }),           // Empresa
   personType: mysqlEnum("personType", ["individual", "legal_entity", "mei", "nonprofit"]),
   companySize: mysqlEnum("companySize", ["mei", "micro", "small", "medium", "large"]),
-  companyCnpj: varchar("companyCnpj", { length: 50 }),
+  companyCnpj: varchar("companyCnpj", { length: 255 }),
   jobTitle: varchar("jobTitle", { length: 200 }),          // Cargo
   activityArea: varchar("activityArea", { length: 200 }),  // Área de Atuação
   interestSectors: jsonCompat("interestSectors"),                // string[] — Setores de Interesse
