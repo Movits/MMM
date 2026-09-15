@@ -9,7 +9,7 @@
     "beta": "ベータ"
   },
   "hero": {
-    "badge": "グローバルな機会のエコシステム",
+    "badge": "グローバルな機会のエコシステム • 33カ国以上 • 無限の可能性",
     "headline1": "あなたの可能性を解き放つ",
     "headline2": "志を同じくするメンバーとつながる",
     "headline3": "あなたのキャリアを加速させる",
@@ -26,7 +26,8 @@
     "users": "ユーザー",
     "opportunities": "機会",
     "satisfaction": "満足度",
-    "connections": "つながり"
+    "connections": "つながり",
+    "countries": "ユーザーのいる国"
   },
   "steps": {
     "title": "MMMの仕組み",
