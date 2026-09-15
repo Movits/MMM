@@ -116,7 +116,11 @@ describe("indicadores da plataforma no Dashboard", () => {
 
     expect(await screen.findByRole("heading", { name: "A rede hoje" }, ESPERA)).toBeInTheDocument();
 
-    for (const rotulo of ["Pessoas cadastradas", "Oportunidades ativas", "Conexões realizadas", "Países representados"]) {
+    // O rótulo de países é "Países com membros cadastrados", e não "Países
+    // representados": veio da #116 pela consolidação com a #117, e descreve
+    // melhor o que COUNT(DISTINCT users.country) conta — ainda mais depois da
+    // #129, que tirou o pseudo-país XX da conta.
+    for (const rotulo of ["Pessoas cadastradas", "Oportunidades ativas", "Conexões realizadas", "Países com membros cadastrados"]) {
       expect(screen.getByText(rotulo), rotulo).toBeInTheDocument();
     }
 
@@ -160,7 +164,7 @@ describe("indicadores da plataforma no Dashboard", () => {
     render(<Dashboard />);
 
     expect(await screen.findByRole("heading", { name: "The network today" }, ESPERA)).toBeInTheDocument();
-    expect(screen.getByText("Countries represented")).toBeInTheDocument();
-    expect(screen.queryByText("Países representados")).not.toBeInTheDocument();
+    expect(screen.getByText("Countries with members")).toBeInTheDocument();
+    expect(screen.queryByText("Países com membros cadastrados")).not.toBeInTheDocument();
   });
 });

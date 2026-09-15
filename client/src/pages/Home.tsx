@@ -620,16 +620,38 @@ export default function Home() {
                 <span className="w-1.5 h-1.5 shrink-0 bg-[#c98f70] rounded-full animate-pulse" />
                 {/* O selo vem em trechos separados por " • ". Quando a linha não
                     comporta a frase inteira (celular), a quebra cai ENTRE trechos,
-                    e o separador que abriria a linha nova fica na margem negativa
-                    recortada pelo overflow-hidden: nenhuma linha começa com "•".
+                    e o marcador que abriria a linha nova cai no recorte do
+                    overflow-hidden: nenhuma linha começa com "•". Em LTR quem o
+                    empurra para fora é a margem negativa; em RTL, onde a margem
+                    é do lado errado (ela é física), quem faz o serviço é o
+                    -indent, que segue a direção do texto. Medido nos dois.
                     Se um trecho sozinho não cabe (telas de ~320 px), o recuo deslocado
                     (pl + -indent de 1em) faz a continuação começar fora do recorte;
                     o marcador zera o indent, que é herdado e o empurraria 1em à esquerda.
-                    Leitor de tela recebe a frase inteira, sem os marcadores.
-                    No desktop (lg+) o selo mede a frase inteira (w-max): entre 1024
-                    e 1279 px a coluna de texto tem ~460 px e a frase pede ~483, que
-                    cabem na folga de 56 px até a coluna do globo, em uma linha só. */}
-                <span className="sr-only">{t("hero.badge")}</span>
+                    Os marcadores são aria-hidden, mas o t("hero.badge") cru ainda
+                    tem os " • ", e o leitor de tela os lê em voz alta; por isso o
+                    sr-only troca cada separador por vírgula e lê só os trechos.
+
+                    No desktop o selo mede a frase inteira (w-max) e cabe em UMA
+                    linha. A largura muda com a fonte do sistema, porque o selo
+                    herda a pilha ui-sans-serif/system-ui do Tailwind, não a Inter.
+                    Com os textos desta Hero, no Chrome do Windows (Segoe UI), o
+                    selo mais largo dos 10 idiomas é o alemão: 539,6 px (o pt-BR
+                    mede 484). A coluna de texto tem 548 px a partir de 1280,
+                    então cabe com só 8 px de folga — quem for traduzir o selo
+                    tem esses 548 px de orçamento, e uma fonte mais larga que a
+                    Segoe UI já passa. Entre 1024 e 1279 o utilitário `container`
+                    troca de max-width e a coluna cai para 460 (um pouco menos
+                    logo acima de 1024, onde a barra de rolagem come parte da
+                    janela): aí o selo alemão TRANSBORDA uns 80 px (82,6 em 1024),
+                    mais que os 56 px de `gap-14`.
+                    Não bate em nada hoje porque a coluna da direita
+                    não é renderizada (MOSTRAR_CARTAO_DO_HERO = false, lá em cima);
+                    o globo que aparece ali é o FundoDoPlaneta, fixo atrás da
+                    página inteira, não aquele cartão. Quem religar o cartão troca
+                    `lg:` por `xl:` nas duas classes do selo: ele passa a quebrar
+                    em duas linhas de 1024 a 1279 px e não invade em largura alguma. */}
+                <span className="sr-only">{t("hero.badge").split(" • ").join(", ")}</span>
                 <span aria-hidden="true" className="min-w-0 overflow-hidden">
                   <span className="-ml-[1em] flex flex-wrap">
                     {t("hero.badge").split(" • ").map((trecho, i) => (
@@ -983,7 +1005,7 @@ export default function Home() {
             </p>
             <div className="flex justify-center gap-10 mt-8">
               <div className="text-center">
-                <div className="text-2xl font-extrabold" style={{ color: "#8e5a3f" }}>{stats?.bronze ?? 0}</div>
+                <div className="text-2xl font-extrabold" style={{ color: "#c98f70" }}>{stats?.bronze ?? 0}</div>
                 <div className="text-xs text-white/35 mt-1">Bronze</div>
               </div>
               <div className="text-center">
@@ -1001,9 +1023,9 @@ export default function Home() {
             {/* BRONZE */}
             <div className="p-8 rounded-3xl bg-[#211e1b]/90 border border-white/[0.06] transition-all duration-300 hover:border-[#8e5a3f]/30">
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-5 border" style={{ background: "rgba(205,127,50,0.08)", borderColor: "rgba(205,127,50,0.25)" }}>
-                <BadgeCheck className="w-5 h-5" style={{ color: "#8e5a3f" }} />
+                <BadgeCheck className="w-5 h-5" style={{ color: "#c98f70" }} />
               </div>
-              <h3 className="text-lg font-extrabold mb-3" style={{ color: "#8e5a3f" }}>{t("governance.bronze.title")}</h3>
+              <h3 className="text-lg font-extrabold mb-3" style={{ color: "#c98f70" }}>{t("governance.bronze.title")}</h3>
               <p className="text-white/40 text-sm leading-relaxed mb-5">
                 {t("governance.bronze.desc")}
               </p>

@@ -32,7 +32,7 @@
     "opportunities": "已创造机会",
     "satisfaction": "社区满意度",
     "connections": "成功连接",
-    "countries": "覆盖国家"
+    "countries": "会员注册国家"
   },
   "steps": {
     "title": "工作原理",
@@ -450,8 +450,8 @@
       "clause1_text": "MMM 是会员之间的对接平台。它把兴趣互补的人介绍给彼此，并记录由这些介绍产生的交易。平台不是交易的当事方：签约的是会员彼此之间。",
       "clause2_title": "2. 佣金",
       "clause2_text": "经平台介绍而产生的交易，需按以下条件向 MMM 支付佣金：",
-      "clause2_item1": "佣金比例根据交易的类型和规模逐笔确定；",
-      "clause2_item2": "上限为该笔交易申报利润的 50%；",
+      "clause2_item1": "百分比由商务部门逐案确定;",
+      "clause2_item2": "上限为该交易中介服务费的50%;",
       "clause2_item3": "在此版本中，付款在平台之外完成；网站仅记录交易和应付佣金。",
       "clause3_title": "3. 有效期与变更",
       "clause3_text": "本文本为临时版本，正在法务审核中。最终版本发布时将通知您，并需要您重新接受。本次接受的日期和确切文本将被记录。"
@@ -929,6 +929,8 @@
     "salvando": "保存中……",
     "botaoSalvar": "✓ 保存",
     "vincularContatoTitulo": "关联联系人",
+    "editarVinculoTitulo": "编辑关联",
+    "badgeJaVinculado": "已关联",
     "toastVinculadoSucesso": "{{name}} 已关联到 {{context}}！",
     "toastVinculoAtualizado": "{{name}} 与 {{context}} 的关联已更新。",
     "toastErroVincular": "关联失败：{{message}}",
@@ -1380,8 +1382,8 @@
     "allMeetings": "所有会议",
     "privateMeetingEyebrow": "私密会议",
     "deleteButton": "删除",
-    "processingFailedFallback": "处理未能完成。请尝试使用较短的录音重试。",
-    "processingInterrupted": "处理在完成前被中断（服务器中途重启）。请重新录制或上传音频。",
+    "processingFailedFallback": "处理未能完成。",
+    "processingInterrupted": "处理在完成前被中断（服务器中途重启）。",
     "deleteConfirmProcessing": "此会议仍在处理中：正在进行的处理将被丢弃。",
     "deleteConfirmTitle": "删除此会议？",
     "deleteConfirmText": "音频、转录内容、翻译和联系人建议将被永久删除。",
@@ -1410,7 +1412,18 @@
     "ignoreButton": "忽略",
     "contactCreatedStatus": "联系人已创建",
     "ignoredStatus": "已忽略",
-    "noContactSuggestions": "此次会议没有建议的联系人。"
+    "noContactSuggestions": "此次会议没有建议的联系人。",
+    "reprocessButton": "重新处理",
+    "reprocessHint": "此会议的音频保存至 {{date}}。重新处理将使用同一段音频，无需重新录制，并替换之前的转录内容和建议。",
+    "reprocessStarted": "已开始重新处理。完成后会议将在此处就绪。",
+    "reprocessNoAudio": "此会议的音频未被保存，因此无法重新处理。请删除此会议，然后重新录制或上传音频。",
+    "reprocessUnavailable": "无法使用已保存的音频重新处理此会议。请删除此会议，然后重新录制或上传音频。",
+    "reprocessConflict": "此会议未处于失败状态，或正在处理中。",
+    "reprocessTooMany": "连续重新处理的次数过多。请等待几分钟后再试。",
+    "reprocessError": "无法重新处理该会议。",
+    "recordingExpiredNoTranscript": "此会议没有保存音频。音频最多保存30天。",
+    "decisionsPaused": "处理完成后即可操作。",
+    "storedAudioMissing": "未找到此会议已保存的音频。"
   },
   "connections": {
     "messageSent": "消息已发送",
