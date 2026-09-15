@@ -37,17 +37,21 @@
   "steps": {
     "title": "So funktioniert MMM",
     "subtitle": "Einfach, sicher und effektiv",
+    "closing": "Irgendwo in unserem Netzwerk sucht vielleicht jemand genau das, was Sie haben.",
     "step1": {
-      "title": "Profil erstellen",
-      "desc": "Präsentiere deine Expertise und deine Ziele."
+      "eyebrow": "Zeigen Sie der Welt, was Sie haben. Und was Sie suchen.",
+      "title": "Erstellen Sie Ihr strategisches Profil",
+      "desc": "Erzählen Sie in wenigen Minuten, wer Sie sind, was Sie anbieten und was Sie suchen. Je besser die Plattform Sie kennt, desto näher ist sie an der Verbindung, aus der Ihr nächstes Geschäft entsteht."
     },
     "step2": {
-      "title": "Intelligentes Matching",
-      "desc": "Unser Algorithmus findet die perfekten Partner für dich."
+      "eyebrow": "Die Technologie findet, was Sie allein nie finden würden.",
+      "title": "Die Intelligenz arbeitet für Sie",
+      "desc": "Während Sie Ihr Netzwerk erweitern, gleicht unsere KI Ihr Profil mit Menschen, Unternehmen, Bedarfen und Chancen ab und erkennt strategische Verbindungen in einem Netzwerk in über 33 Ländern."
     },
     "step3": {
-      "title": "Verbinde dich & wachse",
-      "desc": "Baue wertvolle Beziehungen auf und erreiche deine Ziele."
+      "eyebrow": "Das ist nicht nur ein Match. Das ist eine Geschäftschance.",
+      "title": "Entdecken Sie Ihre besten Verbindungen",
+      "desc": "Sie erhalten Verbindungen, ausgewählt danach, wie gut sie zu dem passen, was Sie haben, brauchen und suchen. Verstehen Sie, warum es ein Match gibt, und erfahren Sie, wer Ihnen die Tür zum nächsten großen Geschäft öffnet."
     }
   },
   "opportunities": {

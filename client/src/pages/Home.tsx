@@ -487,9 +487,9 @@ export default function Home() {
   }, [stepsInView]);
 
   const steps = [
-    { num: "01", Icon: UserRound, title: t("steps.step1.title"), desc: t("steps.step1.desc") },
-    { num: "02", Icon: BrainCircuit, title: t("steps.step2.title"), desc: t("steps.step2.desc") },
-    { num: "03", Icon: Zap, title: t("steps.step3.title"), desc: t("steps.step3.desc") },
+    { num: "01", Icon: UserRound, chamada: t("steps.step1.eyebrow"), title: t("steps.step1.title"), desc: t("steps.step1.desc") },
+    { num: "02", Icon: BrainCircuit, chamada: t("steps.step2.eyebrow"), title: t("steps.step2.title"), desc: t("steps.step2.desc") },
+    { num: "03", Icon: Zap, chamada: t("steps.step3.eyebrow"), title: t("steps.step3.title"), desc: t("steps.step3.desc") },
   ];
 
   const opportunityTypes = [
@@ -831,11 +831,44 @@ export default function Home() {
                     </div>
                     <span className="text-white/15 font-extrabold text-sm tracking-widest">{step.num}</span>
                   </div>
+                  {/* Três degraus de leitura no cartão: chamada, título, explicação.
+                      A chamada fica em ouro rosé, o mesmo tratamento do SectionLabel
+                      logo acima (uppercase por CSS, não em caixa alta no JSON).
+                      É de propósito: caixa alta guardada no texto faz leitor de tela
+                      soletrar, e japonês, chinês, árabe e híndi não têm caixa — nesses
+                      a frase sai como foi escrita, que é o certo. O tracking é menor
+                      que o do SectionLabel porque aqui é uma frase, não um rótulo de
+                      duas palavras. */}
+                  <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#c98f70]/90 leading-snug mb-2.5">{step.chamada}</p>
                   <h3 className="text-lg font-bold text-white mb-2.5">{step.title}</h3>
                   <p className="text-white/40 text-sm leading-relaxed">{step.desc}</p>
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Fechamento da jornada: as três etapas explicam o mecanismo, esta
+              frase devolve a pergunta para quem lê ("quem está procurando o que
+              eu tenho?") e o botão responde. O destaque é o mesmo gradiente ouro
+              rosé que a Hero já usa no gatilho dela — nenhuma cor nova.
+              O botão NÃO é um CTA novo: é o mesmo elemento do CTA final desta
+              página (mesmo Link, mesma rota, mesmas classes) e lê a MESMA chave
+              hero.cta do botão da Hero, para os dois nunca divergirem. */}
+          <div className="max-w-3xl mx-auto mt-16 text-center"
+            style={{
+              opacity: stepsInView ? 1 : 0,
+              transform: stepsInView ? "translateY(0)" : "translateY(40px)",
+              transition: "all 0.7s cubic-bezier(0.23,1,0.32,1) 0.45s",
+            }}>
+            <p className="text-2xl md:text-3xl font-extrabold leading-snug text-balance bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+              {t("steps.closing")}
+            </p>
+            <Link href={isAuthenticated ? "/dashboard" : "/register"}>
+              <button className="group mt-8 bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-9 py-4 rounded-2xl text-lg text-balance transition-all duration-200 active:scale-[0.97] inline-flex items-center gap-2.5">
+                {t("hero.cta")}
+                <ArrowRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
+              </button>
+            </Link>
           </div>
         </div>
       </section>
