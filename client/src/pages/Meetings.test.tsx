@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { toast } from "sonner";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "@/i18n";
 import Meetings from "./Meetings";
 
@@ -229,7 +229,9 @@ describe("Detalhe da reunião — a falha é explicada no idioma da dona", () =>
   });
 });
 
-const DIA = 24 * 60 * 60 * 1000;
+// O áudio vive 24 horas depois da transcrição ou da falha: um prazo "de
+// sobra" para os moldes é de horas, não de dias.
+const HORA = 60 * 60 * 1000;
 const gravacao = (expiraEm: number) => ({ url: "/manus-storage/meetings/dona/r/rec.webm", mimeType: "audio/webm", durationSeconds: 95, sizeBytes: 2048, expiresAt: expiraEm });
 const botaoReprocessar = () => screen.queryByRole("button", { name: /Reprocessar/ });
 const sugestaoPendente = { id: "s1", fullName: "Ana Souza", jobTitle: null, company: null, email: null, status: "pending" };
@@ -246,7 +248,7 @@ describe("Gravação — envio que falha", () => {
 
 describe("Detalhe da reunião — reprocessar a reunião que falhou", () => {
   it("com áudio guardado: a dica diz até quando ele fica e que o resultado anterior é substituído, e o botão pede o reprocessamento com o id", () => {
-    const meeting = abrirDetalhe({ status: "failed", processingError: "Não foi possível transcrever o áudio." }, { recording: gravacao(Date.now() + 20 * DIA) });
+    const meeting = abrirDetalhe({ status: "failed", processingError: "Não foi possível transcrever o áudio." }, { recording: gravacao(Date.now() + 20 * HORA) });
     expect(screen.getByText(/continua guardado até .*substitui a transcrição/)).toBeInTheDocument();
     fireEvent.click(botaoReprocessar()!);
     expect(duble.mutacoes.reprocess.mutate).toHaveBeenCalledWith({ meetingId: meeting.id });
@@ -266,7 +268,7 @@ describe("Detalhe da reunião — reprocessar a reunião que falhou", () => {
   });
 
   it.each(["ready", "processing"])("reunião %s não oferece reprocessar", status => {
-    abrirDetalhe({ status }, { recording: gravacao(Date.now() + 20 * DIA) });
+    abrirDetalhe({ status }, { recording: gravacao(Date.now() + 20 * HORA) });
     expect(botaoReprocessar()).not.toBeInTheDocument();
   });
 
@@ -276,14 +278,14 @@ describe("Detalhe da reunião — reprocessar a reunião que falhou", () => {
     ["TOO_MANY_REQUESTS", /Muitas tentativas de reprocessar/],
     ["INTERNAL_SERVER_ERROR", /Não foi possível reprocessar a reunião/],
   ])("recusa %s vira a frase traduzida, não a mensagem crua do servidor", (code, frase) => {
-    abrirDetalhe({ status: "failed" }, { recording: gravacao(Date.now() + 20 * DIA) });
+    abrirDetalhe({ status: "failed" }, { recording: gravacao(Date.now() + 20 * HORA) });
     act(() => { duble.mutacoes.reprocess.opcoes.onError?.({ message: "mensagem do servidor", data: { code } }, { meetingId: REUNIAO.id }); });
     expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(frase));
     expect(toast.error).not.toHaveBeenCalledWith("mensagem do servidor");
   });
 
   it("pedido aceito: a tela vira 'processing' na hora, sem esperar a releitura", () => {
-    abrirDetalhe({ status: "failed" }, { recording: gravacao(Date.now() + 20 * DIA) });
+    abrirDetalhe({ status: "failed" }, { recording: gravacao(Date.now() + 20 * HORA) });
     act(() => { duble.mutacoes.reprocess.opcoes.onSuccess?.({ status: "processing" }, { meetingId: REUNIAO.id }); });
     expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/Reprocessamento iniciado/));
     expect(duble.utils.meetings.get.setData).toHaveBeenCalledTimes(1);
@@ -294,7 +296,7 @@ describe("Detalhe da reunião — reprocessar a reunião que falhou", () => {
   });
 
   it("o áudio sumiu do bucket: o motivo sai traduzido, sem a dica de 'continua guardado' e sem o botão", () => {
-    abrirDetalhe({ status: "failed", processingError: "O áudio guardado desta reunião não foi encontrado." }, { recording: gravacao(Date.now() + 20 * DIA) });
+    abrirDetalhe({ status: "failed", processingError: "O áudio guardado desta reunião não foi encontrado." }, { recording: gravacao(Date.now() + 20 * HORA) });
     expect(botaoReprocessar()).not.toBeInTheDocument();
     expect(screen.queryByText(/continua guardado até/)).not.toBeInTheDocument();
     expect(screen.getByText(/Não é possível reprocessar esta reunião/)).toBeInTheDocument();
@@ -303,7 +305,7 @@ describe("Detalhe da reunião — reprocessar a reunião que falhou", () => {
   it("…e em inglês o motivo aparece traduzido, não em português", async () => {
     await i18n.changeLanguage("en");
     try {
-      abrirDetalhe({ status: "failed", processingError: "O áudio guardado desta reunião não foi encontrado." }, { recording: gravacao(Date.now() + 20 * DIA) });
+      abrirDetalhe({ status: "failed", processingError: "O áudio guardado desta reunião não foi encontrado." }, { recording: gravacao(Date.now() + 20 * HORA) });
       expect(screen.getByText("This meeting's stored audio was not found.")).toBeInTheDocument();
       expect(screen.queryByText("O áudio guardado desta reunião não foi encontrado.")).not.toBeInTheDocument();
     } finally {
@@ -312,7 +314,7 @@ describe("Detalhe da reunião — reprocessar a reunião que falhou", () => {
   });
 
   it("aceito ou recusado, a tela relê a reunião e a lista", () => {
-    abrirDetalhe({ status: "failed" }, { recording: gravacao(Date.now() + 20 * DIA) });
+    abrirDetalhe({ status: "failed" }, { recording: gravacao(Date.now() + 20 * HORA) });
     act(() => { duble.mutacoes.reprocess.opcoes.onSettled?.(); });
     expect(duble.utils.meetings.get.invalidate).toHaveBeenCalledWith({ meetingId: REUNIAO.id });
     expect(duble.utils.meetings.list.invalidate).toHaveBeenCalled();
@@ -321,8 +323,87 @@ describe("Detalhe da reunião — reprocessar a reunião que falhou", () => {
   it("sem transcrição e com o áudio vencido: não diz que 'a transcrição continua aqui' nem que houve gravação apagada", () => {
     abrirDetalhe({ status: "failed" }, { recordingExpired: true });
     expect(screen.queryByText(/A transcrição continua aqui/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/foi apagada/)).not.toBeInTheDocument();
-    expect(screen.getByText(/O áudio fica guardado por no máximo 30 dias/)).toBeInTheDocument();
+    // "foi apagado" (masculino, de "o áudio") é a frase da gravação apagada.
+    expect(screen.queryByText(/foi apagado/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Quando a transcrição falha, o áudio é apagado 24 horas depois da falha/)).toBeInTheDocument();
+  });
+});
+
+describe("Prazo do áudio — apagado 24 horas depois da transcrição ou da falha", () => {
+  // Relógio fixo só no Date: a data e a hora do prazo saem iguais em toda
+  // execução, e o React segue com os timers reais.
+  const AGORA = Date.UTC(2026, 8, 14, 12, 0);
+  const PRAZO = AGORA + 20 * HORA;
+  const prazoNaTela = new Date(PRAZO).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(AGORA);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("antes de gravar: a caixinha que a dona marca diz que o áudio é apagado 24 horas depois, e vem antes de 'Iniciar gravação'", () => {
+    duble.list.mockReturnValue({ data: [], isLoading: false });
+    render(<Meetings />);
+    expect(screen.getByText(/O áudio é privado e é apagado 24 horas depois da transcrição \(ou da falha dela\)\./)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Nova reunião/ }));
+
+    // O consentimento registrado é o desta caixinha: o prazo tem de estar no
+    // que ela confirma, não só num aviso ao lado.
+    const caixinha = screen.getByRole("checkbox", { name: /deste áudio, que é apagado 24 horas depois da transcrição \(ou da falha dela\)/ });
+    expect(caixinha).not.toBeChecked();
+    const iniciar = screen.getByRole("button", { name: /Iniciar gravação/ });
+    expect(caixinha.compareDocumentPosition(iniciar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText(/30 dias/)).not.toBeInTheDocument();
+  });
+
+  it("pronta: 'disponível até' mostra data E hora do fim do prazo, com um só separador", () => {
+    abrirDetalhe({ status: "ready" }, { recording: gravacao(PRAZO) });
+    expect(prazoNaTela).toMatch(/\d{2}:\d{2}$/);
+    expect(screen.getByText(/disponível até/)).toHaveTextContent(`Duração: 01:35 · disponível até ${prazoNaTela}`);
+  });
+
+  it("com falha: a dica diz até que data e hora o áudio fica, e que reprocessar com sucesso renova as 24 horas", () => {
+    abrirDetalhe({ status: "failed", processingError: "Não foi possível transcrever o áudio." }, { recording: gravacao(PRAZO) });
+    const dica = screen.getByText(/continua guardado até/);
+    expect(dica).toHaveTextContent(`continua guardado até ${prazoNaTela}.`);
+    expect(dica).toHaveTextContent(/Se der certo, o áudio fica guardado por mais 24 horas a partir da nova transcrição/);
+  });
+
+  // Um reprocesso também passa por 'processing', e se ele falhar de novo o áudio
+  // sai 24 horas depois da falha ANTERIOR. Uma linha que dissesse só "depois da
+  // transcrição" prometeria à dona um prazo que o servidor não cumpre nesse caso.
+  it("em processamento: o prazo gravado ainda é provisório, então a tela diz a regra inteira, com a falha, e nenhuma data", () => {
+    abrirDetalhe({ status: "processing" }, { recording: gravacao(PRAZO) });
+    const linha = screen.getByText(/· apagado 24 horas depois da transcrição/);
+    expect(linha).toHaveTextContent("Duração: 01:35 · apagado 24 horas depois da transcrição (ou da falha dela)");
+    expect(linha).not.toHaveTextContent(prazoNaTela);
+    expect(linha.textContent).not.toMatch(/\d{1,4}[/.]\d{1,2}[/.]\d{2,4}/);
+    expect(screen.queryByText(/disponível até/)).not.toBeInTheDocument();
+  });
+
+  it("com transcrição e o áudio já apagado: diz que ele fica só 24 horas depois da transcrição, e que a transcrição continua", () => {
+    abrirDetalhe({ status: "ready" }, { transcript: { id: "t1", transcript: "Fala da reunião.", language: "pt" }, recordingExpired: true });
+    expect(screen.getByText(/já foi apagado: ele fica guardado só 24 horas depois da transcrição\. A transcrição continua aqui/)).toBeInTheDocument();
+    expect(screen.getByText(/é apagado automaticamente 24 horas depois da transcrição \(ou da falha dela\)\. A transcrição permanece privada/)).toBeInTheDocument();
+  });
+
+  // Em 'processing' o servidor esconde o áudio vencido, mas não o apaga: a
+  // execução em curso ainda pode terminar em 'ready' e renovar o prazo. Ao lado
+  // de "Transcrevendo", dizer que o áudio já foi apagado, ou que não há áudio,
+  // seria falso; fica só o aviso de privacidade com a regra.
+  it.each([
+    ["com a transcrição da tentativa anterior", { id: "t1", transcript: "Fala da reunião.", language: "pt" }],
+    ["sem transcrição", null],
+  ])("em processamento com o prazo vencido, %s: não diz que o áudio foi apagado nem que não há áudio, e o aviso de privacidade continua", (_caso, transcript) => {
+    abrirDetalhe({ status: "processing" }, { transcript, recordingExpired: true });
+    expect(screen.getByRole("status")).toHaveTextContent("Transcrevendo e analisando a reunião…");
+    const secaoDaGravacao = screen.getByRole("heading", { name: "Gravação" }).parentElement!;
+    expect(secaoDaGravacao.textContent).not.toMatch(/já foi apagado|Não há áudio guardado|Nenhum áudio guardado/);
+    expect(secaoDaGravacao).toHaveTextContent("O áudio fica restrito à sua conta e é apagado automaticamente 24 horas depois da transcrição (ou da falha dela). A transcrição permanece privada na sua rede.");
   });
 });
 
