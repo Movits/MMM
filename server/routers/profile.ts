@@ -23,10 +23,18 @@ const urlFlexivel = z.preprocess(
 // números, sem máscara, sem 14 dígitos fixos e sem dígito verificador (vale
 // para registro de outro país e para o CNPJ alfanumérico). Quem se declara MEI,
 // pessoa jurídica ou organização sem fins lucrativos tem cadastro por definição (A7).
+// Os dois tetos ficam aqui, e não num .max() do zod: erro do zod chega ao toast do
+// Onboarding como JSON cru e em inglês, e a tela não corta mais o que se cola.
+const CADASTRO_BRUTO_MAX = 1000;
+const MENSAGEM_CADASTRO_LONGO = `O número do cadastro empresarial tem no máximo ${CADASTRO_EMPRESARIAL_MAX} letras e números.`;
+
 function conferirCadastroEmpresarial(personType: string | undefined, companyCnpj: string | undefined) {
+  if (companyCnpj && companyCnpj.length > CADASTRO_BRUTO_MAX) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: MENSAGEM_CADASTRO_LONGO });
+  }
   const cadastro = companyCnpj ? normalizarCadastroEmpresarial(companyCnpj) : "";
   if (cadastro.length > CADASTRO_EMPRESARIAL_MAX) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: `O número do cadastro empresarial tem no máximo ${CADASTRO_EMPRESARIAL_MAX} letras e números.` });
+    throw new TRPCError({ code: "BAD_REQUEST", message: MENSAGEM_CADASTRO_LONGO });
   }
   if (exigeCadastroEmpresarial(personType) && !cadastro) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o número do cadastro empresarial: ele é obrigatório para MEI, pessoa jurídica e organização sem fins lucrativos." });
@@ -54,7 +62,7 @@ export const profileRouter = router({
      position: z.string().max(200).optional(),
      personType: z.enum(["individual", "legal_entity", "mei", "nonprofit"]).optional(),
      companySize: z.enum(["mei", "micro", "small", "medium", "large"]).optional(),
-     companyCnpj: z.string().max(1000).optional(),
+     companyCnpj: z.string().optional(),
      gender: z.enum(["male", "female", "prefer_not_to_say"]).optional(),
      // Novos campos v2
      jobTitle: z.string().max(200).optional(),
@@ -99,7 +107,7 @@ export const profileRouter = router({
      position: z.string().max(200).optional(),
      personType: z.enum(["individual", "legal_entity", "mei", "nonprofit"]).optional(),
      companySize: z.enum(["mei", "micro", "small", "medium", "large"]).optional(),
-     companyCnpj: z.string().max(1000).optional(),
+     companyCnpj: z.string().optional(),
      gender: z.enum(["male", "female", "prefer_not_to_say"]).optional(),
      // Campos do sistema de matching
      age: z.number().int().min(16).max(120).optional(),

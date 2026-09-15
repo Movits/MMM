@@ -35,10 +35,18 @@ describe("dados empresariais", () => {
     expect(normalizarCadastroEmpresarial("00.000.000/0000-00")).toBe("00000000000000");
   });
 
-  it("mascara o valor exibido deixando só os 4 últimos caracteres", () => {
-    expect(mascararCadastroEmpresarial("04.252.011/0001-10")).toBe("**********0110");
-    expect(mascararCadastroEmpresarial("B12345678")).toBe("*****5678");
+  it("tira separadores que o Unicode trata como letra: ー do teclado japonês, ـ árabe e o sinal №", () => {
+    expect(normalizarCadastroEmpresarial("０１００ー０１ー１２３４５６")).toBe("010001123456");
+    expect(normalizarCadastroEmpresarial("١٠١٠ـ١٢٣")).toBe("1010123");
+    expect(normalizarCadastroEmpresarial("№ 1027700132195")).toBe("1027700132195");
+  });
+
+  it("mascara o valor exibido com 4 asteriscos fixos e os 4 últimos caracteres", () => {
+    expect(mascararCadastroEmpresarial("04.252.011/0001-10")).toBe("****0110");
+    expect(mascararCadastroEmpresarial("B12345678")).toBe("****5678");
     expect(mascararCadastroEmpresarial("1234")).toBe("1234");
+    // Número longo não empurra os 4 últimos para fora do cartão do perfil.
+    expect(mascararCadastroEmpresarial("A".repeat(CADASTRO_EMPRESARIAL_MAX))).toHaveLength(8);
   });
 
   it("exige o cadastro de todo tipo com personalidade jurídica, menos da pessoa física", () => {

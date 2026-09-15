@@ -25,15 +25,22 @@ const ZEROS_DE_OUTRAS_ESCRITAS = [0x0660, 0x06f0, 0x0966];
 
 // Pelo construtor: o tsconfig não aceita a flag `u` em regex literal, e o
 // \p{...} só existe com ela. Node 20 e os navegadores atuais suportam.
-const FORA_DE_LETRA_OU_ALGARISMO = new RegExp("[^\\p{L}\\p{Nd}]", "gu");
+// \p{Lm} são "letras modificadoras" que se digitam como separador: o "ー" que
+// a tecla "-" produz no teclado japonês e o tatweel árabe "ـ".
+const FORA_DE_LETRA_OU_ALGARISMO = new RegExp("[^\\p{L}\\p{Nd}]|\\p{Lm}", "gu");
+
+// Sinais que o NFKC transformaria em letras que a pessoa não digitou
+// ("№" do teclado russo vira "No", "™" vira "TM", "º" vira "o").
+const SINAIS_QUE_VIRAM_LETRA = /[№™℠ªº]/g;
 
 /**
- * Guarda só letras e números: sem hífen, ponto, barra ou espaço. Algarismos
- * digitados em outro teclado viram 0-9 em vez de sumir, e letras acentuadas
- * (ex.: o Ñ do RFC mexicano) ficam.
+ * Guarda só letras e números: sem hífen, ponto, barra, espaço ou outro
+ * separador. Algarismos digitados em outro teclado viram 0-9 em vez de sumir,
+ * e letras acentuadas (ex.: o Ñ do RFC mexicano) ficam.
  */
 export function normalizarCadastroEmpresarial(value: string): string {
   return value
+    .replace(SINAIS_QUE_VIRAM_LETRA, "")
     .normalize("NFKC")
     .replace(/[\u0660-\u0669\u06F0-\u06F9\u0966-\u096F]/g, algarismo => {
       const codigo = algarismo.charCodeAt(0);
@@ -43,9 +50,13 @@ export function normalizarCadastroEmpresarial(value: string): string {
     .replace(FORA_DE_LETRA_OU_ALGARISMO, "");
 }
 
-/** Na exibição, só os 4 últimos caracteres aparecem. */
+/**
+ * Na exibição, só os 4 últimos caracteres aparecem, depois de 4 asteriscos
+ * fixos: um asterisco por caractere empurraria o final de um número longo para
+ * fora do cartão do perfil (que corta com `truncate`), e ainda revelaria o tamanho.
+ */
 export function mascararCadastroEmpresarial(value: string): string {
   const cadastro = normalizarCadastroEmpresarial(value);
   if (cadastro.length <= 4) return cadastro;
-  return "*".repeat(cadastro.length - 4) + cadastro.slice(-4);
+  return "****" + cadastro.slice(-4);
 }

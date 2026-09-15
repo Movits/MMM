@@ -214,7 +214,7 @@ export default function Profile() {
       gender: gender || undefined,
       personType: personType || undefined,
       companySize: personType === "mei" ? "mei" : companySize || undefined,
-      companyCnpj: personType !== "individual" ? companyCnpj || undefined : undefined,
+      companyCnpj: personType !== "individual" ? normalizarCadastroEmpresarial(companyCnpj) || undefined : undefined,
       activityArea,
       institutionalNetwork,
       linkedinUrl,
@@ -459,7 +459,10 @@ export default function Profile() {
                   </div>
                   <div>
                     <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.business.registrationNumber")}</label>
-                    <Input value={companyCnpj} onChange={e => setCompanyCnpj(normalizarCadastroEmpresarial(e.target.value))}
+                    {/* Durante a composição do IME (japonês, chinês) o texto não é mexido: trocá-lo no meio a interrompe. */}
+                    <Input value={companyCnpj}
+                      onChange={e => setCompanyCnpj((e.nativeEvent as InputEvent).isComposing ? e.target.value : normalizarCadastroEmpresarial(e.target.value))}
+                      onCompositionEnd={e => setCompanyCnpj(normalizarCadastroEmpresarial(e.currentTarget.value))}
                       placeholder={t("profile.business.registrationNumberPlaceholder")}
                       className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                   </div>

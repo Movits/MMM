@@ -141,7 +141,9 @@ function TagButton({ icon, label, selected, onClick }: {
 }
 
 function TextInput({ label, value, onChange, placeholder, type = "text", hint, min, max, list, required }: {
-  label: string; value: string | number; onChange: (v: string) => void;
+  // `compondo`: o IME (japonês, chinês) ainda está montando o texto; quem
+  // transforma o valor deve esperar o fim da composição, que chama de novo.
+  label: string; value: string | number; onChange: (v: string, compondo?: boolean) => void;
   placeholder?: string; type?: string; hint?: string; min?: number; max?: number; list?: string; required?: boolean;
 }) {
   return (
@@ -149,7 +151,8 @@ function TextInput({ label, value, onChange, placeholder, type = "text", hint, m
       <label className="block text-sm font-medium text-white/70 mb-2">{label}{required && <span className="text-[#c98f70]"> *</span>}</label>
       <input type={type} value={value ?? ""} min={min} max={max} list={list}
         inputMode={type === "number" ? "numeric" : undefined}
-        onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        onChange={e => onChange(e.target.value, (e.nativeEvent as InputEvent).isComposing === true)}
+        onCompositionEnd={e => onChange(e.currentTarget.value, false)} placeholder={placeholder}
         className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#c98f70]/60 focus:bg-white/8 transition-all duration-200 text-sm"/>
       {hint && <p className="text-xs text-white/30 mt-1">{hint}</p>}
     </div>
@@ -423,7 +426,7 @@ export default function Onboarding() {
     if (step === 2) {
       const temEspecialidade = form.primarySpecialties.length > 0 || form.customSpecialty.trim().length > 0;
       // Quem se declara MEI, pessoa juridica ou sem fins lucrativos tem cadastro empresarial por definicao (A7).
-      const cadastroOk = !exigeCadastroEmpresarial(form.personType) || form.companyCnpj.length > 0;
+      const cadastroOk = !exigeCadastroEmpresarial(form.personType) || normalizarCadastroEmpresarial(form.companyCnpj).length > 0;
       return temEspecialidade && cadastroOk;
     }
     if (step === 3) return form.seekingTypes.length > 0 && form.incomeRange.length > 0 && form.workStyle.length > 0;
@@ -454,7 +457,7 @@ export default function Onboarding() {
       gender: form.gender || undefined,
       personType: form.personType || undefined,
       companySize: form.personType === "mei" ? "mei" : form.companySize || undefined,
-      companyCnpj: form.personType !== "individual" ? form.companyCnpj || undefined : undefined,
+      companyCnpj: form.personType !== "individual" ? normalizarCadastroEmpresarial(form.companyCnpj) || undefined : undefined,
       currentResources: form.currentResources || undefined,
       workStyle: form.workStyle as "remote" | "hybrid" | "onsite" | "flexible" | undefined,
       values: form.values, languages: form.languages,
@@ -640,7 +643,7 @@ export default function Onboarding() {
                               { value: "large", label: t("profile.business.sizeLarge") },
                             ], i18n.language)} placeholder={t("onboarding.fields.selectPlaceholder")}/>
                       <TextInput label={t("profile.business.registrationNumber")} required value={form.companyCnpj}
-                        onChange={value => set("companyCnpj", normalizarCadastroEmpresarial(value))}
+                        onChange={(value, compondo) => set("companyCnpj", compondo ? value : normalizarCadastroEmpresarial(value))}
                         placeholder={t("profile.business.registrationNumberPlaceholder")} hint={t("profile.business.registrationNumberHint")}/>
                     </div>
                   )}

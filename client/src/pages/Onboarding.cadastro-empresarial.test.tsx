@@ -158,4 +158,22 @@ describe("Onboarding — número do cadastro empresarial no lugar do CNPJ", () =
     act(() => { vi.advanceTimersByTime(300); });
     expect(tituloDoPasso()).not.toBe("Sua especialidade");
   });
+
+  it("não mexe no texto durante a composição do IME e normaliza quando ela termina", () => {
+    render(<Onboarding />);
+    avancarAoPasso2();
+    fireEvent.click(screen.getByText("Tecnologia & Software"));
+    fireEvent.click(screen.getByText("Pessoa Jurídica", { selector: "div" }));
+
+    // Teclado japonês em modo hiragana: algarismos de largura cheia e o traço "ー".
+    const emComposicao = "１２ー３";
+    const campo = campoDoCadastro();
+    fireEvent.compositionStart(campo);
+    fireEvent.input(campo, { target: { value: emComposicao }, isComposing: true });
+    expect(campoDoCadastro().value).toBe(emComposicao);
+
+    fireEvent.compositionEnd(campoDoCadastro());
+    expect(campoDoCadastro().value).toBe("123");
+    expect(botaoAvancar()).toBeEnabled();
+  });
 });

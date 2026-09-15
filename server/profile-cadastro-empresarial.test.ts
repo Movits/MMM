@@ -106,6 +106,20 @@ describe("profile.update: número do cadastro empresarial", () => {
     expect(upsertFalso.mock.calls[0][1].companyCnpj).toHaveLength(CADASTRO_EMPRESARIAL_MAX);
   });
 
+  it("colagem acima de 1000 caracteres também é recusada em português, sem o JSON do zod", async () => {
+    const mensagem = `O número do cadastro empresarial tem no máximo ${CADASTRO_EMPRESARIAL_MAX} letras e números.`;
+    const colagemEnorme = "1".repeat(1001);
+
+    const noPerfil = await chamadora().profile.update({ personType: "legal_entity", companyCnpj: colagemEnorme }).catch(e => e);
+    expect(noPerfil).toMatchObject({ code: "BAD_REQUEST", message: mensagem });
+
+    const noCadastro = await chamadora().profile.completeOnboarding({ ...onboardingBase, personType: "mei", companyCnpj: colagemEnorme }).catch(e => e);
+    expect(noCadastro).toMatchObject({ code: "BAD_REQUEST", message: mensagem });
+
+    expect(upsertFalso).not.toHaveBeenCalled();
+    expect(atualizacoes).toHaveLength(0);
+  });
+
   it("pessoa física continua sem cadastro empresarial", async () => {
     await chamadora().profile.update({ personType: "individual", companyCnpj: "12345" });
 
