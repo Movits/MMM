@@ -53,15 +53,67 @@ describe("Serviço × necessidade que o NOMEIA — casa em 100", () => {
     expect(scoreMatch(item("Prestação de serviços de contabilidade"), item("Contabilidade")).score).toBe(100);
   });
 
-  it("a necessidade genérica que nomeia a família do serviço é demanda expressa: 'Consultoria' × 'Consultoria jurídica'", () => {
-    expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Consultoria", "Serviços")).score).toBe(100);
+  it("a necessidade genérica que nomeia a família do serviço é demanda expressa, e vale 60 — não 100", () => {
+    // Valia 100 até 13/09, e era o terceiro defeito do relato sobre a #101:
+    // "Consultoria" procurado dava 100 para consultoria tributária, de
+    // marketing E de segurança do trabalho, empatado com quem tivesse pedido
+    // exatamente aquilo. 100 é a nota de quem tem a MESMA coisa. O par
+    // CONTINUA existindo, acima do corte de 50 — derrubar para 0 repetiria o
+    // defeito que a regra da especialidade consertou.
+    expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Consultoria", "Serviços"))).toEqual({ score: 60, type: "category" });
+    // Este valia 60 até 14/09 e passou a valer 100, junto com o conserto de
+    // "Contabilidade" × "Contador" — é a MESMA regra, e a mudança é deliberada.
+    // O defeito 3 era necessidade genérica contra oferta ESPECIALIZADA
+    // ("Consultoria" pedido dando 100 para consultoria tributária, de marketing
+    // e de segurança do trabalho, as três empatadas). Aqui os dois lados são
+    // genéricos: uma empresa de consultoria diante de quem procura consultoria
+    // não está a uma especialidade de distância — é o mesmo serviço. Manter 60
+    // aqui exigiria um critério que separasse este par de "Contabilidade" ×
+    // "Contador", e não existe: "empresa" e "procura" são estrutura.
     expect(scoreMatch(item("Empresa de consultoria"), item("Procura consultoria")).score).toBe(100);
     // Outra especialidade pedida é outra necessidade; outra família também.
     expect(scoreMatch(item("Consultoria jurídica"), item("Consultoria em marketing")).score).toBe(0);
     expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Advocacia", "Serviços")).score).toBe(0);
     // A família junta as flexões: "Advogado" procurado × "Advocacia tributária" possuído.
-    expect(scoreMatch(item("Advocacia tributária", "Jurídico"), item("Advogado", "Jurídico")).score).toBe(100);
-    expect(scoreMatch(item("Serviços jurídicos tributários"), item("Advogada")).score).toBe(100);
+    expect(scoreMatch(item("Advocacia tributária", "Jurídico"), item("Advogado", "Jurídico")).score).toBe(60);
+    expect(scoreMatch(item("Serviços jurídicos tributários"), item("Advogada")).score).toBe(60);
+  });
+
+  it("atividade e profissional da MESMA família, sem mais nada, são a mesma coisa: 100", () => {
+    // Achado na revisão de 14/09 da #124, e era regressão da própria PR: com as
+    // duas especialidades vazias, `mesmoConjunto` falhava (exige conjunto
+    // não-vazio) e o par caía na regra da família, valendo 60. Abaixo do
+    // EMAIL_THRESHOLD de 70 — o match existia e a pessoa NÃO era avisada.
+    //
+    // Quem oferece "Contabilidade" e quem procura "Contador" não estão a uma
+    // especialidade de distância: é o mesmo serviço dito de dois jeitos.
+    for (const categoria of [undefined, "Serviços"]) {
+      expect(scoreMatch(item("Contabilidade", categoria), item("Contador", categoria)), `Contabilidade × Contador [${categoria}]`)
+        .toEqual({ score: 100, type: "exact" });
+      expect(scoreMatch(item("Advocacia", categoria), item("Advogado", categoria)), `Advocacia × Advogado [${categoria}]`)
+        .toEqual({ score: 100, type: "exact" });
+    }
+
+    // E o que separa esses de "Consultoria jurídica" NÃO é ter especialidade —
+    // ela é vazia nos dois —, é nomearem uma SEGUNDA família além da sua. Se
+    // esta distinção se perder, o teste da família genérica acima cai junto.
+    expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Consultoria", "Serviços")).score).toBe(60);
+    expect(scoreMatch(item("Consultoria de marketing", "Serviços"), item("Consultoria", "Serviços")).score).toBe(60);
+  });
+
+  it("\"cobertura\" não é imóvel: reportagem não escapa do portão", () => {
+    // Também da revisão de 14/09. "cobertura" tinha entrado em IMOVEL junto com
+    // apartamento e casa; fora do mercado imobiliário ela é reportagem, seguro
+    // ou telhado. Classificado como imóvel, o item SAI do portão da demanda
+    // expressa e volta a casar por categoria — o vazamento que a #101 fecha.
+    expect(scoreMatch(item("Cobertura jornalística", "Serviços"), item("Compradores", "Serviços")).score).toBe(0);
+  });
+
+  it("mas a necessidade que nomeia a ESPECIALIDADE, e não só a família, segue valendo 100", () => {
+    // A separação das duas notas é o conserto do defeito 3: pedir "Advogado"
+    // é pedir a família; pedir "Advogado tributarista" é pedir este serviço.
+    expect(scoreMatch(item("Advocacia tributária", "Jurídico"), item("Advogado tributarista", "Jurídico"))).toEqual({ score: 100, type: "exact" });
+    expect(scoreMatch(item("Consultoria tributária"), item("Consultor tributário")).score).toBe(100);
   });
 
   it("item coordenado ('Mina e consultoria mineral') fica com a mina e segue nos 60 por categoria", () => {
@@ -174,5 +226,61 @@ describe("Fiação", () => {
     const motor = fonte("matching.ts");
     expect(motor).toContain("nunca presuma que alguém precisa de um serviço");
     expect(motor).toContain("O que A precisa:");
+  });
+});
+
+/**
+ * Defeito relatado em 13/09, depois de a #101 entrar em produção: a regra
+ * passou a barrar pares em que a necessidade FOI declarada, só porque a
+ * redação mudava. "Advocacia tributária" possuído × "Advogado tributarista"
+ * procurado caía de 60 para 0 — e 0 não é só esconder: abaixo de
+ * SAVE_THRESHOLD a linha não entra em `pares` e a limpeza de órfãos remove a
+ * sugestão que havia. Quem escrevia a necessidade de forma MAIS específica
+ * perdia o match; quem escrevia "Advogado" (genérico) continuava achando.
+ */
+describe("Serviço × necessidade declarada com outra flexão — casa (defeito da #101)", () => {
+  it("a mesma família com a mesma especialidade casa em 100, escrita como for", () => {
+    for (const [oferta, necessidade] of [
+      ["Advocacia tributária", "Advogado tributarista"],
+      ["Advocacia tributária", "Advogado de tributos"],
+      ["Consultoria tributária", "Consultor tributário"],
+      ["Advocacia trabalhista", "Advogado trabalhista"],
+    ] as const) {
+      const r = scoreMatch(item(oferta, "Serviços"), item(necessidade, "Serviços"));
+      expect(r.score, `${oferta} × ${necessidade}`).toBe(100);
+      expect(r.type, `${oferta} × ${necessidade}`).toBe("exact");
+    }
+  });
+
+  it("e o que a #101 veio barrar continua barrado: outra família, outra especialidade, e a categoria em comum", () => {
+    for (const [oferta, necessidade] of [
+      ["Advocacia tributária", "Distribuidor para a África"],
+      ["Advocacia tributária", "Contador"],
+      ["Consultoria tributária", "Consultoria de marketing"],
+      ["Advocacia trabalhista", "Advogado tributarista"],
+      ["Sell-side advisory", "Buy-side advisory"],
+    ] as const) {
+      expect(scoreMatch(item(oferta, "Serviços"), item(necessidade, "Serviços")).score, `${oferta} × ${necessidade}`).toBe(0);
+    }
+  });
+});
+
+/**
+ * Quarto ponto do mesmo relato de 13/09: a regra só existia em português,
+ * inglês e espanhol. Nos outros 7 idiomas nada era classificado como serviço,
+ * então o portão NUNCA disparava — a regra da cliente simplesmente não valia
+ * para quem escreve neles, e um serviço casava por categoria como antes da #101.
+ */
+describe("O portão dispara nos 10 idiomas (defeito da #101)", () => {
+  it.each([
+    ["de", "Steuerberatung", "Maschinen"],
+    ["fr", "Conseil fiscal", "Machines"],
+    ["ru", "Налоговый консалтинг", "Покупатели"],
+    ["hi", "कर परामर्श", "खरीदार"],
+    ["ar", "استشارات ضريبية", "مشترون"],
+    ["zh", "税务咨询", "买家"],
+    ["ja", "税務コンサルティング", "買い手"],
+  ])("%s: serviço × necessidade presumida de mesma categoria não casa", (_idioma, oferta, necessidade) => {
+    expect(scoreMatch(item(oferta, "Serviços"), item(necessidade, "Serviços")).score).toBe(0);
   });
 });

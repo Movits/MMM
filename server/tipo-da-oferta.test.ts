@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { classificarOferta, ehServico, ehServicoDeAssessoria, familiaDoServico, LISTAS_POR_TIPO, necessidadeGenericaNomeiaOServico, TIPOS_DA_OFERTA } from "@shared/tipo-da-oferta";
+import { normalizar, tokensDoTermo } from "@shared/direcao-do-termo";
+import { classificarOferta, ehServico, ehServicoDeAssessoria, especialidadeDoServico, familiaDoServico, LISTAS_POR_TIPO, necessidadeGenericaNomeiaOServico, necessidadeNomeiaOServico, TIPOS_DA_OFERTA } from "@shared/tipo-da-oferta";
 
 /**
  * Regra da demanda expressa (12/09/2026) — a classificação que vem ANTES do
@@ -25,9 +26,17 @@ describe("Tipo da oferta — as listas", () => {
     }
   });
 
-  it("as listas estão normalizadas: minúsculas, sem acento, sem espaço", () => {
+  it("as listas estão normalizadas: cada palavra é igual ao que normalizar() devolve, e não tem espaço", () => {
+    // Era /^[a-z0-9]+$/, que só valia enquanto o léxico fosse latino. Com
+    // russo, híndi e árabe (cobertura de idiomas, 14/09) o ASCII deixou de ser
+    // a invariante — e a de verdade é mais forte: a palavra da lista tem de ser
+    // EXATAMENTE o que a tokenização produz, em qualquer escrita. Uma entrada
+    // com maiúscula, acento latino ou espaço nunca casaria e falha aqui.
     for (const [, palavras] of LISTAS_POR_TIPO) {
-      for (const palavra of palavras) expect(palavra).toMatch(/^[a-z0-9]+$/);
+      for (const palavra of palavras) {
+        expect(normalizar(palavra), palavra).toBe(palavra);
+        expect(tokensDoTermo(palavra), palavra).toHaveLength(1);
+      }
     }
   });
 });
@@ -221,6 +230,34 @@ describe("Tipo da oferta — a ordem da decisão", () => {
   });
 });
 
+describe("Imóvel residencial — a cabeça decide antes da categoria", () => {
+  it("apartamento e sobrado são imóvel pela própria cabeça, mesmo com a categoria dizendo outra coisa", () => {
+    expect(classificarOferta("Apartamento na praia")).toBe("imovel");
+    expect(classificarOferta("Apartamento na praia", "Serviços jurídicos")).toBe("imovel");
+    expect(classificarOferta("Sobrado no centro", "Serviços")).toBe("imovel");
+    // Rural continua ATIVO, como já era decidido: "Fazenda de café" produz.
+    expect(classificarOferta("Fazenda de café")).toBe("ativo");
+  });
+
+  it("e a lista NÃO leva palavra que significa outra coisa fora do imobiliário", () => {
+    // Revisão do Roberto, 14/09: "casa", "house", "sala", "loja", "store",
+    // "flat" e "vaga" tinham entrado aqui nesta PR e classificavam como IMÓVEL
+    // coisas que não são. O erro custa caro para este lado: virar imóvel TIRA o
+    // item do portão da demanda expressa, e o par volta a casar por categoria —
+    // o vazamento que a #101 existe para fechar.
+    //
+    // "Vaga de emprego" é o pior: em rede de negócios, vaga é de trabalho.
+    expect(classificarOferta("Vaga de emprego", "Serviços"), "vaga de emprego").not.toBe("imovel");
+    expect(classificarOferta("Casa de câmbio", "Financeiro"), "casa de câmbio").not.toBe("imovel");
+    expect(classificarOferta("Casa de software", "Tecnologia"), "casa de software").not.toBe("imovel");
+    expect(classificarOferta("Consulting house", "Consulting"), "consulting house").not.toBe("imovel");
+    expect(classificarOferta("Loja virtual", "Tecnologia"), "loja virtual").not.toBe("imovel");
+    expect(classificarOferta("Store management", "Serviços"), "store management").not.toBe("imovel");
+    expect(classificarOferta("Sala de reunião", "Serviços"), "sala de reunião").not.toBe("imovel");
+    expect(classificarOferta("Cobertura jornalística", "Serviços"), "cobertura jornalística").not.toBe("imovel");
+  });
+});
+
 describe("Família do serviço e necessidade genérica", () => {
   it("a família é o lema do primeiro substantivo de serviço; 'serviços' sozinho não é família", () => {
     expect(familiaDoServico("Consultoria jurídica")).toBe("consultoria");
@@ -250,6 +287,76 @@ describe("Família do serviço e necessidade genérica", () => {
     expect(necessidadeGenericaNomeiaOServico("Consultoria jurídica", null, "Consulting")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Contabilidade para PMEs", null, "Contador")).toBe(true);
     expect(necessidadeGenericaNomeiaOServico("Advocacia tributária", null, "Contador")).toBe(false);
+  });
+});
+
+describe("Cobertura de idiomas — a regra existia só em pt, en e es (defeito relatado depois da #101)", () => {
+  it.each([
+    ["pt", "Consultoria tributária", "consultoria"],
+    ["en", "Tax consulting", "consultoria"],
+    ["es", "Consultoría fiscal", "consultoria"],
+    ["de", "Steuerberatung", "contabilidade"],
+    ["de", "Rechtsberatung für Unternehmen", "advocacia"],
+    ["fr", "Conseil fiscal", "consultoria"],
+    ["fr", "Avocat fiscaliste", "advocacia"],
+    ["ru", "Налоговый консалтинг", "consultoria"],
+    ["ru", "Юридические услуги", "advocacia"],
+    ["hi", "कर परामर्श", "consultoria"],
+    ["hi", "कानूनी सलाहकार", "advocacia"],
+    ["ar", "استشارات ضريبية", "consultoria"],
+    ["ar", "خدمات محاماة", "advocacia"],
+    // Chinês e japonês não separam palavra por espaço: aqui quem reconhece é
+    // SERVICOS_SEM_ESPACO, por substring.
+    ["zh", "税务咨询", "consultoria"],
+    ["zh", "法律服务", "advocacia"],
+    ["ja", "税務コンサルティング", "consultoria"],
+    ["ja", "弁護士事務所", "advocacia"],
+  ])("%s: %s é serviço da família %s", (_idioma, rotulo, familia) => {
+    expect(classificarOferta(rotulo)).toBe("servico");
+    expect(familiaDoServico(rotulo)).toBe(familia);
+  });
+
+  it("e o que NÃO é serviço nesses idiomas continua não sendo — errar para cá barraria match legítimo", () => {
+    for (const rotulo of ["Maschinen", "Оборудование", "मशीनरी", "آلات صناعية", "工业机械", "産業機械", "不動産"]) {
+      expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
+    }
+  });
+});
+
+describe("Especialidade do serviço e a necessidade que o nomeia (defeito relatado depois da #101)", () => {
+  it("a especialidade é o que sobra tirada a prestação, em lema: tributária e tributarista são a mesma", () => {
+    expect(especialidadeDoServico("Advocacia tributária")).toEqual(["tributario"]);
+    expect(especialidadeDoServico("Advogado tributarista")).toEqual(["tributario"]);
+    expect(especialidadeDoServico("Advogado de tributos")).toEqual(["tributario"]);
+    expect(especialidadeDoServico("Escritório de advocacia trabalhista")).toEqual(["trabalhista"]);
+    // Só nomeia a prestação, não o assunto.
+    expect(especialidadeDoServico("Consultoria jurídica")).toEqual([]);
+    expect(especialidadeDoServico("Mina de lítio")).toEqual([]);
+  });
+
+  it("a especialidade leva a CABEÇA junto: é ela que separa sell-side de buy-side", () => {
+    // A primeira versão desta regra tirava só o complemento da cabeça, e em
+    // "Sell-side advisory" a cabeça é "sell" — os dois lados da mesa casavam
+    // em 100. O teste de direcao-do-termo pegou; este guarda a causa.
+    expect(especialidadeDoServico("Sell-side advisory")).toEqual(["sell", "side"]);
+    expect(especialidadeDoServico("Buy-side advisory")).toEqual(["buy", "side"]);
+    expect(necessidadeNomeiaOServico("Sell-side advisory", null, "Buy-side advisory")).toBe(false);
+  });
+
+  it("mesma família e mesma especialidade: a necessidade nomeia o serviço, ainda que com outra flexão", () => {
+    expect(necessidadeNomeiaOServico("Advocacia tributária", null, "Advogado tributarista")).toBe(true);
+    expect(necessidadeNomeiaOServico("Advocacia tributária", null, "Advogado de tributos")).toBe(true);
+    expect(necessidadeNomeiaOServico("Consultoria tributária", null, "Consultor tributário")).toBe(true);
+    expect(necessidadeNomeiaOServico("Advocacia trabalhista", null, "Advogado trabalhista")).toBe(true);
+    // A necessidade genérica continua valendo (regra de 12/09, intacta).
+    expect(necessidadeNomeiaOServico("Advocacia tributária", null, "Advogado")).toBe(true);
+  });
+
+  it("outra especialidade na mesma família NÃO casa — é o que a spec da cliente veta", () => {
+    expect(necessidadeNomeiaOServico("Consultoria tributária", null, "Consultoria de marketing")).toBe(false);
+    expect(necessidadeNomeiaOServico("Advocacia trabalhista", null, "Advogado tributarista")).toBe(false);
+    expect(necessidadeNomeiaOServico("Advocacia tributária", null, "Contador")).toBe(false);
+    expect(necessidadeNomeiaOServico("Advocacia tributária", null, "Distribuidor para a África")).toBe(false);
   });
 });
 

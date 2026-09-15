@@ -1449,6 +1449,7 @@
   "intelligentMatches": {
     "seloMutuo": "↔ Mutual connection",
     "seloCategoria": "Same category",
+    "seloFamilia": "Same service family",
     "seloSignificados": "Similar meanings",
     "seloOfertaProcura": "Offer and demand",
     "seloTagExata": "Exact tag",

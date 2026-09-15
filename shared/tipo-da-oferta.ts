@@ -55,7 +55,7 @@
  * modificador ou outro item, e tratá-lo como tipo apagava o match por
  * categoria que esses itens tinham (revisões adversariais de 12/09).
  */
-import { ARTIGOS, GENITIVOS, MARCADORES_FRACOS, tokensDoTermo } from "./direcao-do-termo";
+import { ARTIGOS, GENITIVOS, MARCADORES_FRACOS, normalizar, tokensDoTermo } from "./direcao-do-termo";
 
 export type TipoDaOferta =
   | "servico"
@@ -112,11 +112,37 @@ const ASSESSORIA = [
   "asesoria", "asesorias", "asesor", "asesora", "asesores", "asesoras",
   "abogacia", "abogado", "abogada", "abogados", "abogadas",
   "contabilidad", "contable", "contables",
+  // de — a normalização já tirou o trema ("Übersetzung" vira "ubersetzung"),
+  // então as formas aqui são as normalizadas.
+  "beratung", "beratungen", "berater", "beraterin", "unternehmensberatung",
+  "rechtsberatung", "rechtsanwalt", "rechtsanwalte", "anwalt", "anwalte", "anwaltin",
+  "juristisch", "juristische", "buchhaltung", "buchfuhrung", "buchhalter",
+  "steuerberatung", "steuerberater", "wirtschaftsprufung", "wirtschaftsprufer",
+  // fr
+  "conseil", "conseils", "consultante", "avocat", "avocats", "avocate",
+  "juridique", "juridiques", "comptabilite", "comptable", "comptables", "auditeur", "auditeurs",
+  // ru
+  "консалтинг", "консультация", "консультации", "консультирование", "консультант",
+  "юридический", "юридические", "юрист", "адвокат",
+  "бухгалтерия", "бухгалтерский", "бухгалтер", "аудит", "аудитор",
+  "наставничество", "менторство",
+  // hi
+  "परामर्श", "सलाहकार", "कानूनी", "वकील", "अधिवक्ता", "लेखांकन", "लेखाकार", "अंकेक्षण",
+  // ar
+  "استشارات", "استشارة", "استشاري", "محاماة", "محامي", "قانوني", "محاسبة", "محاسب", "تدقيق", "مدقق",
 ];
 
 /**
  * "Legal" e "law" só valem na CABEÇA ("Legal advisory", "Law firm"): no meio
  * do termo, "legal" é adjetivo de qualquer coisa ("Cannabis legal").
+ *
+ * "direito" foi tentado aqui em 14/09 e NÃO entrou: "Direito tributário" sem
+ * categoria cai em "outros" e escapa do portão, mas isso é decisão registrada
+ * em teste ("na dúvida é outros"), e a palavra é ambígua em português ("lado
+ * direito", "acesso direito"). Classificar como serviço o que não é sujeita o
+ * item ao portão, que é restrição — erra para o lado de barrar match legítimo.
+ * Fechar esse buraco pede um critério mais estreito (direito + especialidade
+ * jurídica) e uma decisão de quem mantém a regra.
  */
 const ASSESSORIA_SO_NA_CABECA = ["legal", "law"];
 
@@ -161,6 +187,24 @@ const OUTROS_SERVICOS = [
   "corretaje", "corredor", "corredora", "corredores",
   "reclutamiento", "tercerizacion",
   "mantenimiento", "soporte",
+  // de
+  "werbung", "ubersetzung", "ubersetzungen", "ubersetzer", "dolmetschen", "dolmetscher",
+  "schulung", "schulungen", "weiterbildung", "architektur", "architekt",
+  "ingenieurwesen", "ingenieur", "wartung", "instandhaltung",
+  "personalvermittlung", "makler", "vermittlung",
+  // fr
+  "publicite", "traduction", "traductions", "traducteur", "traducteurs",
+  "architecte", "architectes", "courtage", "courtier", "courtiers", "recrutement", "mentorat",
+  // ru
+  "маркетинг", "реклама", "переводчик", "обучение", "тренинг", "тренинги",
+  "дизайн", "дизайнер", "архитектура", "архитектор", "инжиниринг", "инженер",
+  "обслуживание", "техобслуживание", "рекрутинг", "брокер", "брокерские", "посредничество",
+  // hi
+  "विपणन", "मार्केटिंग", "अनुवाद", "अनुवादक", "प्रशिक्षण", "डिजाइन",
+  "वास्तुकला", "वास्तुकार", "इंजीनियरिंग", "अभियांत्रिकी", "रखरखाव", "भर्ती", "दलाली", "दलाल",
+  // ar
+  "تسويق", "ترجمة", "مترجم", "تدريب", "تصميم", "مصمم", "عمارة", "هندسة", "مهندس",
+  "صيانة", "توظيف", "وساطة", "وسيط",
 ];
 
 /**
@@ -204,29 +248,106 @@ const SUBSTANTIVOS_DE_SERVICO = new Set(
  * "Advocacia tributária" possuído). Palavra fora do mapa é a própria família.
  */
 const FAMILIAS: Record<string, readonly string[]> = {
-  advocacia: ["advocacia", "advogado", "advogada", "advogados", "advogadas", "juridico", "juridica", "juridicos", "juridicas", "lawyer", "lawyers", "attorney", "attorneys", "law", "legal", "abogacia", "abogado", "abogada", "abogados", "abogadas"],
-  consultoria: ["consultoria", "consultorias", "consultor", "consultora", "consultores", "consultoras", "assessoria", "assessorias", "assessor", "assessora", "assessores", "assessoras", "consulting", "consultancy", "consultant", "consultants", "advisory", "advisor", "advisors", "adviser", "advisers", "asesoria", "asesorias", "asesor", "asesora", "asesores", "asesoras"],
-  contabilidade: ["contabilidade", "contabil", "contabeis", "contador", "contadora", "contadores", "contadoras", "accounting", "accountant", "accountants", "bookkeeping", "contabilidad", "contable", "contables"],
-  auditoria: ["auditoria", "auditorias", "auditor", "auditora", "auditores", "auditoras", "audit", "auditing", "audits"],
-  mentoria: ["mentoria", "mentorias", "mentor", "mentora", "mentores", "mentoras", "coaching", "coach", "mentoring", "mentorship"],
-  marketing: ["marketing", "publicidade", "propaganda", "advertising", "publicidad"],
-  design: ["design", "designer", "designers", "diseno", "disenador", "disenadora", "disenadores"],
-  arquitetura: ["arquitetura", "arquiteto", "arquiteta", "arquitetos", "arquitetas", "architecture", "architect", "architects", "arquitectura", "arquitecto", "arquitecta", "arquitectos"],
-  engenharia: ["engenharia", "engineering", "ingenieria"],
-  treinamento: ["treinamento", "treinamentos", "capacitacao", "capacitacoes", "curso", "cursos", "palestra", "palestras", "training", "trainings", "capacitacion", "formacion", "entrenamiento"],
-  traducao: ["traducao", "traducoes", "tradutor", "tradutora", "tradutores", "tradutoras", "interpretacao", "interprete", "interpretes", "translation", "translations", "translator", "translators", "interpreting", "interpreter", "interpreters", "traduccion", "traducciones", "traductor", "traductora", "traductores"],
+  advocacia: ["advocacia", "advogado", "advogada", "advogados", "advogadas", "juridico", "juridica", "juridicos", "juridicas", "lawyer", "lawyers", "attorney", "attorneys", "law", "legal", "abogacia", "abogado", "abogada", "abogados", "abogadas", "rechtsberatung", "rechtsanwalt", "rechtsanwalte", "anwalt", "anwalte", "anwaltin", "juristisch", "juristische", "avocat", "avocats", "avocate", "juridique", "juridiques", "юридический", "юридические", "юрист", "адвокат", "कानूनी", "वकील", "अधिवक्ता", "محاماة", "محامي", "قانوني"],
+  consultoria: ["consultoria", "consultorias", "consultor", "consultora", "consultores", "consultoras", "assessoria", "assessorias", "assessor", "assessora", "assessores", "assessoras", "consulting", "consultancy", "consultant", "consultants", "advisory", "advisor", "advisors", "adviser", "advisers", "asesoria", "asesorias", "asesor", "asesora", "asesores", "asesoras", "beratung", "beratungen", "berater", "beraterin", "unternehmensberatung", "conseil", "conseils", "consultante", "консалтинг", "консультация", "консультации", "консультирование", "консультант", "परामर्श", "सलाहकार", "استشارات", "استشارة", "استشاري"],
+  contabilidade: ["contabilidade", "contabil", "contabeis", "contador", "contadora", "contadores", "contadoras", "accounting", "accountant", "accountants", "bookkeeping", "contabilidad", "contable", "contables", "buchhaltung", "buchfuhrung", "buchhalter", "steuerberatung", "steuerberater", "comptabilite", "comptable", "comptables", "бухгалтерия", "бухгалтерский", "бухгалтер", "लेखांकन", "लेखाकार", "محاسبة", "محاسب"],
+  auditoria: ["auditoria", "auditorias", "auditor", "auditora", "auditores", "auditoras", "audit", "auditing", "audits", "wirtschaftsprufung", "wirtschaftsprufer", "auditeur", "auditeurs", "аудит", "аудитор", "अंकेक्षण", "تدقيق", "مدقق"],
+  mentoria: ["mentoria", "mentorias", "mentor", "mentora", "mentores", "mentoras", "coaching", "coach", "mentoring", "mentorship", "наставничество", "менторство", "mentorat"],
+  marketing: ["marketing", "publicidade", "propaganda", "advertising", "publicidad", "werbung", "publicite", "маркетинг", "реклама", "विपणन", "मार्केटिंग", "تسويق"],
+  design: ["design", "designer", "designers", "diseno", "disenador", "disenadora", "disenadores", "дизайн", "дизайнер", "डिजाइन", "تصميم", "مصمم"],
+  arquitetura: ["arquitetura", "arquiteto", "arquiteta", "arquitetos", "arquitetas", "architecture", "architect", "architects", "arquitectura", "arquitecto", "arquitecta", "arquitectos", "architektur", "architekt", "architecte", "architectes", "архитектура", "архитектор", "वास्तुकला", "वास्तुकार", "عمارة"],
+  engenharia: ["engenharia", "engineering", "ingenieria", "ingenieurwesen", "ingenieur", "инжиниринг", "инженер", "इंजीनियरिंग", "अभियांत्रिकी", "هندسة", "مهندس"],
+  treinamento: ["treinamento", "treinamentos", "capacitacao", "capacitacoes", "curso", "cursos", "palestra", "palestras", "training", "trainings", "capacitacion", "formacion", "entrenamiento", "schulung", "schulungen", "weiterbildung", "обучение", "тренинг", "тренинги", "प्रशिक्षण", "تدريب"],
+  traducao: ["traducao", "traducoes", "tradutor", "tradutora", "tradutores", "tradutoras", "interpretacao", "interprete", "interpretes", "translation", "translations", "translator", "translators", "interpreting", "interpreter", "interpreters", "traduccion", "traducciones", "traductor", "traductora", "traductores", "ubersetzung", "ubersetzungen", "ubersetzer", "dolmetschen", "dolmetscher", "traduction", "traductions", "traducteur", "traducteurs", "переводчик", "अनुवाद", "अनुवादक", "ترجمة", "مترجم"],
   despachante: ["despachante", "despachantes", "desembaraco"],
-  corretagem: ["corretagem", "corretor", "corretora", "corretores", "corretoras", "brokerage", "broker", "brokers", "corretaje", "corredor", "corredora", "corredores"],
-  recrutamento: ["recrutamento", "headhunting", "headhunter", "headhunters", "recruitment", "recruiting", "reclutamiento"],
+  corretagem: ["corretagem", "corretor", "corretora", "corretores", "corretoras", "brokerage", "broker", "brokers", "corretaje", "corredor", "corredora", "corredores", "makler", "courtage", "courtier", "courtiers", "брокер", "брокерские", "दलाली", "दलाल", "وساطة", "وسيط"],
+  recrutamento: ["recrutamento", "headhunting", "headhunter", "headhunters", "recruitment", "recruiting", "reclutamiento", "personalvermittlung", "recrutement", "рекрутинг", "भर्ती", "توظيف"],
   terceirizacao: ["terceirizacao", "outsourcing", "tercerizacion"],
-  manutencao: ["manutencao", "maintenance", "mantenimiento"],
+  manutencao: ["manutencao", "maintenance", "mantenimiento", "wartung", "instandhaltung", "обслуживание", "техобслуживание", "रखरखाव", "صيانة"],
   suporte: ["suporte", "assistencia", "atendimento", "support", "assistance", "soporte"],
-  agenciamento: ["agenciamento", "intermediacao"],
+  agenciamento: ["agenciamento", "intermediacao", "vermittlung", "посредничество"],
 };
+/**
+ * Chinês e japonês não separam palavras por espaço, então a classificação por
+ * TOKEN não enxerga nada: "税务咨询" (consultoria tributária) chega como uma
+ * palavra só e caía em "outros" — o portão da demanda expressa nunca disparava
+ * nesses dois idiomas, e a regra da cliente simplesmente não existia para
+ * quem escreve neles (defeito relatado depois da #101).
+ *
+ * Aqui o casamento é por SUBSTRING, que é como se reconhece vocabulário
+ * fechado em escrita sem fronteira de palavra. A lista é curta e conservadora
+ * de propósito: termo que também é palavra comum fora de serviço (支持/サポート
+ * "suporte", 工程 "obra") ficou de fora, porque classificar como serviço por
+ * engano SUJEITA o item ao portão — erra para o lado de barrar match legítimo.
+ * Faltar termo aqui só mantém o que já havia.
+ *
+ * Ordenado do mais longo para o mais curto: "建築設計" tem de ganhar de "設計".
+ */
+const SERVICOS_SEM_ESPACO: Array<[string, string]> = ([
+  // zh
+  ["市场营销", "marketing"], ["建筑设计", "arquitetura"],
+  ["咨询", "consultoria"], ["諮詢", "consultoria"], ["顾问", "consultoria"],
+  ["律师", "advocacia"], ["法律", "advocacia"],
+  ["会计", "contabilidade"], ["审计", "auditoria"],
+  ["营销", "marketing"], ["广告", "marketing"],
+  ["翻译", "traducao"], ["培训", "treinamento"], ["设计", "design"],
+  ["维护", "manutencao"], ["招聘", "recrutamento"], ["经纪", "corretagem"],
+  // ja
+  ["コンサルティング", "consultoria"], ["マーケティング", "marketing"],
+  ["メンテナンス", "manutencao"], ["人材紹介", "recrutamento"], ["建築設計", "arquitetura"],
+  ["コンサル", "consultoria"], ["弁護士", "advocacia"], ["法務", "advocacia"],
+  ["監査", "auditoria"], ["翻訳", "traducao"], ["通訳", "traducao"],
+  ["研修", "treinamento"], ["デザイン", "design"], ["設計", "design"],
+  ["保守", "manutencao"], ["採用", "recrutamento"], ["仲介", "corretagem"],
+] as Array<[string, string]>).sort((a, b) => b[0].length - a[0].length);
+
+/** A família do serviço nomeado por substring, ou null — ver SERVICOS_SEM_ESPACO. */
+function servicoPorSubstring(rotulo: string): string | null {
+  const texto = normalizar(rotulo);
+  for (const [termo, familia] of SERVICOS_SEM_ESPACO) if (texto.includes(termo)) return familia;
+  return null;
+}
+
 const FAMILIA_DA_PALAVRA = new Map<string, string>(
   Object.entries(FAMILIAS).flatMap(([familia, palavras]) => palavras.map(palavra => [palavra, familia] as const)),
 );
 const familiaDaPalavra = (palavra: string) => FAMILIA_DA_PALAVRA.get(palavra) ?? palavra;
+
+/**
+ * A ESPECIALIDADE de um serviço — o lema que junta as flexões do QUE o serviço
+ * trata: "tributária", "tributarista", "tributos" e "fiscal" são a mesma
+ * especialidade. É o mesmo recurso de FAMILIAS, uma casa abaixo: a família diz
+ * QUE prestação é (advocacia), a especialidade diz SOBRE O QUÊ (tributário).
+ *
+ * Existe por causa de um defeito relatado depois da #101: "Advocacia
+ * tributária" possuído e "Advogado tributarista" procurado são o mesmo serviço
+ * e davam 0, porque a família batia mas nenhuma regra olhava a especialidade —
+ * e nota abaixo de 50 não é só escondida, some do banco. Continua NÃO sendo
+ * parecença de texto: é tabela curada, como FAMILIAS. Duas especialidades
+ * diferentes ("Consultoria tributária" × "Consultoria de marketing") seguem
+ * sem casar, que é o que a spec da cliente exige.
+ *
+ * Palavra fora do mapa é a própria especialidade: só casa consigo mesma.
+ */
+const ESPECIALIDADES: Record<string, readonly string[]> = {
+  tributario: ["tributario", "tributaria", "tributarios", "tributarias", "tributarista", "tributaristas", "tributos", "tributo", "tributacao", "fiscal", "fiscais", "imposto", "impostos", "tax", "taxes", "taxation", "impuesto", "impuestos", "tributacion"],
+  trabalhista: ["trabalhista", "trabalhistas", "trabalho", "laboral", "laborais", "labor", "labour", "employment", "laborales"],
+  imobiliario: ["imobiliario", "imobiliaria", "imobiliarios", "imobiliarias", "imovel", "imoveis", "inmobiliario", "inmobiliaria", "inmobiliarios", "property", "properties"],
+  empresarial: ["empresarial", "empresariais", "societario", "societaria", "societarios", "corporativo", "corporativa", "corporativos", "corporate", "mercantil", "mercantis", "corporativas"],
+  ambiental: ["ambiental", "ambientais", "ambiente", "environmental", "environment", "ambientales"],
+  previdenciario: ["previdenciario", "previdenciaria", "previdenciarios", "previdencia"],
+  civil: ["civil", "civis", "civiles"],
+  penal: ["penal", "penais", "criminal", "criminais", "criminalista", "criminalistas", "penales"],
+  familiar: ["familiar", "familiares", "familia", "family"],
+  contratual: ["contratual", "contratuais", "contrato", "contratos", "contract", "contracts", "contractual"],
+  digital: ["digital", "digitais", "digitales"],
+  internacional: ["internacional", "internacionais", "international", "internacionales"],
+  financeiro: ["financeiro", "financeira", "financeiros", "financeiras", "financial", "finance", "financiero", "financiera", "finanzas"],
+};
+const ESPECIALIDADE_DA_PALAVRA = new Map<string, string>(
+  Object.entries(ESPECIALIDADES).flatMap(([lema, palavras]) => palavras.map(palavra => [palavra, lema] as const)),
+);
+const especialidadeDaPalavra = (palavra: string) => ESPECIALIDADE_DA_PALAVRA.get(palavra) ?? palavra;
 
 /** Depois de uma destas, o que vem é complemento da cabeça, não a coisa oferecida. */
 const PREPOSICOES = new Set([
@@ -318,6 +439,25 @@ const IMOVEL = [
   "hotel", "hoteis", "hotels", "pousada", "pousadas",
   "espaco", "espacos", "space", "spaces", "espacio", "espacios",
   "condominio", "condominios", "shopping",
+  // O que uma pessoa de fato anuncia como imóvel e faltava aqui: sem estas, a
+  // cabeça não decidia e a CATEGORIA passava a decidir — "Apartamento na praia"
+  // com a categoria "Serviços jurídicos" virava serviço e caía no portão da
+  // demanda expressa, que é restrição (defeito relatado depois da #101).
+  //
+  // A lista é CURTA de propósito, e ficou assim depois da revisão de 14/09.
+  // O erro custa caro para este lado: classificar como imóvel TIRA o item do
+  // portão, e o par volta a casar por categoria — o vazamento que a #101 existe
+  // para fechar. Faltar palavra só mantém o que já havia; sobrar palavra abre
+  // buraco. Então só entra o que não significa outra coisa fora do mercado
+  // imobiliário.
+  //
+  // Medido e removido por isso: "casa" (casa de câmbio, casa de software),
+  // "house" (consulting house, publishing house), "loja"/"store" (loja virtual,
+  // store management), "sala" (sala de reunião), "flat" (flat fee), "cobertura"
+  // (reportagem, seguro, telhado) e, o pior deles, "vaga" — em rede de negócios
+  // "Vaga de emprego" é vaga de trabalho, e virava imóvel.
+  "apartamento", "apartamentos", "apartment", "apartments",
+  "sobrado", "sobrados", "garagem", "garagens",
 ];
 
 /**
@@ -483,6 +623,24 @@ export function classificarOferta(rotulo: string, categoria?: string | null): Ti
   if (CABECAS_NEUTRAS.has(cabeca) && complementoDaCabeca(palavras, indice).some(palavra => SUBSTANTIVOS_DE_SERVICO.has(palavra) || ADJETIVOS_DE_SERVICO.has(palavra))) {
     return "servico";
   }
+  // 6. Escrita sem fronteira de palavra (chinês, japonês): a esta altura o
+  //    caminho por token não achou nada, porque o rótulo inteiro é um token só.
+  //    Vem por último de propósito — não passa por cima de decisão nenhuma.
+  if (servicoPorSubstring(rotulo)) return "servico";
+  // 7. A CATEGORIA decide o que o texto não decidiu. Isto já foi relatado como
+  //    defeito duas vezes, por revisores diferentes — "Cafeteira industrial" na
+  //    categoria "Consultoria" vira serviço e cai no portão, que é restrição —
+  //    e FICA ASSIM por decisão do time em 14/09. O motivo: a categoria é o
+  //    último recurso que faz "Direito tributário", "Planejamento patrimonial",
+  //    "Contratos" e "Campanhas" serem reconhecidos como serviço, que é o caso
+  //    central da regra da cliente. Tirar daqui quebra cinco testes, entre eles
+  //    o farol "'Direito tributário' [Serviços] × 'Compradores' [Serviços] não
+  //    casa" — o par que a #101 existe para barrar.
+  //
+  //    O que se faz no lugar: fechar LACUNA DE LÉXICO quando aparecer caso real
+  //    (foi assim que apartamento, casa, sala e loja entraram em IMOVEL), para
+  //    a cabeça decidir antes de chegar aqui. E a causa raiz — a categoria ser
+  //    texto livre — é dívida registrada no quadro, não conserto deste arquivo.
   return tipoPelaCategoria(categoria) ?? "outros";
 }
 
@@ -496,7 +654,7 @@ export function classificarOferta(rotulo: string, categoria?: string | null): Ti
 export function familiaDoServico(rotulo: string, categoria?: string | null): string | null {
   if (!ehServico(rotulo, categoria)) return null;
   const palavra = tokensDoTermo(rotulo).find(p => (SUBSTANTIVOS_DE_SERVICO.has(p) || ADJETIVOS_DE_SERVICO.has(p)) && !GENERICAS_DEMAIS.has(p));
-  return palavra ? familiaDaPalavra(palavra) : null;
+  return palavra ? familiaDaPalavra(palavra) : servicoPorSubstring(rotulo);
 }
 
 /**
@@ -515,6 +673,111 @@ export function necessidadeGenericaNomeiaOServico(oferta: string, categoriaDaOfe
   if (!cabeca || palavras.length - indice !== 1) return false;
   if (!(SUBSTANTIVOS_DE_SERVICO.has(cabeca) || ADJETIVOS_DE_SERVICO.has(cabeca)) || GENERICAS_DEMAIS.has(cabeca)) return false;
   return familiaDoServico(oferta, categoriaDaOferta) === familiaDaPalavra(cabeca);
+}
+
+/**
+ * A ESPECIALIDADE declarada num termo de serviço, em lemas: TODAS as palavras
+ * do termo, tiradas as que nomeiam a própria prestação ("advocacia",
+ * "jurídico", "serviços"), as cabeças neutras ("escritório") e a estrutura
+ * (artigos, preposições, conjunções). "Advocacia tributária" e "Advogado
+ * tributarista" dão os dois ["tributario"]; "Consultoria jurídica" dá [] (só
+ * nomeia a prestação, não o assunto).
+ */
+export function especialidadeDoServico(rotulo: string, categoria?: string | null): string[] {
+  if (!ehServico(rotulo, categoria)) return [];
+  // TODAS as palavras que não nomeiam a prestação nem são estrutura, onde quer
+  // que estejam. Tirar só o complemento da cabeça não serve: em "Sell-side
+  // advisory" a cabeça é "sell" e o serviço vem depois, então o complemento
+  // deixava de fora justamente a palavra que distingue de "Buy-side advisory"
+  // — e os dois lados de uma mesa de negociação casavam em 100.
+  return tokensDoTermo(rotulo)
+    .filter(palavra =>
+      !SUBSTANTIVOS_DE_SERVICO.has(palavra) && !ADJETIVOS_DE_SERVICO.has(palavra) && !GENERICAS_DEMAIS.has(palavra) &&
+      !CABECAS_NEUTRAS.has(palavra) && !FRONTEIRAS.has(palavra) && !ARTIGOS.has(palavra) && !MARCADORES_FRACOS.has(palavra))
+    .map(especialidadeDaPalavra);
+}
+
+/** Os dois lados declaram o MESMO conjunto de lemas, e nenhum deles é vazio. */
+const mesmoConjunto = (a: string[], b: string[]) => {
+  const ca = new Set(a);
+  const cb = new Set(b);
+  return ca.size > 0 && ca.size === cb.size && Array.from(ca).every(item => cb.has(item));
+};
+
+/**
+ * A necessidade NOMEIA o serviço oferecido? É o portão da demanda expressa do
+ * lado do motor privado, e passa de dois jeitos:
+ *
+ * 1. necessidade GENÉRICA da mesma família ("Advogado" × "Advocacia
+ *    tributária") — quem escreveu a família declarou precisar dela;
+ * 2. mesma família E mesma ESPECIALIDADE ("Advogado tributarista" ×
+ *    "Advocacia tributária") — o par que o defeito relatado depois da #101
+ *    fazia sumir, porque a redação mudava mas o serviço era o mesmo.
+ *
+ * O que continua barrado é o que o pedido do Nicolas veta: necessidade de
+ * OUTRA família, necessidade de outra especialidade na mesma família
+ * ("Consultoria tributária" × "Consultoria de marketing") e, acima de tudo, a
+ * categoria em comum — nada aqui olha para a categoria.
+ */
+export function necessidadeNomeiaOServico(oferta: string, categoriaDaOferta: string | null | undefined, necessidade: string): boolean {
+  return necessidadeGenericaNomeiaOServico(oferta, categoriaDaOferta, necessidade)
+    || mesmaFamiliaEEspecialidade(oferta, categoriaDaOferta, necessidade);
+}
+
+/**
+ * A necessidade nomeia ESTE serviço, não só a família dele: mesma família E
+ * mesma especialidade ("Advogado tributarista" × "Advocacia tributária").
+ *
+ * Separado de `necessidadeGenericaNomeiaOServico` porque as duas valem notas
+ * diferentes no motor privado. Quem escreveu "Advogado tributarista" pediu
+ * exatamente o que está sendo oferecido; quem escreveu só "Advogado" pediu a
+ * família, e receber um tributarista é um bom palpite, não a mesma coisa.
+ */
+export function mesmaFamiliaEEspecialidade(oferta: string, categoriaDaOferta: string | null | undefined, necessidade: string): boolean {
+  const familia = familiaDoServico(oferta, categoriaDaOferta);
+  if (!familia || familiaDoServico(necessidade) !== familia) return false;
+
+  // Os DOIS lados nomeiam a família e nada além dela: "Contabilidade" oferecida
+  // diante de "Contador" procurado, "Advocacia" diante de "Advogado". Não há o
+  // que distinguir — a necessidade nomeia exatamente o que está sendo oferecido,
+  // e não uma família da qual a oferta seria um caso particular. Sem isto o par
+  // caía na regra da família e valia 60, abaixo do EMAIL_THRESHOLD de 70: o
+  // match existia e a pessoa não era avisada.
+  //
+  // O teste é sobre as PALAVRAS, não sobre a especialidade: "Consultoria
+  // jurídica" e "Consultoria de marketing" também têm especialidade vazia
+  // ("jurídica" e "marketing" nomeiam serviço, então saem no filtro), e as
+  // duas precisam continuar valendo 60 diante de "Consultoria". O que as
+  // separa de "Contabilidade" é nomearem uma SEGUNDA família além da sua.
+  if (soNomeiaAFamilia(oferta, familia, categoriaDaOferta) && soNomeiaAFamilia(necessidade, familia)) return true;
+
+  return mesmoConjunto(especialidadeDoServico(oferta, categoriaDaOferta), especialidadeDoServico(necessidade));
+}
+
+/**
+ * O rótulo nomeia a família `familia` e NADA além dela?
+ *
+ * Toda palavra de serviço do rótulo tem de cair na mesma família. É o que
+ * separa "Contabilidade" (só contabilidade) de "Consultoria jurídica"
+ * (consultoria + advocacia) e de "Consultoria de marketing" (consultoria +
+ * marketing) — nos dois últimos a segunda palavra é o objeto do serviço, e
+ * quem procurou só "Consultoria" não pediu aquele objeto.
+ */
+function soNomeiaAFamilia(rotulo: string, familia: string, categoria?: string | null): boolean {
+  if (familiaDoServico(rotulo, categoria) !== familia) return false;
+  // Duas coisas podem sobrar num rótulo, e as duas desqualificam:
+  //
+  // 1. uma ESPECIALIDADE — "trabalhista" em "Advocacia trabalhista". Sem esta
+  //    linha, "Advocacia trabalhista" × "Advogado tributarista" valia 100, que
+  //    é o defeito que a #101 existe para barrar;
+  // 2. uma palavra de serviço de OUTRA família — "jurídica" em "Consultoria
+  //    jurídica", "marketing" em "Consultoria de marketing". Essas têm
+  //    especialidade vazia (nomeiam serviço, então saem no filtro) e por isso
+  //    a checagem 1 sozinha não as pega.
+  if (especialidadeDoServico(rotulo, categoria).length > 0) return false;
+  const doServico = tokensDoTermo(rotulo)
+    .filter(p => (SUBSTANTIVOS_DE_SERVICO.has(p) || ADJETIVOS_DE_SERVICO.has(p)) && !GENERICAS_DEMAIS.has(p));
+  return doServico.length > 0 && doServico.every(p => familiaDaPalavra(p) === familia);
 }
 
 /** O item é um SERVIÇO — o único tipo em que o portão da demanda expressa atua. */
