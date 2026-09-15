@@ -93,8 +93,8 @@ confere o par e só então encaminha. Máquina de estados de `connections.status
 | `in_review` | `pending` | distribuidor (`distribuicao.decidir`, encaminhar) | `id AND status = 'in_review'` + termo, conta ativa e portão da demanda expressa | `interest_received` a B; `system` a A; `MATCH_REVIEW_APPROVED` |
 | `in_review` + `reciprocatedAt` | `accepted` | distribuidor (encaminhar) | idem | 2× `MATCH_IDENTITY_REVEALED` (`via: distribuidor`); aviso aos dois |
 | `in_review` | `not_forwarded` | distribuidor (não encaminhar, com nota) | `id AND status = 'in_review'` | `system` a A, sem o motivo; B não é avisada; `MATCH_REVIEW_REJECTED` |
-| `pending` | `accepted` / `declined` | destinatária (`connections.respond`) | `id AND recipientId = ela AND status = 'pending'` | revelação só com 1 linha afetada |
-| `pending` A→B | `accepted` | B por `send` | `id AND status = 'pending'` | `via: interesse_mutuo` |
+| `pending` | `accepted` / `declined` | destinatária (`connections.respond`) | `id AND recipientId = ela AND status = 'pending'`; no aceite, antes, termo vigente das duas partes e conta ativa de A (faltando um, nada muda e B recebe erro sem nome) | revelação só com 1 linha afetada; no aceite, 2× `MATCH_IDENTITY_REVEALED` (`via: aceite`) e `interest_received` a A, sem nome; a recusa não avisa ninguém |
+| `pending` A→B | `accepted` | B por `send` | `id AND status = 'pending'` + termo de A | 2× `MATCH_IDENTITY_REVEALED` (`via: interesse_mutuo`); `interest_received` a A, sem nome |
 | terminais | — | — | 0 linhas afetadas | `send` responde igual; `decidir` → CONFLICT |
 
 O que cada lado vê é o que a consulta devolve (`pedidoVisivelPara`, em `db.ts`):

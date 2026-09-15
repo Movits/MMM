@@ -257,8 +257,11 @@ type MatchData = {
   displayName: string | null;
 };
 
-function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, index }: {
-  match: MatchData; onInterest: (matchId: number) => void;
+function MatchCard({ match, nomeDaConexao, onInterest, onDismiss, onResponder, onVerConexoes, index }: {
+  match: MatchData;
+  // O nome que a aba Conexões mostra para a conexão deste cartão (null antes do aceite).
+  nomeDaConexao: string | null;
+  onInterest: (matchId: number) => void;
   onDismiss: (mid: number) => void;
   onResponder: (connectionId: number, accept: boolean) => void;
   onVerConexoes: () => void; index: number;
@@ -299,7 +302,11 @@ function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, i
   // dos dois lados, e a aprovação já revela os dois nomes).
   const emAnalise = match.connectionStatus === "in_review";
   const naoEncaminhada = match.connectionStatus === "not_forwarded";
-  const nome = revelada ? (match.displayName || t("dashboard.userFallback")) : null;
+  // matches.list só manda o apelido (users.name fica fora dessa consulta de
+  // propósito). Sem apelido, o cartão dizia "Usuário" e a aba Conexões, a um
+  // clique em "Ver conexão", mostrava o nome da conta: a mesma pessoa com dois
+  // nomes. O nome da conexão de mesmo id resolve, e só entra com o cartão revelado.
+  const nome = revelada ? (match.displayName || nomeDaConexao || t("dashboard.userFallback")) : null;
   // Dispensar só faz sentido quando não há conversa em curso: some nos estados
   // em que a outra parte está esperando algo, para ninguém sumir com um cartão
   // do qual ainda depende.
@@ -868,6 +875,10 @@ export default function Dashboard() {
     // `matchesQuery` também: o nome do cartão vem do servidor, e sem este refetch
     // a pessoa aceita e o cartão continua anônimo até apertar F5.
     onSuccess: (_, vars) => { toast.success(vars.accept ? t("dashboard.connectionAccepted") : t("dashboard.connectionDeclined")); connectionsQuery.refetch(); matchesQuery.refetch(); },
+    // O aceite pode ser barrado no servidor: quem pediu saiu do Smart Match (termo
+    // revogado ou conta desativada) ou quem aceita revogou o próprio termo. Sem
+    // isto o clique não dava sinal nenhum na tela, só no console.
+    onError: (err) => toast.error(err.message),
   });
   const regenerateMutation = trpc.matches.regenerate.useMutation({
     onSuccess: (data) => { toast.success(data.count > 0 ? t("dashboard.newMatches", { count: data.count }) : t("dashboard.analysisDone")); matchesQuery.refetch(); },
@@ -945,6 +956,13 @@ export default function Dashboard() {
   // nenhum, mesmo que o servidor mande.
   const nomeDaConexao = (conn: (typeof connections)[number]) =>
     conn.status === "accepted" ? (conn.displayName || conn.userName || t("dashboard.userFallback")) : null;
+  // O cartão de match revelado usa o nome da conexão de mesmo id, para a mesma
+  // pessoa não aparecer com um nome no cartão e outro na aba. Os portões seguem os
+  // dois: nomeDaConexao (só aceita) e o do próprio cartão (só revelado).
+  const nomeDaConexaoDoCartao = (connectionId: number | null) => {
+    const conn = connectionId === null ? undefined : connections.find((c) => c.id === connectionId);
+    return conn ? nomeDaConexao(conn) : null;
+  };
 
   return (
     <div className="min-h-screen bg-transparent text-white">
@@ -1102,6 +1120,7 @@ export default function Dashboard() {
                   <div className="grid md:grid-cols-2 gap-4">
                     {matches.map((match, i) => (
                       <MatchCard key={match.matchId} match={match} index={i}
+                        nomeDaConexao={nomeDaConexaoDoCartao(match.connectionId)}
                         onInterest={(matchId) => interestMutation.mutate({ matchId })}
                         onResponder={(connectionId, accept) => respondMutation.mutate({ connectionId, accept })}
                         onVerConexoes={() => switchTab("connections")}

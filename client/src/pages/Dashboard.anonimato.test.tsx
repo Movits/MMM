@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Dashboard from "./Dashboard";
 
@@ -28,6 +29,9 @@ type Resposta = { data?: unknown; isLoading?: boolean; isError?: boolean; error?
 
 const duble = vi.hoisted(() => {
   const respostas: Record<string, Resposta> = {};
+  // As opções que a tela passa a cada useMutation, para o teste chamar o
+  // onError de verdade sem precisar de rede.
+  const mutacoes: Record<string, { onError?: (erro: Error) => void } | undefined> = {};
   const ignorar = (prop: string | symbol) => typeof prop === "symbol" || prop === "then" || prop === "$$typeof";
   const procedimento = (caminho: string) => ({
     useQuery: (_input: unknown, opcoes?: { select?: (dados: never) => unknown }) => {
@@ -36,7 +40,10 @@ const duble = vi.hoisted(() => {
       if (opcoes?.select && resultado.data !== undefined) resultado.data = opcoes.select(resultado.data as never);
       return resultado;
     },
-    useMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(async () => undefined), isPending: false, isError: false, error: null, data: undefined }),
+    useMutation: (opcoes?: { onError?: (erro: Error) => void }) => {
+      mutacoes[caminho] = opcoes;
+      return { mutate: vi.fn(), mutateAsync: vi.fn(async () => undefined), isPending: false, isError: false, error: null, data: undefined };
+    },
   });
   const utils = new Proxy({}, {
     get: (_, r) => ignorar(r) ? undefined : new Proxy({}, {
@@ -50,7 +57,7 @@ const duble = vi.hoisted(() => {
       return new Proxy({}, { get: (_, proc) => ignorar(proc) ? undefined : procedimento(`${String(router)}.${String(proc)}`) });
     },
   });
-  return { respostas, trpc };
+  return { respostas, mutacoes, trpc };
 });
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
@@ -335,5 +342,80 @@ describe("aba Conexões — o nome depois do aceite", () => {
     expect(await screen.findByRole("button", { name: "Aceitar e revelar" }, ESPERA)).toBeInTheDocument();
     expect(document.body.innerHTML).not.toContain("Zoroastra");
     expect(screen.getByText("Membro da rede")).toBeInTheDocument();
+  });
+});
+
+// ── O mesmo nome no cartão e na aba ─────────────────────────────────────────
+// matches.list só manda o apelido; connections.list manda também o nome da conta.
+// Perfil sem apelido fazia a mesma pessoa aparecer como "Usuário" no cartão e com
+// o nome da conta na aba Conexões, a um clique de "Ver conexão". O cartão passa a
+// usar o nome da conexão de mesmo id, e só quando ele mesmo está revelado.
+describe("cartão revelado e aba Conexões — a mesma pessoa, o mesmo nome", () => {
+  const conexao = (extra: Record<string, unknown>) => ({
+    id: 9, status: "accepted", souDestinataria: false, outraParteId: 5, primarySpecialty: "finance", city: "Porto",
+    message: null, displayName: null, avatarUrl: null, userName: NOME_SECRETO, userCompany: null, ...extra,
+  });
+
+  it("perfil sem apelido: o cartão e a aba mostram o nome da conta", async () => {
+    duble.respostas["matches.list"] = {
+      data: [cartao({ connectionId: 9, connectionStatus: "accepted", souDestinataria: false, displayName: null })],
+    };
+    duble.respostas["connections.list"] = { data: [conexao({})] };
+    render(<Dashboard />);
+
+    expect(screen.getByRole("heading", { name: NOME_SECRETO })).toBeInTheDocument();
+    expect(screen.queryByText("Usuário")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver conexão" }));
+    // A badge só existe na aba Conexões: prova que a troca de aba aconteceu.
+    expect(await screen.findByText("✓ Conectado", {}, ESPERA)).toBeInTheDocument();
+    expect(screen.getByText(NOME_SECRETO)).toBeInTheDocument();
+    expect(screen.queryByText("Usuário")).not.toBeInTheDocument();
+  });
+
+  it("cartão ainda não revelado não pega o nome da conexão, nem que a lista de conexões já diga aceita", () => {
+    // As duas listas são relidas em momentos diferentes: a de conexões já chegou com o aceite.
+    duble.respostas["matches.list"] = {
+      data: [cartao({ connectionId: 9, connectionStatus: "pending", souDestinataria: false, displayName: null })],
+    };
+    duble.respostas["connections.list"] = { data: [conexao({})] };
+    render(<Dashboard />);
+
+    expect(document.body.innerHTML).not.toContain("Zoroastra");
+    expect(screen.getByRole("heading", { name: "Membro da rede" })).toBeInTheDocument();
+  });
+
+  it("conexão de outro id, ou ainda não aceita, não empresta o nome: o cartão revelado sem apelido fica com 'Usuário'", () => {
+    duble.respostas["matches.list"] = {
+      data: [
+        cartao({ matchId: 1, connectionId: 9, connectionStatus: "accepted", souDestinataria: false, displayName: null }),
+        cartao({ matchId: 2, connectionId: 11, connectionStatus: "accepted", souDestinataria: false, displayName: null }),
+      ],
+    };
+    duble.respostas["connections.list"] = {
+      data: [conexao({ id: 10 }), conexao({ id: 11, status: "pending", outraParteId: null })],
+    };
+    render(<Dashboard />);
+
+    expect(screen.getAllByRole("heading", { name: "Usuário" })).toHaveLength(2);
+    expect(document.body.innerHTML).not.toContain("Zoroastra");
+  });
+});
+
+// ── Aceite barrado no servidor ──────────────────────────────────────────────
+// connections.respond recusa o aceite quando uma das partes saiu do Smart Match.
+// A mensagem do servidor precisa chegar à tela: antes não havia onError e o
+// clique em "Aceitar e revelar" não dava sinal nenhum.
+describe("aceite barrado no servidor", () => {
+  it("o erro do respond aparece como aviso vermelho, com a mensagem do servidor", () => {
+    vi.mocked(toast.error).mockClear();
+    vi.mocked(toast.success).mockClear();
+    render(<Dashboard />);
+    const opcoes = duble.mutacoes["connections.respond"];
+    expect(opcoes?.onError).toBeTypeOf("function");
+
+    opcoes!.onError!(new Error("Este pedido não está mais disponível."));
+    expect(vi.mocked(toast.error)).toHaveBeenCalledWith("Este pedido não está mais disponível.");
+    expect(vi.mocked(toast.success)).not.toHaveBeenCalled();
   });
 });

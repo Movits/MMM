@@ -17,7 +17,11 @@ process.env.DATABASE_URL ??= "mysql://teste:teste@localhost/teste";
  *    antes do aceite, e o sino não vira oráculo;
  * 4. o interesse mútuo em `connections.send` também é aceite e avisa quem tinha
  *    pedido, não quem clicou;
- * 5. sino fora do ar não desfaz o aceite.
+ * 5. sino fora do ar não desfaz o aceite;
+ * 6. o aceite reconfere o termo das duas partes e a conta ativa de quem pediu
+ *    (as travas do distribuicao.decidir): faltando uma, nada muda, nada é
+ *    revelado nem avisado, e quem aceita recebe erro sem nome. A recusa, o id
+ *    alheio e a linha fora de `pending` não passam pela trava.
  *
  * O SQL do aceite (status no WHERE) está em match-em-analise.test.ts.
  */
@@ -29,6 +33,13 @@ const estado = vi.hoisted(() => ({
   resposta: { revelou: true, contraparte: 2 } as { revelou: boolean; contraparte: number | null },
   envio: { revelou: false, connectionId: 7, emAnalise: false } as { revelou: boolean; connectionId: number | null; emAnalise: boolean },
   sinoForaDoAr: false,
+  // A linha que `lerPedidoDeMatch` devolve (forma de server/db.ts): pedido da
+  // conta 2 para a conta 1, já encaminhado.
+  pedido: { id: 7, requesterId: 2, recipientId: 1, status: "pending", reciprocatedAt: null } as
+    { id: number; requesterId: number; recipientId: number; status: string; reciprocatedAt: Date | null } | null,
+  // Quem tem o termo do Smart Match vigente e quem tem a conta ativa.
+  comTermo: [1, 2] as number[],
+  ativas: [1, 2] as number[],
 }));
 
 vi.mock("./db", () => new Proxy({}, {
@@ -39,6 +50,8 @@ vi.mock("./db", () => new Proxy({}, {
       estado.chamadas.push({ fn: String(prop), args });
       if (prop === "createNotification" && estado.sinoForaDoAr) throw new Error("sino fora do ar");
       if (prop === "respondToConnection") return estado.resposta;
+      if (prop === "lerPedidoDeMatch") return estado.pedido;
+      if (prop === "idsDeContasAtivas") return new Set((args[0] as number[]).filter(id => estado.ativas.includes(id)));
       if (prop === "resolverAlvoDoMatch") return 2;
       if (prop === "sendConnectionRequest") return estado.envio;
       if (prop === "idsDosDistribuidoresAtivos" || prop === "idsDaPresidenciaAtiva") return [];
@@ -51,7 +64,10 @@ vi.mock("./security", () => ({
 }));
 vi.mock("./routers/consent", () => ({
   hasValidConsent: async () => true,
-  usersComConsentimento: async (ids: number[]) => new Set(ids),
+  usersComConsentimento: async (ids: number[], tipo: string) => {
+    estado.chamadas.push({ fn: "usersComConsentimento", args: [ids, tipo] });
+    return new Set(ids.filter(id => estado.comTermo.includes(id)));
+  },
 }));
 vi.mock("./bloqueio-de-contato", () => ({ exigirTextoSemContato: async () => {} }));
 
@@ -75,6 +91,82 @@ beforeEach(() => {
   estado.resposta = { revelou: true, contraparte: 2 };
   estado.envio = { revelou: false, connectionId: 7, emAnalise: false };
   estado.sinoForaDoAr = false;
+  estado.pedido = { id: 7, requesterId: 2, recipientId: 1, status: "pending", reciprocatedAt: null };
+  estado.comTermo = [1, 2];
+  estado.ativas = [1, 2];
+});
+
+// Entre o encaminhamento e o aceite, uma das partes saiu do Smart Match. O aceite
+// não pode revelar, auditar nem avisar; quem aceita recebe um erro sem nome, e não
+// o "Conexão aceita" de sempre. As travas são as do distribuicao.decidir.
+describe("connections.respond — aceite com uma das partes fora do Smart Match", () => {
+  const foiAoBanco = () => estado.chamadas.some(c => c.fn === "respondToConnection");
+
+  it("quem pediu revogou o termo: erro sem nome, nada muda, nada revela, ninguém é avisado", async () => {
+    estado.comTermo = [1];
+    const erro = await connectionsRouter.createCaller(quemAge).respond({ connectionId: 7, accept: true }).catch(e => e);
+    expect(erro).toMatchObject({ code: "NOT_FOUND" });
+    expect(String(erro.message)).not.toMatch(/\d|Nome Da Conta|conta-1|quem-age@local/);
+    expect(foiAoBanco()).toBe(false);
+    expect(avisos()).toEqual([]);
+    expect(estado.auditorias).toEqual([]);
+  });
+
+  it("conta de quem pediu desativada, com termo vigente: mesmo erro, nada muda", async () => {
+    estado.ativas = [1];
+    await expect(connectionsRouter.createCaller(quemAge).respond({ connectionId: 7, accept: true }))
+      .rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(foiAoBanco()).toBe(false);
+    expect(avisos()).toEqual([]);
+    expect(estado.auditorias).toEqual([]);
+  });
+
+  it("quem aceita revogou o próprio termo: erro que pede o termo, nada muda", async () => {
+    estado.comTermo = [2];
+    await expect(connectionsRouter.createCaller(quemAge).respond({ connectionId: 7, accept: true }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(foiAoBanco()).toBe(false);
+    expect(avisos()).toEqual([]);
+    expect(estado.auditorias).toEqual([]);
+  });
+
+  it("confere as duas partes do pedido, e a conta ativa de quem pediu", async () => {
+    await connectionsRouter.createCaller(quemAge).respond({ connectionId: 7, accept: true });
+    const termo = estado.chamadas.find(c => c.fn === "usersComConsentimento");
+    expect(termo?.args).toEqual([[2, 1], "termo_smart_match"]);
+    const contas = estado.chamadas.find(c => c.fn === "idsDeContasAtivas");
+    expect(contas?.args[0]).toEqual([2]);
+    expect(foiAoBanco()).toBe(true);
+    expect(avisos().map(a => [a.userId, a.type])).toEqual([[2, "interest_received"]]);
+  });
+
+  it("a recusa não passa pela trava: vai ao banco mesmo com quem pediu fora, e ninguém é avisado", async () => {
+    estado.comTermo = [];
+    estado.ativas = [];
+    estado.resposta = { revelou: false, contraparte: 2 };
+    await expect(connectionsRouter.createCaller(quemAge).respond({ connectionId: 7, accept: false }))
+      .resolves.toEqual({ success: true });
+    expect(foiAoBanco()).toBe(true);
+    expect(estado.chamadas.some(c => c.fn === "lerPedidoDeMatch")).toBe(false);
+    expect(avisos()).toEqual([]);
+  });
+
+  it("id alheio ou linha que não está pending: sem erro, a mesma resposta de 'nada mudou' (sem oráculo)", async () => {
+    estado.comTermo = [];
+    estado.ativas = [];
+    estado.resposta = { revelou: false, contraparte: null };
+    for (const pedido of [
+      { id: 7, requesterId: 2, recipientId: 3, status: "pending", reciprocatedAt: null },
+      { id: 7, requesterId: 2, recipientId: 1, status: "in_review", reciprocatedAt: null },
+      null,
+    ]) {
+      estado.pedido = pedido;
+      await expect(connectionsRouter.createCaller(quemAge).respond({ connectionId: 7, accept: true }))
+        .resolves.toEqual({ success: true });
+    }
+    expect(avisos()).toEqual([]);
+    expect(estado.auditorias).toEqual([]);
+  });
 });
 
 describe("connections.respond — o aceite avisa quem pediu", () => {

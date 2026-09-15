@@ -64,6 +64,11 @@ describe("Perfil — o esqueleto tem a largura da tela carregada", () => {
     // O esqueleto renderizou: sem isto a comparação abaixo passaria por vazio.
     expect(blocos).toHaveLength(3);
     const doEsqueleto = larguras(blocos[0].parentElement);
+    // O esqueleto fica dentro de um flex com justify-center (Profile.tsx): sem
+    // w-full ele encolhe até o recuo lateral e vira uma coluna fina no meio da
+    // tela, e a comparação de max-w e px acima não percebe. Por isso a trava à
+    // parte (a tela carregada não tem w-full: é um bloco comum com mx-auto).
+    expect(blocos[0].parentElement).toHaveClass("w-full");
     carregando.unmount();
 
     duble.respostas["profile.get"] = { data: { profile: { displayName: "Ana Perfil", city: "Lisboa", country: "PT" } } };
@@ -73,6 +78,9 @@ describe("Perfil — o esqueleto tem a largura da tela carregada", () => {
     const conteudo = carregado.container.querySelector("nav")?.nextElementSibling;
     expect(conteudo?.textContent).toContain("Ana Perfil");
     const daTela = larguras(conteudo);
+    // Quem centraliza a tela carregada é o mx-auto. Sem ele ela gruda na esquerda
+    // enquanto o esqueleto abre no centro, e a comparação abaixo não percebe.
+    expect(conteudo).toHaveClass("mx-auto");
 
     expect(daTela).toContain("max-w-6xl");
     expect(doEsqueleto).toEqual(daTela);

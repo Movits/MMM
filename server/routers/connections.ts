@@ -154,7 +154,34 @@ export const connectionsRouter = router({
       accept: z.boolean(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { respondToConnection } = await import("../db");
+      const { respondToConnection, lerPedidoDeMatch, idsDeContasAtivas } = await import("../db");
+      if (input.accept) {
+        // As travas do `distribuicao.decidir`, lidas de novo no aceite: depois do
+        // encaminhamento, quem pediu pode ter revogado o termo (consent.revoke só
+        // grava `revokedAt` e não mexe no pedido) ou ter tido a conta desativada,
+        // e quem aceita pode ter revogado o dela. A linha `pending` continua na aba
+        // Conexões, porque connections.list não olha o termo. Sem esta trava, o
+        // aceite revelava o nome de quem já tinha tirado o consentimento e ainda a
+        // avisava. Só roda para a destinatária de um pedido `pending`: id alheio ou
+        // linha em outro estado seguem para o banco e recebem o mesmo "nada mudou"
+        // de sempre, sem oráculo. A recusa não revela nada e segue livre.
+        const pedido = await lerPedidoDeMatch(input.connectionId);
+        if (pedido && pedido.recipientId === ctx.user.id && pedido.status === "pending") {
+          const { usersComConsentimento } = await import("./consent");
+          const comTermo = await usersComConsentimento([pedido.requesterId, ctx.user.id], "termo_smart_match");
+          if (!comTermo.has(ctx.user.id)) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Autorize o termo do Smart Match para aceitar e revelar os nomes." });
+          }
+          // A conta de quem aceita está ativa: sdk.ts recusa a sessão de conta desativada.
+          const ativas = await idsDeContasAtivas([pedido.requesterId]);
+          if (!comTermo.has(pedido.requesterId) || !ativas.has(pedido.requesterId)) {
+            // Erro, e não o `success` de sempre: a tela diria "Conexão aceita" sem
+            // nada ter sido aceito. O pedido pendente é anônimo, então a mensagem
+            // não diz a quem aceita quem saiu.
+            throw new TRPCError({ code: "NOT_FOUND", message: "Este pedido não está mais disponível." });
+          }
+        }
+      }
       const resultado = await respondToConnection(input.connectionId, ctx.user.id, input.accept);
       if (resultado.revelou && resultado.contraparte !== null) {
         await registrarRevelacao(input.connectionId, ctx.user.id, resultado.contraparte, "aceite");
