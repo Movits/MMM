@@ -63,7 +63,10 @@ const OUTRA = "dona-2";
  * A rede de teste: contato 1 é da dona; 2 é de outra dona; a membra 30 declarou no perfil.
  * O falso só aplica o filtro de conta ativa quando o SQL o traz: sem ele, a conta desativada volta.
  */
-function redeDeTeste(opcoes: { outraSemTermo?: boolean; outraInativa?: boolean; membraInativa?: boolean; membraSoComOutraNecessidade?: boolean } = {}) {
+function redeDeTeste(opcoes: {
+  outraSemTermo?: boolean; outraInativa?: boolean; membraInativa?: boolean; membraSoComOutraNecessidade?: boolean;
+  ativoDaDona?: string; outraNecessidadeDaMembra?: string;
+} = {}) {
   const filtraAtivas = (sql: string) => sql.includes("`users`.`isActive` = ?");
   usersComConsentimento.mockImplementation(async (ids: number[]) =>
     new Set(ids.filter(id => !(opcoes.outraSemTermo && id === 20))));
@@ -74,7 +77,7 @@ function redeDeTeste(opcoes: { outraSemTermo?: boolean; outraInativa?: boolean; 
     if (/from `users`/.test(sql)) return opcoes.outraInativa && filtraAtivas(sql) ? [[10, DONA]] : [[10, DONA], [20, OUTRA]];
     if (/from `contact_assets`/.test(sql)) {
       return [
-        ...(params.includes(1) ? [[1, "Distribuição de medicamentos", null]] : []),
+        ...(params.includes(1) ? [[1, opcoes.ativoDaDona ?? "Distribuição de medicamentos", null]] : []),
         ...(params.includes(2) ? [[2, "Capital para expansão", null]] : []),
       ];
     }
@@ -89,7 +92,7 @@ function redeDeTeste(opcoes: { outraSemTermo?: boolean; outraInativa?: boolean; 
       const colunas = [...(sql.split(/ from /)[0].matchAll(/`user_profiles`\.`(\w+)`/g))].map(m => m[1]);
       const linha = (perfil: Record<string, unknown>) => colunas.map(coluna => perfil[coluna] ?? null);
       const membra30 = opcoes.membraSoComOutraNecessidade
-        ? { userId: 30, whatIHave: "[]", whatINeed: "[]", seekingTypes: JSON.stringify(["outra_necessidade"]), seekingOtherNeed: " Distribuição de medicamentos " }
+        ? { userId: 30, whatIHave: "[]", whatINeed: "[]", seekingTypes: JSON.stringify(["outra_necessidade"]), seekingOtherNeed: opcoes.outraNecessidadeDaMembra ?? " Distribuição de medicamentos " }
         : { userId: 30, whatIHave: JSON.stringify(["Consultoria"]), whatINeed: JSON.stringify(["Distribuição de medicamentos"]) };
       return [
         ...(opcoes.membraInativa && filtraAtivas(sql) ? [] : [linha(membra30)]),
@@ -162,6 +165,43 @@ describe("rede global — o cruzamento é o do motor privado", () => {
     );
     expect(r.mutuo).toBe(true);
     expect(r.encontros.map(e => e.de).sort()).toEqual(["a", "b"]);
+  });
+});
+
+describe("rede global — contato escrito no texto livre não atravessa donas (A13)", () => {
+  const item = (label: string, category: string | null = null) => ({ label, category });
+  const TELEFONE = "(11) 99999-8888";
+  const EMAIL = "ana@exemplo.com";
+  const DEMANDA_COM_CONTATO = `Precisamos revisar nossos tributos e identificar créditos fiscais. Fale comigo ${TELEFONE} ou ${EMAIL}`;
+
+  it("o encontro casa pelo texto inteiro, mas o rótulo sai com telefone e e-mail mascarados", () => {
+    const r = encontrosEntre(
+      { tenho: [item("Advocacia tributária")], preciso: [] },
+      { tenho: [], preciso: [item(DEMANDA_COM_CONTATO)] },
+    );
+    expect(r.pontuacao).toBeGreaterThanOrEqual(50);
+    expect(r.encontros).toHaveLength(1);
+    const texto = JSON.stringify(r.encontros);
+    expect(texto).toContain("revisar nossos tributos");
+    expect(texto).not.toContain("99999-8888");
+    expect(texto).not.toContain(EMAIL);
+  });
+
+  it("procurar na rede global: nem a resposta nem o que é gravado leva o contato que a membra escreveu", async () => {
+    redeDeTeste({ membraSoComOutraNecessidade: true, ativoDaDona: "Advocacia tributária", outraNecessidadeDaMembra: DEMANDA_COM_CONTATO });
+    const resposta = await procurarConexoesNaRedeGlobal({ id: 10, openId: DONA });
+
+    const comMembra = resposta.conexoes.find(c => c.origem === "NETWORK_PLATFORM_MATCH");
+    expect(comMembra, "a demanda com contato precisa casar para o teste provar a máscara").toBeTruthy();
+    expect(comMembra!.encontros[0].precisa).toContain("revisar nossos tributos");
+    expect(JSON.stringify(resposta)).not.toContain("99999-8888");
+    expect(JSON.stringify(resposta)).not.toContain(EMAIL);
+
+    // Itens e motivo de conexoes_registradas, participantes: nada que foi ao banco carrega o contato.
+    const gravado = estado.consultas.filter(c => /^insert/i.test(c.sql)).map(c => JSON.stringify(c.params)).join(" ");
+    expect(gravado).toContain("NW-AAAAAA");
+    expect(gravado).not.toContain("99999-8888");
+    expect(gravado).not.toContain(EMAIL);
   });
 });
 

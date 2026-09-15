@@ -6,6 +6,7 @@ import { scoreMatch, slugifyMatchTag, type MatchReason } from "./match-service";
 import { garantirCodigosAnonimos } from "./network-codigo-anonimo";
 import { registrarConexao, type ItemDaConexao } from "./network-registro";
 import { necessidadesEscritasDoPerfil } from "./portao-da-demanda-expressa";
+import { mascararContatosEmTexto } from "../shared/contato-em-texto";
 
 /**
  * O network particular diante da rede global — Meu Network Inteligente, spec
@@ -207,6 +208,13 @@ const razao = (item: ItemDeNegocio): MatchReason => ({ slug: slugifyMatchTag(ite
 /**
  * Tudo o que liga dois lados, nos dois sentidos, pelas regras de scoreMatch.
  * Função pura: é o coração do cruzamento e o que os testes exercitam.
+ *
+ * A nota sai do texto inteiro, mas o rótulo que vai para a resposta, para os
+ * itens e para o motivo registrados sai com os contatos mascarados: a descrição
+ * das demandas e "Outra necessidade" são texto livre (até 1000 e 500
+ * caracteres), e telefone ou e-mail escrito ali chegaria à outra dona ou à dona
+ * do contato sem interesse mútuo nem distribuidora (A13; a mesma máscara que
+ * `distribuicao.ts` aplica ao `seekingOtherNeed`).
  */
 export function encontrosEntre(
   a: { tenho: ItemDeNegocio[]; preciso: ItemDeNegocio[] },
@@ -217,7 +225,9 @@ export function encontrosEntre(
     for (const tem of quemTem) {
       for (const precisa of quemPrecisa) {
         const { score } = scoreMatch(razao(tem), razao(precisa));
-        if (score >= LIMIAR_DA_CONEXAO) encontros.push({ de, tem: tem.label, precisa: precisa.label, nota: score });
+        if (score >= LIMIAR_DA_CONEXAO) {
+          encontros.push({ de, tem: mascararContatosEmTexto(tem.label), precisa: mascararContatosEmTexto(precisa.label), nota: score });
+        }
       }
     }
   };
