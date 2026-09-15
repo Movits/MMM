@@ -798,3 +798,44 @@ describe("Falsos positivos de classificação nos idiomas novos (revisão de 14/
     expect(trechoNomeiaServicoAtendido("nous cherchons un comptable", ["Expert-comptable"])).toBe("atende");
   });
 });
+
+describe("Classificação — revisão de 15/09 dos consertos da #127", () => {
+  it("'boutique' e 'cabinet' só são o escritório com o serviço logo no começo do complemento", () => {
+    for (const rotulo of ["Boutique de joias de design", "Boutique de móveis de design", "Boutique de muebles de diseño", "Cabinets de cuisine design"]) {
+      expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
+    }
+    for (const rotulo of ["Boutique de advocacia tributária", "Cabinet comptable", "Cabinet d'avocats", "Expert-comptable"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    }
+  });
+
+  it("'avocat' só é o advogado com qualificador jurídico colado; área solta no rótulo é o abacate", () => {
+    for (const rotulo of ["Avocats Hass export international", "Avocats frais, qualité fiscal", "Avocats Hass, travail équitable", "Avocats Hass, catalogue digital"]) {
+      expect(classificarOferta(rotulo, "Fruits"), rotulo).not.toBe("servico");
+    }
+    for (const rotulo of ["Avocat fiscaliste", "Avocat fiscal", "Avocat en droit du travail", "Avocat d'affaires"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    }
+    // "conseiller" entrou como consultor; o de órgão continua sendo o conselheiro.
+    expect(classificarOferta("Conseiller municipal")).not.toBe("servico");
+  });
+
+  it("nos idiomas novos, a forma usual do serviço e do profissional é serviço", () => {
+    for (const [rotulo, familia] of [
+      ["コンサルタント", "consultoria"], ["経営コンサルタント", "consultoria"], ["監査法人", "auditoria"], ["培训课程", "treinamento"], ["税务师事务所", "contabilidade"],
+      ["Juristische Dienstleistungen", "advocacia"], ["Anwaltskanzlei", "advocacia"], ["Steuerberaterin", "contabilidade"], ["Juriste", "advocacia"],
+      ["Traductrice", "traducao"], ["Ищем бухгалтера", "contabilidade"], ["مستشار قانوني", "consultoria"], ["المحاسب", "contabilidade"], ["लेखा सेवाएं", "contabilidade"],
+    ] as Array<[string, string]>) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe(familia);
+    }
+  });
+
+  it("'招聘' é quem contrata diante do profissional e o recrutamento diante da prestação", () => {
+    // "招聘咨询" é consultoria de recrutamento: não é a consultoria genérica que "税务咨询" atenderia.
+    expect(necessidadeNomeiaOServico("税务咨询", null, "招聘咨询")).toBe(false);
+    expect(necessidadeGenericaNomeiaOServico("招聘咨询", null, "咨询")).toBe(true);
+    // "招聘律师" é contratar advogado: o mesmo serviço de "律师".
+    expect(mesmaFamiliaEEspecialidade("律师", null, "招聘律师")).toBe(true);
+  });
+});

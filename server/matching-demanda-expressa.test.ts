@@ -354,3 +354,22 @@ describe("calculateCompatibilityScore — idiomas novos (revisão de 14/09 na #1
     }
   });
 });
+
+describe("calculateCompatibilityScore — revisão de 15/09 dos consertos da #127", () => {
+  it("nos idiomas novos, o desconhecido não vira genérico diante de especialidade entendida, e o pedido que não é de serviço não solta o portão", () => {
+    for (const [have, need] of [
+      ["Consultoria tributária", "Консультация по логистике"], ["Consultoria tributária", "Консультация по маркетингу"], ["税务咨询", "招聘咨询"],
+      ["Advocacia", "Juristische Person"], ["Contabilidade", "Software für Buchhaltung"], ["Consultoria", "Conseil d'administration"],
+      ["Consultoria em segurança do trabalho / 安全咨询", "Consultoria trabalhista"],
+    ] as Array<[string, string]>) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] })).bloqueio, `${have} × ${need}`).toBe("servico-sem-demanda-expressa");
+    }
+    // O mesmo serviço entre idiomas atende, e o que a classificação deixou de chamar de serviço (a loja) não é barrado.
+    const zh = calculateCompatibilityScore(perfil({ whatIHave: ["税务咨询"] }), perfil({ whatINeed: ["Consultoria tributária"] }));
+    expect(zh.bloqueio).toBeUndefined();
+    expect(zh.complementarity).toBe(60);
+    for (const [have, need] of [["Steuerberatung", "Steuerberaterin gesucht"], ["Expert-comptable", "Expertise comptable"], ["Boutique de joias de design", "Joias finas"]] as Array<[string, string]>) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] })).bloqueio, `${have} × ${need}`).toBeUndefined();
+    }
+  });
+});

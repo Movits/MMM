@@ -525,3 +525,109 @@ describe("Revisão adversarial da correção empilhada sobre a #124 — notas do
     }
   });
 });
+
+/**
+ * Revisão de 15/09 dos consertos da #127 (lacunas da #101 por cima da #124).
+ * Os pares abaixo são os dos achados confirmados; cada um falhava antes do
+ * conserto.
+ */
+describe("Revisão de 15/09 dos consertos da #127 — motor privado", () => {
+  it("o serviço nomeado pelo adjetivo junto de cabeça genérica ou neutra é o mesmo serviço: 100, nos dois sentidos", () => {
+    // "Serviços de contabilidade" × "Contador" valia 100 e "Serviços contábeis" × "Contador", 60 — abaixo do corte de e-mail.
+    for (const [oferta, necessidade] of [
+      ["Serviços jurídicos", "Advogado"], ["Legal services", "Lawyer"], ["Servicios jurídicos", "Abogado"], ["Escritório jurídico", "Advogado"],
+      ["Serviços contábeis", "Contador"], ["Escritório contábil", "Contador"], ["Servicios contables", "Contador"], ["Services juridiques", "Avocat"],
+      ["Lawyer", "Legal services"], ["Contador", "Escritório contábil"],
+      // "contable" e "comptable" na cabeça do termo são também o contador
+      ["Contable", "Contador"], ["Contabilidad", "Contable"], ["Comptabilité", "Comptable"], ["Comptable", "Comptabilité"], ["Comptabilité", "Un comptable"],
+    ] as Array<[string, string]>) {
+      for (const categoria of [null, "Serviços"]) {
+        expect(scoreMatch(item(oferta, categoria), item(necessidade, categoria)), `${oferta} × ${necessidade} [${categoria}]`).toEqual({ score: 100, type: "exact" });
+      }
+    }
+    // O adjetivo sozinho e a especialidade seguem na nota da família.
+    for (const [oferta, necessidade] of [["Contabilidade", "Contábil"], ["Jurídico", "Advogado"], ["Serviços jurídicos tributários", "Advogada"]] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
+    }
+  });
+
+  it("na oferta, o público comum é o destinatário; finalidade e setor depois de 'para' seguem na nota da família", () => {
+    for (const [oferta, necessidade] of [
+      ["Consultoria para exportação", "Consultoria"], ["Advogado para causas do trabalho", "Advogado"], ["Advogado para recuperação judicial", "Advogado"],
+      ["Consultoria para o setor público", "Consultoria"], ["Marketing para restaurantes", "Marketing"], ["Consulting for exporters", "Consulting"],
+      ["Consultoria para o agronegócio", "Consultoria"], ["Contabilidade para o agronegócio", "Contador"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
+    }
+    for (const [oferta, necessidade] of [
+      ["Contabilidade para pequenas empresas", "Contador"], ["Contabilidade para MEI", "Contador"], ["Accounting for small businesses", "Accountant"],
+      ["Advocacia para empresas", "Advogado"], ["Contabilidad para pymes", "Contable"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 100, type: "exact" });
+    }
+  });
+
+  it("o que a classificação diz serviço, a leitura do serviço também lê: não é barrado diante do próprio profissional", () => {
+    for (const [oferta, necessidade, categoria] of [
+      ["Escritório de perícia contábil", "Contador", "Contabilidade"], ["Empresa de gestão contábil", "Contador", "Contabilidade"],
+      ["Escritório de soluções jurídicas", "Advogado", "Jurídico"], ["Perícia contábil", "Contador", "Contabilidade"],
+      ["Cabinet d'expertise comptable", "Comptable", "Comptabilité"], ["Gestion comptable", "Comptable", "Comptabilité"],
+      ["Comptable", "Expertise comptable", "Comptabilité"],
+    ] as Array<[string, string, string]>) {
+      expect(scoreMatch(item(oferta, categoria), item(necessidade, categoria)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
+    }
+  });
+
+  it("a loja e o abacate não são serviço: seguem casando pela categoria", () => {
+    for (const [oferta, necessidade, categoria] of [
+      ["Boutique de joias de design", "Joias finas", "Joias"], ["Boutique de móveis de design", "Móveis", "Móveis"],
+      ["Boutique de muebles de diseño", "Compradores", "Moda"],
+      ["Avocats Hass export international", "Importateur de fruits", "Fruits"], ["Avocats frais, qualité fiscal", "Acheteurs de fruits", "Fruits"],
+    ] as Array<[string, string, string]>) {
+      expect(scoreMatch(item(oferta, categoria), item(necessidade, categoria)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
+    }
+    // O escritório e o advogado continuam serviço.
+    expect(scoreMatch(item("Boutique de advocacia tributária"), item("Advogado tributarista"))).toEqual({ score: 100, type: "exact" });
+    expect(scoreMatch(item("Avocat fiscaliste"), item("Avocat fiscal"))).toEqual({ score: 100, type: "exact" });
+  });
+
+  it("idiomas novos: a forma usual do profissional é lida, e '税务' vale entre grafias e idiomas", () => {
+    for (const [oferta, necessidade, categoria] of [
+      ["税務コンサルティング", "税務コンサルタント", "財務"], ["Бухгалтерские услуги", "Ищем бухгалтера", "Финансы"], ["Steuerberatung", "Steuerberaterin gesucht", "Finanzen"],
+      ["Cabinet d'avocats", "Juriste", "Droit"], ["خدمات محاسبة", "المحاسب", "مالية"], ["लेखा सेवाएं", "लेखाकार चाहिए", "वित्त"], ["Conseil fiscal", "Conseillère fiscale", "Finances"],
+      // francês e alemão escritos com o empréstimo do inglês também são idioma novo
+      ["Conseil en fiscalité internationale", "Consultant en fiscalité des entreprises", "Finances"], ["Beratung für Datenschutz", "Consulting zum Datenschutz", "IT"],
+    ] as Array<[string, string, string]>) {
+      expect(scoreMatch(item(oferta, categoria), item(necessidade, categoria)).score, `${oferta} × ${necessidade}`).toBeGreaterThanOrEqual(60);
+    }
+    // Com a especialidade curada apagada, estes caem de 100 para 0: o teste precisa quebrar (os pares com "税务" igual dos dois lados não quebravam).
+    for (const [oferta, necessidade] of [
+      ["税務コンサルティング", "税务咨询"], ["税务咨询", "Consultoria tributária"], ["税务律师", "Advogado tributarista"], ["Consultoria tributária", "税務コンサルティング"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 100, type: "exact" });
+    }
+  });
+
+  it("idiomas novos: o que o motor entende continua barrado — pedido que não é de serviço, outra especialidade e o desconhecido diante de especialidade entendida", () => {
+    for (const [oferta, necessidade, categoria] of [
+      // o desconhecido tirado do pedido não o torna genérico diante de especialidade entendida
+      ["Consultoria tributária", "Консультация по логистике", "Consultoria"], ["Advocacia tributária", "Юрист по семейным делам", "Jurídico"],
+      ["Consultoria tributária", "电商咨询", "Serviços"],
+      // outra especialidade, agora lida
+      ["Consultoria tributária", "Консультация по маркетингу", "Consultoria"], ["税务咨询", "招聘咨询", "财务"],
+      // pedido que cita a família sem pedir o serviço
+      ["Advogado", "Bureaux pour avocats", "Imobiliário"], ["Advocacia", "Juristische Person", "Recht"], ["Contabilidade", "Software für Buchhaltung", "Contabilidade"],
+      ["Consultoria", "Conseil d'administration", "Consultoria"], ["Advogado", "वकील के लिए कार्यालय", "कार्यालय"],
+      // o rótulo bilíngue não solta a parte em português
+      ["Consultoria em segurança do trabalho / 安全咨询", "Consultoria trabalhista", "Serviços"],
+      ["Consultoria em segurança do trabalho (Beratung)", "Consultoria trabalhista", "Serviços"],
+    ] as Array<[string, string, string]>) {
+      const r = scoreMatch(item(oferta, categoria), item(necessidade, categoria));
+      expect(r.score, `${oferta} × ${necessidade}`).toBe(0);
+      expect((r as { bloqueio?: string }).bloqueio, `${oferta} × ${necessidade}`).toBe("servico-sem-demanda-expressa");
+    }
+    // A genérica que alguém escreveu, e o par que só não casa pelo que as listas não leem, seguem valendo a categoria.
+    expect(scoreMatch(item("Consultoria", "Serviços"), item("电商咨询", "Serviços"))).toEqual({ score: 60, type: "category" });
+    expect(scoreMatch(item("Steuerberatung für Erbschaften", "Finanzen"), item("Steuerberater für Erbschaftsteuer", "Finanzen"))).toEqual({ score: 60, type: "category" });
+  });
+});
