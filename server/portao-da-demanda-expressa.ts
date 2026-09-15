@@ -27,7 +27,7 @@
  * "servico".
  */
 import { tokensDoTermo } from "@shared/direcao-do-termo";
-import { ehServico, PALAVRAS_DE_SERVICO, TIPOS_DA_OFERTA, type TipoDaOferta } from "@shared/tipo-da-oferta";
+import { citacaoPedeServicoOferecido, ehServico, PALAVRAS_DE_SERVICO, PALAVRAS_VAZIAS_DA_CITACAO, servicoDoTermo, TIPOS_DA_OFERTA, type TipoDaOferta } from "@shared/tipo-da-oferta";
 
 /** Os nove tipos mais "nenhuma": o match que se apoia no que a pessoa PRECISA, não no que tem. */
 export const TIPOS_PARA_A_IA = [...TIPOS_DA_OFERTA.map(item => item.tipo), "nenhuma"] as const;
@@ -120,12 +120,8 @@ export function normalizarTipo(valor: unknown): TipoParaAIA {
   return "outros";
 }
 
-// Palavras que não provam nada numa citação: ligação, artigo, preposição.
-const PALAVRAS_VAZIAS = new Set([
-  "de", "da", "do", "das", "dos", "e", "a", "o", "as", "os", "um", "uma", "em", "no", "na", "nos", "nas",
-  "para", "por", "com", "que", "of", "the", "and", "for", "to", "in", "on", "with", "an", "y", "el",
-  "la", "los", "las", "en", "con", "del", "al",
-]);
+// Palavras que não provam nada numa citação: ligação, artigo, preposição (a mesma lista da localização da citação).
+const PALAVRAS_VAZIAS = PALAVRAS_VAZIAS_DA_CITACAO;
 
 /**
  * A citação está no texto-fonte? Conferência por palavras, não por texto
@@ -138,12 +134,43 @@ const PALAVRAS_VAZIAS = new Set([
  * 70% deixava passar duas palavras inventadas a partir de sete (revisões
  * adversariais de 12/09). Uma citação inventada não passa, porque as palavras
  * dela não estão na fonte.
+ *
+ * Chinês e japonês não separam palavras, e a citação inteira chegava como UMA
+ * palavra: "我们需要税务咨询服务" nunca conferia, e o serviço não passava nesses
+ * idiomas nem com a necessidade declarada (revisão de 14/09 na #127). Ali a
+ * conferência é literal: cada pedaço citado precisa estar inteiro dentro de um
+ * pedaço da fonte, sem tolerância (não há palavra para contar), com ao menos
+ * quatro caracteres — duas palavras de dois —, e as palavras latinas da mesma
+ * citação também precisam estar todas na fonte.
+ *
+ * A conferência literal só vale quando a citação é, de fato, chinesa ou
+ * japonesa: com duas palavras latinas de conteúdo ou mais, é uma frase latina
+ * com um nome no meio ("Precisamos de consultoria tributária para a filial de
+ * 東京"). Ali as palavras seguem a regra de sempre, com a tolerância, e o nome
+ * só precisa estar na fonte — antes o nome curto (menos de quatro caracteres)
+ * derrubava a citação inteira, e o portão barrava o match (revisão de 15/09 na
+ * #127).
  */
+const ESCRITA_SEM_ESPACO = new RegExp("[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]", "u");
+const MINIMO_DE_CARACTERES_SEM_ESPACO = 4;
+
 export function citacaoConfere(citacao: unknown, fonte: string): boolean {
   if (typeof citacao !== "string") return false;
-  const palavras = tokensDoTermo(citacao).filter(palavra => palavra.length >= 3 && !PALAVRAS_VAZIAS.has(palavra));
+  const pedacos = tokensDoTermo(citacao);
+  const pedacosDaFonte = tokensDoTermo(fonte);
+  const semEspaco = pedacos.filter(pedaco => ESCRITA_SEM_ESPACO.test(pedaco));
+  const palavras = pedacos.filter(palavra => !ESCRITA_SEM_ESPACO.test(palavra) && palavra.length >= 3 && !PALAVRAS_VAZIAS.has(palavra));
+  if (semEspaco.length > 0) {
+    if (!semEspaco.every(pedaco => pedacosDaFonte.some(daFonte => daFonte.includes(pedaco)))) return false;
+    if (palavras.length < 2) {
+      const caracteres = semEspaco.reduce((total, pedaco) => total + Array.from(pedaco).length, 0);
+      if (caracteres < MINIMO_DE_CARACTERES_SEM_ESPACO) return false;
+      const latinasDaFonte = new Set(pedacosDaFonte);
+      return palavras.every(pedaco => latinasDaFonte.has(pedaco));
+    }
+  }
   if (palavras.length < 2) return false;
-  const daFonte = new Set(tokensDoTermo(fonte));
+  const daFonte = new Set(pedacosDaFonte);
   const ausentes = palavras.filter(palavra => !daFonte.has(palavra));
   if (ausentes.some(palavra => PALAVRAS_DE_SERVICO.has(palavra))) return false;
   return palavras.length <= 3 ? ausentes.length === 0 : ausentes.length <= 1;
@@ -208,14 +235,37 @@ export function exigeCitacao(item: ItemComPortao, perfil?: PerfilNoPortao): bool
   return servicos.length === ofertas.length && !temNecessidadeDeclarada(perfil);
 }
 
+
+/**
+ * A citação conferida precisa se apoiar num serviço que o perfil OFERECE
+ * (defeito relatado em 13/09): o portão conferia que o trecho estava na
+ * oportunidade, mas não que ele pedia o serviço da pessoa — "consultoria em
+ * marketing" passava para quem oferece "Consultoria jurídica". Quando o trecho
+ * citado nomeia um serviço, algum serviço do perfil tem de atendê-lo
+ * (`citacaoPedeServicoOferecido`, que localiza a citação na fonte e completa a
+ * especialidade). Trecho sem palavra de serviço é paráfrase e fica com a IA,
+ * como antes; perfil sem serviço classificável também.
+ */
+export function citacaoAmarradaAoPerfil(citacao: unknown, fonte: string, perfil?: PerfilNoPortao): boolean {
+  if (typeof citacao !== "string" || !perfil) return true;
+  // Os serviços do perfil vêm de "O que tenho" E da área e da especialidade: a UI só grava
+  // ids fixos em "O que tenho", e a advogada que marcou "Canais comerciais" continua advogada.
+  const declaradas = lista(perfil.whatIHave);
+  const candidatas = [...declaradas, ...texto(perfil.activityArea), ...texto(perfil.primarySpecialty)];
+  const servicos = candidatas.filter(oferta => servicoDoTermo(oferta) !== null);
+  if (servicos.length === 0) return true;
+  const temOutraBase = declaradas.some(oferta => servicoDoTermo(oferta) === null);
+  return citacaoPedeServicoOferecido(citacao, fonte, servicos, temOutraBase);
+}
+
 /**
  * O portão: match apoiado em SERVIÇO só passa com a necessidade expressa
- * citada e conferida no texto que a pessoa escreveu; e oportunidade que
- * oferece um serviço só passa para quem declarou precisar de algo. Qualquer
- * outro tipo passa como antes.
+ * citada e conferida no texto que a pessoa escreveu, e apoiada num serviço que
+ * o perfil oferece; e oportunidade que oferece um serviço só passa para quem
+ * declarou precisar de algo. Qualquer outro tipo passa como antes.
  */
 export function passaNoPortao(item: ItemComPortao, fonte: string, perfil?: PerfilNoPortao, oportunidade?: OportunidadeNoPortao): boolean {
   if (perfil && oportunidade && oportunidadeOfereceServico(oportunidade) && !temNecessidadeDeclarada(perfil)) return false;
   if (!exigeCitacao(item, perfil)) return true;
-  return citacaoConfere(item.necessidadeExpressa, fonte);
+  return citacaoConfere(item.necessidadeExpressa, fonte) && citacaoAmarradaAoPerfil(item.necessidadeExpressa, fonte, perfil);
 }

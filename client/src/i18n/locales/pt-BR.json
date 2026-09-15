@@ -1449,6 +1449,8 @@
   "intelligentMatches": {
     "seloMutuo": "↔ Conexão mútua",
     "seloCategoria": "Mesma categoria",
+    "seloFamilia": "Mesma família de serviço",
+    "seloMesmoServico": "Mesmo serviço",
     "seloSignificados": "Significados parecidos",
     "seloOfertaProcura": "Oferta e procura",
     "seloTagExata": "Tag exata",

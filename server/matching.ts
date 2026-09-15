@@ -9,7 +9,7 @@ import { eq, ne, and, desc, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import { hasValidConsent, usersComConsentimento } from "./routers/consent";
 import { nomeiamAMesmaCoisa, slugDoTermo } from "@shared/direcao-do-termo";
-import { ehServico, ehServicoDeAssessoria, necessidadeGenericaNomeiaOServico } from "@shared/tipo-da-oferta";
+import { ehServico, ehServicoDeAssessoria, necessidadeNomeiaOServico, regraNaoLeOPar } from "@shared/tipo-da-oferta";
 
 // ─── Encryption helpers (for sensitive data) ─────────────────
 const VAULT_KEY = process.env.VAULT_ENCRYPTION_KEY || requireSecret("JWT_SECRET");
@@ -235,7 +235,7 @@ function satisfaz(have: string, need: string): boolean {
   if (slugDoTermo(have) === slugDoTermo(need) || nomeiamAMesmaCoisa(have, need)) return true;
   // A necessidade genérica que nomeia a família do serviço ("Consultoria"
   // ou "Advogado" em texto livre) é demanda expressa, como no motor privado.
-  if (necessidadeGenericaNomeiaOServico(have, null, need)) return true;
+  if (necessidadeNomeiaOServico(have, null, need)) return true;
   return slugDoTermo(need) === "consultoria" && ehServicoDeAssessoria(have);
 }
 
@@ -383,10 +383,14 @@ export function calculateCompatibilityScore(
   // declarou capacidade. Perfil sem nada em "o que tenho" não oferece serviço
   // nenhum e segue como sempre: a regra é específica de serviço, e produtos,
   // ativos, conexões etc. continuam casando pelas seis dimensões.
-  const soOfereceServicoPresumido = (have: string[], cobre: number) =>
-    have.length > 0 && cobre === 0 && have.every(item => ehServico(item));
+  //
+  // O par que a regra não lê num idioma novo (revisão de 14/09 na #127) não é
+  // bloqueado nem conta como necessidade atendida: fica como na main.
+  const regraNaoLe = (have: string[], need: string[]) => have.some(item => need.some(necessidade => regraNaoLeOPar(item, null, necessidade)));
+  const soOfereceServicoPresumido = (have: string[], cobre: number, need: string[]) =>
+    have.length > 0 && cobre === 0 && have.every(item => ehServico(item)) && !regraNaoLe(have, need);
   const semBaseExpressa = aCoversB === 0 && bCoversA === 0 && !investimentoExpresso;
-  const bloqueio = semBaseExpressa && (soOfereceServicoPresumido(aHave, aCoversB) || soOfereceServicoPresumido(bHave, bCoversA))
+  const bloqueio = semBaseExpressa && (soOfereceServicoPresumido(aHave, aCoversB, bNeed) || soOfereceServicoPresumido(bHave, bCoversA, aNeed))
     ? ("servico-sem-demanda-expressa" as const)
     : undefined;
 

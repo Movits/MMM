@@ -6,7 +6,7 @@ import { exigirDb } from "./db";
 import { sendEmail } from "./_core/email";
 import { embedWithGemini } from "./gemini";
 import { nomeiamAMesmaCoisa, saoConcorrentes, slugDoTermo } from "@shared/direcao-do-termo";
-import { classificarOferta, necessidadeGenericaNomeiaOServico } from "@shared/tipo-da-oferta";
+import { classificarOferta, mesmaFamiliaEEspecialidade, necessidadeGenericaNomeiaOServico, regraNaoLeOPar } from "@shared/tipo-da-oferta";
 
 const SEMANTIC_THRESHOLD = 0.7;
 const SAVE_THRESHOLD = 50;
@@ -104,15 +104,40 @@ export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore 
   // 60, como sempre: a restrição é específica do tipo serviço.
   const ofertaEhServico = classificarOferta(asset.label, asset.category) === "servico";
 
-  // A necessidade GENÉRICA que nomeia a família do serviço também é demanda
-  // expressa: "Consultoria" procurado diante de "Consultoria jurídica"
-  // possuído — quem escreveu "consultoria" declarou precisar de consultoria
-  // (revisão adversarial de 12/09: sem isto o par caía de 60 para 0).
-  if (ofertaEhServico && necessidadeGenericaNomeiaOServico(asset.label, asset.category, need.label)) return { score: 100, type: "exact" as const };
+  // A necessidade que NOMEIA o serviço também é demanda expressa, e passa de
+  // dois jeitos — que valem notas DIFERENTES, porque não são a mesma coisa.
+  //
+  // 100: mesma família E mesma especialidade. "Advogado tributarista"
+  // procurado diante de "Advocacia tributária" possuído é o serviço pedido,
+  // escrito com outra flexão. A #101 fazia esse par cair de 60 para 0 e sumir
+  // do banco (defeito relatado em 13/09).
+  if (ofertaEhServico && mesmaFamiliaEEspecialidade(asset.label, asset.category, need.label)) return { score: 100, type: "exact" as const };
+
+  // 60: a necessidade nomeia só a FAMÍLIA. "Consultoria" procurado declara
+  // precisar de consultoria, e por isso o par existe (revisão adversarial de
+  // 12/09: sem esta regra ele caía de 60 para 0) — mas quem escreveu
+  // "Consultoria" não pediu consultoria tributária, nem de marketing, nem de
+  // segurança do trabalho, e valia 100 para as três. 100 é a nota de quem tem
+  // a MESMA coisa; isto é um bom palpite, que é o que 60 já significa aqui
+  // (defeito relatado em 13/09). Continua acima do corte de 50, então o par
+  // segue no banco — derrubar para 0 seria repetir o defeito que a regra da
+  // especialidade acabou de consertar.
+  if (ofertaEhServico && necessidadeGenericaNomeiaOServico(asset.label, asset.category, need.label)) return { score: 60, type: "category" as const };
+
+  // Segue barrado o que o pedido veta: outra família (salvo consultoria e
+  // assessoria com a mesma especialidade, e o apoio que nomeia a profissão —
+  // ver `comoAtende`), outra especialidade na mesma família, e a categoria em
+  // comum — nada acima olha para a categoria.
+  //
+  // Salvo o que a regra NÃO LÊ num idioma novo (revisão de 14/09 na #127):
+  // "Steuerberatung für Erbschaften" × "Steuerberater für Erbschaftsteuer" só
+  // não casa por palavras que as listas não conhecem. O portão não bloqueia por
+  // falta de regra: o par vale a categoria em comum, como na main.
+  const regraNaoLe = ofertaEhServico && regraNaoLeOPar(asset.label, asset.category, need.label);
 
   const categoriaAsset = slugifyMatchTag(asset.category ?? "");
   const categoriaNeed = slugifyMatchTag(need.category ?? "");
-  if (!ofertaEhServico && categoriaAsset && categoriaNeed && categoriaAsset === categoriaNeed) return { score: 60, type: "category" as const };
+  if ((!ofertaEhServico || regraNaoLe) && categoriaAsset && categoriaNeed && categoriaAsset === categoriaNeed) return { score: 60, type: "category" as const };
   // 45 fica DE PROPÓSITO abaixo de SAVE_THRESHOLD (50), o que mantém o critério
   // semântico desligado. Não é esquecimento: com SEMANTIC_THRESHOLD em 0.7, ele
   // casa tudo com tudo. Medido em 31/08/2026 numa rede de 10 contatos — ao subir
@@ -130,7 +155,7 @@ export function scoreMatch(asset: MatchReason, need: MatchReason, semanticScore 
   // O bloqueio nomeado deixa a decisão visível a quem depura: a oferta é um
   // serviço e nenhuma necessidade o nomeia (a categoria em comum, se havia,
   // não contou).
-  if (ofertaEhServico) return { score: 0, type: "semantic" as const, bloqueio: "servico-sem-demanda-expressa" as const };
+  if (ofertaEhServico && !regraNaoLe) return { score: 0, type: "semantic" as const, bloqueio: "servico-sem-demanda-expressa" as const };
   return { score: 0, type: "semantic" as const };
 }
 
