@@ -742,10 +742,10 @@
       "sizeSmall": "小規模企業",
       "sizeMedium": "中規模企業",
       "sizeLarge": "大企業",
-      "cnpj": "CNPJ",
-      "cnpjPlaceholder": "00.000.000/0000-00",
-      "cnpjHint": "ある場合のみ入力してください。",
-      "cnpjInvalid": "有効なCNPJを入力してください。"
+      "registrationNumber": "事業者登録番号",
+      "registrationNumberPlaceholder": "英字と数字のみ",
+      "registrationNumberHint": "MEI、企業、非営利団体は入力必須です。",
+      "registrationNumberRequired": "事業者登録番号を入力してください。"
     }
   },
   "network": {

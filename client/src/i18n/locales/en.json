@@ -742,10 +742,10 @@
       "sizeSmall": "Small business",
       "sizeMedium": "Medium business",
       "sizeLarge": "Large business",
-      "cnpj": "CNPJ",
-      "cnpjPlaceholder": "00.000.000/0000-00",
-      "cnpjHint": "Provide it only if available.",
-      "cnpjInvalid": "Enter a valid CNPJ."
+      "registrationNumber": "Business registration number",
+      "registrationNumberPlaceholder": "Letters and numbers only",
+      "registrationNumberHint": "Required for MEIs, companies and nonprofits.",
+      "registrationNumberRequired": "Enter the business registration number."
     }
   },
   "network": {

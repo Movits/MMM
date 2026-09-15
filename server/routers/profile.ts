@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
-import { exigeCnpj, isValidCnpj, normalizeCnpj } from "../../shared/business-registration";
+import { CADASTRO_EMPRESARIAL_MAX, exigeCadastroEmpresarial, normalizarCadastroEmpresarial } from "../../shared/business-registration";
 import { exigirDb, getUserProfile, upsertUserProfile } from "../db";
 import { users, userProfiles } from "../../drizzle/schema";
 import { toPublicUser } from "../auth";
@@ -18,6 +18,28 @@ const urlFlexivel = z.preprocess(
   v => (typeof v === "string" && v.trim() && !/^https?:\/\//i.test(v.trim()) ? "https://" + v.trim() : v),
   z.string().url("Informe uma URL válida (ex.: https://seusite.com.br)").optional().or(z.literal(""))
 );
+
+// O campo `companyCnpj` guarda o número do cadastro empresarial: letras e
+// números, sem máscara, sem 14 dígitos fixos e sem dígito verificador (vale
+// para registro de outro país e para o CNPJ alfanumérico). Quem se declara MEI,
+// pessoa jurídica ou organização sem fins lucrativos tem cadastro por definição (A7).
+// Os dois tetos ficam aqui, e não num .max() do zod: erro do zod chega ao toast do
+// Onboarding como JSON cru e em inglês, e a tela não corta mais o que se cola.
+const CADASTRO_BRUTO_MAX = 1000;
+const MENSAGEM_CADASTRO_LONGO = `O número do cadastro empresarial tem no máximo ${CADASTRO_EMPRESARIAL_MAX} letras e números.`;
+
+function conferirCadastroEmpresarial(personType: string | undefined, companyCnpj: string | undefined) {
+  if (companyCnpj && companyCnpj.length > CADASTRO_BRUTO_MAX) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: MENSAGEM_CADASTRO_LONGO });
+  }
+  const cadastro = companyCnpj ? normalizarCadastroEmpresarial(companyCnpj) : "";
+  if (cadastro.length > CADASTRO_EMPRESARIAL_MAX) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: MENSAGEM_CADASTRO_LONGO });
+  }
+  if (exigeCadastroEmpresarial(personType) && !cadastro) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o número do cadastro empresarial: ele é obrigatório para MEI, pessoa jurídica e organização sem fins lucrativos." });
+  }
+}
 
 export const profileRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
@@ -40,7 +62,7 @@ export const profileRouter = router({
      position: z.string().max(200).optional(),
      personType: z.enum(["individual", "legal_entity", "mei", "nonprofit"]).optional(),
      companySize: z.enum(["mei", "micro", "small", "medium", "large"]).optional(),
-     companyCnpj: z.string().max(18).optional(),
+     companyCnpj: z.string().optional(),
      gender: z.enum(["male", "female", "prefer_not_to_say"]).optional(),
      // Novos campos v2
      jobTitle: z.string().max(200).optional(),
@@ -52,20 +74,13 @@ export const profileRouter = router({
       whatINeed: z.array(z.string()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (input.companyCnpj && !isValidCnpj(input.companyCnpj)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe um CNPJ válido." });
-      }
-      // Quem se declara MEI, pessoa jurídica ou organização sem fins lucrativos
-      // tem CNPJ por definição (A7).
-      if (exigeCnpj(input.personType) && !input.companyCnpj) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o CNPJ: ele é obrigatório para MEI, pessoa jurídica e organização sem fins lucrativos." });
-      }
+      conferirCadastroEmpresarial(input.personType, input.companyCnpj);
       // `position` é coluna de users, não de user_profiles — mandá-la ao
       // upsert derrubava o UPDATE inteiro com "Unknown column".
       const { position: _position, ...updateData } = input;
       const businessData = updateData.personType === "individual"
         ? { ...updateData, companySize: null, companyCnpj: null }
-        : { ...updateData, companyCnpj: updateData.companyCnpj ? normalizeCnpj(updateData.companyCnpj) : undefined };
+        : { ...updateData, companyCnpj: updateData.companyCnpj ? normalizarCadastroEmpresarial(updateData.companyCnpj) || undefined : undefined };
       await upsertUserProfile(ctx.user.id, businessData);
       // Atualizar company/position na tabela users também
       const db = await exigirDb();
@@ -92,7 +107,7 @@ export const profileRouter = router({
      position: z.string().max(200).optional(),
      personType: z.enum(["individual", "legal_entity", "mei", "nonprofit"]).optional(),
      companySize: z.enum(["mei", "micro", "small", "medium", "large"]).optional(),
-     companyCnpj: z.string().max(18).optional(),
+     companyCnpj: z.string().optional(),
      gender: z.enum(["male", "female", "prefer_not_to_say"]).optional(),
      // Campos do sistema de matching
      age: z.number().int().min(16).max(120).optional(),
@@ -123,12 +138,7 @@ export const profileRouter = router({
       whatINeed: z.array(z.string()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (input.companyCnpj && !isValidCnpj(input.companyCnpj)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe um CNPJ válido." });
-      }
-      if (exigeCnpj(input.personType) && !input.companyCnpj) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o CNPJ: ele é obrigatório para MEI, pessoa jurídica e organização sem fins lucrativos." });
-      }
+      conferirCadastroEmpresarial(input.personType, input.companyCnpj);
       const { company, position, jobTitle, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed, personType, companySize, companyCnpj, ...profileData } = input;
       await upsertUserProfile(ctx.user.id, profileData);
       const db = await exigirDb();
@@ -149,7 +159,7 @@ export const profileRouter = router({
         profileUpdates.companyCnpj = null;
       } else {
         if (companySize !== undefined) profileUpdates.companySize = companySize;
-        if (companyCnpj !== undefined) profileUpdates.companyCnpj = companyCnpj ? normalizeCnpj(companyCnpj) : null;
+        if (companyCnpj !== undefined) profileUpdates.companyCnpj = companyCnpj ? normalizarCadastroEmpresarial(companyCnpj) || null : null;
       }
       if (institutionalNetwork !== undefined) profileUpdates.institutionalNetwork = institutionalNetwork;
       // Colunas json — o Drizzle serializa; passar já stringificado gravaria JSON duplo

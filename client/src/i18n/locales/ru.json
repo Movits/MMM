@@ -742,10 +742,10 @@
       "sizeSmall": "Малая компания",
       "sizeMedium": "Средняя компания",
       "sizeLarge": "Крупная компания",
-      "cnpj": "CNPJ",
-      "cnpjPlaceholder": "00.000.000/0000-00",
-      "cnpjHint": "Укажите, только если он есть.",
-      "cnpjInvalid": "Введите действительный CNPJ."
+      "registrationNumber": "Регистрационный номер компании",
+      "registrationNumberPlaceholder": "Только буквы и цифры",
+      "registrationNumberHint": "Обязательно для MEI, компаний и некоммерческих организаций.",
+      "registrationNumberRequired": "Введите регистрационный номер компании."
     }
   },
   "network": {
