@@ -66,6 +66,8 @@ const OUTRA = "dona-2";
 function redeDeTeste(opcoes: {
   outraSemTermo?: boolean; outraInativa?: boolean; membraInativa?: boolean; membraSoComOutraNecessidade?: boolean;
   ativoDaDona?: string; outraNecessidadeDaMembra?: string;
+  /** O perfil da membra 30 por inteiro (colunas JSON como texto, como vêm do driver), no lugar dos dois padrões. */
+  membra?: Record<string, unknown>;
 } = {}) {
   const filtraAtivas = (sql: string) => sql.includes("`users`.`isActive` = ?");
   usersComConsentimento.mockImplementation(async (ids: number[]) =>
@@ -91,9 +93,9 @@ function redeDeTeste(opcoes: {
       // A linha sai na ordem das colunas do SELECT: coluna nova no select não desalinha o falso.
       const colunas = [...(sql.split(/ from /)[0].matchAll(/`user_profiles`\.`(\w+)`/g))].map(m => m[1]);
       const linha = (perfil: Record<string, unknown>) => colunas.map(coluna => perfil[coluna] ?? null);
-      const membra30 = opcoes.membraSoComOutraNecessidade
+      const membra30 = opcoes.membra ?? (opcoes.membraSoComOutraNecessidade
         ? { userId: 30, whatIHave: "[]", whatINeed: "[]", seekingTypes: JSON.stringify(["outra_necessidade"]), seekingOtherNeed: opcoes.outraNecessidadeDaMembra ?? " Distribuição de medicamentos " }
-        : { userId: 30, whatIHave: JSON.stringify(["Consultoria"]), whatINeed: JSON.stringify(["Distribuição de medicamentos"]) };
+        : { userId: 30, whatIHave: JSON.stringify(["Consultoria"]), whatINeed: JSON.stringify(["Distribuição de medicamentos"]) });
       return [
         ...(opcoes.membraInativa && filtraAtivas(sql) ? [] : [linha(membra30)]),
         linha({ userId: 31, whatIHave: "[]", whatINeed: "[]" }),
@@ -289,6 +291,57 @@ describe("rede global — Outra necessidade vale como O que preciso", () => {
     expect(comMembra?.encontros).toEqual([{ de: "meu", tem: "Distribuição de medicamentos", precisa: "Distribuição de medicamentos" }]);
     const perfis = estado.consultas.find(c => /from `user_profiles`/.test(c.sql))!;
     expect(perfis.sql).toContain("`seekingOtherNeed`");
+  });
+});
+
+describe("rede global — a descrição que repete o serviço que a própria membra presta não é necessidade (item 1 da revisão do Nicolas na PR #135)", () => {
+  const DESCRICAO_DA_PROPRIA_OFERTA = "Consultoria tributária para indústrias farmacêuticas do Nordeste";
+  /** A consultora tributária que detalhou "Expansão / Internacionalização" com a descrição dada. */
+  const membraConsultora = (description: string) => ({
+    userId: 30, whatIHave: JSON.stringify(["Consultoria tributária"]), whatINeed: JSON.stringify(["expansao_internacionalizacao"]),
+    whatINeedDetails: JSON.stringify([{ id: "d1", category: "expansao_internacionalizacao", description }]),
+  });
+
+  it("contato que só oferece o mesmo serviço não vira NETWORK_PLATFORM_MATCH com a membra que o presta", async () => {
+    redeDeTeste({ ativoDaDona: "Consultoria tributária", membra: membraConsultora(DESCRICAO_DA_PROPRIA_OFERTA) });
+    const resposta = await procurarConexoesNaRedeGlobal({ id: 10, openId: DONA });
+    expect(resposta.conexoes.map(c => c.origem)).toEqual(["NETWORK_NETWORK_MATCH"]);
+    expect(JSON.stringify(resposta)).not.toContain("indústrias farmacêuticas");
+  });
+
+  it("descrição que pede OUTRO serviço continua casando com o contato que o tem", async () => {
+    redeDeTeste({ ativoDaDona: "Contabilidade para empresas", membra: membraConsultora("Preciso de um contador") });
+    const resposta = await procurarConexoesNaRedeGlobal({ id: 10, openId: DONA });
+    const comMembra = resposta.conexoes.find(c => c.origem === "NETWORK_PLATFORM_MATCH");
+    expect(comMembra?.encontros).toEqual([{ de: "meu", tem: "Contabilidade para empresas", precisa: "Preciso de um contador" }]);
+  });
+});
+
+describe("rede global — a guarda de concorrência lê o serviço que a membra pôs na área de atuação (a tela não grava serviço em O que tenho)", () => {
+  const DESCRICAO_DA_PROPRIA_OFERTA = "Consultoria tributária para indústrias do Nordeste";
+  /** A consultora tributária com "O que tenho" VAZIO (o caso comum da tela) e o serviço só na área de atuação. */
+  const consultoraPelaArea = (description: string) => ({
+    userId: 30, whatIHave: "[]", activityArea: "Consultoria tributária", whatINeed: JSON.stringify(["expansao_internacionalizacao"]),
+    whatINeedDetails: JSON.stringify([{ id: "d1", category: "expansao_internacionalizacao", description }]),
+  });
+
+  it("a leitura das membras traz área de atuação e especialidade, e o contato que só oferece o mesmo serviço não vira NETWORK_PLATFORM_MATCH", async () => {
+    redeDeTeste({ ativoDaDona: "Consultoria tributária", membra: consultoraPelaArea(DESCRICAO_DA_PROPRIA_OFERTA) });
+    const resposta = await procurarConexoesNaRedeGlobal({ id: 10, openId: DONA });
+    const perfis = estado.consultas.find(c => /from `user_profiles`/.test(c.sql))!;
+    expect(perfis.sql).toContain("`activityArea`");
+    expect(perfis.sql).toContain("`primarySpecialty`");
+    expect(resposta.conexoes.map(c => c.origem)).toEqual(["NETWORK_NETWORK_MATCH"]);
+    expect(JSON.stringify(resposta)).not.toContain("indústrias do Nordeste");
+  });
+
+  it("descrição que pede OUTRO serviço continua casando com o contato que o tem", async () => {
+    // Medido no scoreMatch: "Contabilidade" × "Preciso de um contador" dá 100; "Preciso de contador para a filial"
+    // dá 0 com ou sem a guarda (regra do motor privado, não desta leitura).
+    redeDeTeste({ ativoDaDona: "Contabilidade", membra: consultoraPelaArea("Preciso de um contador") });
+    const resposta = await procurarConexoesNaRedeGlobal({ id: 10, openId: DONA });
+    const comMembra = resposta.conexoes.find(c => c.origem === "NETWORK_PLATFORM_MATCH");
+    expect(comMembra?.encontros).toEqual([{ de: "meu", tem: "Contabilidade", precisa: "Preciso de um contador" }]);
   });
 });
 

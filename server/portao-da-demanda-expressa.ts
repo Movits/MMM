@@ -145,6 +145,18 @@ const PALAVRAS_VAZIAS = PALAVRAS_VAZIAS_DA_CITACAO;
  * adversariais de 12/09). Uma citação inventada não passa, porque as palavras
  * dela não estão na fonte.
  *
+ * E as palavras presentes precisam aparecer NA ORDEM da citação, numa frase só
+ * da fonte, com até duas palavras de conteúdo entre cada par (item 2 da lista
+ * do Nicolas na #135, 15/09): a conferência por conjunto deixava "revisar
+ * tributos" passar montada de "Indústria com alta carga de tributos. Queremos
+ * revisar nossa estratégia de distribuição" — o exemplo 2 da spec da Glenda de
+ * novo. Frase termina em ponto, exclamação, interrogação, ponto e vírgula,
+ * reticência ou quebra de linha; a barra que separa título, tags e descrição
+ * não termina frase, porque o título é muitas vezes a cabeça da frase que a
+ * descrição continua. Palavra citada que ESTÁ na fonte mas fora da janela é
+ * montagem, não tolerância: só a palavra que não está em lugar nenhum conta
+ * como ausente.
+ *
  * Chinês e japonês não separam palavras, e a citação inteira chegava como UMA
  * palavra: "我们需要税务咨询服务" nunca conferia, e o serviço não passava nesses
  * idiomas nem com a necessidade declarada (9e866b9 da #127, revisão de 14/09).
@@ -163,19 +175,50 @@ const PALAVRAS_VAZIAS = PALAVRAS_VAZIAS_DA_CITACAO;
  */
 const ESCRITA_SEM_ESPACO = new RegExp("[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]", "u");
 const MINIMO_DE_CARACTERES_SEM_ESPACO = 4;
+/** Fim de frase na fonte, latina ou do chinês e do japonês (。！？；). Sem a barra de `textoEscritoPelaPessoa` e sem dois-pontos, de propósito (ver `citacaoConfere`). */
+const FIM_DE_FRASE = new RegExp("[.!?;\\u2026\\n\\u3002\\uFF01\\uFF1F\\uFF1B]+");
+/** Quantas palavras de conteúdo da fonte podem ficar entre duas palavras consecutivas da citação. */
+const INTERCALADAS_NA_CITACAO = 2;
 
-/** Os pedaços da citação em escrita sem espaço, as palavras latinas de conteúdo e se ela vai à conferência literal. */
-function lerCitacao(citacao: string): { semEspaco: string[]; palavras: string[]; literal: boolean } {
-  const pedacos = tokensDoTermo(citacao);
-  const semEspaco = pedacos.filter(pedaco => ESCRITA_SEM_ESPACO.test(pedaco));
-  const palavras = pedacos.filter(palavra => !ESCRITA_SEM_ESPACO.test(palavra) && palavra.length >= 3 && !PALAVRAS_VAZIAS.has(palavra));
-  return { semEspaco, palavras, literal: semEspaco.length > 0 && palavras.length < 2 };
+/** Pedaço que conta na conferência: escrita sem espaço, ou palavra latina de conteúdo (três letras ou mais, fora as vazias). */
+const ehConteudo = (pedaco: string) => ESCRITA_SEM_ESPACO.test(pedaco) || (pedaco.length >= 3 && !PALAVRAS_VAZIAS.has(pedaco));
+
+/** Os pedaços de conteúdo da citação na ordem escrita, os de escrita sem espaço, as palavras latinas e se ela vai à conferência literal. */
+function lerCitacao(citacao: string): { conteudo: string[]; semEspaco: string[]; palavras: string[]; literal: boolean } {
+  const conteudo = tokensDoTermo(citacao).filter(ehConteudo);
+  const semEspaco = conteudo.filter(pedaco => ESCRITA_SEM_ESPACO.test(pedaco));
+  const palavras = conteudo.filter(palavra => !ESCRITA_SEM_ESPACO.test(palavra));
+  return { conteudo, semEspaco, palavras, literal: semEspaco.length > 0 && palavras.length < 2 };
+}
+
+/** As frases da fonte, cada uma reduzida aos pedaços de conteúdo (os mesmos que a citação conserva). */
+function frasesDaFonte(fonte: string): string[][] {
+  return fonte.split(FIM_DE_FRASE).map(frase => tokensDoTermo(frase).filter(ehConteudo)).filter(frase => frase.length > 0);
+}
+
+/** O pedaço citado casa com o da fonte: igual, ou contido nele quando é escrita sem espaço ("東京" em "東京の支店"). */
+const casaComAFonte = (pedaco: string, daFonte: string) => (ESCRITA_SEM_ESPACO.test(pedaco) ? daFonte.includes(pedaco) : daFonte === pedaco);
+
+/** Os pedaços aparecem nesta ordem numa frase só, com até INTERCALADAS_NA_CITACAO pedaços de conteúdo entre cada par? */
+function emOrdemNumaFrase(pedacos: readonly string[], frases: readonly (readonly string[])[]): boolean {
+  if (pedacos.length === 0) return false;
+  return frases.some(frase => frase.some((primeira, inicio) => {
+    if (!casaComAFonte(pedacos[0], primeira)) return false;
+    let posicao = inicio;
+    for (const pedaco of pedacos.slice(1)) {
+      const janela = frase.slice(posicao + 1, posicao + 2 + INTERCALADAS_NA_CITACAO);
+      const achou = janela.findIndex(daFonte => casaComAFonte(pedaco, daFonte));
+      if (achou < 0) return false;
+      posicao += achou + 1;
+    }
+    return true;
+  }));
 }
 
 export function citacaoConfere(citacao: unknown, fonte: string): boolean {
   if (typeof citacao !== "string") return false;
   const pedacosDaFonte = tokensDoTermo(fonte);
-  const { semEspaco, palavras, literal } = lerCitacao(citacao);
+  const { conteudo, semEspaco, palavras, literal } = lerCitacao(citacao);
   if (semEspaco.length > 0) {
     if (!semEspaco.every(pedaco => pedacosDaFonte.some(daFonte => daFonte.includes(pedaco)))) return false;
     if (literal) {
@@ -187,9 +230,11 @@ export function citacaoConfere(citacao: unknown, fonte: string): boolean {
   }
   if (palavras.length < 2) return false;
   const daFonte = new Set(pedacosDaFonte);
-  const ausentes = palavras.filter(palavra => !daFonte.has(palavra));
-  if (ausentes.some(palavra => PALAVRAS_DE_SERVICO.has(palavra))) return false;
-  return palavras.length <= 3 ? ausentes.length === 0 : ausentes.length <= 1;
+  const ausentes = new Set(palavras.filter(palavra => !daFonte.has(palavra)));
+  if (Array.from(ausentes).some(palavra => PALAVRAS_DE_SERVICO.has(palavra))) return false;
+  if (ausentes.size > (palavras.length <= 3 ? 0 : 1)) return false;
+  // O que está na fonte precisa estar nela NA ORDEM, numa frase só: senão é montagem.
+  return emOrdemNumaFrase(conteudo.filter(pedaco => !ausentes.has(pedaco)), frasesDaFonte(fonte));
 }
 
 export type ItemComPortao = { tipoDaOferta?: unknown; necessidadeExpressa?: unknown };
@@ -258,12 +303,42 @@ export function rotularBuscas(seekingTypes: unknown): string {
  * gera conexão, e lida como texto "expansao_internacionalizacao" casava com "Consultoria em
  * internacionalização" e "especialistas_servicos" era classificada como serviço — abririam o portão sem
  * necessidade declarada. Delas vale só a descrição de cada demanda (`necessidadesDasDemandas`), e só da
- * categoria marcada. As oito chaves antigas reaproveitadas e "consultoria" seguem como antes: perfil antigo
- * sem detalhamento segue com a regra de hoje.
+ * categoria marcada — e nunca a descrição, nem o texto de "Outra necessidade", que nomeia o serviço que o
+ * próprio perfil oferece (`descricaoNomeiaOQueOPerfilOferece`). As oito chaves antigas reaproveitadas e
+ * "consultoria" seguem como antes: perfil antigo sem detalhamento segue com a regra de hoje.
  */
 export function necessidadesEscritasDoPerfil(perfil: PerfilNoPortao): string[] {
-  const outra = lista(perfil.seekingTypes).includes(CHAVE_OUTRA_NECESSIDADE) ? texto(perfil.seekingOtherNeed).map(item => item.trim()) : [];
-  return [...chavesQueValemComoNecessidade(perfil.whatINeed), ...necessidadesDasDemandas(perfil.whatINeed, perfil.whatINeedDetails), ...outra];
+  // A guarda de concorrência vale para os dois textos livres: a descrição da demanda e "Outra necessidade".
+  const naoEAPropriaOferta = (necessidade: string) => !descricaoNomeiaOQueOPerfilOferece(perfil, necessidade);
+  const outra = (lista(perfil.seekingTypes).includes(CHAVE_OUTRA_NECESSIDADE) ? texto(perfil.seekingOtherNeed).map(item => item.trim()) : []).filter(naoEAPropriaOferta);
+  const dasDemandas = necessidadesDasDemandas(perfil.whatINeed, perfil.whatINeedDetails).filter(naoEAPropriaOferta);
+  return [...chavesQueValemComoNecessidade(perfil.whatINeed), ...dasDemandas, ...outra];
+}
+
+/**
+ * A guarda de concorrência (item 1 da revisão do Nicolas na PR #135): a descrição de uma demanda que NOMEIA o
+ * serviço que o próprio perfil oferece não é necessidade — é a oferta contada de novo. A consultora tributária
+ * que escreve em "Expansão / Internacionalização" "Consultoria tributária para indústrias do Nordeste" não
+ * precisa de consultoria tributária: ela a presta; lida como "preciso", a frase conectava duas prestadoras do
+ * mesmo serviço sem nenhuma declarar precisar dele. O critério é o mesmo que faria o par casar
+ * (`necessidadeNomeiaOServico`, o que o motor de perfis aceita: família ou especialidade): se o que ela oferece
+ * atenderia o que ela escreveu, o texto descreve a oferta. As ofertas são TUDO o que o perfil declara: "O que
+ * tenho" E a área de atuação E a especialidade (`tudoOQueOPerfilOferece`), não o "um ou outro" de
+ * `ofertasDoPerfil`: a tela grava ids fixos em "O que tenho" (nenhum é serviço), então com "canais_comerciais"
+ * ali o serviço mora na área, e o fallback deixava a guarda cega. A chave da categoria segue valendo como necessidade;
+ * descrição que pede OUTRO serviço ("Preciso de um contador") segue necessidade; "Compradores" segue fora por
+ * inteiro (`CATEGORIAS_CUJA_DESCRICAO_E_OFERTA`), porque ali a pergunta já é o que ela vende. O texto de "Outra
+ * necessidade" passa pela mesma guarda: é texto livre como a descrição, e a mesma consultora escrevendo ali
+ * "Consultoria tributária para indústrias" tinha o texto lido como necessidade. Quem chama precisa trazer
+ * `activityArea` e `primarySpecialty` no perfil (a rede global não trazia, e a guarda ficava inerte lá).
+ */
+function descricaoNomeiaOQueOPerfilOferece(perfil: PerfilNoPortao, descricao: string): boolean {
+  return tudoOQueOPerfilOferece(perfil).some(oferta => necessidadeNomeiaOServico(oferta, null, descricao));
+}
+
+/** "O que tenho", área de atuação e especialidade, juntos: o que a guarda de concorrência confronta com o texto. */
+function tudoOQueOPerfilOferece(perfil: PerfilNoPortao): string[] {
+  return [...lista(perfil.whatIHave), ...texto(perfil.activityArea), ...texto(perfil.primarySpecialty)];
 }
 
 /**
@@ -274,8 +349,10 @@ export function descreverDemandasParaIA(perfil: PerfilNoPortao): string {
   const marcadas = lista(perfil.whatINeed);
   return lerDemandas(perfil.whatINeedDetails)
     // Compradores descreve o que ela vende: a mesma exclusão de necessidadesDasDemandas, senão o prompt
-    // diria ao modelo que é necessidade.
-    .filter(demanda => marcadas.includes(demanda.category) && !CATEGORIAS_CUJA_DESCRICAO_E_OFERTA.has(demanda.category) && demandaValida(demanda))
+    // diria ao modelo que é necessidade. E a descrição que nomeia o serviço que o perfil oferece (a guarda de
+    // concorrência) também fica de fora, pela mesma razão.
+    .filter(demanda => marcadas.includes(demanda.category) && !CATEGORIAS_CUJA_DESCRICAO_E_OFERTA.has(demanda.category) && demandaValida(demanda)
+      && !descricaoNomeiaOQueOPerfilOferece(perfil, demanda.description as string))
     .map((demanda, indice) => {
       const qualificadores = qualificadoresDaDemanda(demanda);
       // JSON.stringify: o texto é da membra; aspas e quebras de linha não podem desmontar a linha do prompt.

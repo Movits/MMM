@@ -9,7 +9,7 @@ import { eq, ne, and, desc, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import { hasValidConsent, usersComConsentimento } from "./routers/consent";
 import { nomeiamAMesmaCoisa, slugDoTermo } from "@shared/direcao-do-termo";
-import { ehServico, ehServicoDeAssessoria, necessidadeDeclaraOAssuntoDoServico, necessidadeNomeiaOServico, regraNaoLeOPar } from "@shared/tipo-da-oferta";
+import { classificarOferta, ehServicoDeAssessoria, necessidadeDeclaraOAssuntoDoServico, necessidadeNomeiaOServico, regraNaoLeOPar } from "@shared/tipo-da-oferta";
 import { chaveAtualDaBusca } from "@shared/o-que-busca";
 import { CATEGORIAS_O_QUE_PRECISO, O_QUE_PRECISO_LEGADO } from "@shared/o-que-preciso";
 import { necessidadesEscritasDoPerfil, rotularBuscas } from "./portao-da-demanda-expressa";
@@ -428,8 +428,21 @@ export function calculateCompatibilityScore(
   // O par que a regra não lê num idioma novo (e6ddfa4 da #127, revisão de 14/09)
   // não é bloqueado nem conta como necessidade atendida: fica como na main.
   const regraNaoLe = (ofertas: string[], need: string[]) => ofertas.some(item => need.some(necessidade => regraNaoLeOPar(item, null, necessidade)));
-  const soOfereceServicoPresumido = (ofertas: string[], cobre: number, need: string[]) =>
-    ofertas.length > 0 && cobre === 0 && ofertas.every(item => ehServico(item)) && !regraNaoLe(ofertas, need);
+  //
+  // "Só oferece serviço" é: ALGUMA oferta é serviço e NENHUMA é de outro tipo
+  // reconhecido (produto, ativo, investimento, conexão, tecnologia, imóvel...).
+  // Era `every(ehServico)`, e um item que o classificador não lê desligava o
+  // bloqueio: "Direito" solto na área de atuação cai em "outros" (só é advocacia
+  // seguido de área curada, tipo-da-oferta.ts), então a advogada com "Direito"
+  // + especialidade legal diante da indústria que só procura distribuidores
+  // dava 41 e era gravada (item 3 da lista do Nicolas na #135, 15/09). "outros"
+  // não é tipo reconhecido: não conta como "outro tipo" nem solta o portão.
+  const soOfereceServicoPresumido = (ofertas: string[], cobre: number, need: string[]) => {
+    const tipos = ofertas.map(item => classificarOferta(item));
+    const ofereceServico = tipos.includes("servico");
+    const ofereceOutroTipo = tipos.some(tipo => tipo !== "servico" && tipo !== "outros");
+    return ofertas.length > 0 && cobre === 0 && ofereceServico && !ofereceOutroTipo && !regraNaoLe(ofertas, need);
+  };
   const semBaseExpressa = aCobreB === 0 && bCobreA === 0 && !investimentoExpresso;
   const bloqueio = semBaseExpressa && (soOfereceServicoPresumido(aOferece, aCobreB, bNeed) || soOfereceServicoPresumido(bOferece, bCobreA, aNeed))
     ? ("servico-sem-demanda-expressa" as const)

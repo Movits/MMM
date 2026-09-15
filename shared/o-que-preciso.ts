@@ -475,7 +475,10 @@ export const CATEGORIAS_CUJA_DESCRICAO_E_OFERTA: ReadonlySet<string> = new Set<C
  * não entra sozinho — nomeia a família, não a necessidade, e "Palavra igual não
  * é serviço igual" —, e setor, país, região e cidade nunca são necessidade.
  * "Especialistas / Serviços" sem descrição não chega aqui (a demanda é inválida),
- * nem a descrição das categorias que descrevem a oferta.
+ * nem a descrição das categorias que descrevem a oferta. A guarda de concorrência —
+ * a descrição de qualquer categoria que nomeia o serviço que o próprio perfil
+ * oferece também não é necessidade — fica em server/portao-da-demanda-expressa.ts
+ * (`necessidadesEscritasDoPerfil`), onde as ofertas do perfil são conhecidas.
  */
 export function necessidadesDasDemandas(whatINeed: unknown, whatINeedDetails: unknown): string[] {
   const marcadas = Array.isArray(whatINeed) ? whatINeed.filter((item): item is string => typeof item === "string") : [];

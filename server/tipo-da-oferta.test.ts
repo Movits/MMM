@@ -1021,6 +1021,26 @@ describe("Leitura do chinês e do japonês pelo fim do termo e travas dos idioma
     expect(mesmaFamiliaEEspecialidade("医生", null, "招聘医生")).toBe(true);
   });
 
+  it("curso ou programa de uma área não vira o profissional da área (item 5 da revisão do Nicolas na #135)", () => {
+    // "课程", "課程" e "プログラム" eram estrutura neutra, e o laço descascava "会计课程" (curso de contabilidade) até
+    // "会计": o par com "Contador" valia 100 e disparava e-mail. Em português "Curso de contabilidade" × "Contador" já
+    // dá 0, porque a família de "curso" é o próprio curso; em chinês e japonês o curso deixa de ser lido como serviço.
+    expect(servicoAtendeNecessidade("Curso de contabilidade", "Contador")).toBe(false);
+    for (const [oferta, necessidade] of [["会计课程", "Contador"], ["会計プログラム", "会計士"], ["会计课程", "会计"], ["會計課程", "會計師"]] as Array<[string, string]>) {
+      expect(mesmaFamiliaEEspecialidade(oferta, null, necessidade), `${oferta} × ${necessidade}`).toBe(false);
+      expect(servicoAtendeNecessidade(oferta, necessidade), `${oferta} × ${necessidade}`).toBe(false);
+      expect(familiaDoServico(oferta), oferta).not.toBe("contabilidade");
+    }
+    // O curso de treinamento e o programa de formação seguem sendo serviço de treinamento, lidos como termo inteiro.
+    for (const rotulo of ["培训课程", "研修プログラム"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe("treinamento");
+    }
+    // E o serviço de contabilidade continua atendendo o contador pedido.
+    expect(familiaDoServico("会计服务")).toBe("contabilidade");
+    expect(mesmaFamiliaEEspecialidade("会计服务", null, "Contador")).toBe(true);
+  });
+
   it("regraNaoLeOPar: só no par que as listas não leem num idioma novo; pt, en e es seguem estritos", () => {
     expect(regraNaoLeOPar("Steuerberatung für Erbschaften", "Finanzen", "Steuerberater für Erbschaftsteuer")).toBe(true);
     expect(regraNaoLeOPar("Conseil en fiscalité internationale", "Finances", "Conseil en fiscalité des entreprises")).toBe(true);

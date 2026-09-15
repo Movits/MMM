@@ -80,6 +80,42 @@ describe("citacaoConfere — a citação precisa estar no texto-fonte", () => {
     // passava (5 de 7); com tolerância fixa, duas inventadas derrubam.
     expect(citacaoConfere("precisamos revisar nossos tributos identificar créditos fiscais advocacia empresarial", fonte)).toBe(false);
   });
+
+  // Item 2 da lista do Nicolas na #135 (15/09): a conferência era por CONJUNTO de palavras, e "revisar tributos"
+  // montada de duas frases conferia — é o exemplo 2 da spec da Glenda (serviço tributário × indústria que quer
+  // revisar a distribuição). Agora as palavras precisam aparecer NA ORDEM, na MESMA frase, com até duas de
+  // conteúdo entre cada par.
+  describe("as palavras citadas precisam estar na ordem e na mesma frase", () => {
+    const duasFrases = "Indústria com alta carga de tributos. Queremos revisar nossa estratégia de distribuição";
+
+    it("citação montada de duas frases não confere, em nenhuma ordem", () => {
+      expect(citacaoConfere("revisar tributos", duasFrases)).toBe(false); // invertida
+      expect(citacaoConfere("tributos revisar", duasFrases)).toBe(false); // na ordem, mas de duas frases
+      expect(citacaoConfere("tributos queremos revisar", duasFrases)).toBe(false);
+    });
+
+    it("a mesma frase, na ordem, confere — com até duas palavras de conteúdo intercaladas", () => {
+      expect(citacaoConfere("Queremos revisar nossa estratégia", duasFrases)).toBe(true);
+      expect(citacaoConfere("Queremos revisar estratégia", duasFrases)).toBe(true); // "nossa" no meio
+      expect(citacaoConfere("Queremos estratégia de distribuição", duasFrases)).toBe(true); // "revisar nossa" no meio
+      expect(citacaoConfere("Queremos distribuição", duasFrases)).toBe(false); // três no meio
+      expect(citacaoConfere("estratégia revisar", duasFrases)).toBe(false); // mesma frase, ordem trocada
+    });
+
+    it("ponto, exclamação, interrogação, ponto e vírgula e quebra de linha separam frases; a barra entre título e descrição não", () => {
+      for (const separador of [". ", "! ", "? ", "; ", "\n"]) {
+        const fonteSeparada = `Precisamos revisar nossos tributos${separador}queremos identificar créditos fiscais`;
+        expect(citacaoConfere("revisar nossos tributos identificar créditos", fonteSeparada), JSON.stringify(separador)).toBe(false);
+        expect(citacaoConfere("identificar créditos fiscais", fonteSeparada), JSON.stringify(separador)).toBe(true);
+      }
+      expect(citacaoConfere("Advogado tributarista para planejamento de holding", "Advogado tributarista | para planejamento de holding")).toBe(true);
+    });
+
+    it("a tolerância à palavra ausente continua, mas palavra PRESENTE fora da janela é montagem", () => {
+      expect(citacaoConfere("Queremos revisar nossa estratégia urgente", duasFrases)).toBe(true); // "urgente" não está na fonte: tolerada
+      expect(citacaoConfere("Queremos revisar nossa estratégia tributos", duasFrases)).toBe(false); // "tributos" está, mas na outra frase
+    });
+  });
 });
 
 describe("textoEscritoPelaPessoa e cortarEmPalavra — a fonte da citação", () => {
@@ -388,6 +424,14 @@ describe("citacaoAmarradaAoPerfil — a citação precisa pedir um serviço que 
     expect(citacaoAmarradaAoPerfil("consultoria em marketing", fonte, oferece("Soja"))).toBe(true);
     expect(citacaoAmarradaAoPerfil(undefined, fonte, oferece("Consultoria jurídica"))).toBe(true);
   });
+
+  it("citação que não está na fonte em ordem não é julgada isolada: a amarração reprova (item 2 da lista do Nicolas na #135)", () => {
+    // Até 15/09 `citacaoPedeServicoOferecido` julgava a frase do MODELO quando não a achava na fonte, e "revisar
+    // tributos" (montada de duas frases) declarava o assunto tributário.
+    const duasFrases = textoEscritoPelaPessoa("Estratégia de distribuição", [], "Indústria com alta carga de tributos. Queremos revisar nossa estratégia de distribuição");
+    expect(citacaoAmarradaAoPerfil("revisar tributos", duasFrases, oferece("Advocacia tributária"))).toBe(false);
+    expect(citacaoAmarradaAoPerfil("Queremos revisar nossa estratégia", duasFrases, oferece("Advocacia tributária"))).toBe(true);
+  });
 });
 
 describe("Portão da IA — revisão adversarial da correção (13/09)", () => {
@@ -425,6 +469,37 @@ describe("Portão da IA — revisão adversarial da correção (13/09)", () => {
     const descricao = "Startup jurídica busca consultoria de marketing. Também precisamos de consultoria jurídica para os termos de uso.";
     expect(citando(descricao, "consultoria jurídica", oferece("Consultoria jurídica"))).toBe(true);
     expect(citando("Advogado tributarista | para planejamento de holding", "Advogado tributarista para planejamento de holding", oferece("Advocacia tributária"))).toBe(true);
+  });
+});
+
+describe("Portão da IA — citação montada fora de ordem (item 2 da lista do Nicolas na #135, 15/09)", () => {
+  // O caso executado: a conferência por conjunto deixava "revisar tributos" passar para a tributarista, com as duas
+  // palavras vindas de frases diferentes e em ordem invertida — o exemplo 2 da spec da Glenda de novo.
+  const descricao = "Indústria com alta carga de tributos. Queremos revisar nossa estratégia de distribuição";
+  const citando = (citacao: string, ...ofertas: string[]) =>
+    passaNoPortao({ tipoDaOferta: "servico", necessidadeExpressa: citacao }, textoEscritoPelaPessoa("Estratégia de distribuição", [], descricao), { whatIHave: ofertas, whatINeed: [] });
+
+  it("a citação montada de duas frases reprova, e o portão não julga a frase do modelo", () => {
+    expect(citando("revisar tributos", "Advocacia tributária")).toBe(false);
+    expect(citando("tributos revisar", "Advocacia tributária")).toBe(false);
+    expect(citando("carga de tributos revisar", "Advocacia tributária")).toBe(false);
+  });
+
+  it("a frase inteira, na ordem, passa — inclusive com palavras intercaladas; a de duas frases em ordem não", () => {
+    expect(citando("Queremos revisar nossa estratégia", "Advocacia tributária")).toBe(true);
+    expect(citando("Queremos revisar estratégia de distribuição", "Advocacia tributária")).toBe(true);
+    expect(citando("tributos queremos revisar nossa estratégia", "Advocacia tributária")).toBe(false);
+  });
+
+  it("a pontuação de fim de frase do chinês e do japonês também separa frases: a citação que cruza o 。 é montagem", () => {
+    // Revisão do item 2: FIM_DE_FRASE só lia a pontuação latina, e "distribuição indústria" montada dos dois lados de
+    // um 。 conferia como se fosse uma frase só. A fonte aqui é latina; o ramo literal (citação EM escrita sem espaço)
+    // não muda.
+    for (const separador of ["。", "！", "？", "；"]) {
+      const fonte = `Queremos revisar nossa estratégia de distribuição${separador}Indústria com alta carga de tributos`;
+      expect(citacaoConfere("distribuição indústria", fonte), JSON.stringify(separador)).toBe(false);
+      expect(citacaoConfere("estratégia de distribuição", fonte), JSON.stringify(separador)).toBe(true); // dentro de uma frase só
+    }
   });
 });
 

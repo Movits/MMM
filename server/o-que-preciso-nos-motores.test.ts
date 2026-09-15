@@ -138,6 +138,87 @@ describe("a descrição de 'Compradores / Clientes' é o que a membra VENDE, nã
   });
 });
 
+describe("a descrição que nomeia o serviço que o próprio perfil OFERECE não é necessidade (item 1 da revisão do Nicolas na PR #135)", () => {
+  // A guarda de concorrência: a consultora tributária escreve em "Expansão / Internacionalização" o que ela VENDE.
+  // Lida como "o que preciso", a descrição conectava duas prestadoras do mesmo serviço sem nenhuma declarar precisar dele.
+  const DESCRICAO_DA_PROPRIA_OFERTA = "Consultoria tributária para indústrias farmacêuticas do Nordeste";
+  const CONSULTORA_EM_EXPANSAO = {
+    whatIHave: ["Consultoria tributária"],
+    whatINeed: ["expansao_internacionalizacao"],
+    whatINeedDetails: [{ id: "d1", category: "expansao_internacionalizacao", region: "Nordeste", objective: "vender", description: DESCRICAO_DA_PROPRIA_OFERTA }],
+  };
+  const OUTRA_CONSULTORA = perfil({ whatIHave: ["Consultoria tributária"] });
+
+  it("no motor de perfis, duas prestadoras do mesmo serviço não se conectam: 0 e bloqueado, como já dá em 'Compradores'", () => {
+    const r = calculateCompatibilityScore(OUTRA_CONSULTORA, perfil(CONSULTORA_EM_EXPANSAO));
+    expect(r.bloqueio).toBe("servico-sem-demanda-expressa");
+    expect(r.overall).toBe(0);
+    // O serviço só na área de atuação ("O que tenho" vazio, o caso comum da tela) é oferta do mesmo jeito.
+    const naAreaDeAtuacao = perfil({ ...CONSULTORA_EM_EXPANSAO, whatIHave: [], activityArea: "Consultoria tributária" });
+    expect(calculateCompatibilityScore(OUTRA_CONSULTORA, naAreaDeAtuacao).bloqueio).toBe("servico-sem-demanda-expressa");
+  });
+
+  it("não chega aos motores nem ao prompt da IA; a chave antiga da categoria continua valendo como necessidade", () => {
+    expect(necessidadesEscritasDoPerfil(CONSULTORA_EM_EXPANSAO)).toEqual([]);
+    expect(descreverDemandasParaIA(CONSULTORA_EM_EXPANSAO)).toBe("");
+    expect(perfilDeclarouPrecisarDoServico(CONSULTORA_EM_EXPANSAO, "Consultoria tributária")).toBe(false);
+    // Em "Licenças / Regulação" (chave antiga, que vale sozinha): a chave fica, só a descrição concorrente sai.
+    const emLicencas = { ...CONSULTORA_EM_EXPANSAO, whatINeed: ["licencas"], whatINeedDetails: [{ id: "d1", category: "licencas", description: DESCRICAO_DA_PROPRIA_OFERTA }] };
+    expect(necessidadesEscritasDoPerfil(emLicencas)).toEqual(["licencas"]);
+    expect(descreverDemandasParaIA(emLicencas)).toBe("");
+  });
+
+  it("descrição que pede OUTRO serviço continua contando: 'Preciso de contador para abrir filial'", () => {
+    const comDescricao = (description: string) => ({ ...CONSULTORA_EM_EXPANSAO, whatINeedDetails: [{ id: "d1", category: "expansao_internacionalizacao", description }] });
+    const pedeContador = comDescricao("Preciso de contador para abrir filial");
+    expect(necessidadesEscritasDoPerfil(pedeContador)).toEqual(["Preciso de contador para abrir filial"]);
+    expect(descreverDemandasParaIA(pedeContador)).toContain("\"Preciso de contador para abrir filial\"");
+    expect(perfilDeclarouPrecisarDoServico(pedeContador, "Contabilidade para empresas")).toBe(true);
+    // No motor de perfis a consultora casa com a contadora (o público "para abrir filial" é assunto do motor, não
+    // da guarda: medido, "Contabilidade para empresas" não o cobre hoje; "Preciso de um contador" ela atende).
+    const pedeUmContador = comDescricao("Preciso de um contador");
+    const r = calculateCompatibilityScore(perfil({ whatIHave: ["Contabilidade para empresas"] }), perfil(pedeUmContador));
+    expect(r.bloqueio).toBeUndefined();
+    expect(r.complementarity).toBeGreaterThan(20);
+    // A mesma descrição concorrente em quem NÃO oferece o serviço segue como necessidade: o que decide é a oferta do perfil.
+    const semOServico = { ...CONSULTORA_EM_EXPANSAO, whatIHave: ["industria"] };
+    expect(necessidadesEscritasDoPerfil(semOServico)).toEqual([DESCRICAO_DA_PROPRIA_OFERTA]);
+  });
+
+  it("'Outra necessidade' passa pela mesma guarda: o texto que nomeia o serviço que ela presta não é necessidade; o que pede OUTRO serviço continua", () => {
+    const naOutraNecessidade = (seekingOtherNeed: string) => ({ whatIHave: ["Consultoria tributária"], seekingTypes: ["outra_necessidade"], seekingOtherNeed });
+    const repeteAOferta = naOutraNecessidade(DESCRICAO_DA_PROPRIA_OFERTA);
+    expect(necessidadesEscritasDoPerfil(repeteAOferta)).toEqual([]);
+    expect(temNecessidadeDeclarada(repeteAOferta)).toBe(false);
+    expect(perfilDeclarouPrecisarDoServico(repeteAOferta, "Consultoria tributária")).toBe(false);
+    const r = calculateCompatibilityScore(OUTRA_CONSULTORA, perfil(repeteAOferta));
+    expect(r.bloqueio).toBe("servico-sem-demanda-expressa");
+    expect(r.overall).toBe(0);
+    // O serviço só na área de atuação ("O que tenho" vazio) é oferta do mesmo jeito.
+    expect(necessidadesEscritasDoPerfil({ ...repeteAOferta, whatIHave: [], activityArea: "Consultoria tributária" })).toEqual([]);
+    // Pedido de OUTRO serviço segue contando e casa com quem o presta.
+    const pedeContador = naOutraNecessidade("Preciso de contador");
+    expect(necessidadesEscritasDoPerfil(pedeContador)).toEqual(["Preciso de contador"]);
+    expect(perfilDeclarouPrecisarDoServico(pedeContador, "Contabilidade para empresas")).toBe(true);
+    const casa = calculateCompatibilityScore(perfil({ whatIHave: ["Contabilidade para empresas"] }), perfil(pedeContador));
+    expect(casa.bloqueio).toBeUndefined();
+    expect(casa.complementarity).toBeGreaterThan(20);
+  });
+
+  it("com um id fixo em 'O que tenho' e o serviço só na área de atuação, a guarda continua enxergando a oferta", () => {
+    // A tela grava ids fixos em "O que tenho" (nenhum é serviço): o serviço mora na área. A guarda lê a união,
+    // não o "um ou outro" de ofertasDoPerfil, senão "canais_comerciais" escondia a área e a descrição passava.
+    const comIdFixo = { ...CONSULTORA_EM_EXPANSAO, whatIHave: ["canais_comerciais"], activityArea: "Consultoria tributária" };
+    expect(necessidadesEscritasDoPerfil(comIdFixo)).toEqual([]);
+    expect(descreverDemandasParaIA(comIdFixo)).toBe("");
+    expect(perfilDeclarouPrecisarDoServico(comIdFixo, "Consultoria tributária")).toBe(false);
+    expect(calculateCompatibilityScore(OUTRA_CONSULTORA, perfil(comIdFixo)).bloqueio).toBe("servico-sem-demanda-expressa");
+    // O mesmo id fixo em quem NÃO presta o serviço: a descrição segue como necessidade.
+    const semOServico = { ...comIdFixo, activityArea: "Indústria de alimentos" };
+    expect(necessidadesEscritasDoPerfil(semOServico)).toEqual([DESCRICAO_DA_PROPRIA_OFERTA]);
+  });
+});
+
 describe("categoria de serviço SEM descrição não casa", () => {
   it("'Especialistas / Serviços' com o serviço escolhido e sem descrição: genérica, nos três motores", () => {
     expect(necessidadesEscritasDoPerfil(SERVICO_SEM_DESCRICAO)).toEqual([]);

@@ -175,7 +175,9 @@ const textos = (valor: unknown): string[] =>
 /**
  * Membras ATIVAS com o termo do Smart Match e algo declarado em "O que tenho" ou
  * "O que preciso". O texto de "Outra necessidade" vale como "O que preciso",
- * como nos outros motores (`necessidadesEscritasDoPerfil`).
+ * como nos outros motores (`necessidadesEscritasDoPerfil`). A área de atuação e
+ * a especialidade só alimentam a guarda de concorrência dessa leitura; o que a
+ * membra OFERECE ao cruzamento continua sendo "O que tenho".
  */
 export async function lerMembrosParaCruzamento(excetoUserId: number): Promise<MembroDaRede[]> {
   const db = await exigirDb();
@@ -185,6 +187,11 @@ export async function lerMembrosParaCruzamento(excetoUserId: number): Promise<Me
       // A descrição das demandas detalhadas de "O que preciso" (14/09) também é necessidade declarada.
       whatINeedDetails: userProfiles.whatINeedDetails,
       seekingTypes: userProfiles.seekingTypes, seekingOtherNeed: userProfiles.seekingOtherNeed,
+      // O que a membra OFERECE quando "O que tenho" está vazio (o caso comum: a tela só grava ids fixos ali,
+      // nenhum de serviço). A guarda de concorrência de `necessidadesEscritasDoPerfil` lê as duas colunas como
+      // `ofertasDoPerfil`; sem elas era inerte aqui, e a consultora tributária que descreveu o próprio serviço
+      // numa demanda casava com todo contato que o presta.
+      activityArea: userProfiles.activityArea, primarySpecialty: userProfiles.primarySpecialty,
     })
     .from(userProfiles)
     .innerJoin(users, eq(users.id, userProfiles.userId))

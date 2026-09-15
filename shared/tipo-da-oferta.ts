@@ -487,6 +487,9 @@ const SERVICOS_SEM_ESPACO: Array<[string, string]> = ([
   ["营销", "marketing"], ["广告", "publicidade"],
   ["翻译", "traducao"], ["培训", "treinamento"], ["设计", "design"],
   ["维护", "manutencao"], ["招聘", "recrutamento"], ["经纪", "corretagem"],
+  // "培训课程" (curso de treinamento) e "研修プログラム" (programa de formação) são o treinamento como termo inteiro:
+  // "课程" e "プログラム" deixaram de ser estrutura para o curso de uma área não virar o profissional dela (#135, item 5).
+  ["培训课程", "treinamento"], ["研修プログラム", "treinamento"],
   // "税务师"/"稅務師" é o agente tributário certificado, como o "税理士" japonês (116bb56 da #127)
   ["税务师", "contabilidade"], ["稅務師", "contabilidade"],
   // 14/09: logística e saúde. "运输" (transporte) e "仓储" (armazenagem) ficam de
@@ -517,9 +520,13 @@ const ESCRITA_SEM_ESPACO = new RegExp("[\\p{Script=Han}\\p{Script=Hiragana}\\p{S
  */
 const ESTRUTURA_DEPOIS_DO_SERVICO = [
   "服务", "服務", "サービス", "事务所", "事務所", "代理店", "有限公司", "公司", "会社", "师", "師", "士",
-  // "監査法人", "コンサルティングファーム", "研修プログラム", "培训课程", "设计工作室", "营销策划", "採用支援":
-  // eram "outros" (116bb56). "有限公司" antes de "公司", porque a busca pega o primeiro que termina o termo.
-  "法人", "ファーム", "プログラム", "课程", "課程", "工作室", "策划", "支援",
+  // "監査法人", "コンサルティングファーム", "设计工作室", "营销策划", "採用支援": eram "outros" (116bb56). "有限公司"
+  // antes de "公司", porque a busca pega o primeiro que termina o termo. "课程"/"課程" (curso) e "プログラム"
+  // (programa) NÃO são estrutura: o curso de uma área não é o profissional da área — "会计课程" (curso de
+  // contabilidade) descascado até "会计" valia 100 com "Contador" e disparava e-mail (item 5 da revisão do Nicolas
+  // na #135), enquanto "Curso de contabilidade" × "Contador" dá 0 em português. "培训课程" e "研修プログラム" são
+  // termos inteiros em SERVICOS_SEM_ESPACO.
+  "法人", "ファーム", "工作室", "策划", "支援",
   "が必要です", "が必要", "を探しています", "を探す", "を募集", "募集",
 ];
 /**
@@ -2611,10 +2618,10 @@ export function citacaoPedeServicoOferecido(citacao: string, fonte: string, serv
       while (comeco > 0 && !fimAntes[comeco] && qualificaAntes(tokens[comeco - 1])) comeco -= 1;
       return [[comeco, k]];
     });
-    if (!candidatas.length) {
-      const soCitacao = tokensDoTexto(citacao);
-      return julgar(soCitacao.tokens, soCitacao.quebraAntes) !== "nao";
-    }
+    // Nem o serviço citado está na fonte: a citação não é da pessoa. Até 15/09 o portão julgava aqui a frase do
+    // MODELO, e "revisar tributos" montada de duas frases declarava o assunto tributário (item 2 da lista do
+    // Nicolas na #135). Reprova sem julgar.
+    if (!candidatas.length) return false;
   }
   return candidatas.some(([inicio, fim]) => {
     let ate = fim;

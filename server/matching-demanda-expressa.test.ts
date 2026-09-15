@@ -182,10 +182,11 @@ describe("calculateCompatibilityScore — a regra é específica de serviço", (
     expect(none.bloqueio).toBe("servico-sem-demanda-expressa");
   });
 
-  it("oferta mista SEM encaixe: o ativo continua pontuando como na main (every, não some)", () => {
-    // Mata o mutante `have.some(ehServico)`: com "industria" na lista, a oferta
-    // não é só de serviço, então nada bloqueia — e a nota é a de sempre para
-    // um ativo sem encaixe (complementaridade 20, overall 32 com o resto vazio).
+  it("oferta mista SEM encaixe: o ativo continua pontuando como na main (serviço ao lado de outro tipo reconhecido não bloqueia)", () => {
+    // Mata o mutante que bloqueia só por haver serviço na lista: com "industria"
+    // (ativo) ao lado, a oferta não é só de serviço, então nada bloqueia — e a
+    // nota é a de sempre para um ativo sem encaixe (complementaridade 20,
+    // overall 32 com o resto vazio).
     const r = calculateCompatibilityScore(
       perfil({ whatIHave: ["Advocacia tributária", "industria"] }),
       perfil({ whatINeed: ["tecnologia"] }),
@@ -388,6 +389,46 @@ describe("calculateCompatibilityScore — o serviço que mora na especialidade (
     expect(calculateCompatibilityScore(perfil({ whatIHave: ["logistica"] }), perfil({ whatINeed: ["distribuidores"] })).bloqueio).toBeUndefined();
     expect(calculateCompatibilityScore(perfil({ whatIHave: ["logistica"] }), perfil({ whatINeed: ["compradores"] })).bloqueio)
       .toBe("servico-sem-demanda-expressa");
+  });
+});
+
+describe("calculateCompatibilityScore — área de atuação que o classificador não lê não desliga o bloqueio (item 3 da lista do Nicolas na #135, 15/09)", () => {
+  // "Direito" solto só é advocacia seguido de área curada (tipo-da-oferta.ts):
+  // a área de atuação "Direito" cai em "outros". Com `every(ehServico)`, esse
+  // item ilegível derrubava o bloqueio, e a advogada (especialidade legal, "o
+  // que tenho" vazio) diante da indústria que só procura distribuidores dava
+  // 41 — acima do corte 40 — e o par era gravado. A regra agora: bloqueia
+  // quando ALGUMA oferta é serviço e NENHUMA é de outro tipo reconhecido;
+  // "outros" não é tipo reconhecido.
+  it("advogada com área 'Direito' e especialidade legal × indústria que só procura distribuidores: bloqueado, nota zero", () => {
+    const r = calculateCompatibilityScore(
+      perfil({ whatIHave: [], activityArea: "Direito", primarySpecialty: "legal", sector: "Jurídico" }),
+      perfil({ whatINeed: ["distribuidores"], sector: "Indústria" }),
+    );
+    expect(r.bloqueio).toBe("servico-sem-demanda-expressa");
+    expect(r.overall).toBe(0);
+  });
+
+  it("vale também em 'o que tenho': o serviço ao lado de um item que o classificador não lê segue bloqueado", () => {
+    const r = calculateCompatibilityScore(perfil({ whatIHave: ["Advocacia tributária", "Abacate"] }), perfil({ whatINeed: ["distribuidores"] }));
+    expect(r.bloqueio).toBe("servico-sem-demanda-expressa");
+    expect(r.overall).toBe(0);
+  });
+
+  it("um produto reconhecido ao lado do serviço NÃO é bloqueado por esta regra", () => {
+    const r = calculateCompatibilityScore(perfil({ whatIHave: ["Advocacia tributária", "Produtos orgânicos"] }), perfil({ whatINeed: ["distribuidores"] }));
+    expect(r.bloqueio).toBeUndefined();
+    expect(r.overall).toBeGreaterThan(0);
+  });
+
+  it("no 'Reanalisar' o par da advogada com a indústria não é gravado", async () => {
+    const advogada = { userId: 1, whatIHave: [], whatINeed: [], activityArea: "Direito", primarySpecialty: "legal", sector: "Jurídico", country: "BR", city: "Brasília", values: ["innovation"] };
+    filas.push([advogada], [candidata(2, { whatINeed: ["distribuidores"], sector: "Indústria" })], []);
+
+    const criados = await generateMatchesForUser(1);
+
+    expect(criados).toBe(0);
+    expect(upserts).toHaveLength(0);
   });
 });
 
