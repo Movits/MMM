@@ -8,7 +8,7 @@ import { LANGUAGES } from "@/i18n";
 import { AppHeader } from "@/components/AppHeader";
 import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 import { segmentarTranscricao, TIPOS_DE_ENTIDADE, type TipoEntidade } from "@/lib/transcricao-destacada";
-import { CODIGO_ERRO_INTERROMPIDO } from "@shared/const";
+import { CODIGO_ERRO_INTERROMPIDO, LIMITE_PROCESSAMENTO_MS, MENSAGEM_AUDIO_GUARDADO_AUSENTE } from "@shared/const";
 
 const MAX_DURATION = 10 * 60;
 
@@ -32,6 +32,24 @@ function microphoneErrorMessage(t: TranslateFn, error: unknown) {
   if (name === "NotFoundError") return t("meetings.micNotFound");
   if (name === "NotReadableError") return t("meetings.micBusy");
   return t("meetings.micGenericError");
+}
+
+// O código tRPC decide a frase: as mensagens do servidor vêm em português, e a
+// tela fala o idioma da dona. Cada ramo chama t() com a chave literal, para o
+// teste de chaves usadas conferir que todas existem.
+function mensagemDoReprocesso(t: TranslateFn, erro: unknown) {
+  switch ((erro as { data?: { code?: string } } | null)?.data?.code) {
+    case "CONFLICT": return t("meetings.reprocessConflict");
+    case "PRECONDITION_FAILED": return t("meetings.reprocessUnavailable");
+    case "TOO_MANY_REQUESTS": return t("meetings.reprocessTooMany");
+    default: return t("meetings.reprocessError");
+  }
+}
+
+// NOT_FOUND é definitivo: a reunião foi excluída (em outra aba, pelo app) ou
+// não é da dona. Tentar de novo ou continuar consultando não a traz de volta.
+function reuniaoNaoExiste(erro: unknown) {
+  return (erro as { data?: { code?: string } } | null)?.data?.code === "NOT_FOUND";
 }
 
 function supportedAudioMime(file: File) {
@@ -75,7 +93,11 @@ export default function Meetings() {
   const { t } = useTranslation();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
-  const { data: meetings, isLoading, isError, error, refetch } = trpc.meetings.list.useQuery();
+  // Enquanto alguma reunião processa (o reprocessamento roda em segundo plano),
+  // a lista se atualiza sozinha a cada 10 s; sem nada processando, não consulta.
+  const { data: meetings, isLoading, isError, error, refetch } = trpc.meetings.list.useQuery(undefined, {
+    refetchInterval: consulta => consulta.state.data?.some(reuniao => reuniao.status === "processing") ? 10_000 : false,
+  });
   const [screen, setScreen] = useState<"list" | "new" | "detail">("list");
   const [meetingId, setMeetingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -99,7 +121,12 @@ export default function Meetings() {
       toast.success(t("meetings.processedSuccess"));
       setScreen("detail");
     },
-    onError: (error) => toast.error(error.message || t("meetings.processError")),
+    // Em falha também: a reunião criada ficou 'failed' no banco, e sem reler a
+    // lista ela não aparece ao voltar — nem o Reprocessar do detalhe dela.
+    onError: (error) => {
+      toast.error(error.message || t("meetings.processError"));
+      void utils.meetings.list.invalidate();
+    },
   });
 
   useEffect(() => {
@@ -243,7 +270,7 @@ export default function Meetings() {
         <button onClick={() => setScreen("new")} className="inline-flex justify-center items-center gap-2 rounded-xl bg-[#c98f70] text-[#1a120c] font-bold px-5 py-3 hover:bg-[#efcba8]"><Plus size={18}/> {t("meetings.newMeetingButton")}</button>
       </div>
       <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100/80 mb-7"><CircleAlert size={17} className="inline mr-2"/>{t("meetings.consentNotice")}</div>
-      {isLoading ? <div className="py-20 text-center text-white/45"><Loader2 className="animate-spin inline mr-2"/>{t("meetings.loadingList")}</div> : isError ? <ErroDeConsulta erro={error} aoTentarDeNovo={() => refetch()} /> : !meetings?.length ? <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center"><Mic className="mx-auto text-amber-300 mb-4" size={34}/><h2 className="font-semibold text-xl">{t("meetings.emptyTitle")}</h2><p className="text-white/45 mt-2">{t("meetings.emptySubtitle")}</p></div> : <div className="grid gap-3">{meetings.map(meeting => <button key={meeting.id} onClick={() => { setMeetingId(meeting.id); setScreen("detail"); }} className="text-left rounded-2xl border border-white/10 bg-white/[0.035] hover:bg-white/[0.07] p-5 transition-colors"><div className="flex items-center justify-between gap-4"><div><h2 className="font-semibold">{meeting.title}</h2><p className="text-xs text-white/45 mt-1">{new Date(meeting.createdAt).toLocaleString("pt-BR")}</p></div><span className={`border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(t, meeting.status)}</span></div></button>)}</div>}
+      {isLoading ? <div className="py-20 text-center text-white/45"><Loader2 className="animate-spin inline mr-2"/>{t("meetings.loadingList")}</div> : isError && !meetings ? <ErroDeConsulta erro={error} aoTentarDeNovo={() => refetch()} /> : !meetings?.length ? <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center"><Mic className="mx-auto text-amber-300 mb-4" size={34}/><h2 className="font-semibold text-xl">{t("meetings.emptyTitle")}</h2><p className="text-white/45 mt-2">{t("meetings.emptySubtitle")}</p></div> : <div className="grid gap-3">{meetings.map(meeting => <button key={meeting.id} onClick={() => { setMeetingId(meeting.id); setScreen("detail"); }} className="text-left rounded-2xl border border-white/10 bg-white/[0.035] hover:bg-white/[0.07] p-5 transition-colors"><div className="flex items-center justify-between gap-4"><div><h2 className="font-semibold">{meeting.title}</h2><p className="text-xs text-white/45 mt-1">{new Date(meeting.createdAt).toLocaleString("pt-BR")}</p></div><span className={`border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(t, meeting.status)}</span></div></button>)}</div>}
     </div>
   </main></>;
 }
@@ -271,7 +298,12 @@ function MeetingRecorder(props: { title: string; setTitle: (value: string) => vo
 function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () => void }) {
   const utils = trpc.useUtils();
   const { t, i18n } = useTranslation();
-  const { data, isLoading, isError, error, refetch } = trpc.meetings.get.useQuery({ meetingId });
+  // Em processamento (inclusive um reprocessamento em segundo plano), o detalhe
+  // se atualiza a cada 5 s até a reunião ficar pronta ou falhar.
+  const { data, isLoading, isError, error, refetch } = trpc.meetings.get.useQuery({ meetingId }, {
+    refetchInterval: consulta => consulta.state.data?.meeting.status === "processing" && !reuniaoNaoExiste(consulta.state.error) ? 5_000 : false,
+    retry: (tentativas, erro) => !reuniaoNaoExiste(erro) && tentativas < 3,
+  });
   const [tab, setTab] = useState<"summary" | "transcript" | "contacts">("summary");
   const [falhaNoAudio, setFalhaNoAudio] = useState(false);
   // O idioma RESOLVIDO: o pedido pode ser regional ("en-US") e cair fora da
@@ -286,24 +318,68 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const decideEntity = trpc.meetings.decideEntity.useMutation({ onSuccess: () => utils.meetings.get.invalidate({ meetingId }) });
   const decideContact = trpc.meetings.decideContactSuggestion.useMutation({ onSuccess: () => utils.meetings.get.invalidate({ meetingId }) });
+  // A resposta da tradução é aplicada no callback do próprio mutate (lá embaixo),
+  // que só dispara para o ÚLTIMO pedido: a tradução de uma transcrição trocada
+  // por um reprocessamento, chegando atrasada, não sobrescreve a da nova.
   const translateTranscript = trpc.meetings.translateTranscript.useMutation({
-    onSuccess: result => setTranslatedText(result.text),
     onError: error => toast.error(error.message || t("meetings.translateError")),
   });
   const deleteMeeting = trpc.meetings.delete.useMutation({
     onSuccess: async () => { await utils.meetings.list.invalidate(); toast.success(t("meetings.deleteSuccess")); onBack(); },
     onError: error => { setConfirmarExclusao(false); toast.error(error.message || t("meetings.deleteError")); },
   });
+  const reprocessar = trpc.meetings.reprocess.useMutation({
+    onSuccess: () => {
+      toast.success(t("meetings.reprocessStarted"));
+      // O servidor já tomou a reunião: a tela vira 'processing' na hora, sem
+      // esperar a releitura. O botão some, a consulta de 5 s liga e uma falha
+      // rápida (áudio ausente no bucket) ainda chega como aviso de término.
+      utils.meetings.get.setData({ meetingId }, anterior => anterior && {
+        ...anterior,
+        meeting: { ...anterior.meeting, status: "processing" as const, processingError: null },
+      });
+    },
+    onError: erro => toast.error(mensagemDoReprocesso(t, erro)),
+    // Aceito ou recusado, o estado real (processando, ou já pronta) vem do servidor.
+    onSettled: () => { void utils.meetings.get.invalidate({ meetingId }); void utils.meetings.list.invalidate(); },
+  });
 
+  // O reprocessamento termina sem ninguém esperando a mutation: quem avisa é a
+  // troca de status que a consulta periódica traz.
+  const statusAnterior = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!data?.transcript || translationLanguage === "pt-BR") { setTranslatedText(null); return; }
-    translateTranscript.mutate({ meetingId, language: translationLanguage as "en" | "es" | "fr" | "de" | "ar" | "zh" | "hi" | "ja" | "ru" });
-  }, [data?.transcript?.id, meetingId, translationLanguage]);
+    const status = data?.meeting.status;
+    if (statusAnterior.current === "processing" && status === "ready") {
+      toast.success(t("meetings.processedSuccess"));
+      setTab("summary");
+    } else if (statusAnterior.current === "processing" && status === "failed") {
+      toast.error(t("meetings.processError"));
+    }
+    statusAnterior.current = status;
+  }, [data?.meeting.status]);
+
+  // Em processamento, a transcrição na tela é da tentativa anterior e está para
+  // ser trocada: traduzir agora gastaria IA com um texto que vai sumir.
+  const processandoAgora = data?.meeting.status === "processing";
+  useEffect(() => {
+    if (!data?.transcript || translationLanguage === "pt-BR" || processandoAgora) { setTranslatedText(null); return; }
+    // A tradução anterior sai antes do pedido novo: se ele falhar (cota, prazo),
+    // a tela mostra a transcrição original, não a tradução de outro texto.
+    setTranslatedText(null);
+    translateTranscript.mutate(
+      { meetingId, language: translationLanguage as "en" | "es" | "fr" | "de" | "ar" | "zh" | "hi" | "ja" | "ru" },
+      { onSuccess: result => setTranslatedText(result.text) },
+    );
+  }, [data?.transcript?.id, meetingId, translationLanguage, processandoAgora]);
 
   // Erro antes do spinner: com isLoading false e data undefined a consulta
   // falhada caía no ramo abaixo e a usuária via um círculo girando para
   // sempre, sem saber que a reunião existe e o servidor é que não respondeu.
-  if (isError) return <main className="min-h-screen p-4 md:p-8 text-white bg-transparent"><div className="max-w-5xl mx-auto">
+  // Com dado na tela, só NOT_FOUND troca a tela pelo erro: uma consulta periódica
+  // que falha por deploy ou limite de requisições mantém o dado anterior, e
+  // esconder a reunião justo enquanto ela processa seria pior. Já a reunião
+  // excluída em outro lugar não pode ficar "processando" para sempre.
+  if (isError && (!data || reuniaoNaoExiste(error))) return <main className="min-h-screen p-4 md:p-8 text-white bg-transparent"><div className="max-w-5xl mx-auto">
     <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-white/55 hover:text-white mb-6"><ArrowLeft size={16}/> {t("meetings.allMeetings")}</button>
     <ErroDeConsulta erro={error} aoTentarDeNovo={() => refetch()} />
   </div></main>;
@@ -327,13 +403,35 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
   // ERRO_INTERROMPIDO é um CÓDIGO gravado pela varredura de reuniões presas,
   // não uma frase: o servidor não sabe o idioma da dona, então a tradução é
   // aqui. As demais mensagens já vêm em português, pensadas para a tela.
+  // O áudio sumiu do bucket: a frase vem em português do servidor (o app a
+  // mostra como veio); aqui ela é traduzida, e reprocessar de novo não adianta.
+  const audioGuardadoAusente = meeting.processingError === MENSAGEM_AUDIO_GUARDADO_AUSENTE;
   const motivoDaFalha = meeting.processingError === CODIGO_ERRO_INTERROMPIDO
     ? t("meetings.processingInterrupted")
-    : (meeting.processingError || t("meetings.processingFailedFallback"));
+    : audioGuardadoAusente
+      ? t("meetings.storedAudioMissing")
+      : (meeting.processingError || t("meetings.processingFailedFallback"));
   return <main className="min-h-screen p-4 md:p-8 text-white bg-transparent"><div className="max-w-5xl mx-auto">
     <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-white/55 hover:text-white mb-6"><ArrowLeft size={16}/> {t("meetings.allMeetings")}</button>
     <div className="flex flex-col md:flex-row justify-between gap-4 mb-6"><div><p className="text-amber-300 text-xs font-semibold">{t("meetings.privateMeetingEyebrow")}</p><h1 className="text-3xl font-bold mt-1">{meeting.title}</h1><p className="text-sm text-white/45 mt-2">{new Date(meeting.createdAt).toLocaleString(i18n.language)}</p></div><div className="flex items-start gap-2"><span className={`h-fit border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(t, meeting.status)}</span><button onClick={() => setConfirmarExclusao(true)} disabled={deleteMeeting.isPending} className="rounded-full border border-red-400/25 px-3 py-1 text-xs text-red-200 hover:bg-red-400/10 disabled:opacity-50">{t("meetings.deleteButton")}</button></div></div>
-    {meeting.status === "failed" && <div className="rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-red-200">{motivoDaFalha}</div>}
+    {meeting.status === "failed" && <div className="mb-6 rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-red-200">
+      <p>{motivoDaFalha}</p>
+      {/* Reprocessar só com áudio guardado que ainda dura mais que um
+          processamento inteiro: perto de vencer, a retenção o apagaria no meio
+          e o servidor recusaria o pedido. */}
+      {recording && !audioGuardadoAusente && recording.expiresAt - Date.now() > LIMITE_PROCESSAMENTO_MS ? (
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-red-100/75">{t("meetings.reprocessHint", { date: new Date(recording.expiresAt).toLocaleDateString(i18n.language) })}</p>
+          <button type="button" onClick={() => reprocessar.mutate({ meetingId })} disabled={reprocessar.isPending}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#c98f70] px-4 py-2 text-sm font-bold text-[#1a120c] hover:bg-[#efcba8] disabled:opacity-60">
+            <RefreshCw size={15} className={reprocessar.isPending ? "animate-spin" : ""}/> {t("meetings.reprocessButton")}
+          </button>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-red-100/75">{recording ? t("meetings.reprocessUnavailable") : t("meetings.reprocessNoAudio")}</p>
+      )}
+    </div>}
+    {emProcessamento && <div role="status" className="mb-6 rounded-xl border border-amber-300/25 bg-amber-300/10 p-4 text-amber-100"><Loader2 className="inline animate-spin mr-2" size={16}/>{t("meetings.transcribingStatus")}</div>}
     <div className="flex gap-2 border-b border-white/10 mb-6">{([ ["summary", t("meetings.summaryTab"), FileText], ["transcript", t("meetings.transcriptTab"), Clock3], ["contacts", t("meetings.contactsTab", { count: suggestions.length }), Users] ] as const).map(([id,label,Icon]) => <button key={id} onClick={() => setTab(id)} className={`inline-flex items-center gap-2 px-4 py-3 text-sm border-b-2 ${tab === id ? "border-amber-300 text-amber-300" : "border-transparent text-white/50"}`}><Icon size={16}/>{label}</button>)}</div>
     {tab === "summary" && <div className="grid md:grid-cols-2 gap-4"><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">{t("meetings.entitiesHeading")}</h2><div className="flex flex-wrap gap-2 mt-4">{entities.length ? entities.map(entity => { const tipo = TIPOS_DE_ENTIDADE[entity.entityType as TipoEntidade]; return <span key={entity.id} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${tipo ? tipo.classes : "border border-white/10 bg-white/5 text-white/75"}`}>{tipo && <span className="text-[10px] font-semibold uppercase tracking-wider opacity-75">{tipo.rotulo}</span>}<span>{entity.value}</span></span>; }) : <p className="text-sm text-white/45">{t("meetings.noEntities")}</p>}</div></section><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">{t("meetings.recordingHeading")}</h2>
       {recording ? <>
@@ -349,7 +447,9 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
           ? <p className="text-xs text-amber-200/80 mt-2">{t("meetings.audioLoadError")}</p>
           : <p className="text-xs text-white/45 mt-2">{t("meetings.durationLabel")} {formatDuration(recording.durationSeconds)} · {t("meetings.availableUntil")} {new Date(recording.expiresAt).toLocaleDateString(i18n.language)}</p>}
       </> : recordingExpired ? (
-        <p className="text-sm text-white/50 mt-3">{t("meetings.recordingExpiredNotice")}</p>
+        // "A transcrição continua aqui" só é verdade com transcrição, e numa
+        // reunião que falhou antes de guardar o áudio não houve gravação apagada.
+        <p className="text-sm text-white/50 mt-3">{transcript ? t("meetings.recordingExpiredNotice") : t("meetings.recordingExpiredNoTranscript")}</p>
       ) : (
         <p className="text-sm text-white/50 mt-3">{t("meetings.noRecordingStored")}</p>
       )}
@@ -379,7 +479,7 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
         </>}
       </> : <p className="text-white/45">{t("meetings.transcriptUnavailable")}</p>}
     </section>}
-    {tab === "contacts" && <div className="space-y-3">{suggestions.length ? suggestions.map(suggestion => <section key={suggestion.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="flex flex-col md:flex-row gap-4 justify-between"><div><h2 className="font-semibold">{suggestion.fullName}</h2><p className="text-sm text-white/55">{[suggestion.jobTitle, suggestion.company].filter(Boolean).join(" · ") || t("meetings.partialDataDetected")}</p>{suggestion.email && <p className="text-xs text-white/40 mt-1">{suggestion.email}</p>}</div>{suggestion.status === "pending" ? <div className="flex flex-wrap gap-2"><button onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "create" })} className="rounded-lg bg-amber-400 text-[#1a120c] px-3 py-2 text-sm font-bold"><Check size={15} className="inline mr-1"/>{t("meetings.createContactButton")}</button><button onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "ignore" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65"><X size={15} className="inline mr-1"/>{t("meetings.ignoreButton")}</button></div> : <span className="text-sm text-white/45">{suggestion.status === "created" ? t("meetings.contactCreatedStatus") : t("meetings.ignoredStatus")}</span>}</div></section>) : <div className="rounded-2xl border border-dashed border-white/15 py-14 text-center text-white/45">{t("meetings.noContactSuggestions")}</div>}</div>}
+    {tab === "contacts" && <div className="space-y-3">{suggestions.length ? suggestions.map(suggestion => <section key={suggestion.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="flex flex-col md:flex-row gap-4 justify-between"><div><h2 className="font-semibold">{suggestion.fullName}</h2><p className="text-sm text-white/55">{[suggestion.jobTitle, suggestion.company].filter(Boolean).join(" · ") || t("meetings.partialDataDetected")}</p>{suggestion.email && <p className="text-xs text-white/40 mt-1">{suggestion.email}</p>}</div>{suggestion.status === "pending" && emProcessamento ? <span className="text-sm text-amber-200/70">{t("meetings.decisionsPaused")}</span> : suggestion.status === "pending" ? <div className="flex flex-wrap gap-2"><button onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "create" })} className="rounded-lg bg-amber-400 text-[#1a120c] px-3 py-2 text-sm font-bold"><Check size={15} className="inline mr-1"/>{t("meetings.createContactButton")}</button><button onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "ignore" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65"><X size={15} className="inline mr-1"/>{t("meetings.ignoreButton")}</button></div> : <span className="text-sm text-white/45">{suggestion.status === "created" ? t("meetings.contactCreatedStatus") : t("meetings.ignoredStatus")}</span>}</div></section>) : <div className="rounded-2xl border border-dashed border-white/15 py-14 text-center text-white/45">{t("meetings.noContactSuggestions")}</div>}</div>}
 
     {/* Confirmação de exclusão — molde de Network.tsx; o texto nomeia tudo que some. */}
     {confirmarExclusao && (

@@ -8,8 +8,9 @@ import {
   saveEnrichmentMessage, saveEnrichmentSuggestions, getEnrichmentSuggestion,
   applyEnrichmentSuggestion, ignoreEnrichmentSuggestion, completeEnrichmentSession,
   getEnrichmentHistory, getEnrichmentSessionById, advanceEnrichmentSession,
-  getPendingEnrichmentSuggestions, undoEnrichmentSuggestion,
+  getPendingEnrichmentSuggestions, undoEnrichmentSuggestion, criarContextoOferecido,
 } from "../db";
+import { contextoParaOferecer } from "../contexto-oferecido";
 import { ENRICHMENT_STEPS, getEnrichmentStep, isExpectedField, isSkipResponse, limiteDoValor, type EnrichmentField } from "../enrichment-flow";
 
 // A IA tem um teto por chamada e um orçamento total (com as retentativas):
@@ -364,7 +365,28 @@ FORMATO DE SAÍDA (JSON obrigatório):
       // O roteiro só avança se a sugestão é da pergunta ATUAL (uma órfã de
       // etapa anterior decidida aqui gravou o dado, mas não conta como
       // resposta da pergunta na tela) e se não sobrou outro cartão dela.
-      return avancarOuEsperarOsOutros(sug.sessionId, ctx.user.openId, sug.fieldType, "applied", false);
+      const avanco = await avancarOuEsperarOsOutros(sug.sessionId, ctx.user.openId, sug.fieldType, "applied", false);
+
+      // "Como se conheceram" que não casou com contexto nenhum ficou só na nota.
+      // Nada é criado aqui: o nome volta para o chat perguntar "Criar o contexto
+      // X?", e só o sim explícito da dona (createSuggestedContext) cria.
+      if (sug.fieldType === "how_met") {
+        const nome = contextoParaOferecer(await getEnrichmentSuggestion(input.suggestionId, ctx.user.openId));
+        if (nome) return { ...avanco, contextoParaCriar: nome };
+      }
+      return avanco;
+    }),
+
+  // O "Criar" da pergunta "Criar o contexto X?". Recebe só o id da sugestão: o
+  // nome é relido no servidor, a partir do que a dona confirmou no cartão.
+  createSuggestedContext: protectedProcedure
+    .input(z.object({ suggestionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const r = await criarContextoOferecido(input.suggestionId, ctx.user.openId);
+      if (r.resultado === "indisponivel") {
+        throw new TRPCError({ code: "NOT_FOUND", message: "CONTEXT_OFFER_NOT_AVAILABLE" });
+      }
+      return r;
     }),
 
   // Ignorar sugestão
