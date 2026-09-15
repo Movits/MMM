@@ -9,7 +9,7 @@ import { montarPracasDoGlobo, type Ligacao, type Praca } from "@/lib/pracas-do-g
 import {
   Briefcase, HandCoins, GraduationCap, Handshake, Rocket, Lightbulb,
   Lock, ShieldCheck, BadgeCheck, KeyRound,
-  UserRound, BrainCircuit, Zap, Sparkles, ArrowRight, ChevronDown, Star, Send,
+  UserRound, BrainCircuit, Zap, Sparkles, ArrowRight, ChevronDown, Star, Send, Globe,
 } from "lucide-react";
 
 // Imagem do hero (client/public/images). O mapa bordado em fio de ouro sobre
@@ -638,30 +638,123 @@ export default function Home() {
                 o suficiente para as duas se descolarem durante a rolagem. */}
             <div className="will-change-transform"
               style={{ transform: "translate3d(0, calc(var(--p, 0) * var(--k, 1) * 22px), 0)" }}>
-              <div className="inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.08] rounded-full px-4 py-1.5 mb-8 text-xs text-white/60 font-medium"
+              <div className="inline-flex max-w-full lg:w-max lg:max-w-none items-center gap-2 bg-white/[0.03] border border-white/[0.08] rounded-full px-4 py-1.5 mb-8 text-xs text-white/60 font-medium"
                 style={{ animation: "fadeInDown 0.8s cubic-bezier(0.23,1,0.32,1) both" }}>
-                <span className="w-1.5 h-1.5 bg-[#c98f70] rounded-full animate-pulse" />
-                {t("hero.badge")}
+                <span className="w-1.5 h-1.5 shrink-0 bg-[#c98f70] rounded-full animate-pulse" />
+                {/* O selo vem em trechos separados por " • ". Quando a linha não
+                    comporta a frase inteira (celular), a quebra cai ENTRE trechos,
+                    e o marcador que abriria a linha nova cai no recorte do
+                    overflow-hidden: nenhuma linha começa com "•". Em LTR quem o
+                    empurra para fora é a margem negativa; em RTL, onde a margem
+                    é do lado errado (ela é física), quem faz o serviço é o
+                    -indent, que segue a direção do texto. Medido nos dois.
+                    Se um trecho sozinho não cabe (telas de ~320 px), o recuo deslocado
+                    (pl + -indent de 1em) faz a continuação começar fora do recorte;
+                    o marcador zera o indent, que é herdado e o empurraria 1em à esquerda.
+                    Os marcadores são aria-hidden, mas o t("hero.badge") cru ainda
+                    tem os " • ", e o leitor de tela os lê em voz alta; por isso o
+                    sr-only troca cada separador por vírgula e lê só os trechos.
+
+                    No desktop o selo mede a frase inteira (w-max) e cabe em UMA
+                    linha. A largura muda com a fonte do sistema, porque o selo
+                    herda a pilha ui-sans-serif/system-ui do Tailwind, não a Inter.
+                    Com os textos desta Hero, no Chrome do Windows (Segoe UI), o
+                    selo mais largo dos 10 idiomas é o alemão: 539,6 px (o pt-BR
+                    mede 484). A coluna de texto tem 548 px a partir de 1280,
+                    então cabe com só 8 px de folga — quem for traduzir o selo
+                    tem esses 548 px de orçamento, e uma fonte mais larga que a
+                    Segoe UI já passa. Entre 1024 e 1279 o utilitário `container`
+                    troca de max-width e a coluna cai para 460 (um pouco menos
+                    logo acima de 1024, onde a barra de rolagem come parte da
+                    janela): aí o selo alemão TRANSBORDA uns 80 px (82,6 em 1024),
+                    mais que os 56 px de `gap-14`.
+                    Não bate em nada hoje porque a coluna da direita
+                    não é renderizada (MOSTRAR_CARTAO_DO_HERO = false, lá em cima);
+                    o globo que aparece ali é o FundoDoPlaneta, fixo atrás da
+                    página inteira, não aquele cartão. Quem religar o cartão troca
+                    `lg:` por `xl:` nas duas classes do selo: ele passa a quebrar
+                    em duas linhas de 1024 a 1279 px e não invade em largura alguma. */}
+                <span className="sr-only">{t("hero.badge").split(" • ").join(", ")}</span>
+                <span aria-hidden="true" className="min-w-0 overflow-hidden">
+                  <span className="-ml-[1em] flex flex-wrap">
+                    {t("hero.badge").split(" • ").map((trecho, i) => (
+                      <span key={i} className="pl-[1em] -indent-[1em]">
+                        <span className="inline-block w-[1em] indent-0 text-center">•</span>
+                        {trecho}
+                      </span>
+                    ))}
+                  </span>
+                </span>
               </div>
 
-              <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.05] mb-6 tracking-tight"
+              {/* Hierarquia da Hero, do mais forte ao botão: o título é o maior
+                  elemento; a frase "quem você precisa conhecer" vem logo abaixo,
+                  em corpo intermediário; alcance e IA são duas linhas de apoio com
+                  ícone, a do alcance mais clara (o país em destaque) e a da IA mais
+                  discreta, para não competir com o título; o gatilho de
+                  curiosidade ganha a rampa do ouro rosé e o filete lateral; o
+                  fechamento fica colado ao botão. Tudo com as cores, os raios e a
+                  entrada fadeInUp que a Hero já usava.
+                  Medido no navegador: com o título em 6xl na coluna estreita das
+                  duas colunas (lg+), ele quebrava em 4 linhas e o botão caía abaixo
+                  da primeira tela em 1280×800 e 1440×900; em lg ele fica em 5xl
+                  (continua de longe o maior texto) e o destaque do título é um
+                  bloco só, para "certas." não ficar sozinho numa linha. As margens
+                  entre os blocos são um degrau menores que as antigas para o botão
+                  caber na primeira tela em 1280×800, e o texto do botão quebra
+                  equilibrado no celular ("ENCONTRE SEU / BUSINESS MATCH"). O espaço
+                  entre as duas partes do título mora no fim de hero.headline1, e
+                  não aqui: japonês e chinês não separam palavras com espaço. */}
+              <h1 className="text-4xl md:text-6xl lg:text-5xl font-extrabold leading-[1.05] mb-5 tracking-tight"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.1s both" }}>
-                <span className="text-white">{t("hero.headline1")} </span>
-                <span className="text-[#c98f70]">{t("hero.headline2")}</span>
-                <br />
-                <span className="text-white">{t("hero.headline3")} </span>
-                <span className="text-white/30">{t("hero.headline4")}</span>
+                <span className="text-white">{t("hero.headline1")}</span>
+                <span className="inline-block text-[#c98f70]">{t("hero.headline2")}</span>
               </h1>
 
-              <p className="text-base md:text-lg text-white/45 max-w-xl mb-10 leading-relaxed"
+              <p className="text-lg md:text-xl text-white/75 max-w-xl mb-5 leading-relaxed"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.2s both" }}>
                 {t("hero.subtitle")}
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-3 mb-14"
+              <div className="max-w-xl space-y-3 mb-5"
+                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.25s both" }}>
+                <div className="flex items-start gap-3">
+                  <span className="w-9 h-9 shrink-0 rounded-xl bg-[#c98f70]/10 border border-[#c98f70]/25 flex items-center justify-center" aria-hidden="true">
+                    <Globe className="w-4 h-4 text-[#c98f70]" />
+                  </span>
+                  <p className="text-sm md:text-base text-white/70 leading-relaxed">
+                    {t("hero.globalBefore")}<strong className="font-semibold text-white">{t("hero.globalHighlight")}</strong>{t("hero.globalAfter")}
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="w-9 h-9 shrink-0 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center" aria-hidden="true">
+                    <Sparkles className="w-4 h-4 text-white/50" />
+                  </span>
+                  <p className="text-sm text-white/45 leading-relaxed">
+                    {t("hero.ai")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="max-w-xl border-s-2 border-[#c98f70]/60 ps-4 mb-5"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.3s both" }}>
+                <p className="text-xl md:text-2xl font-bold leading-snug bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+                  {t("hero.hook")}
+                </p>
+                <p className="text-sm md:text-base text-white/55 mt-2 leading-relaxed">
+                  {t("hero.discover")}
+                </p>
+              </div>
+
+              <p className="text-base font-semibold text-white mb-3"
+                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.35s both" }}>
+                {t("hero.closing")}
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3 mb-14"
+                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.4s both" }}>
                 <Link href={isAuthenticated ? "/dashboard" : "/register"}>
-                  <button className="group w-full sm:w-auto bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-7 py-3.5 rounded-2xl text-base transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-2">
+                  <button className="group w-full sm:w-auto bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] font-bold px-7 py-3.5 rounded-2xl text-base text-balance transition-all duration-200 active:scale-[0.97] flex items-center justify-center gap-2">
                     {t("hero.cta")}
                     <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </button>
@@ -676,12 +769,12 @@ export default function Home() {
 
               {/* Stats minimalistas */}
               <div ref={statsRef} className="flex flex-wrap gap-x-10 gap-y-6"
-                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.4s both" }}>
+                style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.45s both" }}>
                 {[
                   { value: users.toLocaleString(), label: t("stats.users") },
                   { value: opps.toLocaleString(), label: t("stats.opportunities") },
                   { value: connections.toLocaleString(), label: t("stats.connections") },
-                  { value: countries.toLocaleString(), label: "Países representados" },
+                  { value: countries.toLocaleString(), label: t("stats.countries") },
                 ].map((s, i) => (
                   <div key={i}>
                     <div className="text-2xl font-extrabold text-white tracking-tight">{s.value}</div>

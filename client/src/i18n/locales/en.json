@@ -9,13 +9,18 @@
     "beta": "Beta"
   },
   "hero": {
-    "badge": "Global Ecosystem of Opportunities",
-    "headline1": "Find the",
-    "headline2": "right opportunities",
-    "headline3": "made",
-    "headline4": "for you",
-    "subtitle": "Tell us who you are, what you seek and what you have to offer. Our artificial intelligence deeply analyzes your profile to connect you with leaders and opportunities of high real compatibility: going far beyond simple keywords.",
-    "cta": "Create my profile →",
+    "badge": "Global business network among members • 33+ countries • endless possibilities",
+    "headline1": "Great deals begin with access to ",
+    "headline2": "the right people.",
+    "subtitle": "Imagine a network that can identify who you need to meet — and who needs to meet you.",
+    "globalBefore": "With ambassadors in ",
+    "globalHighlight": "more than 33 countries",
+    "globalAfter": ", we connect you to people, opportunities and business in a borderless global network.",
+    "ai": "Our artificial intelligence cross-references profiles, interests, needs and opportunities to reveal strategic connections you might never find on your own.",
+    "hook": "Your next big deal may already be here.",
+    "discover": "Discover who, where and which opportunity is right for you.",
+    "closing": "Find your Business Match.",
+    "cta": "FIND YOUR BUSINESS MATCH",
     "ctaSecondary": "See how it works",
     "motionOn": "Motion on",
     "motionOff": "Motion off",
@@ -26,7 +31,8 @@
     "users": "People registered",
     "opportunities": "Active opportunities",
     "satisfaction": "Satisfaction",
-    "connections": "Connections made"
+    "connections": "Connections made",
+    "countries": "Countries with members"
   },
   "steps": {
     "title": "How it works",

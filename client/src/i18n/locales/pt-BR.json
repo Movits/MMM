@@ -9,13 +9,18 @@
     "beta": "Beta"
   },
   "hero": {
-    "badge": "Rede mundial de negócios entre membros",
-    "headline1": "Encontre as",
-    "headline2": "oportunidades",
-    "headline3": "certas",
-    "headline4": "para você",
-    "subtitle": "Diga quem você é, o que busca e o que tem a oferecer. A nossa inteligência artificial analisa o seu perfil a fundo e conecta você a líderes e oportunidades com compatibilidade de verdade, muito além de palavras-chave.",
-    "cta": "Criar meu perfil →",
+    "badge": "Rede mundial de negócios entre membros • +33 países • infinitas possibilidades",
+    "headline1": "Grandes negócios começam com acesso às ",
+    "headline2": "pessoas certas.",
+    "subtitle": "Imagine uma rede capaz de identificar quem você precisa conhecer — e quem precisa conhecer você.",
+    "globalBefore": "Com embaixadoras em ",
+    "globalHighlight": "mais de 33 países",
+    "globalAfter": ", conectamos você a pessoas, oportunidades e negócios em uma rede global sem fronteiras.",
+    "ai": "Nossa inteligência artificial cruza perfis, interesses, necessidades e oportunidades para revelar conexões estratégicas que talvez você nunca encontrasse sozinho.",
+    "hook": "Seu próximo grande negócio pode já estar aqui.",
+    "discover": "Descubra quem, onde e qual oportunidade combina com você.",
+    "closing": "Encontre o seu Business Match.",
+    "cta": "ENCONTRE SEU BUSINESS MATCH",
     "ctaSecondary": "Ver como funciona",
     "motionOn": "Movimento ligado",
     "motionOff": "Movimento desligado",
@@ -26,7 +31,8 @@
     "users": "Pessoas cadastradas",
     "opportunities": "Oportunidades ativas",
     "satisfaction": "Satisfação",
-    "connections": "Conexões realizadas"
+    "connections": "Conexões realizadas",
+    "countries": "Países com membros cadastrados"
   },
   "steps": {
     "title": "Como funciona",

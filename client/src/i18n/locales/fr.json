@@ -9,13 +9,18 @@
     "beta": "Beta"
   },
   "hero": {
-    "badge": "Écosystème Mondial d'Opportunités",
-    "headline1": "Connectez-vous. Collaborez. Conquérez.",
-    "headline2": "Votre réseau d'élite pour le succès.",
-    "headline3": "Élevez votre parcours professionnel.",
-    "headline4": "Le pouvoir des femmes, ensemble.",
-    "subtitle": "Dites-nous qui vous êtes, ce que vous recherchez et ce que vous avez à offrir. Notre intelligence artificielle analyse votre profil en profondeur pour vous connecter avec des leaders et des opportunités à haute compatibilité réelle: bien au-delà des simples mots-clés.",
-    "cta": "Créer mon profil →",
+    "badge": "Réseau mondial d'affaires entre membres • +33 pays • possibilités infinies",
+    "headline1": "Les grandes affaires commencent par l'accès aux ",
+    "headline2": "bonnes personnes.",
+    "subtitle": "Imaginez un réseau capable d'identifier qui vous devez rencontrer — et qui doit vous rencontrer.",
+    "globalBefore": "Avec des ambassadrices dans ",
+    "globalHighlight": "plus de 33 pays",
+    "globalAfter": ", nous vous connectons à des personnes, des opportunités et des affaires au sein d'un réseau mondial sans frontières.",
+    "ai": "Notre intelligence artificielle croise profils, intérêts, besoins et opportunités pour révéler des connexions stratégiques que vous n'auriez peut-être jamais trouvées par vous-même.",
+    "hook": "Votre prochaine grande affaire est peut-être déjà ici.",
+    "discover": "Découvrez qui, où et quelle opportunité vous correspond.",
+    "closing": "Trouvez votre Business Match.",
+    "cta": "TROUVEZ VOTRE BUSINESS MATCH",
     "ctaSecondary": "Découvrez nos histoires de succès",
     "motionOn": "Mouvement activé",
     "motionOff": "Mouvement désactivé",
@@ -26,7 +31,8 @@
     "users": "Utilisateurs actifs",
     "opportunities": "Opportunités créées",
     "satisfaction": "Taux de satisfaction",
-    "connections": "Connexions établies"
+    "connections": "Connexions établies",
+    "countries": "Pays des membres inscrits"
   },
   "steps": {
     "title": "Comment ça marche",
