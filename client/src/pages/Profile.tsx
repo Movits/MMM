@@ -331,7 +331,7 @@ export default function Profile() {
                 </span>
               )}
               {user?.role === "bronze" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border" style={{ background: "rgba(205,127,50,0.15)", color: "#8e5a3f", borderColor: "rgba(205,127,50,0.3)" }}>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border" style={{ background: "rgba(205,127,50,0.15)", color: "#c98f70", borderColor: "rgba(205,127,50,0.3)" }}>
                   <Shield size={10} /> Bronze
                 </span>
               )}
