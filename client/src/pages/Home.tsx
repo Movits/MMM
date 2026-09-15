@@ -344,19 +344,24 @@ function FAQSection() {
         {/* Campo de pergunta personalizada */}
         <div className="bg-[#211e1b]/90 border border-white/[0.06] rounded-2xl p-6">
           <p className="text-white/50 text-sm mb-3 font-medium">Tem outra dúvida? Pergunte à IA:</p>
-          <div className="flex gap-3">
+          {/* Em 375 px a linha não cabia: `flex-1` num <input> não encolhe abaixo
+              da largura intrínseca dele (min-width auto), então o campo empurrava
+              o botão e os últimos 6 px de "Perguntar" ficavam fora da tela, sem
+              toque possível. Empilha no celular e vira linha a partir de sm; o
+              `min-w-0` deixa o campo encolher quando a linha volta. */}
+          <div className="flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
               value={customQ}
               onChange={e => setCustomQ(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCustom()}
               placeholder="Ex: Como funciona a verificação de identidade?"
-              className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#c98f70]/50 transition-colors"
+              className="w-full min-w-0 flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#c98f70]/50 transition-colors"
             />
             <button
               onClick={handleCustom}
               disabled={customLoading || !customQ.trim()}
-              className="bg-[#c98f70] hover:bg-[#b07a5c] disabled:opacity-40 text-[#151312] font-bold px-5 py-2.5 rounded-xl text-sm transition-all duration-200 active:scale-95 flex-shrink-0 flex items-center gap-2"
+              className="w-full sm:w-auto bg-[#c98f70] hover:bg-[#b07a5c] disabled:opacity-40 text-[#151312] font-bold px-5 py-3 rounded-xl text-sm transition-all duration-200 active:scale-95 flex-shrink-0 flex items-center justify-center gap-2"
             >
               {customLoading ? (
                 <div className="w-4 h-4 border-2 border-[#151312]/40 border-t-[#151312] rounded-full animate-spin" />
