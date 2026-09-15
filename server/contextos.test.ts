@@ -169,6 +169,29 @@ describe("Contextos — listagens dizem tudo o que a tela precisa", () => {
     expect(update!.params).toEqual(expect.arrayContaining(["ambos"]));
   });
 
+  // ── Revisão da PR #122: apagar um campo ao editar o vínculo ──────────────
+  // null (ou vazio) apaga; undefined mantém. Antes, `if (data.city)` pulava o
+  // null e, sem nenhum outro campo, nenhum UPDATE rodava — e a tela dizia
+  // "atualizado".
+
+  it("re-vincular com cidade e notas em null gera UPDATE que as apaga, sem tocar em data e país", async () => {
+    estado.respostas = [[["vinc-1"]], []]; // já existe; update
+    const r = await linkContactToContext("dona-1", {
+      contactId: 42, contextId: "ctx-1", city: null, notes: "",
+    });
+
+    expect(r).toEqual({ id: "vinc-1", created: false });
+    const update = sqlDe("update `contact_contexts`");
+    expect(update).toBeDefined();
+    expect(update!.sql).toContain("`city` = ?");
+    expect(update!.sql).toContain("`notes` = ?");
+    expect(update!.sql).not.toContain("`event_date`");
+    expect(update!.sql).not.toContain("`country`");
+    expect(update!.sql).not.toContain("relationship_type");
+    // cidade e notas vão como null (o vazio também vira null), antes do updated_at
+    expect(update!.params.slice(0, 2)).toEqual([null, null]);
+  });
+
   it("re-vincular sem NENHUM dado novo não dispara update algum", async () => {
     estado.respostas = [[["vinc-1"]]]; // já existe, e nada a atualizar
     const r = await linkContactToContext("dona-1", { contactId: 42, contextId: "ctx-1" });
