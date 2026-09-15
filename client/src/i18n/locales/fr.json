@@ -32,7 +32,7 @@
     "opportunities": "Opportunités créées",
     "satisfaction": "Taux de satisfaction",
     "connections": "Connexions établies",
-    "countries": "Pays représentés"
+    "countries": "Pays des membres inscrits"
   },
   "steps": {
     "title": "Comment ça marche",
@@ -446,8 +446,8 @@
       "clause1_text": "MMM est une plateforme de mise en relation entre ses membres. Elle présente des personnes dont les intérêts se complètent et enregistre les affaires nées de ces présentations. La plateforme n’est pas partie à l’affaire : ce sont les membres qui contractent entre elles.",
       "clause2_title": "2. Commission",
       "clause2_text": "Une affaire issue d’une présentation faite par la plateforme donne lieu à une commission pour MMM, aux conditions suivantes :",
-      "clause2_item1": "le pourcentage est fixé au cas par cas, selon le type et la taille de l’affaire ;",
-      "clause2_item2": "le plafond est de 50 % du bénéfice déclaré pour l’affaire ;",
+      "clause2_item1": "le pourcentage est fixé au cas par cas par la Direction Commerciale;",
+      "clause2_item2": "le plafond est de 50% des honoraires d'intermédiation de l'affaire;",
       "clause2_item3": "dans cette version, le paiement a lieu hors de la plateforme ; le site enregistre seulement l’affaire et la commission due.",
       "clause3_title": "3. Durée et modifications",
       "clause3_text": "Ce texte est provisoire et en cours de révision juridique. Lors de la publication de la version finale, vous serez prévenue et devrez l’accepter à nouveau. La date et le texte exact de cette acceptation sont enregistrés."
@@ -925,6 +925,8 @@
     "salvando": "Enregistrement...",
     "botaoSalvar": "✓ Enregistrer",
     "vincularContatoTitulo": "Lier un contact",
+    "editarVinculoTitulo": "Modifier le lien",
+    "badgeJaVinculado": "Déjà lié",
     "toastVinculadoSucesso": "Lien de {{name}} avec {{context}} créé !",
     "toastVinculoAtualizado": "Lien de {{name}} avec {{context}} mis à jour.",
     "toastErroVincular": "Erreur lors de la liaison : {{message}}",
@@ -1376,8 +1378,8 @@
     "allMeetings": "Toutes les réunions",
     "privateMeetingEyebrow": "RÉUNION PRIVÉE",
     "deleteButton": "Supprimer",
-    "processingFailedFallback": "Le traitement ne s'est pas terminé. Réessayez avec un enregistrement plus court.",
-    "processingInterrupted": "Le traitement a été interrompu avant la fin (le serveur a redémarré en cours de route). Enregistrez ou envoyez l'audio à nouveau.",
+    "processingFailedFallback": "Le traitement ne s'est pas terminé.",
+    "processingInterrupted": "Le traitement a été interrompu avant la fin (le serveur a redémarré en cours de route).",
     "deleteConfirmProcessing": "Cette réunion est encore en cours de traitement : le traitement en cours sera abandonné.",
     "deleteConfirmTitle": "Supprimer cette réunion ?",
     "deleteConfirmText": "L'audio, la transcription, les traductions et les suggestions de contacts seront supprimés définitivement.",
@@ -1406,7 +1408,18 @@
     "ignoreButton": "Ignorer",
     "contactCreatedStatus": "Contact créé",
     "ignoredStatus": "Ignorée",
-    "noContactSuggestions": "Aucun contact suggéré pour cette réunion."
+    "noContactSuggestions": "Aucun contact suggéré pour cette réunion.",
+    "reprocessButton": "Retraiter",
+    "reprocessHint": "L'audio de cette réunion reste conservé jusqu'au {{date}}. Le retraitement utilise le même audio, sans nouvel enregistrement, et remplace la transcription et les suggestions précédentes.",
+    "reprocessStarted": "Retraitement lancé. La réunion sera prête ici à la fin.",
+    "reprocessNoAudio": "L'audio de cette réunion n'est pas conservé : il n'y a donc rien à retraiter. Supprimez cette réunion et enregistrez ou envoyez l'audio à nouveau.",
+    "reprocessUnavailable": "Impossible de retraiter cette réunion avec l'audio conservé. Supprimez cette réunion et enregistrez ou envoyez l'audio à nouveau.",
+    "reprocessConflict": "Cette réunion n'est pas en échec ou est déjà en cours de traitement.",
+    "reprocessTooMany": "Trop de tentatives de retraitement à la suite. Patientez quelques minutes et réessayez.",
+    "reprocessError": "Impossible de retraiter la réunion.",
+    "recordingExpiredNoTranscript": "Aucun audio n'est conservé pour cette réunion. L'audio est conservé 30 jours au maximum.",
+    "decisionsPaused": "Disponible une fois le traitement terminé.",
+    "storedAudioMissing": "L'audio conservé de cette réunion est introuvable."
   },
   "connections": {
     "messageSent": "Message envoyé",

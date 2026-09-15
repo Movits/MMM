@@ -8,11 +8,11 @@ import {
   meetingTranscripts,
   meetingTranscriptTranslations,
 } from "../drizzle/schema";
-import { CODIGO_ERRO_INTERROMPIDO } from "@shared/const";
+import { CODIGO_ERRO_INTERROMPIDO, LIMITE_PROCESSAMENTO_MS, MENSAGEM_AUDIO_GUARDADO_AUSENTE } from "@shared/const";
 import { descreverErroDeBanco, ehErroDoDriverDeBanco, MENSAGEM_ERRO_DE_CONSULTA } from "./banco-indisponivel";
 import { exigirDb } from "./db";
 import { invokeLLM } from "./_core/llm";
-import { storageDelete, storagePut } from "./storage";
+import { chaveDoStorageDaDona, ObjetoAusenteNoStorageError, storageDelete, storageGetBytes, storagePut } from "./storage";
 import { GeminiIndisponivelError, transcribeWithGemini } from "./gemini";
 
 export const MAX_MEETING_AUDIO_BYTES = 10 * 1024 * 1024;
@@ -31,9 +31,11 @@ export { CODIGO_ERRO_INTERROMPIDO };
  * Quanto tempo uma reunião pode ficar em "processing" antes de ser dada como
  * interrompida. O processamento inteiro (upload, Gemini com retentativas,
  * extração com retentativas) cabe em ~2 min; 15 min deixa folga para um pico
- * sem marcar como falha uma reunião que ainda vai terminar.
+ * sem marcar como falha uma reunião que ainda vai terminar. O valor mora em
+ * shared/const.ts porque a tela também o usa, para não oferecer "Reprocessar"
+ * com o áudio a menos disso de vencer.
  */
-export const LIMITE_PROCESSAMENTO_MS = 15 * 60 * 1000;
+export { LIMITE_PROCESSAMENTO_MS };
 
 /**
  * Tamanho das colunas de meeting_contact_suggestions (drizzle/schema.ts). O
@@ -273,6 +275,14 @@ export async function translatePrivateMeetingTranscript(ownerId: string, meeting
   });
   const translatedText = String(response.choices?.[0]?.message?.content ?? "").trim();
   if (!translatedText) throw new Error("Não foi possível traduzir a transcrição.");
+  // A tradução leva até 3 min, e nesse meio-tempo um reprocessamento pode ter
+  // trocado a transcrição (apaga a antiga e as traduções dela, grava a nova).
+  // Gravar agora poria no cache a tradução do texto VELHO, e o UNIQUE
+  // (owner, meeting, language) barraria para sempre a tradução certa. Se a
+  // transcrição já não é a mesma, a resposta vai para quem pediu, sem cache.
+  const [aindaAMesma] = await db.select({ id: meetingTranscripts.id }).from(meetingTranscripts)
+    .where(and(eq(meetingTranscripts.ownerId, ownerId), eq(meetingTranscripts.meetingId, meetingId))).limit(1);
+  if (aindaAMesma?.id !== transcript.id) return { language: normalizedLanguage, text: translatedText, cached: false };
   const timestamp = now();
   await db.insert(meetingTranscriptTranslations).values({
     id: crypto.randomUUID(),
@@ -340,6 +350,96 @@ class ReuniaoExcluidaDuranteProcessamento extends Error {
   }
 }
 
+/**
+ * O envio chegou a uma reunião que já não espera áudio: duplo clique, segunda
+ * aba, ou reenvio depois de a primeira execução já ter tomado a reunião. O
+ * router traduz em CONFLICT — antes de qualquer upload ou chamada de IA.
+ */
+export class ReuniaoForaDoEstado extends Error {
+  constructor() {
+    super("Esta reunião já recebeu um áudio.");
+    this.name = "ReuniaoForaDoEstado";
+  }
+}
+
+/**
+ * Outra execução tomou a reunião enquanto esta esperava a IA: um
+ * reprocessamento novo, ou a varredura de interrompidas, que a deu como falha.
+ * A reunião agora é de quem tem a ficha nova, e esta execução sai sem escrever
+ * nada — nem transcrição, nem 'ready', nem 'failed'.
+ */
+export class ReuniaoTomadaPorOutraExecucao extends Error {
+  constructor() {
+    super("O processamento desta reunião foi substituído por outra tentativa.");
+    this.name = "ReuniaoTomadaPorOutraExecucao";
+  }
+}
+
+/** Por que um pedido de reprocessamento foi recusado. O router traduz o código em TRPCError. */
+export class ReprocessamentoRecusado extends Error {
+  readonly codigo: "NOT_FOUND" | "CONFLICT" | "PRECONDITION_FAILED";
+  constructor(codigo: "NOT_FOUND" | "CONFLICT" | "PRECONDITION_FAILED", mensagem: string) {
+    super(mensagem);
+    this.name = "ReprocessamentoRecusado";
+    this.codigo = codigo;
+  }
+}
+
+export const MENSAGEM_REUNIAO_NAO_ENCONTRADA = "Reunião não encontrada.";
+export const MENSAGEM_REPROCESSO_EM_CONFLITO = "Esta reunião não está com falha ou já está sendo processada.";
+export const MENSAGEM_SEM_AUDIO_PARA_REPROCESSAR = "Não há áudio guardado desta reunião para reprocessar.";
+// A tela do site reconhece esta frase (shared/const.ts) para traduzi-la e para
+// não oferecer de novo um reprocessamento que não tem áudio para ler.
+export { MENSAGEM_AUDIO_GUARDADO_AUSENTE };
+export const MENSAGEM_AUDIO_GUARDADO_ILEGIVEL = "Não foi possível ler o áudio guardado.";
+const MENSAGEM_SEM_CONSENTIMENTO = "O consentimento para gravação é obrigatório.";
+
+type Banco = Awaited<ReturnType<typeof exigirDb>>;
+type Reuniao = typeof meetings.$inferSelect;
+type Gravacao = typeof meetingRecordings.$inferSelect;
+
+/**
+ * A FICHA de uma execução: o `updated_at` que ela grava ao tomar a reunião
+ * para 'processing'. Toda escrita de status dessa execução — releitura,
+ * 'ready' e 'failed' — exige `status = 'processing' AND updated_at = ficha`.
+ * Quem tomou a reunião depois (um reprocessamento novo, ou a varredura de
+ * interrompidas, que grava updated_at novo) invalida a ficha antiga: a
+ * execução velha acorda e não sobrescreve nada. Sem coluna nova, sem migração.
+ *
+ * Estritamente maior que o updated_at lido, para duas tomadas no mesmo
+ * milissegundo nunca ganharem a mesma ficha.
+ */
+function fichaDeProcessamento(updatedAtLido: unknown): number {
+  const anterior = Number(updatedAtLido);
+  return Math.max(now(), Number.isFinite(anterior) ? anterior + 1 : 0);
+}
+
+/**
+ * confidence é decimal(4,3): um valor que não é número ('alta', NaN) viraria o
+ * texto 'NaN', que o banco em modo estrito recusa — e a reunião falharia de
+ * novo a cada reprocessamento, sempre depois de pagar a IA. Sem número, grava 0.
+ */
+function confiancaParaGravar(valor: unknown): string {
+  const numero = Number(valor);
+  return (Number.isFinite(numero) ? Math.max(0, Math.min(1, numero)) : 0).toFixed(3);
+}
+
+/**
+ * Marca a falha só se a reunião ainda é desta execução. Com 0 linhas vale o
+ * que outra execução, a varredura ou a exclusão já gravou. A mensagem passa
+ * por mensagemDaFalha: erro do driver nunca vira texto na tela.
+ */
+async function marcarFalhaComFicha(db: Banco, ownerId: string, meetingId: string, ficha: number, erro: unknown) {
+  await db.update(meetings).set({
+    status: "failed",
+    processingError: mensagemDaFalha(erro),
+    updatedAt: now(),
+  }).where(and(
+    eq(meetings.id, meetingId), eq(meetings.ownerId, ownerId),
+    eq(meetings.status, "processing"), eq(meetings.updatedAt, ficha),
+  ));
+}
+
 export async function processMeetingRecording(input: {
   meetingId: string;
   ownerId: string;
@@ -353,41 +453,35 @@ export async function processMeetingRecording(input: {
   }
   const db = await exigirDb();
   const [meeting] = await db.select().from(meetings).where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId))).limit(1);
-  if (!meeting) throw new Error("Reunião não encontrada.");
-  if (!meeting.consentGranted) throw new Error("O consentimento para gravação é obrigatório.");
-
-  // `status <> 'deleted'`: a falha não ressuscita uma reunião que a dona
-  // excluiu enquanto isto rodava — deletePrivateMeeting marca 'deleted' antes
-  // de apagar, justamente para este UPDATE (e o de 'ready') não a trazerem
-  // de volta como linha viva sem transcrição.
-  const marcarFalha = async (error: unknown) => {
-    await db.update(meetings).set({
-      status: "failed",
-      processingError: mensagemDaFalha(error),
-      updatedAt: now(),
-    }).where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId), ne(meetings.status, "deleted")));
-  };
-
-  // A reunião foi excluída no meio: o que este processamento gravou (ou ainda
-  // gravaria) é órfão — sem FK, ficaria para sempre com a voz e os dados das
-  // pessoas que a dona mandou apagar, e a Memória indexaria a transcrição.
-  const descartarPorExclusao = async () => {
-    await apagarDerivadosDaReuniao(db, input.ownerId, input.meetingId);
-    throw new ReuniaoExcluidaDuranteProcessamento();
-  };
+  if (!meeting) throw new Error(MENSAGEM_REUNIAO_NAO_ENCONTRADA);
+  if (!meeting.consentGranted) throw new Error(MENSAGEM_SEM_CONSENTIMENTO);
 
   // A decodificação também marca a reunião como falha: fora do try, um áudio
   // recusado deixava a reunião recém-criada em "Gravação pendente" para
-  // sempre, sem erro registrado e sem como a usuária tentar de novo.
+  // sempre, sem erro registrado e sem como a usuária tentar de novo. Só vale
+  // para a reunião que ainda espera áudio ('recording'): um reenvio com áudio
+  // ruim não rebaixa reunião pronta, nem a que outra execução processa — e,
+  // como 'deleted' não é 'recording', a falha não ressuscita reunião excluída.
   let audio: Buffer;
   try {
     audio = decodeMeetingAudio(input.audioBase64, input.mimeType);
   } catch (error) {
-    await marcarFalha(error);
+    await db.update(meetings).set({
+      status: "failed",
+      processingError: mensagemDaFalha(error),
+      updatedAt: now(),
+    }).where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId), eq(meetings.status, "recording")));
     throw error;
   }
-  const timestamp = now();
-  await db.update(meetings).set({ status: "processing", processingError: null, updatedAt: timestamp }).where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId)));
+
+  // A tomada: só UMA execução leva a reunião de 'recording' a 'processing', e
+  // a ficha gravada nela é o que as escritas seguintes conferem. Com 0 linhas
+  // a reunião já recebeu áudio (duplo clique, outra aba, reenvio): sai antes
+  // do upload e da IA, sem segundo objeto no bucket nem segunda gravação.
+  const ficha = fichaDeProcessamento(meeting.updatedAt);
+  const tomada = await db.update(meetings).set({ status: "processing", processingError: null, updatedAt: ficha })
+    .where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId), eq(meetings.status, "recording")));
+  if (!linhasAfetadas(tomada)) throw new ReuniaoForaDoEstado();
 
   try {
     // Frases neutras para a tela: a mensagem do S3/B2 ou do provedor de IA
@@ -404,9 +498,8 @@ export async function processMeetingRecording(input: {
       console.error("[Reuniões] o bucket recusou o áudio:", erro instanceof Error ? erro.message : erro);
       throw new Error("Não foi possível guardar o áudio.", { cause: erro });
     }
-    const recordingId = crypto.randomUUID();
     await db.insert(meetingRecordings).values({
-      id: recordingId,
+      id: crypto.randomUUID(),
       meetingId: input.meetingId,
       ownerId: input.ownerId,
       storageKey: uploaded.key,
@@ -414,97 +507,289 @@ export async function processMeetingRecording(input: {
       mimeType: input.mimeType,
       sizeBytes: audio.length,
       durationSeconds: Math.round(input.durationSeconds),
-      expiresAt: timestamp + MEETING_AUDIO_TTL_MS,
-      createdAt: timestamp,
+      expiresAt: ficha + MEETING_AUDIO_TTL_MS,
+      createdAt: ficha,
     });
 
-    // Defesa em profundidade sobre gemini.ts: GeminiIndisponivelError (e as
-    // subclasses de cota e de recusa) já carregam frases para a dona e passam
-    // inteiras. Qualquer outro erro — chave não configurada (a mensagem cita
-    // LLM_API_KEY e GOOGLE_API_KEY), resposta sem transcrição, um erro novo
-    // que alguém venha a lançar lá — vira frase neutra, com o original no
-    // log e em `cause`.
-    let transcription: Awaited<ReturnType<typeof transcribeWithGemini>>;
-    try {
-      transcription = await transcribeWithGemini({
-        audio,
-        mimeType: input.mimeType,
-        language: input.language,
-      });
-    } catch (erro) {
-      if (erro instanceof GeminiIndisponivelError) throw erro;
-      console.error("[Reuniões] a transcrição falhou:", erro instanceof Error ? erro.message : erro);
-      throw new Error("Não foi possível transcrever o áudio.", { cause: erro });
-    }
-
-    let extraction: MeetingExtraction;
-    try {
-      extraction = await extractMeetingData(transcription.text);
-    } catch (erro) {
-      console.error("[Reuniões] a extração falhou:", erro instanceof Error ? erro.message : erro);
-      throw new Error("O serviço de IA não conseguiu extrair os dados da transcrição.", { cause: erro });
-    }
-
-    // Entre a leitura lá em cima e aqui passaram 1–2 minutos de Gemini e LLM:
-    // tempo de sobra para a dona ter clicado em Excluir. A reunião é relida
-    // ANTES do bloco de escritas; ausente ou 'deleted', nada é gravado.
-    // Só exclusão aborta: 'failed' aqui seria a varredura de interrompidas
-    // tendo desistido cedo demais, e o resultado ainda vale.
-    const [viva] = await db.select({ status: meetings.status }).from(meetings)
-      .where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId))).limit(1);
-    if (!viva || viva.status === "deleted") await descartarPorExclusao();
-
-    const completedAt = now();
-    await db.insert(meetingTranscripts).values({
-      id: crypto.randomUUID(),
+    return await processarAudioGuardado(db, {
       meetingId: input.meetingId,
       ownerId: input.ownerId,
-      transcript: transcription.text,
-      segments: transcription.segments,
-      language: transcription.language,
-      durationSeconds: Math.round(input.durationSeconds),
-      createdAt: completedAt,
-      updatedAt: completedAt,
+      audio,
+      mimeType: input.mimeType,
+      durationSeconds: input.durationSeconds,
+      language: input.language,
+      ficha,
+      limparAntes: false,
     });
-    if (extraction.entities.length) {
-      await db.insert(meetingEntities).values(extraction.entities.map(entity => ({
-        id: crypto.randomUUID(), meetingId: input.meetingId, ownerId: input.ownerId,
-        entityType: entity.type, value: entity.value, normalizedValue: cortar(entity.normalizedValue, LIMITE_VALOR_NORMALIZADO),
-        confidence: Math.max(0, Math.min(1, entity.confidence)).toFixed(3), status: "pending" as const,
-        createdAt: completedAt, updatedAt: completedAt,
-      })));
-    }
-    // Sugestão sem nome (o modelo devolve "" ou só espaços apesar do schema)
-    // não entra: full_name é NOT NULL e o "" passaria, virando um cartão
-    // "Criar contato" sem ninguém para criar. O filtro é DEPOIS do ajuste,
-    // que é quem apara os espaços.
-    const sugestoes = extraction.contacts
-      .map(contact => ({ ...ajustarSugestaoAosLimites(contact), confidence: contact.confidence }))
-      .filter(contact => contact.fullName);
-    if (sugestoes.length) {
-      await db.insert(meetingContactSuggestions).values(sugestoes.map(contact => ({
-        id: crypto.randomUUID(), meetingId: input.meetingId, ownerId: input.ownerId,
-        fullName: contact.fullName, jobTitle: contact.jobTitle, company: contact.company,
-        phone: contact.phone, email: contact.email, sourceEntityIds: [],
-        confidence: Math.max(0, Math.min(1, contact.confidence)).toFixed(3), status: "pending" as const,
-        createdAt: completedAt, updatedAt: completedAt,
-      })));
-    }
-    // A releitura acima e este UPDATE não são atômicos: a exclusão pode ter
-    // entrado entre os dois. O `status <> 'deleted'` faz o banco arbitrar — zero
-    // linhas significa que a dona venceu, e o que acabou de ser gravado sai.
-    // `processingError: null`: a reunião pode ter chegado aqui já marcada pela
-    // varredura de interrompidas (ERRO_INTERROMPIDO) — 'ready' com motivo de
-    // falha é contradição que a tela não mostra hoje, mas o dado mentiria.
-    const promovida = await db.update(meetings).set({ status: "ready", processingError: null, updatedAt: completedAt })
-      .where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId), ne(meetings.status, "deleted")));
-    if (!linhasAfetadas(promovida)) await descartarPorExclusao();
-    return { transcript: transcription.text, extraction };
   } catch (error) {
-    // Excluída no meio não é falha da reunião: não há linha viva para marcar
-    // (e o `status <> 'deleted'` de marcarFalha a protegeria de todo modo).
-    if (!(error instanceof ReuniaoExcluidaDuranteProcessamento)) await marcarFalha(error);
+    // Excluída no meio, ou tomada por outra execução: não há falha DESTA
+    // execução a registrar. Nos outros casos a falha só é gravada se a reunião
+    // ainda for desta execução.
+    if (!(error instanceof ReuniaoExcluidaDuranteProcessamento) && !(error instanceof ReuniaoTomadaPorOutraExecucao)) {
+      await marcarFalhaComFicha(db, input.ownerId, input.meetingId, ficha, error);
+    }
     throw error;
+  }
+}
+
+/**
+ * O miolo do processamento, a partir de um áudio que JÁ está guardado no
+ * bucket e em meeting_recordings: transcrição, extração, releitura, escritas e
+ * promoção. Serve ao envio original (logo depois do upload) e ao
+ * reprocessamento (com os bytes lidos de volta do bucket). Nunca grava áudio,
+ * nunca mexe na gravação nem no prazo de 30 dias dela.
+ *
+ * `limparAntes`: no reprocessamento a reunião pode ter derivados de uma
+ * tentativa que falhou no meio (transcrição gravada e sugestões não, por
+ * exemplo). Eles saem DEPOIS de a IA dar certo — se a IA falhar de novo, a dona
+ * não perde o que tinha — e ANTES dos inserts, que senão violariam o UNIQUE de
+ * meeting_transcripts.meeting_id e duplicariam entidades e sugestões.
+ */
+async function processarAudioGuardado(db: Banco, execucao: {
+  meetingId: string;
+  ownerId: string;
+  audio: Buffer;
+  mimeType: string;
+  durationSeconds: number;
+  language: string;
+  ficha: number;
+  limparAntes: boolean;
+}) {
+  const { meetingId, ownerId, ficha } = execucao;
+
+  // Defesa em profundidade sobre gemini.ts: GeminiIndisponivelError (e as
+  // subclasses de cota e de recusa) já carregam frases para a dona e passam
+  // inteiras. Qualquer outro erro — chave não configurada (a mensagem cita
+  // LLM_API_KEY e GOOGLE_API_KEY), resposta sem transcrição, um erro novo
+  // que alguém venha a lançar lá — vira frase neutra, com o original no
+  // log e em `cause`.
+  let transcription: Awaited<ReturnType<typeof transcribeWithGemini>>;
+  try {
+    transcription = await transcribeWithGemini({
+      audio: execucao.audio,
+      mimeType: execucao.mimeType,
+      language: execucao.language,
+    });
+  } catch (erro) {
+    if (erro instanceof GeminiIndisponivelError) throw erro;
+    console.error("[Reuniões] a transcrição falhou:", erro instanceof Error ? erro.message : erro);
+    throw new Error("Não foi possível transcrever o áudio.", { cause: erro });
+  }
+
+  let extraction: MeetingExtraction;
+  try {
+    extraction = await extractMeetingData(transcription.text);
+  } catch (erro) {
+    console.error("[Reuniões] a extração falhou:", erro instanceof Error ? erro.message : erro);
+    throw new Error("O serviço de IA não conseguiu extrair os dados da transcrição.", { cause: erro });
+  }
+
+  // Entre a tomada e aqui passaram 1–2 minutos de Gemini e LLM: tempo de sobra
+  // para a dona ter clicado em Excluir, para um reprocessamento novo ou para a
+  // varredura de interrompidas. A reunião é relida ANTES do bloco de escritas.
+  // Ausente ou 'deleted': a exclusão venceu, e o que a execução gravou sai.
+  // Outro status ou outra ficha: a reunião não é mais desta execução — o
+  // trabalho é descartado sem escrever, e a reunião continua reprocessável a
+  // partir do áudio guardado.
+  const [viva] = await db.select({ status: meetings.status, updatedAt: meetings.updatedAt }).from(meetings)
+    .where(and(eq(meetings.id, meetingId), eq(meetings.ownerId, ownerId))).limit(1);
+  if (!viva || viva.status === "deleted") {
+    await apagarDerivadosDaReuniao(db, ownerId, meetingId);
+    throw new ReuniaoExcluidaDuranteProcessamento();
+  }
+  if (viva.status !== "processing" || Number(viva.updatedAt) !== ficha) throw new ReuniaoTomadaPorOutraExecucao();
+
+  if (execucao.limparAntes) await apagarDerivadosSemGravacao(db, ownerId, meetingId);
+
+  const completedAt = now();
+  await db.insert(meetingTranscripts).values({
+    id: crypto.randomUUID(),
+    meetingId,
+    ownerId,
+    transcript: transcription.text,
+    segments: transcription.segments,
+    language: transcription.language,
+    durationSeconds: Math.round(execucao.durationSeconds),
+    createdAt: completedAt,
+    updatedAt: completedAt,
+  });
+  if (extraction.entities.length) {
+    await db.insert(meetingEntities).values(extraction.entities.map(entity => ({
+      id: crypto.randomUUID(), meetingId, ownerId,
+      entityType: entity.type, value: entity.value, normalizedValue: cortar(entity.normalizedValue, LIMITE_VALOR_NORMALIZADO),
+      confidence: confiancaParaGravar(entity.confidence), status: "pending" as const,
+      createdAt: completedAt, updatedAt: completedAt,
+    })));
+  }
+  // Sugestão sem nome (o modelo devolve "" ou só espaços apesar do schema)
+  // não entra: full_name é NOT NULL e o "" passaria, virando um cartão
+  // "Criar contato" sem ninguém para criar. O filtro é DEPOIS do ajuste,
+  // que é quem apara os espaços.
+  const sugestoes = extraction.contacts
+    .map(contact => ({ ...ajustarSugestaoAosLimites(contact), confidence: contact.confidence }))
+    .filter(contact => contact.fullName);
+  if (sugestoes.length) {
+    await db.insert(meetingContactSuggestions).values(sugestoes.map(contact => ({
+      id: crypto.randomUUID(), meetingId, ownerId,
+      fullName: contact.fullName, jobTitle: contact.jobTitle, company: contact.company,
+      phone: contact.phone, email: contact.email, sourceEntityIds: [],
+      confidence: confiancaParaGravar(contact.confidence), status: "pending" as const,
+      createdAt: completedAt, updatedAt: completedAt,
+    })));
+  }
+  // A releitura acima e este UPDATE não são atômicos: exclusão, reprocessamento
+  // novo ou varredura podem ter entrado entre os dois. O WHERE com a ficha faz
+  // o banco arbitrar. Zero linhas: relê para saber quem venceu. Excluída, o
+  // que acabou de ser gravado sai. Viva com outra ficha, nada é apagado aqui —
+  // a execução dona da reunião limpa antes de gravar o resultado dela.
+  const promovida = await db.update(meetings).set({ status: "ready", processingError: null, updatedAt: completedAt })
+    .where(and(
+      eq(meetings.id, meetingId), eq(meetings.ownerId, ownerId),
+      eq(meetings.status, "processing"), eq(meetings.updatedAt, ficha),
+    ));
+  if (!linhasAfetadas(promovida)) {
+    const [depois] = await db.select({ status: meetings.status }).from(meetings)
+      .where(and(eq(meetings.id, meetingId), eq(meetings.ownerId, ownerId))).limit(1);
+    if (!depois || depois.status === "deleted") {
+      await apagarDerivadosDaReuniao(db, ownerId, meetingId);
+      throw new ReuniaoExcluidaDuranteProcessamento();
+    }
+    console.warn("[Reuniões] outra execução tomou a reunião no fim do processamento; o resultado desta fica para a próxima tentativa limpar.");
+    throw new ReuniaoTomadaPorOutraExecucao();
+  }
+  return { transcript: transcription.text, extraction };
+}
+
+/**
+ * Recusa pelo STATUS de uma reunião que existe, na ordem que a tela precisa
+ * para dizer a verdade: nunca recebeu áudio, não está com falha (ou já está
+ * sendo processada), ou está sem consentimento. `null` quando pode seguir.
+ */
+function recusaPeloStatus(meeting: Reuniao): ReprocessamentoRecusado | null {
+  if (meeting.status === "recording" || meeting.status === "draft") {
+    return new ReprocessamentoRecusado("PRECONDITION_FAILED", MENSAGEM_SEM_AUDIO_PARA_REPROCESSAR);
+  }
+  if (meeting.status !== "failed") return new ReprocessamentoRecusado("CONFLICT", MENSAGEM_REPROCESSO_EM_CONFLITO);
+  if (!meeting.consentGranted) return new ReprocessamentoRecusado("PRECONDITION_FAILED", MENSAGEM_SEM_CONSENTIMENTO);
+  return null;
+}
+
+/**
+ * A chave do áudio que dá para reprocessar, ou null. A gravação tem de:
+ * existir; durar ao menos mais LIMITE_PROCESSAMENTO_MS (senão a retenção de 30
+ * dias — gravacaoParaOuvir ou limparGravacoesVencidas — apagaria o objeto no
+ * meio da execução); ter o tipo e o tamanho que o envio original aceita; e
+ * estar no espaço DESTA reunião DESTA dona no bucket, para uma linha legada ou
+ * corrompida (a tabela veio do backup do Manus) não virar leitura de chave
+ * arbitrária.
+ */
+function chaveReprocessavel(gravacao: Gravacao | undefined, ownerId: string, meetingId: string): string | null {
+  if (!gravacao) return null;
+  if (gravacao.expiresAt <= now() + LIMITE_PROCESSAMENTO_MS) return null;
+  if (!(ALLOWED_MEETING_AUDIO_TYPES as readonly string[]).includes(gravacao.mimeType)) return null;
+  if (!(gravacao.sizeBytes > 0 && gravacao.sizeBytes <= MAX_MEETING_AUDIO_BYTES)) return null;
+  const chave = chaveDoStorageDaDona("meetings", ownerId, gravacao.storageKey);
+  return chave && chave.startsWith(`meetings/${ownerId}/${meetingId}/`) ? chave : null;
+}
+
+/**
+ * Pede o reprocessamento de uma reunião com falha, a partir do áudio que ficou
+ * guardado. Só LÊ até tomar a reunião ('failed' → 'processing', com a ficha) e
+ * devolve logo: o trabalho — ler os bytes do bucket, IA, escritas — segue em
+ * segundo plano, e a tela acompanha por meetings.get. Reprocessar não grava
+ * áudio, não cria gravação e não renova o prazo de 30 dias.
+ *
+ * `trabalho` NUNCA rejeita. Fora da requisição não há quem capture o erro, e
+ * uma rejeição sem tratamento derruba o processo inteiro no Node 20 — junto
+ * com os envios de outras donas em curso. Por isso todo erro termina em log
+ * aqui dentro: é a exceção deliberada à regra de relançar erro de banco,
+ * porque não existe chamador para quem relançar.
+ */
+export async function iniciarReprocessamento(ownerId: string, meetingId: string): Promise<{ trabalho: Promise<void> }> {
+  const db = await exigirDb();
+  const [meeting] = await db.select().from(meetings)
+    .where(and(eq(meetings.id, meetingId), eq(meetings.ownerId, ownerId))).limit(1);
+  if (!meeting || meeting.status === "deleted") throw new ReprocessamentoRecusado("NOT_FOUND", MENSAGEM_REUNIAO_NAO_ENCONTRADA);
+  const recusa = recusaPeloStatus(meeting);
+  if (recusa) throw recusa;
+
+  // A mesma gravação que o player toca: a mais recente, porque não há
+  // unicidade por reunião no banco.
+  const [gravacao] = await db.select().from(meetingRecordings)
+    .where(and(eq(meetingRecordings.meetingId, meetingId), eq(meetingRecordings.ownerId, ownerId)))
+    .orderBy(desc(meetingRecordings.createdAt))
+    .limit(1);
+  const chave = chaveReprocessavel(gravacao, ownerId, meetingId);
+  if (!chave || !gravacao) throw new ReprocessamentoRecusado("PRECONDITION_FAILED", MENSAGEM_SEM_AUDIO_PARA_REPROCESSAR);
+
+  // A tomada é o que impede dois reprocessamentos da mesma reunião (duplo
+  // clique, duas abas, site e app ao mesmo tempo): o UPDATE só vale para
+  // 'failed' com consentimento, e 0 linhas quer dizer que alguém chegou antes.
+  const ficha = fichaDeProcessamento(meeting.updatedAt);
+  const tomada = await db.update(meetings).set({ status: "processing", processingError: null, updatedAt: ficha })
+    .where(and(
+      eq(meetings.id, meetingId), eq(meetings.ownerId, ownerId),
+      eq(meetings.status, "failed"), eq(meetings.consentGranted, true),
+    ));
+  if (!linhasAfetadas(tomada)) {
+    const [agora] = await db.select().from(meetings)
+      .where(and(eq(meetings.id, meetingId), eq(meetings.ownerId, ownerId))).limit(1);
+    if (!agora || agora.status === "deleted") throw new ReprocessamentoRecusado("NOT_FOUND", MENSAGEM_REUNIAO_NAO_ENCONTRADA);
+    throw recusaPeloStatus(agora) ?? new ReprocessamentoRecusado("CONFLICT", MENSAGEM_REPROCESSO_EM_CONFLITO);
+  }
+
+  const trabalho = executarReprocessamento(db, {
+    ownerId,
+    meetingId,
+    chave,
+    ficha,
+    mimeType: gravacao.mimeType,
+    durationSeconds: gravacao.durationSeconds,
+    language: meeting.language,
+  }).catch(erro => {
+    console.error("[Reuniões] o reprocessamento em segundo plano terminou com erro não tratado:", erro instanceof Error ? erro.message : erro);
+  });
+  return { trabalho };
+}
+
+async function executarReprocessamento(db: Banco, execucao: {
+  ownerId: string;
+  meetingId: string;
+  chave: string;
+  ficha: number;
+  mimeType: string;
+  durationSeconds: number;
+  language: string;
+}) {
+  try {
+    let audio: Buffer;
+    try {
+      audio = await storageGetBytes(execucao.chave, MAX_MEETING_AUDIO_BYTES);
+    } catch (erro) {
+      // Frases neutras, como no upload: NoSuchKey, bucket e endpoint ficam no log.
+      console.error("[Reuniões] não foi possível ler o áudio guardado:", erro instanceof Error ? erro.message : erro);
+      if (erro instanceof ObjetoAusenteNoStorageError) throw new Error(MENSAGEM_AUDIO_GUARDADO_AUSENTE, { cause: erro });
+      throw new Error(MENSAGEM_AUDIO_GUARDADO_ILEGIVEL, { cause: erro });
+    }
+    await processarAudioGuardado(db, {
+      meetingId: execucao.meetingId,
+      ownerId: execucao.ownerId,
+      audio,
+      mimeType: execucao.mimeType,
+      durationSeconds: execucao.durationSeconds,
+      language: execucao.language,
+      ficha: execucao.ficha,
+      limparAntes: true,
+    });
+  } catch (erro) {
+    if (erro instanceof ReuniaoExcluidaDuranteProcessamento || erro instanceof ReuniaoTomadaPorOutraExecucao) return;
+    try {
+      await marcarFalhaComFicha(db, execucao.ownerId, execucao.meetingId, execucao.ficha, erro);
+    } catch (erroAoMarcar) {
+      // Banco fora justo na hora de marcar: a reunião fica 'processing', e a
+      // varredura de interrompidas a dá como falha em até 20 minutos.
+      console.error("[Reuniões] não foi possível marcar a falha do reprocessamento:", erroAoMarcar instanceof Error ? erroAoMarcar.message : erroAoMarcar);
+    }
   }
 }
 
@@ -641,19 +926,29 @@ export async function getPrivateMeeting(ownerId: string, meetingId: string) {
  * A leitura vem primeiro porque é a linha que diz onde o arquivo está:
  * apagá-la antes tornaria o objeto inalcançável para sempre.
  */
-async function apagarDerivadosDaReuniao(db: Awaited<ReturnType<typeof exigirDb>>, ownerId: string, meetingId: string) {
+async function apagarDerivadosDaReuniao(db: Banco, ownerId: string, meetingId: string) {
   const gravacoes = await db.select({ id: meetingRecordings.id, storageKey: meetingRecordings.storageKey })
     .from(meetingRecordings)
     .where(and(eq(meetingRecordings.meetingId, meetingId), eq(meetingRecordings.ownerId, ownerId)));
   for (const gravacao of gravacoes) await apagarArquivoDaGravacao(gravacao.storageKey);
 
+  await apagarDerivadosSemGravacao(db, ownerId, meetingId);
+  await db.delete(meetingRecordings).where(and(eq(meetingRecordings.meetingId, meetingId), eq(meetingRecordings.ownerId, ownerId)));
+}
+
+/**
+ * O que a IA gerou a partir do áudio — sugestões, entidades, transcrição e
+ * traduções —, sem tocar na gravação. É a limpeza do reprocessamento: o áudio
+ * fica, porque é dele que sai o resultado novo. Mora dentro da lista única de
+ * apagarDerivadosDaReuniao para as duas nunca divergirem.
+ */
+async function apagarDerivadosSemGravacao(db: Banco, ownerId: string, meetingId: string) {
   await db.delete(meetingContactSuggestions).where(and(eq(meetingContactSuggestions.meetingId, meetingId), eq(meetingContactSuggestions.ownerId, ownerId)));
   await db.delete(meetingEntities).where(and(eq(meetingEntities.meetingId, meetingId), eq(meetingEntities.ownerId, ownerId)));
   await db.delete(meetingTranscripts).where(and(eq(meetingTranscripts.meetingId, meetingId), eq(meetingTranscripts.ownerId, ownerId)));
   // As TRADUÇÕES são cópias da transcrição em outros idiomas: apagar só o
   // original deixaria o mesmo conteúdo vivo em até nove línguas.
   await db.delete(meetingTranscriptTranslations).where(and(eq(meetingTranscriptTranslations.meetingId, meetingId), eq(meetingTranscriptTranslations.ownerId, ownerId)));
-  await db.delete(meetingRecordings).where(and(eq(meetingRecordings.meetingId, meetingId), eq(meetingRecordings.ownerId, ownerId)));
 }
 
 export async function deletePrivateMeeting(ownerId: string, meetingId: string) {

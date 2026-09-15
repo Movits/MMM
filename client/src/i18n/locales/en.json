@@ -32,7 +32,7 @@
     "opportunities": "Active opportunities",
     "satisfaction": "Satisfaction",
     "connections": "Connections made",
-    "countries": "Countries represented"
+    "countries": "Countries with members"
   },
   "steps": {
     "title": "How it works",
@@ -446,8 +446,8 @@
       "clause1_text": "MMM is a networking platform for its members. It introduces people whose interests complement each other and records the deals that come out of those introductions. The platform is not a party to the deal: the members contract with each other.",
       "clause2_title": "2. Commission",
       "clause2_text": "A deal originating from an introduction made by the platform owes a commission to MMM, under the following conditions:",
-      "clause2_item1": "the percentage is set case by case, according to the type and size of the deal;",
-      "clause2_item2": "the cap is 50% of the profit declared for the deal;",
+      "clause2_item1": "the percentage is set case by case by the Commercial Board;",
+      "clause2_item2": "the cap is 50% of the intermediation fee for the deal;",
       "clause2_item3": "in this version payment happens outside the platform; the site only records the deal and the commission owed.",
       "clause3_title": "3. Term and changes",
       "clause3_text": "This text is provisional and under legal review. When the final version is published you will be notified and asked to accept it again. The date and the exact text of this acceptance are recorded."
@@ -925,6 +925,8 @@
     "salvando": "Saving...",
     "botaoSalvar": "✓ Save",
     "vincularContatoTitulo": "Link Contact",
+    "editarVinculoTitulo": "Edit Link",
+    "badgeJaVinculado": "Already linked",
     "toastVinculadoSucesso": "{{name}} linked to {{context}}!",
     "toastVinculoAtualizado": "{{name}}'s link to {{context}} updated.",
     "toastErroVincular": "Error linking: {{message}}",
@@ -1376,8 +1378,8 @@
     "allMeetings": "All meetings",
     "privateMeetingEyebrow": "PRIVATE MEETING",
     "deleteButton": "Delete",
-    "processingFailedFallback": "Processing didn't complete. Try again with a shorter recording.",
-    "processingInterrupted": "Processing was interrupted before it finished (the server restarted midway). Record or upload the audio again.",
+    "processingFailedFallback": "Processing didn't complete.",
+    "processingInterrupted": "Processing was interrupted before it finished (the server restarted midway).",
     "deleteConfirmProcessing": "This meeting is still being processed: the processing in progress will be discarded.",
     "deleteConfirmTitle": "Delete this meeting?",
     "deleteConfirmText": "The audio, the transcript, the translations and the contact suggestions will be permanently deleted.",
@@ -1406,7 +1408,18 @@
     "ignoreButton": "Ignore",
     "contactCreatedStatus": "Contact created",
     "ignoredStatus": "Ignored",
-    "noContactSuggestions": "No contacts suggested in this meeting."
+    "noContactSuggestions": "No contacts suggested in this meeting.",
+    "reprocessButton": "Reprocess",
+    "reprocessHint": "This meeting's audio is still stored until {{date}}. Reprocessing uses the same audio, with no new recording, and replaces the previous transcript and suggestions.",
+    "reprocessStarted": "Reprocessing started. The meeting will be ready here when it finishes.",
+    "reprocessNoAudio": "This meeting's audio isn't stored, so there is nothing to reprocess. Delete this meeting and record or upload the audio again.",
+    "reprocessUnavailable": "This meeting can't be reprocessed with the stored audio. Delete this meeting and record or upload the audio again.",
+    "reprocessConflict": "This meeting hasn't failed or is already being processed.",
+    "reprocessTooMany": "Too many reprocessing attempts in a row. Wait a few minutes and try again.",
+    "reprocessError": "Could not reprocess the meeting.",
+    "recordingExpiredNoTranscript": "No audio is stored for this meeting. Audio is kept for at most 30 days.",
+    "decisionsPaused": "Available when processing finishes.",
+    "storedAudioMissing": "This meeting's stored audio was not found."
   },
   "connections": {
     "messageSent": "Message sent",

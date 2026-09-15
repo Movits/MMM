@@ -32,7 +32,7 @@
     "opportunities": "Geschaffene Möglichkeiten",
     "satisfaction": "Zufriedenheit der Mitglieder",
     "connections": "Erfolgreiche Verbindungen",
-    "countries": "Vertretene Länder"
+    "countries": "Länder mit registrierten Mitgliedern"
   },
   "steps": {
     "title": "So funktioniert MMM",
@@ -446,8 +446,8 @@
       "clause1_text": "MMM ist eine Plattform für die Vernetzung ihrer Mitglieder. Sie stellt Personen vor, deren Interessen sich ergänzen, und erfasst die Geschäfte, die aus diesen Vorstellungen entstehen. Die Plattform ist nicht Vertragspartei: Die Mitglieder schließen die Verträge untereinander.",
       "clause2_title": "2. Provision",
       "clause2_text": "Ein Geschäft, das aus einer Vorstellung über die Plattform entsteht, begründet eine Provision für MMM, und zwar unter folgenden Bedingungen:",
-      "clause2_item1": "der Prozentsatz wird im Einzelfall festgelegt, je nach Art und Umfang des Geschäfts;",
-      "clause2_item2": "die Obergrenze liegt bei 50 % des für das Geschäft erklärten Gewinns;",
+      "clause2_item1": "der Prozentsatz wird von der Geschäftsleitung im Einzelfall festgelegt;",
+      "clause2_item2": "die Obergrenze liegt bei 50% des Vermittlungshonorars des Geschäfts;",
       "clause2_item3": "in dieser Version erfolgt die Zahlung außerhalb der Plattform; die Website erfasst nur das Geschäft und die fällige Provision.",
       "clause3_title": "3. Laufzeit und Änderungen",
       "clause3_text": "Dieser Text ist vorläufig und wird rechtlich geprüft. Sobald die endgültige Fassung veröffentlicht ist, werden Sie benachrichtigt und müssen erneut zustimmen. Datum und genauer Wortlaut dieser Zustimmung werden gespeichert."
@@ -925,6 +925,8 @@
     "salvando": "Wird gespeichert...",
     "botaoSalvar": "✓ Speichern",
     "vincularContatoTitulo": "Kontakt verknüpfen",
+    "editarVinculoTitulo": "Verknüpfung bearbeiten",
+    "badgeJaVinculado": "Bereits verknüpft",
     "toastVinculadoSucesso": "{{name}} mit {{context}} verknüpft!",
     "toastVinculoAtualizado": "Verknüpfung von {{name}} mit {{context}} aktualisiert.",
     "toastErroVincular": "Fehler beim Verknüpfen: {{message}}",
@@ -1376,8 +1378,8 @@
     "allMeetings": "Alle Meetings",
     "privateMeetingEyebrow": "PRIVATES MEETING",
     "deleteButton": "Löschen",
-    "processingFailedFallback": "Die Verarbeitung wurde nicht abgeschlossen. Versuchen Sie es erneut mit einer kürzeren Aufnahme.",
-    "processingInterrupted": "Die Verarbeitung wurde vor dem Abschluss unterbrochen (der Server wurde zwischendurch neu gestartet). Nehmen Sie das Audio erneut auf oder laden Sie es erneut hoch.",
+    "processingFailedFallback": "Die Verarbeitung wurde nicht abgeschlossen.",
+    "processingInterrupted": "Die Verarbeitung wurde vor dem Abschluss unterbrochen (der Server wurde zwischendurch neu gestartet).",
     "deleteConfirmProcessing": "Dieses Meeting wird noch verarbeitet: Die laufende Verarbeitung wird verworfen.",
     "deleteConfirmTitle": "Dieses Meeting löschen?",
     "deleteConfirmText": "Audio, Transkription, Übersetzungen und Kontaktvorschläge werden endgültig gelöscht.",
@@ -1406,7 +1408,18 @@
     "ignoreButton": "Ignorieren",
     "contactCreatedStatus": "Kontakt erstellt",
     "ignoredStatus": "Ignoriert",
-    "noContactSuggestions": "Keine Kontaktvorschläge für dieses Meeting."
+    "noContactSuggestions": "Keine Kontaktvorschläge für dieses Meeting.",
+    "reprocessButton": "Erneut verarbeiten",
+    "reprocessHint": "Das Audio dieses Meetings bleibt bis zum {{date}} gespeichert. Die erneute Verarbeitung nutzt dasselbe Audio ohne neue Aufnahme und ersetzt die bisherige Transkription und die Vorschläge.",
+    "reprocessStarted": "Erneute Verarbeitung gestartet. Das Meeting ist hier fertig, sobald sie abgeschlossen ist.",
+    "reprocessNoAudio": "Das Audio dieses Meetings ist nicht gespeichert, daher gibt es nichts erneut zu verarbeiten. Löschen Sie dieses Meeting und nehmen Sie das Audio erneut auf oder laden Sie es erneut hoch.",
+    "reprocessUnavailable": "Dieses Meeting kann mit dem gespeicherten Audio nicht erneut verarbeitet werden. Löschen Sie dieses Meeting und nehmen Sie das Audio erneut auf oder laden Sie es erneut hoch.",
+    "reprocessConflict": "Dieses Meeting ist nicht fehlgeschlagen oder wird bereits verarbeitet.",
+    "reprocessTooMany": "Zu viele Versuche der erneuten Verarbeitung hintereinander. Warten Sie einige Minuten und versuchen Sie es erneut.",
+    "reprocessError": "Das Meeting konnte nicht erneut verarbeitet werden.",
+    "recordingExpiredNoTranscript": "Für dieses Meeting ist kein Audio gespeichert. Audio wird höchstens 30 Tage aufbewahrt.",
+    "decisionsPaused": "Verfügbar, sobald die Verarbeitung abgeschlossen ist.",
+    "storedAudioMissing": "Das gespeicherte Audio dieses Meetings wurde nicht gefunden."
   },
   "connections": {
     "messageSent": "Nachricht gesendet",

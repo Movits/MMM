@@ -32,7 +32,7 @@
     "opportunities": "機会",
     "satisfaction": "満足度",
     "connections": "つながり",
-    "countries": "参加国"
+    "countries": "ユーザーのいる国"
   },
   "steps": {
     "title": "MMMの仕組み",
@@ -446,8 +446,8 @@
       "clause1_text": "MMM は会員同士をつなぐプラットフォームです。関心が補い合う人どうしを引き合わせ、その紹介から生まれた取引を記録します。プラットフォームは取引の当事者ではありません。契約は会員どうしで結ばれます。",
       "clause2_title": "2. 手数料",
       "clause2_text": "プラットフォームによる紹介から生まれた取引には、次の条件で MMM への手数料が発生します。",
-      "clause2_item1": "料率は取引の種類と規模に応じて個別に決定されます。",
-      "clause2_item2": "上限は当該取引で申告された利益の 50% です。",
+      "clause2_item1": "料率は商務部門が案件ごとに定めます;",
+      "clause2_item2": "上限は当該取引の仲介手数料の50%です;",
       "clause2_item3": "本バージョンでは支払いはプラットフォーム外で行われ、サイトは取引と発生した手数料を記録するのみです。",
       "clause3_title": "3. 有効期間および変更",
       "clause3_text": "本文は暫定版であり、法務確認中です。最終版が公開された際にはお知らせし、改めて同意していただきます。本同意の日時と正確な本文は記録されます。"
@@ -925,6 +925,8 @@
     "salvando": "保存中...",
     "botaoSalvar": "✓ 保存",
     "vincularContatoTitulo": "連絡先を紐付け",
+    "editarVinculoTitulo": "紐付けを編集",
+    "badgeJaVinculado": "紐付け済み",
     "toastVinculadoSucesso": "{{name}}を{{context}}に紐付けました！",
     "toastVinculoAtualizado": "{{name}}と{{context}}の紐付けを更新しました。",
     "toastErroVincular": "紐付けエラー：{{message}}",
@@ -1376,8 +1378,8 @@
     "allMeetings": "すべてのミーティング",
     "privateMeetingEyebrow": "非公開ミーティング",
     "deleteButton": "削除",
-    "processingFailedFallback": "処理が完了しませんでした。短い録音でもう一度お試しください。",
-    "processingInterrupted": "処理が完了する前に中断されました（サーバーが途中で再起動しました）。音声をもう一度録音またはアップロードしてください。",
+    "processingFailedFallback": "処理が完了しませんでした。",
+    "processingInterrupted": "処理が完了する前に中断されました（サーバーが途中で再起動しました）。",
     "deleteConfirmProcessing": "このミーティングはまだ処理中です。進行中の処理は破棄されます。",
     "deleteConfirmTitle": "このミーティングを削除しますか？",
     "deleteConfirmText": "音声、文字起こし、翻訳、連絡先の提案が完全に削除されます。",
@@ -1406,7 +1408,18 @@
     "ignoreButton": "無視",
     "contactCreatedStatus": "連絡先を作成済み",
     "ignoredStatus": "無視済み",
-    "noContactSuggestions": "このミーティングで提案された連絡先はありません。"
+    "noContactSuggestions": "このミーティングで提案された連絡先はありません。",
+    "reprocessButton": "再処理",
+    "reprocessHint": "このミーティングの音声は{{date}}まで保存されています。再処理では同じ音声を使うため録音し直す必要はなく、以前の文字起こしと提案は置き換えられます。",
+    "reprocessStarted": "再処理を開始しました。完了すると、ここでミーティングを確認できます。",
+    "reprocessNoAudio": "このミーティングの音声は保存されていないため、再処理できません。このミーティングを削除し、音声をもう一度録音またはアップロードしてください。",
+    "reprocessUnavailable": "保存されている音声ではこのミーティングを再処理できません。このミーティングを削除し、音声をもう一度録音またはアップロードしてください。",
+    "reprocessConflict": "このミーティングは失敗していないか、すでに処理中です。",
+    "reprocessTooMany": "再処理が続けて何度も試されました。数分待ってからもう一度お試しください。",
+    "reprocessError": "ミーティングを再処理できませんでした。",
+    "recordingExpiredNoTranscript": "このミーティングに保存された音声はありません。音声の保存期間は最長30日です。",
+    "decisionsPaused": "処理が完了すると操作できます。",
+    "storedAudioMissing": "このミーティングの保存された音声が見つかりません。"
   },
   "connections": {
     "messageSent": "メッセージを送信しました",

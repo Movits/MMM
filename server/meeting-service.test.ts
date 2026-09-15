@@ -14,6 +14,9 @@ const banco = vi.hoisted(() => ({
   consultas: [] as { sql: string; params: unknown[] }[],
   // id, meeting_id, owner_id, transcript, segments, language, duration_seconds, created_at, updated_at
   transcricao: ["tr-1", "reuniao-1", "dona-1", "Fala longa da reunião.", null, "pt-BR", 120, 1000, 1000] as unknown[],
+  leiturasDaTranscricao: 0,
+  // Um reprocessamento trocou a transcrição enquanto o LLM traduzia: a releitura devolve outro id.
+  transcricaoTrocada: false,
 }));
 vi.mock("drizzle-orm/mysql2", async (importOriginal) => {
   const original = await importOriginal<typeof import("drizzle-orm/mysql2")>();
@@ -22,7 +25,11 @@ vi.mock("drizzle-orm/mysql2", async (importOriginal) => {
       banco.consultas.push({ sql: config.sql, params });
       const sql = config.sql;
       if (sql.startsWith("insert")) return [{ affectedRows: 1 }, []];
-      if (sql.includes("from `meeting_transcripts`")) return [[banco.transcricao], []];
+      if (sql.includes("from `meeting_transcripts`")) {
+        banco.leiturasDaTranscricao += 1;
+        if (banco.transcricaoTrocada && banco.leiturasDaTranscricao > 1) return [[["tr-2"]], []];
+        return [[banco.transcricao], []];
+      }
       if (sql.includes("from `meeting_transcript_translations`")) return [[], []];
       return [[], []];
     },
@@ -82,6 +89,8 @@ describe("Assistente de Reuniões — tetos das chamadas de IA", () => {
   beforeEach(() => {
     invokeLLM.mockReset();
     banco.consultas = [];
+    banco.leiturasDaTranscricao = 0;
+    banco.transcricaoTrocada = false;
   });
 
   it("a extração roda dentro do submit síncrono: 45 s por tentativa e 60 s de orçamento", async () => {
@@ -113,5 +122,19 @@ describe("Assistente de Reuniões — tetos das chamadas de IA", () => {
     const gravacao = banco.consultas.find(c => c.sql.startsWith("insert into `meeting_transcript_translations`"))!;
     expect(gravacao).toBeDefined();
     expect(gravacao.params).toEqual(expect.arrayContaining(["dona-1", "reuniao-1", "en", "Long talk from the meeting."]));
+  });
+
+  it("a transcrição foi trocada por um reprocessamento enquanto o LLM traduzia: a tradução volta para quem pediu, mas NÃO vai para o cache", async () => {
+    banco.transcricaoTrocada = true;
+    invokeLLM.mockResolvedValue({ choices: [{ message: { content: "Old talk from the meeting." } }] });
+
+    const r = await translatePrivateMeetingTranscript("dona-1", "reuniao-1", "en");
+
+    expect(r).toEqual({ language: "en", text: "Old talk from the meeting.", cached: false });
+    expect(banco.consultas.some(c => c.sql.startsWith("insert"))).toBe(false);
+    // a releitura é da transcrição DA dona, desta reunião
+    const releitura = banco.consultas.filter(c => c.sql.includes("from `meeting_transcripts`")).at(-1)!;
+    expect(releitura.sql).toMatch(/`owner_id` = \?/);
+    expect(releitura.params).toEqual(expect.arrayContaining(["dona-1", "reuniao-1"]));
   });
 });

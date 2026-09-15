@@ -32,7 +32,7 @@
     "opportunities": "Oportunidades ativas",
     "satisfaction": "Satisfação",
     "connections": "Conexões realizadas",
-    "countries": "Países representados"
+    "countries": "Países com membros cadastrados"
   },
   "steps": {
     "title": "Como funciona",
@@ -446,8 +446,8 @@
       "clause1_text": "O MMM é uma plataforma de relacionamento entre membras. Ela apresenta pessoas cujos interesses se complementam e registra os negócios que nascem dessas apresentações. A plataforma não é parte do negócio: quem contrata são as membras entre si.",
       "clause2_title": "2. Comissionamento",
       "clause2_text": "Negócio originado de uma apresentação feita pela plataforma gera comissão ao MMM, nas seguintes condições:",
-      "clause2_item1": "o percentual é definido caso a caso, conforme o tipo e o tamanho do negócio;",
-      "clause2_item2": "o limite é de 50% do lucro declarado no negócio;",
+      "clause2_item1": "o percentual é definido caso a caso pela Diretoria Comercial;",
+      "clause2_item2": "o limite é de 50% do valor dos honorários da intermediação do negócio;",
       "clause2_item3": "nesta versão o pagamento acontece fora da plataforma; o site apenas registra o negócio e a comissão devida.",
       "clause3_title": "3. Vigência e alterações",
       "clause3_text": "Este texto é provisório e está em revisão jurídica. Quando a versão final for publicada, você será avisada e precisará aceitá-la novamente. A data e o texto exato deste aceite ficam registrados."
@@ -925,6 +925,8 @@
     "salvando": "Salvando...",
     "botaoSalvar": "✓ Salvar",
     "vincularContatoTitulo": "Vincular Contato",
+    "editarVinculoTitulo": "Editar Vínculo",
+    "badgeJaVinculado": "Já vinculado",
     "toastVinculadoSucesso": "Vínculo de {{name}} com {{context}} criado!",
     "toastVinculoAtualizado": "Vínculo de {{name}} com {{context}} atualizado.",
     "toastErroVincular": "Erro ao vincular: {{message}}",
@@ -1376,8 +1378,8 @@
     "allMeetings": "Todas as reuniões",
     "privateMeetingEyebrow": "REUNIÃO PRIVADA",
     "deleteButton": "Excluir",
-    "processingFailedFallback": "O processamento não foi concluído. Tente novamente com uma gravação curta.",
-    "processingInterrupted": "O processamento foi interrompido antes de terminar (o servidor reiniciou no meio). Grave ou envie o áudio novamente.",
+    "processingFailedFallback": "O processamento não foi concluído.",
+    "processingInterrupted": "O processamento foi interrompido antes de terminar (o servidor reiniciou no meio).",
     "deleteConfirmProcessing": "Esta reunião ainda está em processamento: o que estiver sendo transcrito agora será descartado.",
     "deleteConfirmTitle": "Excluir esta reunião?",
     "deleteConfirmText": "O áudio, a transcrição, as traduções e as sugestões de contato serão apagados de forma definitiva.",
@@ -1406,7 +1408,18 @@
     "ignoreButton": "Ignorar",
     "contactCreatedStatus": "Contato criado",
     "ignoredStatus": "Ignorada",
-    "noContactSuggestions": "Nenhum contato sugerido nesta reunião."
+    "noContactSuggestions": "Nenhum contato sugerido nesta reunião.",
+    "reprocessButton": "Reprocessar",
+    "reprocessHint": "O áudio desta reunião continua guardado até {{date}}. Reprocessar usa o mesmo áudio, sem gravar de novo, e substitui a transcrição e as sugestões anteriores.",
+    "reprocessStarted": "Reprocessamento iniciado. A reunião fica pronta aqui quando terminar.",
+    "reprocessNoAudio": "O áudio desta reunião não está guardado, então não há o que reprocessar. Exclua esta reunião e grave ou envie o áudio de novo.",
+    "reprocessUnavailable": "Não é possível reprocessar esta reunião com o áudio guardado. Exclua esta reunião e grave ou envie o áudio de novo.",
+    "reprocessConflict": "Esta reunião não está com falha ou já está sendo processada.",
+    "reprocessTooMany": "Muitas tentativas de reprocessar em sequência. Aguarde alguns minutos e tente de novo.",
+    "reprocessError": "Não foi possível reprocessar a reunião.",
+    "recordingExpiredNoTranscript": "Não há áudio guardado desta reunião. O áudio fica guardado por no máximo 30 dias.",
+    "decisionsPaused": "Disponível quando o processamento terminar.",
+    "storedAudioMissing": "O áudio guardado desta reunião não foi encontrado."
   },
   "connections": {
     "messageSent": "Mensagem enviada",
