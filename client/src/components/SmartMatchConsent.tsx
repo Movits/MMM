@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ShieldCheck, Loader2, History } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 
 /**
@@ -12,16 +13,17 @@ import { trpc } from "@/lib/trpc";
  * página — o resto da plataforma não depende desta autorização.
  */
 export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
+  const { t } = useTranslation();
   const [reading, setReading] = useState(false);
   const { data, isLoading, isError } = trpc.consent.status.useQuery({ type: "termo_smart_match" });
   const accept = trpc.consent.accept.useMutation({
-    onSuccess: () => { toast.success("Autorização registrada."); onAccepted(); },
-    onError: error => toast.error(error.message || "Não foi possível registrar a autorização."),
+    onSuccess: () => { toast.success(t("smartMatchConsent.authorizationRecorded")); onAccepted(); },
+    onError: error => toast.error(error.message || t("smartMatchConsent.authorizationFailed")),
   });
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-24 text-white/45">
-      <Loader2 className="mr-2 animate-spin" size={18}/> Carregando o termo…
+      <Loader2 className="mr-2 animate-spin" size={18}/> {t("smartMatchConsent.loadingTerm")}
     </div>;
   }
 
@@ -34,9 +36,9 @@ export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
   if (isError || !texto) {
     return (
       <div className="mx-auto max-w-2xl rounded-3xl border border-white/15 px-6 py-16 text-center">
-        <p className="text-white/70">Não foi possível carregar o termo de autorização.</p>
+        <p className="text-white/70">{t("smartMatchConsent.loadFailed")}</p>
         <p className="mt-2 text-sm text-white/40">
-          Nada foi alterado. Tente abrir esta página de novo daqui a pouco.
+          {t("smartMatchConsent.loadFailedDetail")}
         </p>
       </div>
     );
@@ -56,10 +58,10 @@ export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
         </div>
         <div>
           <h2 className="text-lg font-bold">
-            {textoMudou ? "O termo foi atualizado" : "Autorização necessária"}
+            {textoMudou ? t("smartMatchConsent.titleUpdated") : t("smartMatchConsent.titleNeeded")}
           </h2>
           <p className="text-sm text-white/45">
-            Versão {data?.document?.version} do termo do Cruzamento Inteligente
+            {t("smartMatchConsent.version", { versao: data?.document?.version })}
           </p>
         </div>
       </div>
@@ -68,10 +70,12 @@ export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
         <div className="mb-5 flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
           <History className="mt-0.5 shrink-0 text-amber-300/80" size={17}/>
           <p className="text-sm text-white/65">
-            Você havia autorizado a <strong className="text-white/85">versão {versaoAnterior}</strong>.
-            O texto mudou, e a autorização anterior não cobre a redação nova — por isso o
-            cruzamento está pausado até você aceitar esta versão. Seus contatos e suas
-            conexões já aceitas continuam onde estavam.
+            {t("smartMatchConsent.hadAuthorized")}{" "}
+            <strong className="text-white/85">
+              {t("smartMatchConsent.previousVersion", { versao: versaoAnterior })}
+            </strong>
+            {". "}
+            {t("smartMatchConsent.textChanged")}
           </p>
         </div>
       )}
@@ -82,7 +86,7 @@ export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
 
       {!reading && (
         <button onClick={() => setReading(true)} className="mt-3 text-sm text-amber-300 hover:text-amber-200">
-          Ler o termo inteiro
+          {t("smartMatchConsent.readFullTerm")}
         </button>
       )}
 
@@ -93,10 +97,10 @@ export function SmartMatchConsent({ onAccepted }: { onAccepted: () => void }) {
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#c98f70] px-6 py-3 font-bold text-[#1a120c] transition-colors hover:bg-[#b07a5c] disabled:opacity-50"
         >
           {accept.isPending ? <Loader2 className="animate-spin" size={17}/> : <ShieldCheck size={17}/>}
-          {textoMudou ? "Aceitar a nova versão" : "Autorizar o cruzamento"}
+          {textoMudou ? t("smartMatchConsent.acceptNewVersion") : t("smartMatchConsent.authorize")}
         </button>
         <p className="text-xs text-white/40">
-          Você pode revogar quando quiser, e o restante da plataforma continua funcionando.
+          {t("smartMatchConsent.revokeNotice")}
         </p>
       </div>
     </div>
