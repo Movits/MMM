@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { opportunitySectorLabel } from "@/lib/opportunity-sectors";
-import { rotuloDeInteresse } from "@/lib/interesses";
+import { rotuloDaBusca, rotuloDeInteresse } from "@/lib/interesses";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Briefcase, ShieldCheck, Users, User, MapPin, Mic, Brain, Sparkles, Crown,
-  Menu as MenuIcon, ChevronDown, LogOut,
+  Menu as MenuIcon, ChevronDown, LogOut, Network,
 } from "lucide-react";
 
 // ─── Animated Score Ring ─────────────────────────────────────────────────────
@@ -276,7 +276,9 @@ function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, i
   // (lib/interesses.ts); sem sinônimo, a chave de opção do onboarding
   // ("investor") vira o rótulo do idioma da tela e texto livre passa intacto.
   const allInterests = Array.from(new Set(
-    [...seekingTypes, ...businessInterests].map(k => rotuloDeInteresse(t, k, termo => optionLabel(t, termo)))
+    // "O que você busca?" tem rótulo próprio, inclusive para as chaves antigas
+    // (investor → Investimento / Capital; job e mentor com o rótulo de antes).
+    [...seekingTypes, ...businessInterests].map(k => rotuloDeInteresse(t, k, termo => rotuloDaBusca(t, termo) ?? optionLabel(t, termo)))
   )).slice(0, 5);
 
   useEffect(() => {
@@ -854,6 +856,15 @@ export default function Dashboard() {
     distribution: [0,1,2,3,4].map(b => data.filter(m => Math.min(4, Math.floor(m.overallScore / 20)) === b).length),
   }) });
   const connectionsQuery = trpc.connections.list.useQuery(undefined, { enabled: isAuthenticated });
+  // Números da plataforma inteira. É a MESMA consulta que alimentava os quatro
+  // indicadores da Hero (stats.platform, em server/routers/stats.ts), que saíram
+  // da página pública: nenhum cálculo novo, nenhum número fixo no código.
+  const plataformaQuery = trpc.stats.platform.useQuery(undefined, { enabled: isAuthenticated });
+  // Meu Network Inteligente: minutos usados no mês e limite por reunião no atalho.
+  const minutosDoNetwork = trpc.networkInteligente.minutos.useQuery(undefined, { enabled: isAuthenticated });
+  // Membros Bronze, Prata e Ouro (Governança, itens 1 e 12): saíram da Home e
+  // só aparecem aqui. Consulta de quem está logada, com contagens reais por nível.
+  const niveisQuery = trpc.stats.membrosPorNivel.useQuery(undefined, { enabled: isAuthenticated });
 
   const dismissMutation = trpc.matches.dismiss.useMutation({
     onSuccess: () => { matchesQuery.refetch(); toast.success(t("dashboard.dismiss")); },
@@ -861,7 +872,13 @@ export default function Dashboard() {
   const interestMutation = trpc.connections.send.useMutation({
     // `matchesQuery` também: o estado do cartão ("em análise") vem do servidor,
     // e sem este refetch o botão continuava "Demonstrar Interesse" até o F5.
-    onSuccess: () => { toast.success(t("dashboard.interestSent")); connectionsQuery.refetch(); matchesQuery.refetch(); },
+    // `revelou`: a outra pessoa já tinha um pedido encaminhado para mim (o cartão
+    // aberto estava velho), e este clique fechou o interesse mútuo. O aviso é o
+    // da conexão criada, não "interesse enviado, o distribuidor confere".
+    onSuccess: (data) => {
+      toast.success(data?.revelou ? t("dashboard.connectionAccepted") : t("dashboard.interestSent"));
+      connectionsQuery.refetch(); matchesQuery.refetch();
+    },
     onError: (err) => toast.error(err.message || t("dashboard.interestError")),
   });
   const respondMutation = trpc.connections.respond.useMutation({
@@ -876,9 +893,12 @@ export default function Dashboard() {
     onSuccess: () => { logout(); navigate("/"); },
   });
 
-  useEffect(() => {
-    if (!loading && isAuthenticated && profileQuery.data === null) navigate("/onboarding");
-  }, [loading, isAuthenticated, profileQuery.data, navigate]);
+  // Cadastro não concluído não chega aqui: o ProtectedRoute manda para
+  // /onboarding (user.onboardingCompleted === false) e o servidor recusa
+  // (server/cadastro-concluido.ts). Havia aqui um redirecionamento por
+  // `profileQuery.data === null` que nunca disparava, porque profile.get sempre
+  // devolve { user, profile }. Perfil ausente com cadastro concluído (conta
+  // criada por script) fica no Dashboard, com o convite da aba Perfil.
 
   const switchTab = (tab: typeof activeTab) => {
     if (tab === activeTab) return;
@@ -911,6 +931,7 @@ export default function Dashboard() {
   }
 
   const stats = statsQuery.data;
+  const plataforma = plataformaQuery.data;
   const matches = matchesQuery.data || [];
   const aguardandoTermo = Boolean(consentQuery.data?.document) && !consentQuery.data?.accepted;
   const connections = connectionsQuery.data || [];
@@ -984,6 +1005,79 @@ export default function Dashboard() {
             <StatCard key={s.label} {...s} index={i} />
           ))}
         </div>
+
+        {/* ─── A REDE INTEIRA ───
+            Os quatro indicadores que ficavam na Hero pública. Aqui eles fazem
+            sentido: quem já entrou lê o tamanho da rede em que está, em vez de
+            ver o número servir de vitrine na primeira tela.
+            O título existe porque a grade acima também tem um cartão
+            "Conexões" — lá é a da usuária, aqui é a da plataforma; sem a
+            separação os dois números pareceriam o mesmo, contraditório.
+            Mesmo StatCard, mesmas quatro cores e mesma grade da grade de cima:
+            nenhum componente novo, nenhuma cor fora da identidade. O índice
+            começa em 4 para a entrada escalonada continuar a de cima em vez de
+            recomeçar. */}
+        <div className="mb-8">
+          <div className="flex items-baseline gap-3 mb-3 flex-wrap">
+            {/* Mesmo corpo do título "Oportunidades Recomendadas" (linha 592), que é
+                a outra seção fora de cartão. Sem a classe de tamanho, o h2 cai no
+                padrão do navegador e sai com 36 px — medido: gritava mais alto que
+                os indicadores da própria usuária, que nem título têm. */}
+            <h2 className="font-black text-white text-lg leading-tight">{t("dashboard.networkTitle")}</h2>
+            <p className="text-xs text-white/35">{t("dashboard.networkDesc")}</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              // Mesma convenção da grade de cima: consulta que falhou não é
+              // "0 pessoas cadastradas" — o traço diz que o número não veio.
+              { label: t("stats.users"), value: plataforma?.users ?? 0, color: "#c98f70", icon: "👥" },
+              { label: t("stats.opportunities"), value: plataforma?.opportunities ?? 0, color: "#3b82f6", icon: "💼" },
+              { label: t("stats.connections"), value: plataforma?.connections ?? 0, color: "#10b981", icon: "🔗" },
+              { label: t("stats.countries"), value: plataforma?.countries ?? 0, color: "#8b5cf6", icon: "🌍" },
+            ].map((s, i) => (
+              <StatCard key={s.label} {...s} value={plataformaQuery.isError ? "—" : s.value} index={4 + i} />
+            ))}
+          </div>
+          {/* Membros por nível: mesma seção, mesmo StatCard e a mesma convenção
+              do traço quando a consulta falha. Ouro soma presidente e admin
+              ("Ouro = Presidente = administradora"), no servidor. */}
+          <h3 className="mt-5 mb-3 text-sm font-bold text-white/70">{t("governanca.dashboard.title")}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { label: t("governanca.dashboard.bronze"), value: niveisQuery.data?.bronze ?? 0, color: "#c98f70", icon: "🥉" },
+              { label: t("governanca.dashboard.silver"), value: niveisQuery.data?.silver ?? 0, color: "#cbd5e1", icon: "🥈" },
+              { label: t("governanca.dashboard.gold"), value: niveisQuery.data?.gold ?? 0, color: "#fbbf24", icon: "🥇" },
+            ].map((s, i) => (
+              <StatCard key={s.label} {...s} value={niveisQuery.isError ? "—" : s.value} index={8 + i} />
+            ))}
+          </div>
+        </div>
+
+        {/* ─── MEU NETWORK INTELIGENTE ───
+            Entrada do painel da rede particular (pedido do Nicolas, 13/09/2026).
+            Spec da Glenda de 14/09, item 19 e validação 24: o Dashboard mostra
+            o consumo e o limite de minutos — a consulta leve de
+            networkInteligente.minutos; o resto dos números mora no painel. */}
+        <Link href="/meu-network-inteligente"
+          className="mb-8 flex items-center gap-4 rounded-2xl border border-[#c98f70]/25 bg-[#c98f70]/[0.06] p-5 transition-colors duration-200 hover:border-[#c98f70]/45">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#c98f70]/30 bg-[#c98f70]/15">
+            <Network className="h-5 w-5 text-[#c98f70]" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold text-white">{t("networkPanel.title")}</span>
+            <span className="mt-0.5 block text-sm text-white/50">{t("networkPanel.dashboardCard")}</span>
+            {minutosDoNetwork.data && (
+              <span className="mt-1 block text-xs font-semibold text-[#efcba8]">
+                {t("networkInteligente.dashboard.minutesLine", {
+                  usados: minutosDoNetwork.data.usadosNoMesSegundos > 0 ? Math.max(1, Math.round(minutosDoNetwork.data.usadosNoMesSegundos / 60)) : 0,
+                  limite: Math.round(minutosDoNetwork.data.limitePorReuniaoSegundos / 60),
+                })}
+                {!minutosDoNetwork.data.ampliacao.disponivel && ` · ${t("networkInteligente.dashboard.expandSoon")}`}
+              </span>
+            )}
+          </span>
+          <span className="shrink-0 text-sm font-semibold text-[#c98f70]">{t("networkPanel.open")}</span>
+        </Link>
 
         {/* ─── TABS ─── */}
         <div className="flex gap-1 mb-6 bg-white/4 rounded-xl p-1 w-fit border border-white/5 flex-wrap">
@@ -1180,7 +1274,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1">
                         <h2 className="text-xl font-black">{profile.displayName}</h2>
-                        <div className="text-white/40 text-sm">{profile.currentRole}{profile.currentRole && profile.city && " · "}{profile.city}</div>
+                        <div className="text-white/40 text-sm">{profile.jobTitle}{profile.jobTitle && profile.city && " · "}{profile.city}</div>
                         <div className="text-xs text-white/25 mt-0.5">{optionLabel(t, profile.primarySpecialty)}</div>
                       </div>
                         <div className="text-right">

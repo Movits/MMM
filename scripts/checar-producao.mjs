@@ -53,8 +53,8 @@ import { randomBytes } from "node:crypto";
 import mysql from "mysql2/promise";
 import bcrypt from "bcryptjs";
 import { parse as analisarEnv } from "dotenv";
-import { Relatorio, Ritmo, avaliar, avaliarNegativa } from "./exame/relatorio.mjs";
-import { planejarLimpeza, planejarFaxinaDuravel } from "./exame/limpeza.mjs";
+import { Relatorio, Ritmo, avaliar, avaliarNegativa, avaliarTermoGeralVigente } from "./exame/relatorio.mjs";
+import { planejarLimpeza, planejarFaxinaDuravel, planejarColetaDeConexoes } from "./exame/limpeza.mjs";
 
 // ── Argumentos e ambiente ────────────────────────────────────────────────────
 const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -187,6 +187,8 @@ async function contar(sql, params = []) {
   const [[linha]] = await conn.query(sql, params);
   return Number(linha?.n ?? 0);
 }
+/** Ids de conexoes_registradas das QA colhidos pelas limpezas deste processo; a verificação confere que sumiram. */
+const conexoesDoExame = new Set();
 
 /**
  * Apaga tudo das contas QA indicadas. Idempotente; cada comando que falhar vira
@@ -204,6 +206,22 @@ async function executarLimpeza(chaves) {
     if (midias.length) {
       pularContextMedia = true;
       for (const m of midias) rel.limpezaComErro(`objeto pode ter ficado no bucket: ${m.storage_path} (linha de context_media mantida como ponteiro)`);
+    }
+  }
+  // Cabeçalho de conexoes_registradas ocupado só pelas QA: sem coluna de usuária, só
+  // se acha pelos participantes, então a coleta vem antes de apagá-los. Se a coleta
+  // ou o DELETE do cabeçalho falhar, os participantes ficam no banco: são a única
+  // pista para a próxima faxina achar o cabeçalho.
+  let manterParticipantesDeConexao = false;
+  const coleta = planejarColetaDeConexoes(chaves);
+  if (coleta) {
+    try {
+      const [linhas] = await conn.query(coleta.sql, coleta.params);
+      chaves = { ...chaves, conexaoIds: linhas.map(l => l.id) };
+      for (const id of chaves.conexaoIds) conexoesDoExame.add(id);
+    } catch (e) {
+      manterParticipantesDeConexao = true;
+      rel.limpezaComErro(`${coleta.descricao}: ${e.code || e.message}`);
     }
   }
   const comandos = planejarLimpeza({ ...chaves, prefixoQa: PREFIXO_QA });
@@ -224,6 +242,7 @@ async function executarLimpeza(chaves) {
   }
   for (const cmd of comandos.filter(c => c.acao === "apagar")) {
     if (pularContextMedia && cmd.descricao.startsWith("context_media.")) continue;
+    if (manterParticipantesDeConexao && cmd.descricao.startsWith("conexoes_participantes.")) continue;
     try {
       if (alertasNaOportunidade > 0 && cmd.descricao.startsWith("opportunities.publishedBy")) continue; // tratada logo abaixo
       if (cmd.descricao.startsWith("opportunities.id") && alertasNaOportunidade > 0) {
@@ -237,6 +256,7 @@ async function executarLimpeza(chaves) {
       apagadas += Number(res.affectedRows || 0);
     } catch (e) {
       rel.limpezaComErro(`${cmd.descricao}: ${e.code || e.message}`);
+      if (cmd.descricao.startsWith("conexoes_registradas.")) manterParticipantesDeConexao = true;
     }
   }
   for (const cmd of planejarFaxinaDuravel({ tituloDaOportunidade: EXAME_TITULO_OPP })) {
@@ -287,10 +307,14 @@ async function verificarLimpeza() {
       [EXAME_TITULO_OPP, `${PREFIXO_QA}%`],
     ),
     platform_notifications: await contar("SELECT COUNT(*) n FROM `platform_notifications` WHERE `body` LIKE ?", [`"${EXAME_TITULO_OPP}%`]),
+    // Os participantes já saíram: o cabeçalho só é conferível pelos ids colhidos antes.
+    conexoes_registradas: conexoesDoExame.size
+      ? await contar("SELECT COUNT(*) n FROM `conexoes_registradas` WHERE `id` IN (?)", [[...conexoesDoExame]])
+      : 0,
   };
   const sobras = Object.entries(restos).filter(([, n]) => n > 0);
   if (sobras.length) rel.limpezaComErro("sobrou dado do exame: " + sobras.map(([t, n]) => `${t}=${n}`).join(", "));
-  else rel.ok("limpeza verificada (users, private_contacts, contexts, opportunities, platform_notifications das QA = 0)", true);
+  else rel.ok(`limpeza verificada (users, private_contacts, contexts, opportunities, platform_notifications das QA = 0; ${conexoesDoExame.size} conexão(ões) registrada(s) do exame apagada(s))`, true);
 }
 
 // ── Blocos do exame ──────────────────────────────────────────────────────────
@@ -359,6 +383,13 @@ async function blocoInfra(home) {
   } catch (e) {
     rel.falha("migrações pendentes: nenhuma", `sem tabela _migracoes legível: ${e.code || e.message}`);
   }
+
+  // Sem Termo Geral vigente o cadastro novo não conclui (server/termo-geral-de-uso.ts).
+  // Com a 0013 pendente o enum não tem o valor e a contagem dá 0: as duas FALHAs juntas.
+  const termoGeral = avaliarTermoGeralVigente(
+    await contar("SELECT COUNT(*) n FROM `document_versions` WHERE `type` = ? AND `isCurrent` = 1", ["termo_geral_de_uso"]),
+  );
+  rel.ok("Termo Geral de Uso vigente (sem ele nenhum cadastro novo conclui)", termoGeral.ok, termoGeral.detalhe);
 }
 
 async function blocoIdentidades() {
@@ -659,7 +690,9 @@ async function blocoOuro(oppId) {
   const revoke = await P.post("president.revokeGold", { userId: QA.S.id, reason: RAZAO_REVOKE });
   checar("presidente revoga Ouro", revoke, d => d?.success === true);
   const euS2 = await S.get("auth.me");
-  checar("conta revogada volta a Prata na requisição seguinte", euS2, d => d?.role === "silver");
+  // O nível de volta sai do perfil (Prata só se ele atende à régua de
+  // qualificação). A conta QA é inserida por SQL, sem user_profiles: cai em Bronze.
+  checar("conta revogada cai no nível do perfil na requisição seguinte (QA sem perfil: Bronze)", euS2, d => d?.role === "bronze");
   const auditRevoke = await contar("SELECT COUNT(*) n FROM `audit_logs` WHERE `action` = 'PRESIDENT_REVOKE_GOLD' AND `userId` = ? AND `resourceId` = ?", [QA.P.id, String(QA.S.id)]);
   rel.ok("revogação deixa auditoria", auditRevoke >= 1, `${auditRevoke}`);
   checarNegativa("revogada não lê mais o acervo (403)", await S.get("network.acervoOuro"), [BARRADO_OURO]);

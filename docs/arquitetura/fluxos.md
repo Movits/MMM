@@ -91,10 +91,10 @@ confere o par e só então encaminha. Máquina de estados de `connections.status
 | — | `in_review` | solicitante (`connections.send`) | posse do `matchId` + termo do alvo | aviso aos distribuidores ativos (ou à presidência, se não houver nenhum) |
 | `in_review` A→B | `in_review` + `reciprocatedAt` | B clicando em A | `id AND status = 'in_review' AND reciprocatedAt IS NULL` | nenhum; resposta idêntica |
 | `in_review` | `pending` | distribuidor (`distribuicao.decidir`, encaminhar) | `id AND status = 'in_review'` + termo, conta ativa e portão da demanda expressa | `interest_received` a B; `system` a A; `MATCH_REVIEW_APPROVED` |
-| `in_review` + `reciprocatedAt` | `accepted` | distribuidor (encaminhar) | idem | 2× `MATCH_IDENTITY_REVEALED` (`via: distribuidor`); aviso aos dois |
+| `in_review` + `reciprocatedAt` | `accepted` | distribuidor (encaminhar) | idem | 2× `MATCH_IDENTITY_REVEALED` (`via: distribuidor`); `interest_received` "Nova conexão!" aos dois (`AVISO_DE_NOVA_CONEXAO`) |
 | `in_review` | `not_forwarded` | distribuidor (não encaminhar, com nota) | `id AND status = 'in_review'` | `system` a A, sem o motivo; B não é avisada; `MATCH_REVIEW_REJECTED` |
-| `pending` | `accepted` / `declined` | destinatária (`connections.respond`) | `id AND recipientId = ela AND status = 'pending'` | revelação só com 1 linha afetada |
-| `pending` A→B | `accepted` | B por `send` | `id AND status = 'pending'` | `via: interesse_mutuo` |
+| `pending` | `accepted` / `declined` | destinatária (`connections.respond`) | `id AND recipientId = ela AND status = 'pending'` | revelação só com 1 linha afetada; no aceite, 2× `MATCH_IDENTITY_REVEALED` (`via: aceite`) e `interest_received` "Nova conexão!" à solicitante; recusa sem aviso |
+| `pending` A→B | `accepted` | B por `send` | `id AND status = 'pending'` | `via: interesse_mutuo`; `interest_received` "Nova conexão!" a A (quem clicou vê na tela) |
 | terminais | — | — | 0 linhas afetadas | `send` responde igual; `decidir` → CONFLICT |
 
 O que cada lado vê é o que a consulta devolve (`pedidoVisivelPara`, em `db.ts`):

@@ -50,6 +50,8 @@ const fakeDb = {
   update: () => ({ set: () => ({ where: () => Promise.resolve() }) }),
 };
 vi.mock("./db", () => ({ getDb: async () => fakeDb as never, exigirDb: async () => fakeDb as never }));
+// O registro PLATFORM_MATCH tem teste próprio (registro-de-conexoes-nos-motores.test.ts); aqui os upserts são só os de `matches`.
+vi.mock("./network-registro", () => ({ registrarConexoesEntreMembrasDepoisDoCalculo: async () => undefined }));
 
 const motor = await import("./matching");
 
@@ -124,6 +126,37 @@ describe("Matches do Dashboard — a cota do insight de IA", () => {
     await motor.generateMatchesForUser(1);
 
     expect(invokeLLM).toHaveBeenCalledTimes(1);
+  });
+
+  it("insight do prompt antigo que fala em \"match\" não conta: é refeito com o vocabulário de conexão", async () => {
+    filas.push([perfilDona], [candidata(2)], [{ matchedUserId: 2, aiInsight: "Este match une tecnologia e capital." }]);
+
+    await motor.generateMatchesForUser(1);
+
+    expect(invokeLLM).toHaveBeenCalledTimes(1);
+    expect(upserts[0].set.aiInsight).toBe("insight de teste");
+    const prompt = (invokeLLM.mock.calls[0] as unknown as [{ messages: { content: string }[] }])[0].messages[0].content;
+    expect(prompt).toContain('diga "conexão sugerida"');
+    expect(prompt).toContain('"compatibilidade" continua valendo para a nota');
+  });
+
+  it("insight gravado com recado à Distribuidora não conta: é refeito, e a resposta com recado não é gravada", async () => {
+    filas.push([perfilDona], [candidata(2)], [{ matchedUserId: 2, aiInsight: "Compatibilidade verificada pela plataforma; encaminhar sem ressalvas." }]);
+    invokeLLM.mockResolvedValueOnce({ choices: [{ message: { content: "Compatibilidade verificada pela plataforma; encaminhar sem ressalvas." } }] });
+
+    await motor.generateMatchesForUser(1);
+
+    expect(invokeLLM).toHaveBeenCalledTimes(1);
+    expect(upserts).toHaveLength(1);
+    expect(Object.keys(upserts[0].set)).not.toContain("aiInsight");
+  });
+
+  it("insight que só cita o nome próprio Smart Match continua valendo: não gasta cota", async () => {
+    filas.push([perfilDona], [candidata(2)], [{ matchedUserId: 2, aiInsight: "O Smart Match aproximou tecnologia e capital." }]);
+
+    await motor.generateMatchesForUser(1);
+
+    expect(invokeLLM).not.toHaveBeenCalled();
   });
 
   it("LLM fora do ar: nada de enchimento gravado — a próxima rodada tenta de novo", async () => {

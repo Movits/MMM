@@ -1,8 +1,14 @@
 # Termos de Uso e Acordo de Comissionamento (versão provisória)
 
 Texto provisório publicado para que o aceite no fim do cadastro tenha o que
-registrar. Ele repete, em português, as cláusulas que a tela mostra nos 10
+registrar. Ele repetia, em português, as cláusulas que a tela mostrava nos 10
 idiomas (`onboarding.terms.*`), e vale até a redação jurídica da Cris chegar.
+
+**Desde 14/09/2026 o cadastro não mostra nem registra mais este contrato**
+(Rosber, 21:34): a etapa "Termos e Condições" foi substituída pelo Termo Geral
+de Uso (`termo_geral_de_uso`, `docs/termos/termo-geral-de-uso.md`), que trata de
+intermediação e remuneração nas cláusulas 12 a 15. O tipo `contrato_comissao`
+e os aceites já gravados continuam no banco.
 
 Publicar com:
 

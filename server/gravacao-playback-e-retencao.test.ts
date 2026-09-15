@@ -303,6 +303,8 @@ describe("Exclusão — apagar a reunião apaga a VOZ, não só a linha", () => 
 
     const esperado = new Map<unknown, Predicado>([
       [schema.meetingContactSuggestions, derivadaDaReuniaoDaDona("meeting_contact_suggestions")],
+      // Meu Network Inteligente: as pendências tiradas da reunião carregam trechos da transcrição.
+      [schema.networkSugestoes, derivadaDaReuniaoDaDona("network_sugestoes")],
       [schema.meetingEntities, derivadaDaReuniaoDaDona("meeting_entities")],
       [schema.meetingTranscripts, derivadaDaReuniaoDaDona("meeting_transcripts")],
       [schema.meetingTranscriptTranslations, derivadaDaReuniaoDaDona("meeting_transcript_translations")],
@@ -346,7 +348,7 @@ describe("Exclusão — apagar a reunião apaga a VOZ, não só a linha", () => 
     // id E owner_id, em AND: `or` marcaria 'deleted' toda reunião da dona
     expect(predicadoDe(atualizacoes[0])).toEqual(REUNIAO_DA_DONA);
     // e a linha da reunião só sai por último, depois dos derivados
-    expect(sequencia.filter(operacao => operacao === "delete").length).toBe(6);
+    expect(sequencia.filter(operacao => operacao === "delete").length).toBe(7);
     expect(tabelasApagadas().at(-1)).toBe(schema.meetings);
   });
 

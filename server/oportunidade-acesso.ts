@@ -52,7 +52,7 @@ export function exigirLeituraDaOportunidade(opp: OportunidadeParaLeitura, user: 
 
   // Confidencial: só Ouro, admin, president ou a criadora.
   if (opp.isConfidential && !isGold && !isOwner) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Esta oportunidade é de acesso restrito. Requer Status Ouro — reconhecimento institucional concedido pelas Presidentes." });
+    throw new TRPCError({ code: "FORBIDDEN", message: "Esta oportunidade é de acesso restrito ao Status Ouro, a categoria premium da rede." });
   }
 
   return { isGold, isOwner, isStaff };

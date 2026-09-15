@@ -74,7 +74,10 @@ describe("A) toda coluna de usuária do schema tem destino declarado na exclusã
     // Igualdade de propósito: subir é normal ao criar tabela, e o teste abaixo
     // exige que a coluna nova entre em uma das três listas.
     // 58: o distribuidor do Smart Match somou connections.moderatedBy.
-    expect(PARES).toHaveLength(58);
+    // 63: o Meu Network Inteligente somou network_sugestoes.owner_id,
+    // conexoes_participantes.owner_id e .userId, consumo_de_minutos.owner_id e
+    // assinaturas_de_minutos.userId.
+    expect(PARES).toHaveLength(63);
     expect(PARES).toContainEqual({ tabela: "private_contacts", coluna: "ownerId" });
     expect(PARES).toContainEqual({ tabela: "gold_access_grants", coluna: "revokedBy" });
     expect(PARES).toContainEqual({ tabela: "deal_rooms", coluna: "interestedId" });

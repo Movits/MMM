@@ -18,8 +18,14 @@ const TODOS_OS_PAPEIS: Papel[] = [
   "admin",
 ];
 
-function simularAuth(estado: { papel?: string; carregando?: boolean }) {
-  const user = estado.papel ? { id: 1, role: estado.papel } : null;
+function simularAuth(estado: { papel?: string; carregando?: boolean; cadastroConcluido?: boolean }) {
+  const user = estado.papel
+    ? {
+        id: 1,
+        role: estado.papel,
+        ...(estado.cadastroConcluido === undefined ? {} : { onboardingCompleted: estado.cadastroConcluido }),
+      }
+    : null;
   vi.mocked(useAuth).mockReturnValue({
     user,
     loading: estado.carregando ?? false,
@@ -168,5 +174,45 @@ describe("ProtectedRoute", () => {
     simularAuth({ papel: "gold" });
     renderizar({ requireAdmin: true, requireGold: true });
     esperaBarrar("/404");
+  });
+
+  // O Termo Geral de Uso é aceito na última etapa do cadastro; quem não o
+  // concluiu digitava /dashboard e usava a plataforma sem o termo.
+  describe("cadastro não concluído", () => {
+    it.each(TODOS_OS_PAPEIS)("%s vai para /onboarding sem ver os filhos", papel => {
+      simularAuth({ papel, cadastroConcluido: false });
+      renderizar();
+      esperaBarrar("/onboarding");
+    });
+
+    it("vem antes da checagem de nível: admin incompleto no /admin vai para /onboarding, não entra", () => {
+      simularAuth({ papel: "admin", cadastroConcluido: false });
+      renderizar({ requireAdmin: true });
+      esperaBarrar("/onboarding");
+    });
+
+    it("sem sessão, o login vem antes", () => {
+      simularAuth({});
+      renderizar();
+      esperaBarrar("/login");
+    });
+
+    it("a rota do próprio cadastro (permitirCadastroIncompleto) deixa entrar", () => {
+      simularAuth({ papel: "bronze", cadastroConcluido: false });
+      renderizar({ permitirCadastroIncompleto: true });
+      esperaEntrar();
+    });
+
+    it("cadastro concluído entra normalmente", () => {
+      simularAuth({ papel: "silver", cadastroConcluido: true });
+      renderizar();
+      esperaEntrar();
+    });
+
+    it("sem o campo não há veredito (=== false, como no servidor): entra", () => {
+      simularAuth({ papel: "silver" });
+      renderizar();
+      esperaEntrar();
+    });
   });
 });

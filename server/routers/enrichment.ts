@@ -355,6 +355,8 @@ FORMATO DE SAÍDA (JSON obrigatório):
       if (sug.fieldType === "assets" || sug.fieldType === "needs") {
         try {
           if (await hasValidConsent(ctx.user.id, "termo_smart_match")) {
+            // Meu Network Inteligente, item 16: a conexão interna que acabou
+            // de nascer é registrada pela plataforma no fim do próprio recálculo.
             await recalculatePrivateMatches(ctx.user.openId, ctx.user.email);
           }
         } catch (erro) {

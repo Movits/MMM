@@ -42,6 +42,8 @@ vi.mock("./storage", async importOriginal => ({
   storageGetSignedUrl: async () => "https://assinada",
 }));
 vi.mock("./_core/llm", () => ({ invokeLLM: async () => ({ choices: [{ message: { content: '{"entities":[],"contacts":[]}' } }] }) }));
+// Os bytes daqui são texto, não áudio: a medição da duração é dublada.
+vi.mock("./duracao-do-audio", () => ({ medirDuracaoDoAudio: () => 30 }));
 
 const { processMeetingRecording } = await import("./meeting-service");
 

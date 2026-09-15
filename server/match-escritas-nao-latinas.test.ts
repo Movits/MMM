@@ -28,6 +28,8 @@ vi.mock("./db", () => ({
   }),
 }));
 vi.mock("./_core/email", () => ({ sendEmail: vi.fn(async () => false) }));
+// O registro das conexões internas no fim do recálculo tem teste próprio (registro-de-conexoes-nos-motores.test.ts).
+vi.mock("./network-registro", () => ({ registrarConexoesInternasDepoisDoRecalculo: async () => undefined }));
 
 const { scoreMatch, slugifyMatchTag, recalculatePrivateMatches } = await import("./match-service");
 const { analisarTermo, nucleoDoTermo, saoConcorrentes } = await import("@shared/direcao-do-termo");

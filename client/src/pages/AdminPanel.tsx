@@ -361,12 +361,19 @@ export default function AdminPanel() {
                       {
                         role: "Ouro",
                         badge: "bg-amber-900/40 text-amber-300 border-amber-600",
-                        desc: "Reconhecimento institucional concedido por mérito. Acesso a oportunidades estratégicas restritas e missões internacionais."
+                        desc: "Categoria premium mediante mensalidade. Acesso em primeira mão a oportunidades selecionadas e a encontros estratégicos nacionais e internacionais."
                       },
+                      // Bronze e Prata medem a qualificação do perfil, não são planos
+                      // (Governança, 14/09/2026). Os acessos das duas são os mesmos.
                       {
                         role: "Prata",
                         badge: "bg-slate-700/50 text-slate-300 border-slate-500",
-                        desc: "Membro participante do ecossistema. Cadastra oportunidades, demonstra interesse e utiliza a IA de compliance."
+                        desc: "Perfil qualificado: Quem Sou, O Que Tenho e O Que Preciso completos. Sem mensalidade. Cadastra oportunidades, demonstra interesse e utiliza a IA de compliance."
+                      },
+                      {
+                        role: "Bronze",
+                        badge: "bg-orange-900/40 text-orange-400 border-orange-700",
+                        desc: "Perfil em qualificação: todo cadastro começa aqui e passa a Prata automaticamente quando o perfil fica completo. Sem mensalidade, com os mesmos acessos da Prata."
                       },
                     ].map((item, idx) => (
                       <div key={idx} className="flex flex-col gap-1 py-3 border-b border-[#C98F70]/10 last:border-0">
@@ -378,7 +385,7 @@ export default function AdminPanel() {
                     ))}
                   </div>
                   <p className="mt-4 text-xs text-[#C98F70]/60 italic">
-                    O Status Ouro não pode ser solicitado, comprado ou obtido por assinatura. É um reconhecimento institucional concedido exclusivamente pelos membros Ouro da plataforma.
+                    O Status Ouro é a categoria premium da rede, mediante mensalidade. Não há preço nem cobrança integrados à plataforma: por enquanto, ele é concedido manualmente pelos membros Ouro.
                   </p>
                 </div>
 
@@ -598,7 +605,7 @@ export default function AdminPanel() {
                               onChange={(e) => {
                                 const newRole = e.target.value as "bronze" | "silver" | "gold" | "admin" | "president";
                                 if (newRole === "gold" && u.role !== "gold") {
-                                  if (!confirm(`Conceder Status Ouro a ${u.name || u.email}?\n\nEste é um reconhecimento institucional. A decisão será registrada no log de auditoria.`)) return;
+                                  if (!confirm(`Conceder Status Ouro a ${u.name || u.email}?\n\nOuro é a categoria premium da rede. A decisão será registrada no log de auditoria.`)) return;
                                 }
                                 if (u.role === "gold" && newRole !== "gold") {
                                   if (!confirm(`Revogar Status Ouro de ${u.name || u.email}?\n\nEsta ação será registrada no log de auditoria.`)) return;
@@ -607,9 +614,9 @@ export default function AdminPanel() {
                               }}
                               className={`text-xs px-2 py-1 rounded border bg-[#1B1714] cursor-pointer ${getRoleBadge(u.role)}`}
                             >
-                              <option className="bg-white text-[#322C26]" value="bronze">Bronze (recém-chegado)</option>
-                              <option className="bg-white text-[#322C26]" value="silver">Prata (membro)</option>
-                              <option className="bg-white text-[#322C26]" value="gold">Ouro (reconhecimento institucional)</option>
+                              <option className="bg-white text-[#322C26]" value="bronze">Bronze (perfil em qualificação)</option>
+                              <option className="bg-white text-[#322C26]" value="silver">Prata (perfil qualificado)</option>
+                              <option className="bg-white text-[#322C26]" value="gold">Ouro (categoria premium)</option>
                               <option className="bg-white text-[#322C26]" value="admin">Admin (suporte técnico)</option>
                               <option className="bg-white text-[#322C26]" value="president">Ouro (governança)</option>
                             </select>

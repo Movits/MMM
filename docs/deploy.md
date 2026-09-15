@@ -192,6 +192,39 @@ de até 15 MB em uma requisição e transcreve com LLM dentro dela. Um request p
 durar minutos. Confirmar o limite de tempo do host antes de contar essa etapa
 como pronta.
 
+## Termo Geral de Uso: publicar logo depois do deploy da 0013
+
+**Passo obrigatório. Nenhuma migração, boot ou deploy grava o termo.** O
+cadastro só conclui com o Termo Geral de Uso, Proteção de Dados e Intermediação
+Digital aceito, e sem versão publicada `profile.completeOnboarding` recusa
+(`server/termo-geral-de-uso.ts`). Então, sem o termo publicado, toda conta nova
+fica presa na última etapa do `/onboarding` com "ainda não foi publicado". Quem
+já tem conta e salva o perfil por "Editar perfil" fica presa do mesmo jeito.
+
+A migração 0013 só acrescenta o valor `termo_geral_de_uso` ao enum de
+`document_versions`. Antes dela aplicada, o banco recusa a publicação. Por isso a
+ordem é esta:
+
+1. Merge na `main`. O Render sobe e aplica a 0013 no boot.
+2. Confirmar que a 0013 entrou. No exame, a linha "migrações pendentes: nenhuma"
+   precisa sair OK.
+3. Logo em seguida, com autorização do Roberto (é escrita no banco de produção):
+   ```bash
+   node scripts/publicar-documento.mjs termo_geral_de_uso docs/termos/termo-geral-de-uso.md --simular
+   node scripts/publicar-documento.mjs termo_geral_de_uso docs/termos/termo-geral-de-uso.md --sem-aviso --confirmo-producao
+   ```
+   Use `--sem-aviso`. Só o cadastro pede este aceite, e o aviso no sino mandaria
+   quem já tem conta a um `/dashboard` sem tela para aceitar.
+4. Rodar o exame. A linha "Termo Geral de Uso vigente" sai FALHA enquanto não
+   houver exatamente uma versão vigente.
+
+Entre os passos 1 e 3, o cadastro novo não conclui. Para zerar essa janela,
+aplique a migração antes do merge (`node scripts/migrar.mjs` contra produção, com
+autorização do Roberto) e publique o termo em seguida. Isso só é seguro se o SQL
+da migração for aditivo, e isso precisa ser conferido. O código antigo ignora
+tabela, coluna e valor de enum novos, e o `migrar.mjs` do boot não reclama de
+migração já aplicada.
+
 ## Verificar antes de mandar o link
 
 ```bash

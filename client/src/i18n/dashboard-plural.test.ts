@@ -38,7 +38,7 @@ const CHAVES = [
 const CONTAGENS = [1, 2, 5, 21];
 // Pedaços que só existem no texto em português: se aparecem em ru/ar, a
 // chave caiu no fallback.
-const PORTUGUES = /novo|match esperando|convite|sala|oportunidade|encontrad|\bano/;
+const PORTUGUES = /novo|nova|conexão|conexões|sugerida|convite|sala|oportunidade|encontrad|\bano/;
 
 describe("plural do Dashboard — russo e árabe não caem no português", () => {
   it("sem fallback de idioma: forma ausente devolve a chave crua, não o pt-BR (premissa da varredura)", async () => {
@@ -54,20 +54,20 @@ describe("plural do Dashboard — russo e árabe não caem no português", () =>
     for (const chave of CHAVES) for (const count of CONTAGENS) {
       expect(t(chave, { count }), `${chave} count=${count}`).not.toMatch(PORTUGUES);
     }
-    expect(t("dashboard.greetingUnseen", { count: 1 })).toBe("1 новое совпадение");
-    expect(t("dashboard.greetingUnseen", { count: 2 })).toBe("2 новых совпадения");
-    expect(t("dashboard.greetingUnseen", { count: 5 })).toBe("5 новых совпадений");
-    expect(t("dashboard.greetingUnseen", { count: 21 })).toBe("21 новое совпадение");
+    expect(t("dashboard.greetingUnseen", { count: 1 })).toBe("1 новая предложенная связь");
+    expect(t("dashboard.greetingUnseen", { count: 2 })).toBe("2 новые предложенные связи");
+    expect(t("dashboard.greetingUnseen", { count: 5 })).toBe("5 новых предложенных связей");
+    expect(t("dashboard.greetingUnseen", { count: 21 })).toBe("21 новая предложенная связь");
     expect(t("dashboard.pendingInvites", { count: 1 })).toBe("1 приглашение ждёт ответа");
     expect(t("dashboard.pendingInvites", { count: 5 })).toBe("5 приглашений ждут ответа");
     expect(t("dashboard.roomsOnPlatform", { count: 2 })).toBe("2 комнаты на платформе");
     expect(t("dashboard.roomsOnPlatform", { count: 5 })).toBe("5 комнат на платформе");
     expect(t("dashboard.greetingTotal", { count: 1 })).toBe("Для вас найдена 1 совместимая возможность");
     expect(t("dashboard.greetingTotal", { count: 21 })).toBe("Для вас найдена 21 совместимая возможность");
-    expect(t("dashboard.newMatches", { count: 1 })).toBe("✨ Найдено 1 новое совпадение!");
-    expect(t("dashboard.newMatches", { count: 2 })).toBe("✨ Найдено 2 новых совпадения!");
-    expect(t("dashboard.newMatches", { count: 5 })).toBe("✨ Найдено 5 новых совпадений!");
-    expect(t("dashboard.newMatches", { count: 21 })).toBe("✨ Найдено 21 новое совпадение!");
+    expect(t("dashboard.newMatches", { count: 1 })).toBe("✨ Найдена 1 новая предложенная связь!");
+    expect(t("dashboard.newMatches", { count: 2 })).toBe("✨ Найдены 2 новые предложенные связи!");
+    expect(t("dashboard.newMatches", { count: 5 })).toBe("✨ Найдено 5 новых предложенных связей!");
+    expect(t("dashboard.newMatches", { count: 21 })).toBe("✨ Найдена 21 новая предложенная связь!");
     expect(t("dashboard.years", { count: 1 })).toBe("1 год");
     expect(t("dashboard.years", { count: 2 })).toBe("2 года");
     expect(t("dashboard.years", { count: 5 })).toBe("5 лет");
@@ -79,18 +79,18 @@ describe("plural do Dashboard — russo e árabe não caem no português", () =>
     for (const chave of CHAVES) for (const count of CONTAGENS) {
       expect(t(chave, { count }), `${chave} count=${count}`).not.toMatch(PORTUGUES);
     }
-    expect(t("dashboard.greetingUnseen", { count: 1 })).toBe("1 تطابق جديد");
-    expect(t("dashboard.greetingUnseen", { count: 2 })).toBe("تطابقان جديدان");
-    expect(t("dashboard.greetingUnseen", { count: 5 })).toBe("5 تطابقات جديدة");
-    expect(t("dashboard.greetingUnseen", { count: 21 })).toBe("21 تطابقًا جديدًا");
+    expect(t("dashboard.greetingUnseen", { count: 1 })).toBe("1 اتصال مقترح جديد");
+    expect(t("dashboard.greetingUnseen", { count: 2 })).toBe("اتصالان مقترحان جديدان");
+    expect(t("dashboard.greetingUnseen", { count: 5 })).toBe("5 اتصالات مقترحة جديدة");
+    expect(t("dashboard.greetingUnseen", { count: 21 })).toBe("21 اتصالًا مقترحًا جديدًا");
     expect(t("dashboard.pendingInvites", { count: 2 })).toBe("دعوتان للرد عليهما");
     expect(t("dashboard.pendingInvites", { count: 21 })).toBe("21 دعوة للرد عليها");
     expect(t("dashboard.roomsOnPlatform", { count: 5 })).toBe("5 غرف في المنصة");
     expect(t("dashboard.greetingTotal", { count: 2 })).toBe("عُثر على فرصتين متوافقتين لك");
-    expect(t("dashboard.newMatches", { count: 1 })).toBe("✨ تم العثور على تطابق جديد واحد!");
-    expect(t("dashboard.newMatches", { count: 2 })).toBe("✨ تم العثور على تطابقين جديدين!");
-    expect(t("dashboard.newMatches", { count: 5 })).toBe("✨ تم العثور على 5 تطابقات جديدة!");
-    expect(t("dashboard.newMatches", { count: 21 })).toBe("✨ تم العثور على 21 تطابقًا جديدًا!");
+    expect(t("dashboard.newMatches", { count: 1 })).toBe("✨ تم العثور على اتصال مقترح جديد واحد!");
+    expect(t("dashboard.newMatches", { count: 2 })).toBe("✨ تم العثور على اتصالين مقترحين جديدين!");
+    expect(t("dashboard.newMatches", { count: 5 })).toBe("✨ تم العثور على 5 اتصالات مقترحة جديدة!");
+    expect(t("dashboard.newMatches", { count: 21 })).toBe("✨ تم العثور على 21 اتصالًا مقترحًا جديدًا!");
     expect(t("dashboard.years", { count: 1 })).toBe("سنة واحدة");
     expect(t("dashboard.years", { count: 2 })).toBe("سنتان");
     expect(t("dashboard.years", { count: 5 })).toBe("5 سنوات");
@@ -99,10 +99,10 @@ describe("plural do Dashboard — russo e árabe não caem no português", () =>
 
   it("português: singular só em 1; o plural que era feito à mão sai igual ao de antes", async () => {
     const t = (await instancia()).getFixedT("pt-BR");
-    expect(t("dashboard.greetingUnseen", { count: 1 })).toBe("1 novo match");
-    expect(t("dashboard.greetingUnseen", { count: 2 })).toBe("2 novos matches");
-    expect(t("dashboard.greetingUnseen", { count: 5 })).toBe("5 novos matches");
-    expect(t("dashboard.greetingUnseen", { count: 21 })).toBe("21 novos matches");
+    expect(t("dashboard.greetingUnseen", { count: 1 })).toBe("1 nova conexão sugerida");
+    expect(t("dashboard.greetingUnseen", { count: 2 })).toBe("2 novas conexões sugeridas");
+    expect(t("dashboard.greetingUnseen", { count: 5 })).toBe("5 novas conexões sugeridas");
+    expect(t("dashboard.greetingUnseen", { count: 21 })).toBe("21 novas conexões sugeridas");
     expect(t("dashboard.greetingTotal", { count: 1 })).toBe("1 oportunidade compatível encontrada para você");
     expect(t("dashboard.greetingTotal", { count: 2 })).toBe("2 oportunidades compatíveis encontradas para você");
     expect(t("dashboard.pendingInvites", { count: 1 })).toBe("1 convite para responder");
@@ -110,8 +110,8 @@ describe("plural do Dashboard — russo e árabe não caem no português", () =>
     expect(t("dashboard.roomsOnPlatform", { count: 1 })).toBe("1 sala na plataforma");
     expect(t("dashboard.roomsOnPlatform", { count: 21 })).toBe("21 salas na plataforma");
     // O toast e os anos não têm mais "(s)"/"(es)": singular de verdade em 1.
-    expect(t("dashboard.newMatches", { count: 1 })).toBe("✨ 1 novo match encontrado!");
-    expect(t("dashboard.newMatches", { count: 2 })).toBe("✨ 2 novos matches encontrados!");
+    expect(t("dashboard.newMatches", { count: 1 })).toBe("✨ 1 nova conexão sugerida!");
+    expect(t("dashboard.newMatches", { count: 2 })).toBe("✨ 2 novas conexões sugeridas!");
     expect(t("dashboard.years", { count: 1 })).toBe("1 ano");
     expect(t("dashboard.years", { count: 2 })).toBe("2 anos");
   });
@@ -121,17 +121,17 @@ describe("plural do Dashboard — russo e árabe não caem no português", () =>
     for (const chave of CHAVES) for (const count of CONTAGENS) {
       expect(t(chave, { count }), `${chave} count=${count}`).not.toMatch(PORTUGUES);
     }
-    expect(t("dashboard.greetingUnseen", { count: 1 })).toBe("1 new match");
-    expect(t("dashboard.greetingUnseen", { count: 2 })).toBe("2 new matches");
-    expect(t("dashboard.greetingUnseen", { count: 21 })).toBe("21 new matches");
+    expect(t("dashboard.greetingUnseen", { count: 1 })).toBe("1 new suggested connection");
+    expect(t("dashboard.greetingUnseen", { count: 2 })).toBe("2 new suggested connections");
+    expect(t("dashboard.greetingUnseen", { count: 21 })).toBe("21 new suggested connections");
     expect(t("dashboard.greetingTotal", { count: 1 })).toBe("1 compatible opportunity found for you");
     expect(t("dashboard.greetingTotal", { count: 5 })).toBe("5 compatible opportunities found for you");
     expect(t("dashboard.pendingInvites", { count: 1 })).toBe("1 invitation to answer");
     expect(t("dashboard.pendingInvites", { count: 2 })).toBe("2 invitations to answer");
     expect(t("dashboard.roomsOnPlatform", { count: 1 })).toBe("1 room on the platform");
     expect(t("dashboard.roomsOnPlatform", { count: 5 })).toBe("5 rooms on the platform");
-    expect(t("dashboard.newMatches", { count: 1 })).toBe("✨ 1 new match found!");
-    expect(t("dashboard.newMatches", { count: 3 })).toBe("✨ 3 new matches found!");
+    expect(t("dashboard.newMatches", { count: 1 })).toBe("✨ 1 new suggested connection!");
+    expect(t("dashboard.newMatches", { count: 3 })).toBe("✨ 3 new suggested connections!");
     expect(t("dashboard.years", { count: 1 })).toBe("1 year");
     expect(t("dashboard.years", { count: 2 })).toBe("2 years");
   });

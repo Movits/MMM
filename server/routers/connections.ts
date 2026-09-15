@@ -50,6 +50,28 @@ export async function registrarRevelacao(
 }
 
 /**
+ * O aviso do interesse mútuo, com as frases pedidas pela cliente (grupo, 14/09/2026:
+ * "match" passou a ser "conexão" em toda a plataforma). Um texto só para os três
+ * caminhos que revelam os nomes: o aceite da destinatária, o segundo clique em
+ * "Demonstrar Interesse" sobre pedido já encaminhado e a aprovação, pelo
+ * distribuidor, de um pedido que já era recíproco. Sem nome no corpo: quem é a
+ * outra pessoa, a aba Conexões mostra. Falha no sino não desfaz a conexão.
+ */
+export const AVISO_DE_NOVA_CONEXAO = {
+  title: "Nova conexão!",
+  body: "Vocês criaram uma conexão! Os nomes já aparecem na aba Conexões.",
+} as const;
+
+export async function avisarNovaConexao(userIds: number[]) {
+  try {
+    const { createNotification } = await import("../db");
+    for (const userId of userIds) {
+      await createNotification({ userId, type: "interest_received", ...AVISO_DE_NOVA_CONEXAO, actionUrl: "/dashboard" });
+    }
+  } catch (_) { /* a conexão já está gravada; o sino é acessório */ }
+}
+
+/**
  * O pedido novo nasce esperando o distribuidor. Aviso no sino de quem distribui
  * (menos a própria solicitante: ninguém decide o próprio pedido); sem nenhum
  * distribuidor ativo, a presidência é avisada de que há pedido esperando. O
@@ -102,16 +124,20 @@ export const connectionsRouter = router({
           userId: ctx.user.id, action: "MATCH_HANDLE_INVALID", resource: "connections.send",
           resourceId: String(input.matchId), status: "blocked", riskLevel: "high",
         });
-        throw new TRPCError({ code: "NOT_FOUND", message: "Match não encontrado" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "Conexão sugerida não encontrada" });
       }
       // Etapa 11 de novo, aqui: uma lista velha aberta no navegador não pode
       // furar a revogação do termo feita depois que ela carregou.
       const { usersComConsentimento } = await import("./consent");
       const comTermo = await usersComConsentimento([alvo], "termo_smart_match");
-      if (!comTermo.has(alvo)) throw new TRPCError({ code: "NOT_FOUND", message: "Match não encontrado" });
+      if (!comTermo.has(alvo)) throw new TRPCError({ code: "NOT_FOUND", message: "Conexão sugerida não encontrada" });
 
       const resultado = await sendConnectionRequest(ctx.user.id, alvo);
-      if (resultado.revelou) await registrarRevelacao(resultado.connectionId, ctx.user.id, alvo, "interesse_mutuo");
+      if (resultado.revelou) {
+        await registrarRevelacao(resultado.connectionId, ctx.user.id, alvo, "interesse_mutuo");
+        // Quem clicou vê o resultado na tela; o sino avisa a outra parte.
+        await avisarNovaConexao([alvo]);
+      }
       // Pedido novo: fica em análise até o distribuidor conferir e encaminhar.
       // A destinatária não é avisada aqui — ela só fica sabendo se for encaminhado.
       if (resultado.emAnalise) await avisarQuemDistribui(ctx.user.id);
@@ -132,6 +158,8 @@ export const connectionsRouter = router({
       const resultado = await respondToConnection(input.connectionId, ctx.user.id, input.accept);
       if (resultado.revelou && resultado.contraparte !== null) {
         await registrarRevelacao(input.connectionId, ctx.user.id, resultado.contraparte, "aceite");
+        // Quem aceitou vê o resultado na tela; o sino avisa a solicitante.
+        await avisarNovaConexao([resultado.contraparte]);
       }
       return { success: true };
     }),

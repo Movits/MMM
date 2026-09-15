@@ -7,7 +7,9 @@ import { trpc } from "@/lib/trpc";
 import { LANGUAGES } from "@/i18n";
 import { AppHeader } from "@/components/AppHeader";
 import { ErroDeConsulta } from "@/components/ErroDeConsulta";
+import { PessoaSugeridaNaReuniao } from "@/components/PessoaSugeridaNaReuniao";
 import { segmentarTranscricao, TIPOS_DE_ENTIDADE, type TipoEntidade } from "@/lib/transcricao-destacada";
+import { lerDuracaoNoNavegador } from "@/lib/duracao-no-navegador";
 import { CODIGO_ERRO_INTERROMPIDO, LIMITE_PROCESSAMENTO_MS, MENSAGEM_AUDIO_GUARDADO_AUSENTE } from "@shared/const";
 
 const MAX_DURATION = 10 * 60;
@@ -68,17 +70,6 @@ function readAsDataUrl(t: TranslateFn, file: Blob) {
     reader.onerror = () => reject(new Error(t("meetings.audioReadError")));
     reader.onload = () => resolve(String(reader.result));
     reader.readAsDataURL(file);
-  });
-}
-
-function inferAudioDuration(file: File) {
-  return new Promise<number>((resolve) => {
-    const audio = document.createElement("audio");
-    const url = URL.createObjectURL(file);
-    const finish = (duration: number) => { URL.revokeObjectURL(url); resolve(Number.isFinite(duration) && duration > 0 ? Math.ceil(duration) : 60); };
-    audio.onloadedmetadata = () => finish(audio.duration);
-    audio.onerror = () => finish(60);
-    audio.src = url;
   });
 }
 
@@ -202,7 +193,10 @@ export default function Meetings() {
     if (!mimeType) return toast.error(t("meetings.unsupportedFormat"));
     if (file.size > 10 * 1024 * 1024) return toast.error(t("meetings.fileTooLarge"));
     try {
-      const [audioBase64, durationSeconds] = await Promise.all([readAsDataUrl(t, file), inferAudioDuration(file)]);
+      const [audioBase64, durationSeconds] = await Promise.all([readAsDataUrl(t, file), lerDuracaoNoNavegador(file)]);
+      // Sem duração legível, recusa: assumir um valor (eram 60 s) deixava um
+      // áudio de 25 minutos passar por esta conferência. O servidor mede de novo.
+      if (durationSeconds === null) return toast.error(t("meetings.audioDurationUnreadable"));
       if (durationSeconds > MAX_DURATION) return toast.error(t("meetings.audioTooLong"));
       const created = await createMeeting.mutateAsync({ title: title.trim(), consentGranted: true, language: "pt" });
       setMeetingId(created.id);
@@ -317,7 +311,14 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
   // engano é fácil. O mutate só sai do botão do modal.
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const decideEntity = trpc.meetings.decideEntity.useMutation({ onSuccess: () => utils.meetings.get.invalidate({ meetingId }) });
-  const decideContact = trpc.meetings.decideContactSuggestion.useMutation({ onSuccess: () => utils.meetings.get.invalidate({ meetingId }) });
+  // Meu Network Inteligente: o que a IA propôs de O Que Tenho / O Que Preciso
+  // para cada pessoa da reunião, ainda pendente de confirmação.
+  const pendenciasDaReuniao = trpc.networkInteligente.pendencias.useQuery({ meetingId }, { refetchOnWindowFocus: false });
+  // Recusada (CONFLICT: já decidida em outra aba), a tela relê o estado real da sugestão.
+  const decideContact = trpc.meetings.decideContactSuggestion.useMutation({
+    onError: erro => toast.error(erro.message),
+    onSettled: () => { void utils.meetings.get.invalidate({ meetingId }); void pendenciasDaReuniao.refetch(); },
+  });
   // A resposta da tradução é aplicada no callback do próprio mutate (lá embaixo),
   // que só dispara para o ÚLTIMO pedido: a tradução de uma transcrição trocada
   // por um reprocessamento, chegando atrasada, não sobrescreve a da nova.
@@ -352,6 +353,10 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
     if (statusAnterior.current === "processing" && status === "ready") {
       toast.success(t("meetings.processedSuccess"));
       setTab("summary");
+      // As pendências de Tenho/Preciso foram lidas antes do fim, com as pessoas
+      // da tentativa anterior (ou nenhuma), e a consulta não se relê sozinha. O
+      // reset tira o dado velho da tela (vira "carregando", não FALTANDO) e relê.
+      void utils.networkInteligente.pendencias.reset({ meetingId });
     } else if (statusAnterior.current === "processing" && status === "failed") {
       toast.error(t("meetings.processError"));
     }
@@ -479,7 +484,13 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
         </>}
       </> : <p className="text-white/45">{t("meetings.transcriptUnavailable")}</p>}
     </section>}
-    {tab === "contacts" && <div className="space-y-3">{suggestions.length ? suggestions.map(suggestion => <section key={suggestion.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="flex flex-col md:flex-row gap-4 justify-between"><div><h2 className="font-semibold">{suggestion.fullName}</h2><p className="text-sm text-white/55">{[suggestion.jobTitle, suggestion.company].filter(Boolean).join(" · ") || t("meetings.partialDataDetected")}</p>{suggestion.email && <p className="text-xs text-white/40 mt-1">{suggestion.email}</p>}</div>{suggestion.status === "pending" && emProcessamento ? <span className="text-sm text-amber-200/70">{t("meetings.decisionsPaused")}</span> : suggestion.status === "pending" ? <div className="flex flex-wrap gap-2"><button onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "create" })} className="rounded-lg bg-amber-400 text-[#1a120c] px-3 py-2 text-sm font-bold"><Check size={15} className="inline mr-1"/>{t("meetings.createContactButton")}</button><button onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "ignore" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65"><X size={15} className="inline mr-1"/>{t("meetings.ignoreButton")}</button></div> : <span className="text-sm text-white/45">{suggestion.status === "created" ? t("meetings.contactCreatedStatus") : t("meetings.ignoredStatus")}</span>}</div></section>) : <div className="rounded-2xl border border-dashed border-white/15 py-14 text-center text-white/45">{t("meetings.noContactSuggestions")}</div>}</div>}
+    {tab === "contacts" && <div className="space-y-3">
+      {/* Pendências ainda não lidas: carregando, ou erro com tentar de novo —
+          nunca "FALTANDO" nos cartões, que afirmaria que a IA não achou nada. */}
+      {suggestions.length > 0 && !pendenciasDaReuniao.data && (pendenciasDaReuniao.isError
+        ? <ErroDeConsulta erro={pendenciasDaReuniao.error} aoTentarDeNovo={() => void pendenciasDaReuniao.refetch()} />
+        : <p className="text-sm text-white/45"><Loader2 className="inline animate-spin mr-2" size={14}/>{t("networkPanel.loading")}</p>)}
+      {suggestions.length ? suggestions.map(suggestion => <section key={suggestion.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="flex flex-col md:flex-row gap-4 justify-between"><PessoaSugeridaNaReuniao sugestao={suggestion} pendencias={pendenciasDaReuniao.data} />{suggestion.status === "pending" && emProcessamento ? <span className="text-sm text-amber-200/70">{t("meetings.decisionsPaused")}</span> : suggestion.status === "pending" ? <div className="flex flex-wrap gap-2"><button disabled={decideContact.isPending} onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "create" })} className="rounded-lg bg-amber-400 text-[#1a120c] px-3 py-2 text-sm font-bold disabled:opacity-50"><Check size={15} className="inline mr-1"/>{t("meetings.createContactButton")}</button><button disabled={decideContact.isPending} onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "ignore" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65 disabled:opacity-50"><X size={15} className="inline mr-1"/>{t("meetings.ignoreButton")}</button></div> : <span className="text-sm text-white/45">{suggestion.status === "created" ? t("meetings.contactCreatedStatus") : t("meetings.ignoredStatus")}</span>}</div></section>) : <div className="rounded-2xl border border-dashed border-white/15 py-14 text-center text-white/45">{t("meetings.noContactSuggestions")}</div>}</div>}
 
     {/* Confirmação de exclusão — molde de Network.tsx; o texto nomeia tudo que some. */}
     {confirmarExclusao && (

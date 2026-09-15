@@ -10,8 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { BrandMark } from "@/components/BrandLogo";
 import { ExcluirMinhaConta } from "@/components/ExcluirMinhaConta";
+import { AssistenteDeTexto } from "@/components/AssistenteDeTexto";
+import { QualificacaoDoPerfil } from "@/components/QualificacaoDoPerfil";
+import { DemandasDoPerfil, EditorDoQuePreciso } from "@/components/OQuePreciso";
+import { categoriasPendentes, demandasParaGravar, lerDemandas, type DemandaDetalhada } from "@shared/o-que-preciso";
 import { toast } from "sonner";
-import { exigeCnpj, formatCnpj, isValidCnpj, maskCnpj } from "@shared/business-registration";
+import { exigeCadastroEmpresarial, mascararCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
 import {
   ArrowLeft, User, Briefcase, Globe, Link2, Edit2, Save,
@@ -68,18 +72,8 @@ const WHAT_I_HAVE_OPTIONS = [
   { id: "canais_comerciais", label: "Canais Comerciais", icon: "🤝" },
 ];
 
-// Tags "O que preciso"
-const WHAT_I_NEED_OPTIONS = [
-  { id: "fornecedores", label: "Fornecedores", icon: "🏪" },
-  { id: "investidores", label: "Investidores", icon: "💸" },
-  { id: "compradores", label: "Compradores", icon: "🛒" },
-  { id: "distribuidores", label: "Distribuidores", icon: "📤" },
-  { id: "parceiros", label: "Parceiros Estratégicos", icon: "🤝" },
-  { id: "tecnologia", label: "Tecnologia", icon: "⚙️" },
-  { id: "financiamento", label: "Financiamento", icon: "🏦" },
-  { id: "licencas", label: "Licenças & Aprovações", icon: "✅" },
-  { id: "consultoria", label: "Consultoria", icon: "💡" },
-];
+// "O que preciso": as 17 categorias e a segunda camada vivem em shared/o-que-preciso.ts
+// e components/OQuePreciso.tsx (Rosber, 14/09), as mesmas do Onboarding.
 
 // ─── Componente de Tag Selecionável ───────────────────────────────────────────
 function TagButton({
@@ -159,6 +153,9 @@ export default function Profile() {
 
   // Seção 3 — O que preciso
   const [whatINeed, setWhatINeed] = useState<string[]>([]);
+  // A segunda camada (14/09): as demandas detalhadas e as categorias que já estavam gravadas ao abrir a edição.
+  const [whatINeedDetails, setWhatINeedDetails] = useState<DemandaDetalhada[]>([]);
+  const [categoriasJaSalvas, setCategoriasJaSalvas] = useState<string[]>([]);
 
   const startEditing = () => {
     setDisplayName(profile?.displayName || user?.name || "");
@@ -180,14 +177,23 @@ export default function Profile() {
     setWebsiteUrl(profile?.websiteUrl || "");
     setInterestSectors(Array.isArray((profile as any)?.interestSectors) ? (profile as any).interestSectors : []);
     setWhatIHave(Array.isArray((profile as any)?.whatIHave) ? (profile as any).whatIHave : []);
-    setWhatINeed(Array.isArray((profile as any)?.whatINeed) ? (profile as any).whatINeed : []);
+    const necessidadesSalvas: string[] = Array.isArray((profile as any)?.whatINeed) ? (profile as any).whatINeed : [];
+    setWhatINeed(necessidadesSalvas);
+    setWhatINeedDetails(lerDemandas((profile as any)?.whatINeedDetails));
+    setCategoriasJaSalvas(necessidadesSalvas);
     setEditing(true);
   };
 
   const updateMutation = trpc.profile.update.useMutation({
-    onSuccess: () => {
+    onSuccess: (resultado) => {
       toast.success("Perfil atualizado com sucesso!");
       utils.profile.get.invalidate();
+      // Bronze que qualificou o perfil saiu Prata no servidor: o selo e o cartão
+      // de qualificação leem o nível de auth.me, que precisa ser relido.
+      if (resultado?.promovidaAPrata) {
+        toast.success(t("governanca.perfil.promovida"));
+        utils.auth.me.invalidate();
+      }
       setEditing(false);
     },
     onError: (err) => {
@@ -200,8 +206,15 @@ export default function Profile() {
   });
 
   const handleSave = () => {
-    if (companyCnpj && !isValidCnpj(companyCnpj)) {
-      toast.error(t("profile.business.cnpjInvalid"));
+    if (exigeCadastroEmpresarial(personType) && !normalizarCadastroEmpresarial(companyCnpj)) {
+      toast.error(t("profile.business.registrationNumberRequired"));
+      return;
+    }
+    // "O que preciso": categoria marcada nesta edição precisa de demanda detalhada e válida;
+    // as que o perfil já tinha gravadas sem detalhe seguem valendo (toleradas).
+    const pendentes = categoriasPendentes(whatINeed, whatINeedDetails, categoriasJaSalvas);
+    if (pendentes.length > 0) {
+      toast.error(t("oQuePreciso.faltaDetalhar", { categorias: pendentes.map(chave => t(`oQuePreciso.categorias.${chave}.titulo`)).join(", ") }));
       return;
     }
     updateMutation.mutate({
@@ -214,7 +227,7 @@ export default function Profile() {
       gender: gender || undefined,
       personType: personType || undefined,
       companySize: personType === "mei" ? "mei" : companySize || undefined,
-      companyCnpj: personType !== "individual" ? companyCnpj || undefined : undefined,
+      companyCnpj: personType !== "individual" ? normalizarCadastroEmpresarial(companyCnpj) || undefined : undefined,
       activityArea,
       institutionalNetwork,
       linkedinUrl,
@@ -222,6 +235,8 @@ export default function Profile() {
       interestSectors,
       whatIHave,
       whatINeed,
+      // Cada demanda separada, sem as em branco; o servidor valida de novo.
+      whatINeedDetails: demandasParaGravar(whatINeed, whatINeedDetails),
     });
   };
 
@@ -343,6 +358,9 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* Governança: a membra Bronze vê o que falta para a Prata. */}
+        <QualificacaoDoPerfil role={user?.role} perfil={profile} onCompletar={editing ? undefined : startEditing} />
+
         {/* ── SEÇÃO 1: QUEM SOU ── */}
         <Section
           icon={<User size={16} />}
@@ -435,7 +453,7 @@ export default function Profile() {
                 </div>
               </div>
 
-              {exigeCnpj(personType) && (
+              {exigeCadastroEmpresarial(personType) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.business.companySize")}</label>
@@ -458,9 +476,12 @@ export default function Profile() {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.business.cnpj")}</label>
-                    <Input value={formatCnpj(companyCnpj)} onChange={e => setCompanyCnpj(formatCnpj(e.target.value))}
-                      placeholder={t("profile.business.cnpjPlaceholder")}
+                    <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.business.registrationNumber")}</label>
+                    {/* Durante a composição do IME (japonês, chinês) o texto não é mexido: trocá-lo no meio a interrompe. */}
+                    <Input value={companyCnpj}
+                      onChange={e => setCompanyCnpj((e.nativeEvent as InputEvent).isComposing ? e.target.value : normalizarCadastroEmpresarial(e.target.value))}
+                      onCompositionEnd={e => setCompanyCnpj(normalizarCadastroEmpresarial(e.currentTarget.value))}
+                      placeholder={t("profile.business.registrationNumberPlaceholder")}
                       className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                   </div>
                 </div>
@@ -479,6 +500,11 @@ export default function Profile() {
                   placeholder="Conte um pouco da sua história e do seu negócio..."
                   rows={3}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50 resize-none" />
+                {/* Gravar áudio e Revisar texto: só mudam o campo; salvar continua sendo o botão do Perfil. */}
+                <AssistenteDeTexto valor={bio} onChange={setBio} />
+                {bio.length > 1000 && (
+                  <p className="text-xs text-red-400/80 mt-1">{t("assistenteTexto.textoLongo", { maximo: 1000 })}</p>
+                )}
               </div>
 
               <div>
@@ -523,7 +549,7 @@ export default function Profile() {
                   (profile as any)?.activityArea && { icon: <Tag size={13} />, label: (profile as any).activityArea },
                   (profile as any)?.personType && { icon: <Building size={13} />, label: t(`profile.business.${(profile as any).personType === "legal_entity" ? "legalEntity" : (profile as any).personType}`) },
                   (profile as any)?.companySize && { icon: <Building size={13} />, label: t(`profile.business.size${String((profile as any).companySize).charAt(0).toUpperCase()}${String((profile as any).companySize).slice(1)}`) },
-                  (profile as any)?.companyCnpj && { icon: <Building size={13} />, label: `${t("profile.business.cnpj")}: ${maskCnpj((profile as any).companyCnpj)}` },
+                  (profile as any)?.companyCnpj && { icon: <Building size={13} />, label: `${t("profile.business.registrationNumber")}: ${mascararCadastroEmpresarial((profile as any).companyCnpj)}` },
                   (profile?.city || profile?.country) && { icon: <MapPin size={13} />, label: [profile?.city, COUNTRIES.find(c => c.code === profile?.country)?.name].filter(Boolean).join(", ") },
                   (profile as any)?.gender && { icon: <User size={13} />, label: t(`profile.gender.${(profile as any).gender}`) },
                   (profile as any)?.institutionalNetwork && { icon: <Network size={13} />, label: (profile as any).institutionalNetwork },
@@ -609,28 +635,23 @@ export default function Profile() {
           subtitle={t("profile.sections.whatINeedSubtitle")}
         >
           {editing ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {sortOptionsAlphabetically(WHAT_I_NEED_OPTIONS, i18n.language).map(opt => (
-                <TagButton
-                  key={opt.id}
-                  icon={opt.icon}
-                  label={opt.label}
-                  selected={whatINeed.includes(opt.id)}
-                  onClick={() => toggleTag(whatINeed, setWhatINeed, opt.id)}
-                />
-              ))}
+            // Os mesmos 17 cartões e a mesma segunda camada do Onboarding (components/OQuePreciso.tsx).
+            <div className="space-y-4">
+              <div>
+                <p className="text-white/40 text-sm">{t("oQuePreciso.textoExplicativo")}</p>
+                <p className="text-white/25 text-xs mt-1">{t("oQuePreciso.fraseDiscreta")}</p>
+              </div>
+              <EditorDoQuePreciso
+                variante="perfil"
+                valor={{ categorias: whatINeed, demandas: whatINeedDetails }}
+                onChange={({ categorias, demandas }) => { setWhatINeed(categorias); setWhatINeedDetails(demandas); }}
+                toleradas={categoriasJaSalvas}
+              />
             </div>
           ) : (
             profileWhatINeed.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {sortOptionsAlphabetically(WHAT_I_NEED_OPTIONS.filter(o => profileWhatINeed.includes(o.id)), i18n.language).map(opt => (
-                  <div key={opt.id} className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-blue-500/8 border border-blue-500/20">
-                    <span className="text-base">{opt.icon}</span>
-                    <span className="text-sm text-blue-300/80 font-medium">{opt.label}</span>
-                    <CheckCircle size={13} className="text-blue-400 ml-auto" />
-                  </div>
-                ))}
-              </div>
+              // Categoria nova com as demandas detalhadas; chave antiga ("consultoria") com o rótulo dela.
+              <DemandasDoPerfil whatINeed={profileWhatINeed} whatINeedDetails={(profile as any)?.whatINeedDetails} />
             ) : (
               <div className="text-center py-6">
                 <p className="text-white/30 text-sm">{t("profile.sections.noDemands")}</p>

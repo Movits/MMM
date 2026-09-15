@@ -2,20 +2,25 @@
   "nav": {
     "howItWorks": "Cómo Funciona",
     "opportunities": "Oportunidades",
-    "security": "Seguridad",
+    "smartNetwork": "Mi Network Inteligente",
     "login": "Iniciar Sesión",
     "startFree": "Crear cuenta",
     "myDashboard": "Mi Panel →",
     "beta": "Beta"
   },
   "hero": {
-    "badge": "Ecosistema Mundial de Oportunidades",
-    "headline1": "Conecta con personas",
-    "headline2": "extraordinarias",
-    "headline3": "y potencia tu red",
-    "headline4": "profesional",
-    "subtitle": "Díganos quién es usted, qué busca y qué tiene para ofrecer. Nuestra inteligencia artificial analiza su perfil en profundidad para conectarle con líderes y oportunidades de alta compatibilidad real: yendo mucho más allá de simples palabras clave.",
-    "cta": "Crear mi perfil →",
+    "badge": "Red mundial de negocios entre miembros • +30 países • infinitas posibilidades",
+    "headline1": "Inteligencia que conecta ",
+    "headline2": "negocios que suceden",
+    "subtitle": "Imagina una red capaz de identificar a quién necesitas conocer — y quién necesita conocerte.",
+    "globalBefore": "Con embajadoras en ",
+    "globalHighlight": "más de 30 países",
+    "globalAfter": ", te conectamos con personas, oportunidades y negocios en una red global sin fronteras.",
+    "ai": "Nuestra inteligencia artificial cruza perfiles, intereses, necesidades y oportunidades para revelar conexiones estratégicas que quizá nunca encontrarías por tu cuenta.",
+    "hook": "Tu próximo gran negocio puede estar ya aquí.",
+    "discover": "Descubre quién, dónde y qué oportunidad encaja contigo.",
+    "closing": "Encuentra tu Business Match.",
+    "cta": "ENCUENTRA TU BUSINESS MATCH",
     "ctaSecondary": "Ver cómo funciona",
     "motionOn": "Movimiento activado",
     "motionOff": "Movimiento desactivado",
@@ -23,54 +28,66 @@
     "motionTurnOff": "Desactivar el movimiento de fondo"
   },
   "stats": {
-    "users": "Personas activas",
-    "opportunities": "Oportunidades creadas",
+    "users": "Personas registradas",
+    "opportunities": "Oportunidades activas",
     "satisfaction": "Satisfacción garantizada",
-    "connections": "Conexiones exitosas"
+    "connections": "Conexiones realizadas",
+    "countries": "Países representados"
   },
   "steps": {
     "title": "Tu camino hacia el éxito",
     "subtitle": "Descubre lo fácil que es conectar y crecer con MMM.",
+    "closing": "En algún lugar de nuestra red, alguien puede estar buscando exactamente lo que tú tienes.",
     "step1": {
-      "title": "Crea tu perfil empoderador",
-      "desc": "Destaca tus habilidades, experiencias y aspiraciones para atraer las conexiones correctas."
+      "eyebrow": "Muestra al mundo lo que tienes. Y lo que buscas.",
+      "title": "Crea tu perfil estratégico",
+      "desc": "En pocos minutos, cuenta quién eres, qué ofreces y qué buscas. Cuanto más te conoce la plataforma, más cerca está de la conexión capaz de generar tu próximo negocio."
     },
     "step2": {
-      "title": "Descubre conexiones estratégicas",
-      "desc": "Nuestro algoritmo inteligente sugiere matches con personas que complementan tus objetivos."
+      "eyebrow": "La tecnología encuentra lo que no encontrarías por tu cuenta.",
+      "title": "La inteligencia trabaja para ti",
+      "desc": "Mientras amplías tu red, nuestra IA cruza tu perfil con personas, empresas, necesidades y oportunidades, e identifica conexiones estratégicas dentro de una red presente en más de 30 países."
     },
     "step3": {
-      "title": "Colabora y conquista",
-      "desc": "Inicia conversaciones, explora alianzas y transforma tus ambiciones en realidad."
+      "eyebrow": "No es solo una conexión. Es una oportunidad de negocio.",
+      "title": "Descubre tus mejores conexiones",
+      "desc": "Recibe conexiones seleccionadas por su compatibilidad con lo que tienes, lo que necesitas y lo que buscas. Entiende por qué se sugirió cada conexión y descubre quién puede abrirte la puerta a tu próximo gran negocio."
     }
   },
   "opportunities": {
-    "title": "Un mundo de posibilidades para ti",
-    "subtitle": "Explora las diversas oportunidades que MMM ofrece para tu desarrollo.",
-    "society": {
-      "label": "Impacto social",
-      "desc": "Conéctate para generar un impacto positivo en la sociedad."
+    "title": "¿Hasta dónde puede llegar tu próximo negocio?",
+    "subtitle": "Conéctate con las personas adecuadas para vender, expandirte, invertir y convertir oportunidades en negocios — en Brasil y en el mundo.",
+    "reach": {
+      "city": "En tu ciudad",
+      "state": "En otro estado",
+      "country": "En otro país",
+      "markets": "En nuevos mercados"
     },
-    "investment": {
-      "label": "Inversión y finanzas",
-      "desc": "Encuentra inversores u oportunidades de inversión."
+    "internationalize": {
+      "label": "Internacionaliza tu negocio",
+      "desc": "Encuentra conexiones estratégicas para entrar en nuevos países, acceder a mercados y expandirte más allá de las fronteras."
     },
-    "mentorship": {
-      "label": "Mentoría y desarrollo",
-      "desc": "Recibe u ofrece mentoría para acelerar carreras."
+    "sellProducts": {
+      "label": "Vende tus productos",
+      "desc": "Conecta tu empresa con potenciales compradores, distribuidores, representantes y socios comerciales."
     },
-    "partnership": {
-      "label": "Alianzas estratégicas",
-      "desc": "Forma alianzas poderosas para proyectos y negocios."
+    "sellServices": {
+      "label": "Vende tus servicios",
+      "desc": "Presenta tu experiencia a quien realmente la necesita. Conecta tu oferta con demandas reales y compatibles."
     },
-    "projects": {
-      "label": "Proyectos colaborativos",
-      "desc": "Trabaja en proyectos innovadores con otros líderes."
+    "findInvestment": {
+      "label": "Encuentra inversión",
+      "desc": "Acerca empresas y proyectos a inversores con intereses, sectores y objetivos compatibles."
     },
-    "jobs": {
-      "label": "Oportunidades de carrera",
-      "desc": "Descubre y comparte vacantes de alto nivel."
-    }
+    "partnerships": {
+      "label": "Construye alianzas estratégicas",
+      "desc": "Encuentra socios, aliados y empresas complementarias para crear nuevos negocios y acelerar proyectos."
+    },
+    "findOpportunities": {
+      "label": "Encuentra oportunidades",
+      "desc": "Descubre proyectos, demandas y conexiones compatibles con lo que tienes para ofrecer o estás buscando."
+    },
+    "closing": "Tú dices adónde quieres llegar. Nuestra inteligencia encuentra a quien puede ayudarte a llegar allí."
   },
   "testimonials": {
     "title": "Lo que dicen nuestros líderes",
@@ -90,29 +107,34 @@
     },
     "match": "compatibilidad"
   },
-  "security": {
-    "title": "Tu seguridad es nuestra prioridad",
-    "subtitle": "Garantizamos un entorno seguro y confiable para todos nuestros usuarios.",
-    "encryption": {
-      "title": "Cifrado avanzado",
-      "desc": "Tus datos están protegidos con la más alta tecnología de cifrado."
+  "smartNetwork": {
+    "label": "Mi Network Inteligente",
+    "title": "¿Recuerdas todas las oportunidades que existen en tu propia red?",
+    "subtitle": "Cada reunión puede esconder una oportunidad futura. Nuestra inteligencia registra, organiza y conecta el valor de las relaciones que has construido.",
+    "impact": "Conoces más oportunidades de las que puedes recordar.",
+    "record": {
+      "title": "GRABA Y NO OLVIDES",
+      "desc": "Graba y transcribe gratis reuniones de hasta 10 minutos y convierte conversaciones en memoria estratégica."
     },
-    "verification": {
-      "title": "Verificación rigurosa",
-      "desc": "Todos los perfiles son verificados para garantizar la autenticidad y calidad de la comunidad."
+    "organize": {
+      "title": "LA IA LO ORGANIZA POR TI",
+      "desc": "La inteligencia identifica Quién Soy, Qué Tengo y Qué Necesito a partir de la conversación — y muestra lo que aún falta descubrir."
     },
-    "control": {
-      "title": "Control total",
-      "desc": "Tienes control total sobre tu información y con quién te conectas."
+    "discover": {
+      "title": "DESCUBRE NEGOCIOS EN TU PROPIA RED",
+      "desc": "La inteligencia cruza necesidades y oportunidades entre las personas que ya conoces y revela conexiones que podrían pasar desapercibidas."
     },
-    "rateLimit": {
-      "title": "Límite de velocidad",
-      "desc": "Protección contra ataques"
-    }
+    "value": {
+      "title": "HAZ QUE TU RED GENERE VALOR",
+      "desc": "Pon contactos a disposición de forma anónima para oportunidades de la red y participa en las intermediaciones cuando tus conexiones contribuyan a nuevos negocios."
+    },
+    "closingQuestion": "¿Cuántos negocios están escondidos hoy entre las personas que ya conoces?",
+    "closingLine": "Convierte reuniones en memoria. Memoria en inteligencia. Inteligencia en conexiones. Y conexiones en negocios.",
+    "cta": "ACTIVAR MI NETWORK INTELIGENTE"
   },
   "cta": {
-    "title": "¿Listo para transformar tu futuro?",
-    "subtitle": "Únete a MMM y empieza a construir tu legado hoy.",
+    "title": "¿Todo listo para encontrar tus próximas conexiones?",
+    "subtitle": "Únete a las personas que ya están construyendo conexiones de negocio",
     "button": "Crear cuenta"
   },
   "footer": {
@@ -193,15 +215,13 @@
       "s5_title": "Vida & Valores",
       "s5_sub": "Lo que te define",
       "s6_title": "¡Todo listo!",
-      "s6_sub": "Revisa y encuentra tus matches",
+      "s6_sub": "Revisa tus datos y ve tus conexiones",
       "s7_title": "Quién soy",
       "s7_sub": "Datos profesionales y red",
       "s8_title": "Lo que tengo",
       "s8_sub": "Activos y recursos disponibles",
       "s9_title": "Lo que necesito",
-      "s9_sub": "Demandas y necesidades",
-      "s10_title": "Términos y Condiciones",
-      "s10_sub": "Lee y acepta nuestros términos"
+      "s9_sub": "Demandas y necesidades"
     },
     "specialties": {
       "tech": "Tecnología & Software",
@@ -294,7 +314,7 @@
       "home": "Inicio",
       "continue": "Continuar",
       "analyzing": "Analizando...",
-      "findMatches": "Encontrar mis matches"
+      "findMatches": "Guardar y ver mis conexiones"
     },
     "fields": {
       "displayName": "¿Cómo quieres que te llamen? *",
@@ -431,61 +451,49 @@
       "selectedPlural": "seleccionados",
       "selectedF": "seleccionada",
       "selectedFPlural": "seleccionadas"
-    },
-    "terms": {
-      "title": "Términos de Uso y Acuerdo de Comisión",
-      "accept": "Acepto los Términos de Uso",
-      "required": "Debe aceptar los términos",
-      "clause1_title": "1. Objeto",
-      "clause1_text": "MMM es una plataforma de relación entre sus miembros. Presenta a personas cuyos intereses se complementan y registra los negocios que nacen de esas presentaciones. La plataforma no es parte del negocio: quienes contratan son las miembros entre sí.",
-      "clause2_title": "2. Comisión",
-      "clause2_text": "Un negocio originado en una presentación hecha por la plataforma genera una comisión para MMM, en las siguientes condiciones:",
-      "clause2_item1": "el porcentaje lo define caso a caso la Dirección Comercial;",
-      "clause2_item2": "el límite es del 50% de los honorarios de intermediación del negocio;",
-      "clause2_item3": "en esta versión el pago ocurre fuera de la plataforma; el sitio solo registra el negocio y la comisión debida.",
-      "clause3_title": "3. Vigencia y cambios",
-      "clause3_text": "Este texto es provisional y está en revisión jurídica. Cuando se publique la versión final se te avisará y deberás aceptarla nuevamente. La fecha y el texto exacto de esta aceptación quedan registrados."
     }
   },
   "dashboard": {
+    "networkTitle": "La red hoy",
+    "networkDesc": "Números reales de toda la plataforma, no solo de tu perfil.",
     "title": "Hola",
-    "matches": "Tus Matches",
+    "matches": "Conexiones sugeridas",
     "connections": "Conexiones",
     "profile": "Mi Perfil",
     "noMatches": "¿Listo para tu próxima gran conexión?",
     "noMatchesDesc": "Nuestra IA analizará tu perfil en 6 dimensiones y encontrará los perfiles con mayor compatibilidad real contigo.",
     "redeAutorizandoTitulo": "Tus conexiones están en camino",
-    "redeAutorizandoDesc": "Hay perfiles compatibles con el tuyo, pero un match solo aparece cuando ambas partes autorizan el cruce — y esos miembros aún no lo han hecho. No es falta de compatibilidad: solo hay que esperar.",
+    "redeAutorizandoDesc": "Hay perfiles compatibles con el tuyo, pero una conexión sugerida solo aparece cuando ambas partes autorizan el cruce — y esos miembros aún no lo han hecho. No es falta de compatibilidad: solo hay que esperar.",
     "compatibility": "Puntuación Media",
     "connect": "Expresar Interés",
-    "dismiss": "Match ocultado. Genera nuevos matches cuando quieras.",
-    "regenerate": "Nuevos matches",
+    "dismiss": "Sugerencia ocultada. Puedes generar nuevas sugerencias cuando quieras.",
+    "regenerate": "Buscar nuevas conexiones sugeridas",
     "logout": "Cerrar sesión",
-    "topMatches": "Top Matches (80%+)",
+    "topMatches": "Conexiones sugeridas (80%+)",
     "interestSent": "¡Interés enviado! Un distribuidor comprueba la compatibilidad antes de reenviarlo. La otra persona solo verá tu nombre si también muestra interés.",
     "interestError": "No se pudo enviar el interés. Inténtalo de nuevo.",
-    "connectionAccepted": "¡Conexión aceptada! Ahora ambas partes ven el nombre de la otra.",
+    "connectionAccepted": "¡Nueva conexión! Ahora ambas partes ven el nombre de la otra.",
     "connectionDeclined": "Solicitud rechazada.",
-    "newMatches_one": "✨ ¡{{count}} nuevo match encontrado!",
-    "newMatches_other": "✨ ¡{{count}} nuevos matches encontrados!",
-    "newMatches_zero": "✨ ¡{{count}} nuevos matches encontrados!",
-    "newMatches_two": "✨ ¡{{count}} nuevos matches encontrados!",
-    "newMatches_few": "✨ ¡{{count}} nuevos matches encontrados!",
-    "newMatches_many": "✨ ¡{{count}} nuevos matches encontrados!",
-    "analysisDone": "Análisis completado: ningún match nuevo esta vez. Nuevos usuarios y perfiles actualizados generan nuevas conexiones.",
+    "newMatches_one": "✨ ¡{{count}} nueva conexión sugerida!",
+    "newMatches_other": "✨ ¡{{count}} nuevas conexiones sugeridas!",
+    "newMatches_zero": "✨ ¡{{count}} nuevas conexiones sugeridas!",
+    "newMatches_two": "✨ ¡{{count}} nuevas conexiones sugeridas!",
+    "newMatches_few": "✨ ¡{{count}} nuevas conexiones sugeridas!",
+    "newMatches_many": "✨ ¡{{count}} nuevas conexiones sugeridas!",
+    "analysisDone": "Análisis completado: ninguna conexión nueva esta vez. Nuevos usuarios y perfiles actualizados generan nuevas conexiones.",
     "distribution": "Distribución de Compatibilidad",
-    "distributionDesc": "Cómo están distribuidos tus matches por rango de puntuación",
+    "distributionDesc": "Cuántas sugerencias de conexión tienes en cada rango de compatibilidad",
     "analyzing": "Analizando...",
-    "generateMatches": "✨ Analizar y generar mis matches",
+    "generateMatches": "✨ Encontrar conexiones para mí",
     "decline": "Rechazar",
     "connected": "✓ Conectado",
     "pending": "⏳ Esperando respuesta",
     "declined": "✕ No aceptada",
     "profileComplete": "Perfil completo",
     "editProfile": "Editar perfil completo",
-    "reanalyze": "↻ Re-analizar matches",
+    "reanalyze": "↻ Reanalizar conexiones",
     "noProfile": "Perfil no encontrado",
-    "noProfileDesc": "Completa tu perfil para empezar a recibir matches.",
+    "noProfileDesc": "Completa tu perfil para empezar a recibir conexiones sugeridas.",
     "createProfile": "Crear mi perfil",
     "years_one": "{{count}} año",
     "years_other": "{{count}} años",
@@ -494,13 +502,13 @@
     "years_few": "{{count}} años",
     "years_many": "{{count}} años",
     "workStyle": "Estilo de trabajo",
-    "topMatch": "Top Match",
+    "topMatch": "Mejor conexión",
     "loading": "Cargando tu panel",
     "loadingDesc": "Buscando tus oportunidades...",
     "restricted": "Acceso restringido",
     "opportunities": "Oportunidades",
-    "goldBannerTitle": "¡Felicitaciones! ¡Recibiste el Sello Oro!",
-    "goldBannerBody": "Un miembro Oro de MMM te concedió el Sello de Exclusividad Institucional Oro.",
+    "goldBannerTitle": "¡Te damos la bienvenida al Estado Oro!",
+    "goldBannerBody": "Tu Estado Oro, la categoría premium de MMM, ya está activo.",
     "close": "Cerrar",
     "userFallback": "Usuario",
     "aiPrefix": "IA:",
@@ -550,12 +558,12 @@
     "pendingInvites_two": "{{count}} invitaciones por responder",
     "pendingInvites_few": "{{count}} invitaciones por responder",
     "pendingInvites_many": "{{count}} invitaciones por responder",
-    "greetingUnseen_one": "{{count}} nuevo match",
-    "greetingUnseen_other": "{{count}} nuevos matches",
-    "greetingUnseen_zero": "{{count}} nuevos matches",
-    "greetingUnseen_two": "{{count}} nuevos matches",
-    "greetingUnseen_few": "{{count}} nuevos matches",
-    "greetingUnseen_many": "{{count}} nuevos matches",
+    "greetingUnseen_one": "{{count}} nueva conexión sugerida",
+    "greetingUnseen_other": "{{count}} nuevas conexiones sugeridas",
+    "greetingUnseen_zero": "{{count}} nuevas conexiones sugeridas",
+    "greetingUnseen_two": "{{count}} nuevas conexiones sugeridas",
+    "greetingUnseen_few": "{{count}} nuevas conexiones sugeridas",
+    "greetingUnseen_many": "{{count}} nuevas conexiones sugeridas",
     "greetingUnseenSuffix": "esperando tu atención",
     "greetingTotal_one": "{{count}} oportunidad compatible encontrada para ti",
     "greetingTotal_other": "{{count}} oportunidades compatibles encontradas para ti",
@@ -563,7 +571,7 @@
     "greetingTotal_two": "{{count}} oportunidades compatibles encontradas para ti",
     "greetingTotal_few": "{{count}} oportunidades compatibles encontradas para ti",
     "greetingTotal_many": "{{count}} oportunidades compatibles encontradas para ti",
-    "greetingWelcome": "¡Te damos la bienvenida a MMM! Genera tus primeros matches abajo",
+    "greetingWelcome": "¡Te damos la bienvenida a MMM! Genera tus primeras conexiones sugeridas abajo",
     "anonTitle": "Miembro de la red",
     "anonAvatarAlt": "Identidad oculta",
     "anonListNotice": "Por privacidad, el nombre solo aparece cuando ambas partes demuestren interés.",
@@ -572,7 +580,7 @@
     "acceptReveal": "Aceptar y revelar",
     "acceptRevealHint": "Al aceptar, ambas partes pasan a ver el nombre de la otra.",
     "revealedBadge": "Identidad revelada",
-    "revealedNote": "Ambas partes mostraron interés. La otra persona también ve tu nombre.",
+    "revealedNote": "¡Han creado una conexión! Ambas partes mostraron interés. La otra persona también ve tu nombre.",
     "interestDeclined": "Interés no aceptado",
     "interestInReview": "En análisis por el distribuidor",
     "interestNotForwarded": "Interés no reenviado",
@@ -671,7 +679,9 @@
     "dim1": "Tu especialidad principal",
     "dim2": "Lo que buscas",
     "dim3": "Valores y propósito",
-    "dim4": "Capacidad de inversión"
+    "dim4": "Capacidad de inversión",
+    "badgeTitle": "Conexiones con IA",
+    "badgeDesc": "Análisis en seis criterios"
   },
   "aiSection": {
     "label": "Inteligencia Artificial",
@@ -684,30 +694,39 @@
   },
   "governance": {
     "label": "Gobernanza",
-    "title1": "Una plataforma con",
-    "title2": "integridad institucional",
-    "subtitle": "El acceso en MMM no se compra. Se conquista.",
+    "subtitle": "Cualifica tu perfil, amplía tus posibilidades y elige hasta dónde quieres llegar.",
     "silver": {
-      "title": "Miembro Plata",
-      "desc": "Quienes se registran en la plataforma entran como Miembros Plata. Acceso completo al sistema de matching, oportunidades públicas y conexiones con otros miembros de la red.",
-      "access": "Acceso por registro: sin costo, sin selección"
+      "title": "MIEMBRO PLATA",
+      "desc": "Un perfil cualificado permite que nuestra inteligencia comprenda mejor quién eres, qué puedes ofrecer y qué buscas — aumentando la precisión de las conexiones y oportunidades que se te presentan.",
+      "stage": "Perfil cualificado",
+      "tagline": "Más información. Más precisión. Mejores conexiones.",
+      "highlight": "Perfil cualificado para conexiones estratégicas y un Business Match más preciso."
     },
     "gold": {
-      "badge": "Reconocimiento",
-      "title": "Estado Oro",
-      "desc": "Reconocimiento institucional otorgado por mérito. Acceso a oportunidades estratégicas restringidas, misiones internacionales y grupos de alto impacto.",
-      "access": "No puede ser solicitado, comprado ni obtenido por suscripción. Es otorgado exclusivamente por mérito por los miembros Oro de la plataforma."
-    },
-    "president": {
-      "title": "Miembros Oro",
-      "desc": "Guardianes de la gobernanza. Aprueban y revocan el Estado Oro, homologan líderes regionales y validan oportunidades estratégicas. Representan la integridad de la red.",
-      "access": "Reconocimiento otorgado por mérito dentro de la plataforma"
+      "title": "ESTATUS ORO",
+      "desc": "El Estatus Oro ofrece una experiencia premium para quienes desean estar más cerca de las mejores oportunidades, conexiones y entornos estratégicos de nuestra red nacional e internacional.",
+      "stage": "Experiencia premium + acceso estratégico",
+      "tagline": "Está donde las grandes oportunidades llegan primero.",
+      "benefits": {
+        "b1": "Acceso de primera mano a oportunidades seleccionadas de negocios nacionales e internacionales.",
+        "b2": "Acceso privilegiado a conexiones y oportunidades estratégicas que ofrece la red.",
+        "b3": "Invitaciones y acceso a encuentros estratégicos nacionales e internacionales promovidos o seleccionados por la red.",
+        "b4": "Experiencias y entornos de relación de alto nivel.",
+        "b5": "Prioridad en la comunicación de oportunidades exclusivas destinadas a la categoría Oro."
+      },
+      "highlight": "Algunas oportunidades no llegan a todos al mismo tiempo.",
+      "closing": "Oro es estar más cerca de donde suceden las conexiones y los grandes negocios.",
+      "fee": "Categoría premium mediante mensualidad."
     },
     "bronze": {
-      "title": "Miembro Bronce",
-      "desc": "Recién llegados a la plataforma. Acceso a oportunidades públicas, matching básico y la comunidad MMM. El punto de partida para crecer en la red.",
-      "access": "Acceso por registro: nivel inicial de todos los miembros"
-    }
+      "title": "MIEMBRO BRONCE",
+      "desc": "Ya formas parte de la red. Ahora, cuanto más completo y cualificado esté tu perfil, mayor será la capacidad de nuestra inteligencia para identificar conexiones compatibles contigo.",
+      "stage": "Perfil en construcción",
+      "tagline": "Tu punto de partida.",
+      "highlight": "Completa Quién Soy, Qué Tengo y Qué Necesito para aumentar la precisión de tu Business Match."
+    },
+    "title": "Cuanto más te conoce la plataforma, más precisas se vuelven tus conexiones.",
+    "noFee": "Sin mensualidad. La plataforma participa en los negocios efectivamente concretados gracias a su intermediación, según las condiciones aplicables a cada operación."
   },
   "profile": {
     "sections": {
@@ -742,10 +761,10 @@
       "sizeSmall": "Pequeña empresa",
       "sizeMedium": "Mediana empresa",
       "sizeLarge": "Gran empresa",
-      "cnpj": "CNPJ",
-      "cnpjPlaceholder": "00.000.000/0000-00",
-      "cnpjHint": "Infórmalo solo si existe.",
-      "cnpjInvalid": "Ingresa un CNPJ válido."
+      "registrationNumber": "Número de Registro Empresarial",
+      "registrationNumberPlaceholder": "Solo letras y números",
+      "registrationNumberHint": "Obligatorio para MEI, empresas y organizaciones sin fines de lucro.",
+      "registrationNumberRequired": "Ingresa el Número de Registro Empresarial."
     }
   },
   "network": {
@@ -1179,7 +1198,8 @@
     "guideline2": "Información completa y precisa",
     "guideline3": "Promesas de retorno garantizado",
     "guideline4": "Esquemas piramidales o MLM",
-    "guideline5": "Productos o servicios ilegales"
+    "guideline5": "Productos o servicios ilegales",
+    "toastDescriptionTooLong": "Descripción demasiado larga (máximo 5000 caracteres; ahora tiene {{atual}})"
   },
   "opportunityDetail": {
     "typeOffer": "Oferta",
@@ -1411,13 +1431,14 @@
     "reprocessError": "No se pudo reprocesar la reunión.",
     "recordingExpiredNoTranscript": "No hay audio guardado de esta reunión. El audio se guarda como máximo 30 días.",
     "decisionsPaused": "Disponible cuando termine el procesamiento.",
-    "storedAudioMissing": "No se encontró el audio guardado de esta reunión."
+    "storedAudioMissing": "No se encontró el audio guardado de esta reunión.",
+    "audioDurationUnreadable": "No fue posible leer la duración de este audio. Envía el archivo en MP3 o M4A."
   },
   "connections": {
     "messageSent": "Mensaje enviado",
     "sendMessageError": "Error al enviar mensaje",
     "goldRestrictedTitle": "Acceso Restringido al Estado Oro",
-    "goldRestrictedDescription": "Las Conexiones Estratégicas son exclusivas para miembros con Estado Oro, un reconocimiento institucional otorgado por mérito por los miembros Oro de la plataforma.",
+    "goldRestrictedDescription": "Las Conexiones Estratégicas son exclusivas del Estatus Oro, categoría premium mediante cuota mensual.",
     "goldAccessListTitle": "A lo que pasas a tener acceso:",
     "goldAccessItemMessages": "Mensajes directos con otros líderes",
     "goldAccessItemGroups": "Grupos estratégicos por sector y país",
@@ -1449,13 +1470,14 @@
   "intelligentMatches": {
     "seloMutuo": "↔ Conexión mutua",
     "seloCategoria": "Misma categoría",
+    "seloFamilia": "Misma familia de servicio",
     "seloSignificados": "Significados parecidos",
     "seloOfertaProcura": "Oferta y demanda",
     "seloTagExata": "Etiqueta exacta",
     "toastRevogado": "Autorización revocada. El cruce fue desactivado.",
     "erroRevogar": "No se pudo revocar.",
     "toastRecalculado": "{{total}} oportunidad(es) analizada(s).",
-    "erroAtualizarMatches": "No se pudieron actualizar los matches.",
+    "erroAtualizarMatches": "No se pudieron actualizar las conexiones sugeridas.",
     "toastItemRemovido": "Elemento eliminado y sugerencias actualizadas.",
     "erroRemoverItem": "No se pudo eliminar el elemento.",
     "toastOfertaSalva": "¡Listo! Guardamos la oferta y actualizamos las sugerencias.",
@@ -1517,6 +1539,62 @@
     "revogadaEmData": "· revocada el {{data}}",
     "termoMudouAviso": "· el acuerdo cambió después de eso"
   },
+  "networkPanel": {
+    "eyebrow": "TU RED PARTICULAR",
+    "title": "Mi Network Inteligente",
+    "subtitle": "Has construido una red valiosa. Nuestra inteligencia te ayuda a no olvidar el valor que hay en ella.",
+    "loading": "Cargando…",
+    "meetings": "Mis reuniones",
+    "meetingsDetail": "Transcritas: {{transcritas}}",
+    "contacts": "Mis contactos",
+    "contactsDetail": "Privados por defecto",
+    "incomplete": "Información incompleta",
+    "incompleteDetail": "Contactos con datos faltantes",
+    "internalMatches": "Conexiones internas sugeridas",
+    "internalMatchesDetail": "Nuevas: {{novos}}",
+    "internalMatchesNoConsent": "Activa las Conexiones Inteligentes para verlas",
+    "minutesTitle": "Minutos de reunión",
+    "minutesUsed": "En las reuniones guardadas",
+    "minutesUsedHelp": "Suma de la duración de las reuniones transcritas que siguen en tu cuenta.",
+    "minutesLimit": "Límite gratuito por reunión",
+    "minutesLimitHelp": "Se aplica a cada grabación y a cada audio enviado.",
+    "minutesValue": "{{minutos}} min",
+    "moreTime": "¿Necesitas más tiempo? Amplía tus minutos de reunión.",
+    "moreTimeUnavailable": "La ampliación de minutos con mensualidad todavía no está disponible. Por ahora, cada reunión puede durar hasta {{minutos}} minutos.",
+    "actionsTitle": "Empieza aquí",
+    "actionRecord": "Grabar o enviar una reunión",
+    "actionRecordDesc": "Hasta {{minutos}} minutos por reunión, con transcripción y sugerencia de los contactos mencionados.",
+    "consentNotice": "Antes de grabar, eres responsable de obtener el consentimiento de todas las personas participantes y de cumplir las normas de privacidad aplicables.",
+    "actionContacts": "Organizar mis contactos",
+    "actionContactsDesc": "Tu base particular de contactos. Un contacto no se convierte en miembro ni obtiene un perfil en la plataforma.",
+    "actionSearch": "Buscar en mi network",
+    "actionSearchDesc": "Pregunta con tus palabras, como \"¿A quién conozco en el sector farmacéutico?\". La búsqueda mira solo tu red.",
+    "actionMatches": "Oportunidades en mi red",
+    "actionMatchesDesc": "Sugerencias de negocio entre los contactos que ya tienes.",
+    "incompleteTitle": "Contactos con información faltante",
+    "alert": "Falta información importante para que este contacto sea más útil para tu Network Inteligente.",
+    "alertLabel": "Información faltante",
+    "missing": "Falta:",
+    "complete": "Completar información",
+    "incompleteMore": "Mostrando {{mostrados}} de {{total}}.",
+    "seeAllContacts": "Ver todos los contactos",
+    "incompleteEmpty": "Todos tus contactos tienen Quién Soy, Qué Tengo y Qué Necesito completos.",
+    "noContacts": "Todavía no tienes contactos. Graba una reunión o registra tu primer contacto.",
+    "dashboardCard": "Reuniones, contactos, información faltante y oportunidades de tu red particular.",
+    "open": "Abrir",
+    "whoAmI": "Quién Soy",
+    "statusMissing": "FALTA",
+    "fields": {
+      "nome": "Nombre o razón social",
+      "telefone": "Teléfono",
+      "email": "Correo electrónico",
+      "tenho": "Qué Tengo",
+      "preciso": "Qué Necesito"
+    },
+    "completeByText": "Completar por texto",
+    "completeHint": "Responde al asistente de abajo: solo guarda lo que confirmes. El teléfono y el correo también se pueden escribir en Editar.",
+    "contactNotFound": "Este contacto no se encontró en tu red."
+  },
   "inactivityGuard": {
     "warningTitle_one": "⏰ La sesión expira en {{count}} minuto",
     "warningTitle_other": "⏰ La sesión expira en {{count}} minutos",
@@ -1558,7 +1636,9 @@
       "memory": "Memoria IA",
       "memoryDesc": "Pregunta a tu historial",
       "intelligentMatches": "Conexiones Inteligentes",
-      "intelligentMatchesDesc": "Sugerencias entre tus contactos"
+      "intelligentMatchesDesc": "Sugerencias entre tus contactos",
+      "smartNetwork": "Mi Network Inteligente",
+      "smartNetworkDesc": "Reuniones, contactos y oportunidades de tu red"
     }
   },
   "conta": {
@@ -1582,6 +1662,581 @@
       "confirmar": "Eliminar definitivamente",
       "excluindo": "Eliminando...",
       "sucesso": "Tu cuenta y tus datos fueron eliminados."
+    }
+  },
+  "termoGeral": {
+    "etapaTitulo": "Términos Generales de Uso",
+    "etapaSubtitulo": "Lee y acepta para completar el registro",
+    "titulo": "Términos Generales de Uso, Protección de Datos e Intermediación Digital",
+    "versao": "Versión {{versao}}, publicada el {{data}}",
+    "textoIntegral": "Texto completo de los Términos Generales de Uso",
+    "avisoIdioma": "Los términos están redactados en portugués, que prevalece en caso de divergencia (cláusula 25.6).",
+    "aceite": "HE LEÍDO Y ACEPTO íntegramente estos Términos Generales de Uso, Protección de Datos e Intermediación Digital.",
+    "obrigatorio": "Sin aceptar estos términos no se puede completar el registro.",
+    "carregando": "Cargando los términos…",
+    "erroCarregar": "No se pudieron cargar los Términos Generales de Uso.",
+    "erroCarregarDica": "No se guardó nada. Inténtalo de nuevo en unos instantes.",
+    "tentarDeNovo": "Intentar de nuevo",
+    "naoPublicado": "Los Términos Generales de Uso aún no están disponibles.",
+    "naoPublicadoDica": "Sin ellos no se puede completar el registro. Avisa al soporte e inténtalo más tarde; lo que completaste sigue en esta pantalla.",
+    "versaoMudou": "Los términos se actualizaron mientras leías. Lee la nueva versión y vuelve a marcar la aceptación.",
+    "erroAceite": "No se pudo registrar la aceptación de los términos. No se guardó nada; inténtalo de nuevo."
+  },
+  "assistenteTexto": {
+    "gravar": "Grabar audio",
+    "gravarDica": "Graba tu respuesta en audio. El texto aparece en el campo para que lo revises.",
+    "parar": "Detener y transcribir",
+    "gravando": "Grabando {{tempo}} de {{limite}}",
+    "transcrevendo": "Transcribiendo…",
+    "transcricaoPronta": "El texto del audio ya está en el campo. Revísalo y edítalo antes de continuar.",
+    "semSuporte": "Este navegador no puede grabar audio. Escribe el texto.",
+    "microfoneNegado": "No se pudo usar el micrófono. Revisa el permiso del navegador.",
+    "audioVazio": "No se grabó ningún audio. Inténtalo de nuevo.",
+    "audioGrande": "La grabación es demasiado grande. Graba un audio más corto.",
+    "erroTranscrever": "No se pudo transcribir el audio. Inténtalo de nuevo o escribe el texto.",
+    "revisar": "Revisar texto",
+    "revisarDica": "Corrige ortografía, gramática y puntuación sin cambiar lo que escribiste.",
+    "revisando": "Revisando…",
+    "sugestaoTitulo": "Sugerencia de revisión",
+    "sugestaoDica": "Solo ortografía, gramática y puntuación. Revísala antes de usarla.",
+    "usar": "Usar texto revisado",
+    "descartar": "Descartar",
+    "semCorrecoes": "No hace falta ninguna corrección.",
+    "erroRevisar": "No se pudo revisar el texto ahora. No se cambió nada.",
+    "revisaoRecusada": "La sugerencia cambiaba más que la escritura y se descartó. No se cambió nada.",
+    "textoCurto": "Escribe algo antes de pedir la revisión.",
+    "muitosPedidos": "Demasiadas solicitudes seguidas. Espera unos minutos e inténtalo de nuevo.",
+    "contador": "{{atual}}/{{maximo}}",
+    "textoLongo": "El texto supera el límite de {{maximo}} caracteres. Acórtalo antes de continuar."
+  },
+  "governanca": {
+    "dashboard": {
+      "title": "Miembros por nivel",
+      "bronze": "Miembros Bronce",
+      "silver": "Miembros Plata",
+      "gold": "Miembros Oro"
+    },
+    "perfil": {
+      "titulo": "Miembro Bronce: tu perfil está en cualificación",
+      "texto": "Cuanto más completo y cualificado esté tu perfil, más precisas serán tus conexiones. Para llegar a Miembro Plata, falta:",
+      "prontoParaPrata": "Tu perfil ya cumple los criterios de Miembro Plata. Guarda el perfil para completar el cambio.",
+      "semMensalidade": "Bronce y Plata no tienen cuota mensual. El paso a Plata es automático cuando guardas un perfil cualificado.",
+      "completar": "Completar perfil",
+      "promovida": "¡Felicidades! Tu perfil cualificado ahora es Miembro Plata."
+    },
+    "pendencias": {
+      "nome": "Nombre visible",
+      "cidade": "Ciudad",
+      "atuacao": "Tu área de actuación",
+      "apresentacao": "Una presentación con al menos {{minimo}} palabras que digan quién eres y qué haces",
+      "oQueTenho": "Al menos un elemento en Lo que tengo",
+      "oQuePreciso": "Al menos un elemento en Lo que necesito"
+    }
+  },
+  "oQueBusca": {
+    "opcoes": {
+      "expandir_negocio": {
+        "titulo": "Expandir mi negocio",
+        "descricao": "Nuevos mercados, ciudades o países"
+      },
+      "parceiro_estrategico": {
+        "titulo": "Socio estratégico",
+        "descricao": "Socios, aliados comerciales o institucionales"
+      },
+      "investimento_capital": {
+        "titulo": "Inversión / Capital",
+        "descricao": "Inversores, fondos o acceso a capital"
+      },
+      "clientes_compradores": {
+        "titulo": "Clientes / Compradores",
+        "descricao": "Quienes necesitan lo que ofreces"
+      },
+      "fornecedores_produtos": {
+        "titulo": "Proveedores / Productos",
+        "descricao": "Productos, insumos, fabricantes o distribuidores"
+      },
+      "internacionalizacao": {
+        "titulo": "Internacionalización",
+        "descricao": "Entrar o expandirse en otros países"
+      },
+      "conexoes_institucionais": {
+        "titulo": "Conexiones Institucionales",
+        "descricao": "Entidades, asociaciones y entornos estratégicos"
+      },
+      "tecnologia_solucoes": {
+        "titulo": "Tecnología / Soluciones",
+        "descricao": "Tecnología, innovación o soluciones para el negocio"
+      },
+      "talentos_especialistas": {
+        "titulo": "Talentos / Especialistas",
+        "descricao": "Profesionales o competencias específicas"
+      },
+      "servico_especializado": {
+        "titulo": "Servicio Especializado",
+        "descricao": "Jurídico, tributario, regulatorio, marketing, etc."
+      },
+      "visibilidade_posicionamento": {
+        "titulo": "Visibilidad / Posicionamiento",
+        "descricao": "Eventos, medios, marca y conexiones estratégicas"
+      },
+      "outra_necessidade": {
+        "titulo": "Otra necesidad",
+        "descricao": "Describe exactamente lo que buscas"
+      }
+    },
+    "outraNecessidadeRotulo": "Describe lo que buscas",
+    "outraNecessidadePlaceholder": "Ej.: Necesito un almacén refrigerado en Santos para exportar fruta",
+    "outraNecessidadeObrigatoria": "Obligatorio cuando \"Otra necesidad\" está marcada."
+  },
+  "networkInteligente": {
+    "contact": {
+      "personType": "Tipo de persona",
+      "personFisica": "Persona física",
+      "personJuridica": "Persona jurídica",
+      "personUnknown": "No informado",
+      "anonymousId": "ID anónimo",
+      "anonymousIdHelp": "Así aparece este contacto para la plataforma. Solo tú ves el vínculo entre el ID y el Quién Soy.",
+      "editInNetwork": "Editar en Mi Red",
+      "emptyItems": "Nada registrado todavía.",
+      "meetingsTitle": "Reuniones vinculadas",
+      "meetingsEmpty": "Ninguna reunión vinculada a este contacto.",
+      "topics": "Temas: {{lista}}",
+      "connectionsTitle": "Conexiones e intermediaciones",
+      "connectionsNoConsent": "Activa las Conexiones Inteligentes para ver las conexiones de este contacto.",
+      "searchGlobal": "Buscar conexiones de este contacto en la red global"
+    },
+    "availability": {
+      "title": "Poner este contacto a disposición de las oportunidades de la red",
+      "yes": "SÍ",
+      "no": "NO",
+      "help": "Con SÍ, la plataforma usa solo el ID anónimo, Lo Que Tengo y Lo Que Necesito. Nombre, teléfono, correo, audio, transcripción y notas personales nunca se comparten. Puedes retirar la autorización en cualquier momento.",
+      "saved": "Disponibilidad actualizada.",
+      "error": "No se pudo actualizar la disponibilidad.",
+      "changedAt": "Modificado el {{data}}"
+    },
+    "suggestions": {
+      "title": "Sugerencias de la IA para confirmar",
+      "subtitle": "Nada entra en el contacto sin tu confirmación. Corrige el valor, si es necesario, antes de confirmar.",
+      "empty": "Ninguna sugerencia esperando confirmación.",
+      "originMeeting": "De la reunión",
+      "originVoice": "De tu voz",
+      "originText": "De tu texto",
+      "confidence": "Confianza {{pct}}%",
+      "valueLabel": "Valor sugerido",
+      "evidence": "Fragmento: “{{trecho}}”",
+      "confirm": "Confirmar",
+      "ignore": "Ignorar",
+      "confirmed": "Información confirmada.",
+      "ignored": "Sugerencia ignorada.",
+      "error": "No se pudo guardar la decisión."
+    },
+    "complete": {
+      "title": "Completar información",
+      "byText": "Por texto",
+      "byVoice": "Por voz",
+      "textPlaceholder": "Escribe lo que sabes: qué hace, ofrece o busca la persona o empresa, y cómo contactarla.",
+      "interpret": "Interpretar",
+      "interpreting": "Interpretando…",
+      "created": "Sugerencias creadas para que confirmes: {{quantidade}}.",
+      "noneCreated": "No se encontró nada nuevo en este contenido. La IA no completa lo que no se dijo.",
+      "error": "No se pudo interpretar ahora.",
+      "record": "Grabar audio (hasta 2 min)",
+      "stop": "Detener y enviar",
+      "sending": "Transcribiendo e interpretando…",
+      "heard": "Lo que se entendió: “{{texto}}”",
+      "voiceNotStored": "El audio no se guarda: se transcribe y se descarta.",
+      "micError": "No se pudo usar el micrófono.",
+      "unsupported": "Este navegador no permite grabar audio."
+    },
+    "timeline": {
+      "title": "Memoria de la relación",
+      "subtitle": "Línea de tiempo privada: solo tú la ves.",
+      "created": "Contacto registrado",
+      "meeting": "Reunión: {{titulo}}",
+      "context": "Dónde se conocieron: {{nome}}",
+      "have": "Lo Que Tengo: {{valor}}",
+      "need": "Lo Que Necesito: {{valor}}",
+      "confirmed": "Quién Soy confirmado: {{valor}}",
+      "availableYes": "Puesto a disposición de las oportunidades de la red",
+      "availableNo": "Autorización para la red retirada",
+      "connection": "Conexión registrada por la plataforma",
+      "stage": "Etapa de la conexión: {{etapa}}"
+    },
+    "connections": {
+      "title": "Conexiones registradas",
+      "subtitle": "Toda conexión identificada por la plataforma queda registrada, con su origen, sus etapas y el estado de la comisión. La identidad de los contactos sigue protegida.",
+      "empty": "Ninguna conexión registrada todavía.",
+      "noConsent": "Para ver y registrar conexiones, activa las Conexiones Inteligentes.",
+      "internalAlert": "Encontramos una oportunidad dentro de tu propio network.",
+      "memberSide": "Miembro de la plataforma",
+      "contactSide": "Contacto de otro network ({{codigo}})",
+      "itemLine": "Tiene: {{tem}} · Necesita: {{precisa}}",
+      "registeredAt": "Registrada el {{data}}",
+      "platformCommission": "Comisión de la plataforma: {{status}}",
+      "originatorCommission": "Tu participación como originadora: {{status}}",
+      "discard": "Descartar",
+      "stepSaved": "Etapa registrada.",
+      "stepError": "No se pudo registrar la etapa.",
+      "commissionNotice": "La comisión se registra como estado, según las reglas comerciales y contractuales de la plataforma. No se aplica automáticamente ningún porcentaje, valor ni cobro.",
+      "status": {
+        "identificada": "Identificada",
+        "apresentacao": "Presentación hecha",
+        "negociacao": "En negociación",
+        "fechada": "Negocio cerrado",
+        "descartada": "Descartada"
+      },
+      "origin": {
+        "PLATFORM_MATCH": "Entre miembros de la plataforma",
+        "NETWORK_PLATFORM_MATCH": "Tu network × miembro de la plataforma",
+        "PRIVATE_NETWORK_MATCH": "Dentro de tu network",
+        "NETWORK_NETWORK_MATCH": "Tu network × otro network"
+      },
+      "commission": {
+        "sem_negocio": "sin negocio",
+        "a_apurar": "por evaluar",
+        "devida": "debida",
+        "nao_devida": "no debida"
+      },
+      "next": {
+        "apresentacao": "Registrar presentación",
+        "negociacao": "Registrar negociación",
+        "fechada": "Registrar cierre"
+      },
+      "closingAwaiting": "Confirmaste el cierre. Falta la confirmación de la otra parte.",
+      "discardConfirmTitle": "¿Descartar esta conexión?",
+      "discardConfirmText": "El descarte no se puede deshacer: la conexión queda descartada para ti y ya no puede avanzar de etapa.",
+      "discardConfirmButton": "Descartar conexión",
+      "discardConfirmCancel": "Cancelar"
+    },
+    "global": {
+      "description": "Los contactos que pongas a disposición se cruzan con los miembros de la plataforma y con otros networks autorizados — solo por el ID anónimo, Lo Que Tengo y Lo Que Necesito. Nombre, teléfono, correo, audio, transcripción y notas nunca salen.",
+      "search": "Buscar conexiones en la red global",
+      "searching": "Buscando…",
+      "found": "Conexiones encontradas y registradas: {{quantidade}}.",
+      "noneFound": "Por ahora no hay conexiones nuevas con la red global.",
+      "noneAvailable": "Ninguno de tus contactos está disponible. Abre un contacto y marca SÍ en “Poner este contacto a disposición de las oportunidades de la red”.",
+      "error": "No se pudo buscar ahora."
+    },
+    "search": {
+      "title": "Búsqueda inteligente en mi network",
+      "onlyYourNetwork": "Pregunta con tus palabras. La búsqueda mira solo tu red privada.",
+      "placeholder": "Ej.: ¿A quién conozco que busca distribuidores?",
+      "button": "Buscar",
+      "searching": "Buscando…",
+      "noContacts": "Ningún contacto de tu red apareció para esta pregunta.",
+      "error": "No se pudo buscar ahora.",
+      "pending": "Tu red todavía se está indexando (registros en cola: {{quantidade}}). La respuesta puede estar incompleta; pregunta de nuevo en unos instantes.",
+      "truncated": "Registros fuera de la búsqueda: {{quantidade}}. Tu cuenta superó el límite de documentos de la memoria y la búsqueda no los ve."
+    },
+    "panel": {
+      "registryLabel": "Conexiones, intermediaciones y negocios",
+      "availableContacts": "Contactos disponibles",
+      "availableContactsDetail": "Solo ID anónimo, Lo Que Tengo y Lo Que Necesito",
+      "globalConnections": "Conexiones con la red global",
+      "globalConnectionsDetail": "Con miembros y otros networks autorizados",
+      "opportunities": "Oportunidades encontradas",
+      "opportunitiesDetail": "Conexiones registradas y no descartadas",
+      "intermediations": "Intermediaciones",
+      "intermediationsDetail": "Conexiones con presentación registrada",
+      "dealsInProgress": "Negocios en curso",
+      "dealsInProgressDetail": "En presentación o negociación",
+      "dealsClosed": "Negocios concluidos",
+      "dealsClosedDetail": "Cierres registrados",
+      "commissions": "Comisiones",
+      "commissionsDetail": "En evaluación por la plataforma, sin valor definido",
+      "internalRegistered": "Conexiones internas registradas",
+      "internalRegisteredDetail": "Entre contactos de tu propio network"
+    },
+    "minutes": {
+      "usedThisMonth": "Usados este mes",
+      "usedThisMonthHelp": "Reuniones transcritas y audios de voz desde el día 1.",
+      "monthlyLimit": "Límite mensual",
+      "noMonthlyLimit": "Sin límite mensual",
+      "noMonthlyLimitHelp": "En el plan gratuito, el límite es por reunión.",
+      "dependsOnPayment": "La mensualidad depende de una integración de pago que todavía no existe en la plataforma. No se cobra nada."
+    },
+    "detailLink": {
+      "availableYes": "Disponible para oportunidades de la red: SÍ",
+      "availableNo": "Disponible para oportunidades de la red: NO",
+      "open": "Abrir perfil, sugerencias de la IA, completar por voz e historial"
+    },
+    "meetingProposal": {
+      "pendingAfterCreate": "Al crear el contacto, Lo Que Tengo y Lo Que Necesito quedan esperando tu confirmación en su perfil.",
+      "review": "Revisar en Mi Network Inteligente"
+    },
+    "dashboard": {
+      "minutesLine": "{{usados}} min usados este mes · hasta {{limite}} min por reunión",
+      "expandSoon": "la ampliación depende de una integración futura"
+    }
+  },
+  "oQuePreciso": {
+    "textoExplicativo": "Marca lo que necesitas para crecer, conectar o expandir tus negocios.",
+    "fraseDiscreta": "Cuanto más específico seas, más inteligentes serán tus conexiones.",
+    "demandaN": "Demanda {{n}}",
+    "adicionarDemanda": "Añadir otra demanda",
+    "concluir": "Listo",
+    "editar": "Editar",
+    "remover": "Eliminar",
+    "desmarcarCategoria": "Desmarcar categoría",
+    "sim": "Sí",
+    "nao": "No",
+    "descricaoCurta": "Descríbela con al menos {{minimo}} caracteres.",
+    "servicoObrigatorio": "Elige el servicio o especialista.",
+    "categoriaSemDemanda": "Detalla al menos una demanda: la categoría sola no genera conexiones.",
+    "faltaDetalhar": "Para continuar, detalla: {{categorias}}.",
+    "demandasDetalhadas": "Demandas detalladas: {{n}}",
+    "limiteDaCategoria": "Límite de {{maximo}} demandas por categoría.",
+    "limiteTotal": "Límite de {{maximo}} demandas en total.",
+    "categoriasAnteriores": "Marcadas antes de la nueva lista",
+    "categoriaAntigaSemDetalhe": "Detalla esta categoría para aumentar la precisión de tus conexiones.",
+    "institucionalAviso": "Buscamos conexiones institucionales legítimas y profesionales.",
+    "semDemandaDetalhada": "Sin demanda detallada.",
+    "categorias": {
+      "compradores": {
+        "titulo": "Compradores / Clientes",
+        "descricao": "Encontrar a quien necesita lo que vendo u ofrezco.",
+        "pergunta": "¿Qué deseas vender y a quién necesitas encontrar?",
+        "exemplo": "Ej.: Busco cadenas de farmacias en África interesadas en distribuir productos brasileños."
+      },
+      "distribuidores": {
+        "titulo": "Distribuidores / Representantes",
+        "descricao": "Distribución, representación comercial y canales de venta.",
+        "pergunta": "¿Qué tipo de distribuidor o representante buscas?",
+        "exemplo": "Ej.: Busco un socio para distribuir medicamentos en África Oriental."
+      },
+      "fornecedores": {
+        "titulo": "Proveedores / Fabricantes",
+        "descricao": "Productos, insumos, industria y producción.",
+        "pergunta": "¿Qué necesitas adquirir o producir?",
+        "exemplo": "Ej.: Necesito un fabricante de envases de vidrio con certificación para alimentos."
+      },
+      "parceiros": {
+        "titulo": "Socios Estratégicos",
+        "descricao": "Joint ventures, alianzas, socios y aliados comerciales.",
+        "pergunta": "¿Qué tipo de alianza buscas?",
+        "exemplo": "Ej.: Busco un socio con experiencia en retail para abrir tiendas en el Nordeste de Brasil."
+      },
+      "investidores": {
+        "titulo": "Inversionistas",
+        "descricao": "Inversión, equity, fondos y capital privado.",
+        "pergunta": "¿Qué tipo de inversión buscas?",
+        "exemplo": "Ej.: Busco inversión para ampliar la fábrica y duplicar la capacidad de producción."
+      },
+      "financiamento": {
+        "titulo": "Crédito / Financiamiento",
+        "descricao": "Bancos, líneas de crédito y financiamiento de proyectos.",
+        "pergunta": "¿Qué tipo de financiamiento buscas?",
+        "exemplo": "Ej.: Línea de crédito para capital de trabajo de la exportación de café."
+      },
+      "expansao_internacionalizacao": {
+        "titulo": "Expansión / Internacionalización",
+        "descricao": "Entrar en nuevos estados, países o mercados.",
+        "pergunta": "¿Dónde y cómo deseas expandirte?",
+        "exemplo": "Ej.: Expandir la operación farmacéutica a Mozambique."
+      },
+      "conexoes_institucionais": {
+        "titulo": "Conexiones Institucionales",
+        "descricao": "Entidades, asociaciones, cámaras de comercio e interlocución institucional.",
+        "pergunta": "¿Qué conexión institucional necesitas?",
+        "exemplo": "Ej.: Acercamiento a una cámara de comercio para participar en misiones empresariales en Portugal."
+      },
+      "licencas": {
+        "titulo": "Licencias / Regulación",
+        "descricao": "Licencias, registros, certificaciones y aprobaciones.",
+        "pergunta": "¿Qué licencia, registro, certificación o aprobación necesitas?",
+        "exemplo": "Ej.: Registro de un cosmético en ANVISA para una línea de productos capilares."
+      },
+      "tecnologia": {
+        "titulo": "Tecnología / Innovación",
+        "descricao": "Sistemas, IA, tecnología, innovación y transformación digital.",
+        "pergunta": "¿Qué tecnología o solución buscas?",
+        "exemplo": "Ej.: Sistema de gestión integrado con el comercio electrónico y el inventario."
+      },
+      "especialistas_servicos": {
+        "titulo": "Especialistas / Servicios",
+        "descricao": "Jurídico, tributario, contable, regulatorio, marketing, comercio exterior y otros servicios especializados.",
+        "pergunta": "¿Qué servicio o especialista necesitas contratar?",
+        "exemplo": "Ej.: Busco un despacho de abogados especializado en recuperación de créditos tributarios para la industria en Brasil."
+      },
+      "talentos_equipe": {
+        "titulo": "Talentos / Equipo",
+        "descricao": "Ejecutivos, profesionales y competencias específicas.",
+        "pergunta": "¿Qué profesional o competencia buscas?",
+        "exemplo": "Ej.: Directora comercial con experiencia en exportación a Europa."
+      },
+      "imoveis_estrutura": {
+        "titulo": "Inmuebles / Estructura",
+        "descricao": "Terrenos, inmuebles, plantas industriales, oficinas e infraestructura.",
+        "pergunta": "¿Qué estructura necesitas?",
+        "exemplo": "Ej.: Galpón de 2.000 m² cerca del puerto de Santos para almacenaje."
+      },
+      "logistica_comercio_exterior": {
+        "titulo": "Logística / Comercio Exterior",
+        "descricao": "Transporte, almacenaje, importación, exportación y operaciones internacionales.",
+        "pergunta": "¿Qué operación necesitas viabilizar?",
+        "exemplo": "Ej.: Transporte refrigerado de frutas de Brasil a los Países Bajos."
+      },
+      "midia_visibilidade": {
+        "titulo": "Medios / Visibilidad",
+        "descricao": "Comunicación, eventos, prensa, posicionamiento y divulgación.",
+        "pergunta": "¿Qué tipo de visibilidad buscas?",
+        "exemplo": "Ej.: Divulgación de la marca en eventos de moda en Europa."
+      },
+      "conhecimento_mentoria": {
+        "titulo": "Conocimiento / Mentoría",
+        "descricao": "Especialistas, capacitación, consejo y experiencia.",
+        "pergunta": "¿Qué conocimiento o experiencia buscas?",
+        "exemplo": "Ej.: Mentoría en gobernanza para preparar la empresa para recibir inversionistas."
+      },
+      "outra_necessidade": {
+        "titulo": "Otra necesidad",
+        "descricao": "Describe libremente lo que buscas.",
+        "pergunta": "Cuéntanos exactamente lo que necesitas.",
+        "exemplo": "Ej.: Un espacio para un evento con 200 invitadas en São Paulo."
+      }
+    },
+    "campos": {
+      "produtoOuServico": "Producto o servicio",
+      "tipoDeComprador": "Tipo de comprador/cliente",
+      "setor": "Sector",
+      "paisRegiaoDeInteresse": "País/región de interés",
+      "volumeOuCapacidade": "Volumen o capacidad aproximada, cuando corresponda",
+      "descricao": "Descripción",
+      "produtoServico": "Producto/servicio",
+      "paisRegiao": "País/región",
+      "exclusividade": "Exclusividad",
+      "descricaoDaNecessidade": "Descripción de la necesidad",
+      "produtoInsumo": "Producto/insumo",
+      "quantidadeAproximada": "Cantidad aproximada",
+      "certificacoes": "Certificaciones necesarias, si las hay",
+      "descricaoDetalhada": "Descripción detallada",
+      "valorAproximado": "Monto aproximado",
+      "pais": "País",
+      "estagio": "Etapa del negocio/proyecto",
+      "modalidade": "Modalidad pretendida",
+      "descricaoDoProjeto": "Descripción del proyecto",
+      "finalidade": "Finalidad",
+      "empresaProjeto": "Empresa/proyecto",
+      "prazoDesejado": "Plazo deseado",
+      "paisRegiaoDeDestino": "País/región de destino",
+      "objetivoDaExpansao": "Objetivo de la expansión",
+      "objetivoDaConexao": "Objetivo de la conexión",
+      "tipo": "Tipo",
+      "produtoEmpresa": "Producto/empresa",
+      "orgaoEntidade": "Organismo/entidad, si lo sabes",
+      "descricaoDoServico": "Describe exactamente el servicio que necesitas.",
+      "cargoEspecialidade": "Cargo/especialidad",
+      "localizacao": "Ubicación",
+      "tipoDeParticipacao": "Tipo de participación",
+      "cidade": "Ciudad",
+      "estadoRegiao": "Estado/región",
+      "areaAproximada": "Área aproximada",
+      "origem": "Origen",
+      "destino": "Destino",
+      "area": "Área",
+      "objetivo": "Objetivo",
+      "paisRegiaoSeRelevante": "País/región, si es relevante",
+      "conteExatamente": "Cuéntanos exactamente lo que necesitas."
+    },
+    "opcoes": {
+      "parceiros": {
+        "socio": "Socio",
+        "parceiro_comercial": "Aliado comercial",
+        "joint_venture": "Joint venture",
+        "representacao": "Representación",
+        "distribuicao": "Distribución",
+        "desenvolvimento_de_projeto": "Desarrollo de proyecto",
+        "parceiro_institucional": "Aliado institucional",
+        "outro": "Otro"
+      },
+      "investidores": {
+        "equity": "Equity",
+        "fundo": "Fondo",
+        "investidor_estrategico": "Inversionista estratégico",
+        "outro": "Otro"
+      },
+      "expansao_internacionalizacao": {
+        "vender": "Vender",
+        "distribuir": "Distribuir",
+        "abrir_empresa": "Abrir una empresa",
+        "instalar_operacao": "Instalar una operación",
+        "encontrar_parceiro_local": "Encontrar un socio local",
+        "encontrar_investidores": "Encontrar inversionistas",
+        "importar": "Importar",
+        "exportar": "Exportar",
+        "outro": "Otro"
+      },
+      "conexoes_institucionais": {
+        "associacao_empresarial": "Asociación empresarial",
+        "camara_de_comercio": "Cámara de comercio",
+        "entidade_setorial": "Entidad sectorial",
+        "universidade": "Universidad",
+        "instituicao_financeira": "Institución financiera",
+        "organismo_internacional": "Organismo internacional",
+        "outra_instituicao": "Otra institución"
+      },
+      "tecnologia": {
+        "software": "Software",
+        "inteligencia_artificial": "Inteligencia Artificial",
+        "automacao": "Automatización",
+        "plataforma": "Plataforma",
+        "desenvolvimento": "Desarrollo",
+        "integracao": "Integración",
+        "equipamentos": "Equipos",
+        "healthtech": "Healthtech",
+        "fintech": "Fintech",
+        "outro": "Otro"
+      },
+      "especialistas_servicos": {
+        "juridico": "Jurídico",
+        "tributario": "Tributario",
+        "contabil": "Contable",
+        "regulatorio": "Regulatorio",
+        "comercio_exterior": "Comercio Exterior",
+        "marketing": "Marketing",
+        "tecnologia": "Tecnología",
+        "estrategia": "Estrategia",
+        "financeiro": "Financiero",
+        "recursos_humanos": "Recursos Humanos",
+        "engenharia": "Ingeniería",
+        "arquitetura": "Arquitectura",
+        "outro": "Otro"
+      },
+      "imoveis_estrutura": {
+        "terreno": "Terreno",
+        "escritorio": "Oficina",
+        "loja": "Tienda",
+        "galpao": "Galpón",
+        "planta_industrial": "Planta industrial",
+        "laboratorio": "Laboratorio",
+        "clinica": "Clínica",
+        "centro_de_distribuicao": "Centro de distribución",
+        "outro": "Otro"
+      },
+      "logistica_comercio_exterior": {
+        "importacao": "Importación",
+        "exportacao": "Exportación",
+        "transporte_internacional": "Transporte internacional",
+        "transporte_nacional": "Transporte nacional",
+        "armazenagem": "Almacenaje",
+        "desembaraco_aduaneiro": "Despacho aduanero",
+        "freight_forwarder": "Freight forwarder",
+        "distribuicao": "Distribución",
+        "outro": "Otro"
+      },
+      "midia_visibilidade": {
+        "imprensa": "Prensa",
+        "eventos": "Eventos",
+        "relacoes_publicas": "Relaciones públicas",
+        "posicionamento_de_marca": "Posicionamiento de marca",
+        "influenciadores": "Influencers",
+        "patrocinio": "Patrocinio",
+        "divulgacao_internacional": "Divulgación internacional",
+        "outro": "Otro"
+      }
+    },
+    "legado": {
+      "consultoria": "Consultoría"
     }
   }
 }

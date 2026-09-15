@@ -2,75 +2,92 @@
   "nav": {
     "howItWorks": "仕組み",
     "opportunities": "機会",
-    "security": "セキュリティ",
+    "smartNetwork": "マイ・インテリジェント・ネットワーク",
     "login": "ログイン",
     "startFree": "アカウントを作成",
     "myDashboard": "マイダッシュボード",
     "beta": "ベータ"
   },
   "hero": {
-    "badge": "グローバルな機会のエコシステム",
-    "headline1": "あなたの可能性を解き放つ",
-    "headline2": "志を同じくするメンバーとつながる",
-    "headline3": "あなたのキャリアを加速させる",
-    "headline4": "MMMで成功を掴む",
-    "subtitle": "あなたが誰であるか、何を求めているか、何を提供できるかをお聞かせください。私たちの人工知能があなたのプロフィールを深く分析し、単純なキーワードをはるかに超えた高い実際の適合性を持つリーダーや機会とあなたをつなぎます。",
-    "cta": "プロフィールを作成 →",
-    "ctaSecondary": "詳細を見る",
+    "badge": "メンバー同士の世界的なビジネスネットワーク • 30か国以上 • 無限の可能性",
+    "headline1": "実現するビジネスをつなぐ",
+    "headline2": "インテリジェンス",
+    "subtitle": "あなたが知り合うべき人 — そして、あなたと知り合うべき人を見つけ出すネットワークを想像してみてください。",
+    "globalBefore": "",
+    "globalHighlight": "30か国以上",
+    "globalAfter": "にいるアンバサダーとともに、国境のないグローバルネットワークで、あなたを人、機会、ビジネスにつなげます。",
+    "ai": "私たちのAIは、プロフィール、関心、ニーズ、機会を照らし合わせ、ひとりでは見つけられなかったかもしれない戦略的なつながりを明らかにします。",
+    "hook": "あなたの次の大きなビジネスは、もうここにあるかもしれません。",
+    "discover": "誰と、どこで、どの機会があなたに合うのかを見つけましょう。",
+    "closing": "あなたのBusiness Matchを見つけましょう。",
+    "cta": "BUSINESS MATCHを見つける",
+    "ctaSecondary": "仕組みを見る",
     "motionOn": "モーション オン",
     "motionOff": "モーション オフ",
     "motionTurnOn": "背景のモーションをオンにする",
     "motionTurnOff": "背景のモーションをオフにする"
   },
   "stats": {
-    "users": "ユーザー",
-    "opportunities": "機会",
+    "users": "登録者",
+    "opportunities": "公開中の機会",
     "satisfaction": "満足度",
-    "connections": "つながり"
+    "connections": "成立したつながり",
+    "countries": "参加国"
   },
   "steps": {
     "title": "MMMの仕組み",
     "subtitle": "成功へのシンプルなステップ",
+    "closing": "このネットワークのどこかに、あなたが持つものをまさに探している人がいるかもしれません。",
     "step1": {
-      "title": "プロフィールを作成する",
-      "desc": "あなたのリーダーシップの旅と目標を共有してください。"
+      "eyebrow": "あなたが持つものを、そして求めるものを、世界へ。",
+      "title": "戦略的なプロフィールをつくる",
+      "desc": "数分で、あなたが誰で、何を提供し、何を求めているかを伝えてください。プラットフォームがあなたを知るほど、次のビジネスを生む出会いに近づきます。"
     },
     "step2": {
-      "title": "スマートマッチング",
-      "desc": "私たちのAIがあなたの完璧なつながりを見つけます。"
+      "eyebrow": "ひとりでは見つけられないものを、技術が見つけます。",
+      "title": "知性があなたのために働く",
+      "desc": "あなたがネットワークを広げるあいだ、AIがあなたのプロフィールを人・企業・ニーズ・機会と照らし合わせ、30カ国以上に広がるネットワークの中から戦略的なつながりを見つけ出します。"
     },
     "step3": {
-      "title": "つながり、成長する",
-      "desc": "有意義な関係を築き、あなたの影響力を拡大しましょう。"
+      "eyebrow": "ただのつながりではありません。ビジネスの機会です。",
+      "title": "最良のつながりを見つける",
+      "desc": "あなたが持つもの、必要なもの、探しているものとの相性で選ばれたつながりが届きます。それぞれのつながりが提案された理由がわかり、次の大きなビジネスの扉を開く相手が見つかります。"
     }
   },
   "opportunities": {
-    "title": "あなたのための機会",
-    "subtitle": "あなたの成長を加速させる多様な道",
-    "society": {
-      "label": "社会貢献",
-      "desc": "社会にポジティブな影響を与える機会を発見。"
+    "title": "あなたの次のビジネスは、どこまで広がるでしょうか？",
+    "subtitle": "販売し、事業を広げ、投資し、機会をビジネスへと変えるために、ふさわしい人とつながりましょう — ブラジルで、そして世界で。",
+    "reach": {
+      "city": "あなたの街で",
+      "state": "別の地域で",
+      "country": "別の国で",
+      "markets": "新しい市場で"
     },
-    "investment": {
-      "label": "投資",
-      "desc": "あなたのビジョンをサポートする投資家と出会う。"
+    "internationalize": {
+      "label": "ビジネスを海外へ広げる",
+      "desc": "新しい国への進出、市場へのアクセス、国境を越えた事業拡大のための戦略的なつながりを見つけましょう。"
     },
-    "mentorship": {
-      "label": "メンターシップ",
-      "desc": "経験豊富なメンターから学び、次世代を指導する。"
+    "sellProducts": {
+      "label": "製品を販売する",
+      "desc": "見込み顧客、販売代理店、営業代理人、取引パートナーとあなたの会社をつなぎます。"
     },
-    "partnership": {
-      "label": "パートナーシップ",
-      "desc": "相乗効果を生み出す戦略的パートナーシップを築く。"
+    "sellServices": {
+      "label": "サービスを販売する",
+      "desc": "あなたの専門性を、本当に必要としている人に届けましょう。実際にある、適合するニーズとあなたの提供内容をつなぎます。"
     },
-    "projects": {
-      "label": "プロジェクト",
-      "desc": "革新的なプロジェクトで協力し、あなたの専門知識を披露する。"
+    "findInvestment": {
+      "label": "投資を呼び込む",
+      "desc": "関心、業種、目標が合う投資家と、企業やプロジェクトを結びつけます。"
     },
-    "jobs": {
-      "label": "キャリア機会",
-      "desc": "あなたのスキルと野心に合ったエグゼクティブな役割を見つける。"
-    }
+    "partnerships": {
+      "label": "戦略的パートナーシップを築く",
+      "desc": "新しいビジネスを生み出し、プロジェクトを加速させるための共同経営者、パートナー、補完し合う企業を見つけましょう。"
+    },
+    "findOpportunities": {
+      "label": "機会を見つける",
+      "desc": "あなたが提供できるもの、または探しているものに合うプロジェクト、ニーズ、つながりを発見しましょう。"
+    },
+    "closing": "あなたは行きたい場所を伝えるだけ。そこへ導いてくれる人を、私たちのインテリジェンスが見つけます。"
   },
   "testimonials": {
     "title": "私たちのコミュニティの声",
@@ -88,31 +105,36 @@
       "name": "Camila V.",
       "text": "他の方法では決して見つけられなかった幹部から3つのメンタリング提案を受けました。AIは私が必要としているものを正確に理解していました。"
     },
-    "match": "マッチ度"
+    "match": "相性"
   },
-  "security": {
-    "title": "あなたの安全は私たちの最優先事項です",
-    "subtitle": "信頼とプライバシーのために構築されたプラットフォーム",
-    "encryption": {
-      "title": "エンドツーエンド暗号化",
-      "desc": "あなたのデータは常に保護されています。"
+  "smartNetwork": {
+    "label": "マイ・インテリジェント・ネットワーク",
+    "title": "自分のネットワークにあるすべての機会を覚えていますか？",
+    "subtitle": "どの会議にも、未来の機会が隠れているかもしれません。私たちのインテリジェンスが、あなたが築いた関係の価値を記録し、整理し、つなげます。",
+    "impact": "あなたは、思い出せる以上の機会を知っています。",
+    "record": {
+      "title": "録音して、忘れない",
+      "desc": "10分までの会議を無料で録音・文字起こしし、会話を戦略的な記憶に変えましょう。"
     },
-    "verification": {
-      "title": "厳格なプロファイル認証",
-      "desc": "本物のつながりのみを保証します。"
+    "organize": {
+      "title": "AIが整理します",
+      "desc": "会話から「私は誰か」「持っているもの」「必要なもの」を見つけ出し — まだ足りない情報も示します。"
     },
-    "control": {
-      "title": "あなたのプライバシーを完全に管理",
-      "desc": "誰と何を共有するかを決定します。"
+    "discover": {
+      "title": "自分のネットワークで商機を見つける",
+      "desc": "すでに知っている人たちのニーズと機会を照らし合わせ、見過ごされていたかもしれないつながりを明らかにします。"
     },
-    "rateLimit": {
-      "title": "レート制限",
-      "desc": "攻撃からの保護"
-    }
+    "value": {
+      "title": "ネットワークを価値に変える",
+      "desc": "連絡先を匿名でネットワークの機会に提供し、あなたのつながりが新しいビジネスにつながったときは仲介に参加できます。"
+    },
+    "closingQuestion": "すでに知っている人たちの間に、今どれだけの商機が隠れているでしょうか？",
+    "closingLine": "会議を記憶に。記憶をインテリジェンスに。インテリジェンスをつながりに。そして、つながりをビジネスに。",
+    "cta": "マイ・インテリジェント・ネットワークを有効にする"
   },
   "cta": {
-    "title": "あなたの未来を形作る準備はできていますか？",
-    "subtitle": "今すぐ参加して、あなたのリーダーシップの旅を始めましょう。",
+    "title": "次のつながりを見つける準備はできていますか？",
+    "subtitle": "すでにビジネスのつながりを築いている人たちに加わりましょう",
     "button": "アカウントを作成"
   },
   "footer": {
@@ -193,15 +215,13 @@
       "s5_title": "人生と価値観",
       "s5_sub": "あなたを定義するもの",
       "s6_title": "準備完了！",
-      "s6_sub": "確認してマッチを見つけましょう",
+      "s6_sub": "情報を確認して、つながりを見てみましょう",
       "s7_title": "私は誰か",
       "s7_sub": "職業データとネットワーク",
       "s8_title": "私が持つもの",
       "s8_sub": "利用可能な資産とリソース",
       "s9_title": "私が必要なもの",
-      "s9_sub": "要求とニーズ",
-      "s10_title": "利用規約",
-      "s10_sub": "利用規約を読んで同意してください"
+      "s9_sub": "要求とニーズ"
     },
     "specialties": {
       "tech": "テクノロジー＆ソフトウェア",
@@ -294,7 +314,7 @@
       "home": "ホーム",
       "continue": "続ける",
       "analyzing": "分析中...",
-      "findMatches": "マッチを見つける"
+      "findMatches": "保存してつながりを見る"
     },
     "fields": {
       "displayName": "何と呼ばれたいですか？*",
@@ -431,61 +451,49 @@
       "selectedPlural": "選択済み",
       "selectedF": "選択済み",
       "selectedFPlural": "選択済み"
-    },
-    "terms": {
-      "title": "利用規約と手数料契約",
-      "accept": "利用規約に同意します",
-      "required": "利用規約に同意する必要があります",
-      "clause1_title": "1. 目的",
-      "clause1_text": "MMM は会員同士をつなぐプラットフォームです。関心が補い合う人どうしを引き合わせ、その紹介から生まれた取引を記録します。プラットフォームは取引の当事者ではありません。契約は会員どうしで結ばれます。",
-      "clause2_title": "2. 手数料",
-      "clause2_text": "プラットフォームによる紹介から生まれた取引には、次の条件で MMM への手数料が発生します。",
-      "clause2_item1": "料率は商務部門が案件ごとに定めます;",
-      "clause2_item2": "上限は当該取引の仲介手数料の50%です;",
-      "clause2_item3": "本バージョンでは支払いはプラットフォーム外で行われ、サイトは取引と発生した手数料を記録するのみです。",
-      "clause3_title": "3. 有効期間および変更",
-      "clause3_text": "本文は暫定版であり、法務確認中です。最終版が公開された際にはお知らせし、改めて同意していただきます。本同意の日時と正確な本文は記録されます。"
     }
   },
   "dashboard": {
+    "networkTitle": "今のネットワーク",
+    "networkDesc": "あなたのプロフィールだけでなく、プラットフォーム全体の実数です。",
     "title": "こんにちは",
-    "matches": "あなたのマッチ",
+    "matches": "おすすめのつながり",
     "connections": "つながり",
     "profile": "マイプロフィール",
     "noMatches": "次の大きなつながりの準備はできていますか？",
     "noMatchesDesc": "AIがあなたのプロフィールを6つの次元で分析し、最も高い本当の相性を持つメンバーを見つけます。",
     "redeAutorizandoTitulo": "あなたのつながりは準備中です",
-    "redeAutorizandoDesc": "あなたのプロフィールと相性の良いプロフィールはありますが、マッチは双方がマッチングを許可して初めて表示されます — その方々はまだ許可していません。相性の問題ではありません。少しだけお待ちください。",
+    "redeAutorizandoDesc": "あなたのプロフィールと相性の良いプロフィールはありますが、おすすめのつながりは双方が照合を許可して初めて表示されます — その方々はまだ許可していません。相性の問題ではありません。少しだけお待ちください。",
     "compatibility": "平均スコア",
     "connect": "興味を示す",
-    "dismiss": "マッチを非表示にしました。いつでも新しいマッチを生成できます。",
-    "regenerate": "新しいマッチ",
+    "dismiss": "提案を非表示にしました。いつでも新しい提案を生成できます。",
+    "regenerate": "新しいおすすめのつながりを探す",
     "logout": "サインアウト",
-    "topMatches": "トップマッチ (80%+)",
+    "topMatches": "おすすめのつながり (80%+)",
     "interestSent": "関心を送信しました。配信担当者が相性を確認してから相手に届けます。相手も関心を示した場合にのみ、あなたの名前が表示されます。",
     "interestError": "興味を送信できませんでした。もう一度お試しください。",
-    "connectionAccepted": "つながりが承認されました。お互いの名前が表示されます。",
+    "connectionAccepted": "新しいつながり！お互いの名前が表示されます。",
     "connectionDeclined": "リクエストが拒否されました。",
-    "newMatches_one": "✨ {{count}}件の新しいマッチが見つかりました！",
-    "newMatches_other": "✨ {{count}}件の新しいマッチが見つかりました！",
-    "newMatches_zero": "✨ {{count}}件の新しいマッチが見つかりました！",
-    "newMatches_two": "✨ {{count}}件の新しいマッチが見つかりました！",
-    "newMatches_few": "✨ {{count}}件の新しいマッチが見つかりました！",
-    "newMatches_many": "✨ {{count}}件の新しいマッチが見つかりました！",
-    "analysisDone": "分析完了:今回は新しいマッチはありません。新しいメンバーやプロフィール更新が新しいつながりを生みます。",
+    "newMatches_one": "✨ 新しいおすすめのつながりが{{count}}件見つかりました！",
+    "newMatches_other": "✨ 新しいおすすめのつながりが{{count}}件見つかりました！",
+    "newMatches_zero": "✨ 新しいおすすめのつながりが{{count}}件見つかりました！",
+    "newMatches_two": "✨ 新しいおすすめのつながりが{{count}}件見つかりました！",
+    "newMatches_few": "✨ 新しいおすすめのつながりが{{count}}件見つかりました！",
+    "newMatches_many": "✨ 新しいおすすめのつながりが{{count}}件見つかりました！",
+    "analysisDone": "分析完了:今回は新しいおすすめのつながりはありません。新しいメンバーやプロフィール更新が新しいつながりを生みます。",
     "distribution": "相性の分布",
-    "distributionDesc": "マッチがスコア範囲別にどのように分布しているか",
+    "distributionDesc": "相性の範囲ごとのつながりの提案数",
     "analyzing": "分析中...",
-    "generateMatches": "✨ 分析してマッチを生成する",
+    "generateMatches": "✨ つながりを探す",
     "decline": "拒否",
     "connected": "✓ つながっています",
     "pending": "⏳ 返答待ち",
     "declined": "✕ 未承認",
     "profileComplete": "プロフィール完成度",
     "editProfile": "完全なプロフィールを編集",
-    "reanalyze": "↻ マッチを再分析",
+    "reanalyze": "↻ つながりを再分析",
     "noProfile": "プロフィールが見つかりません",
-    "noProfileDesc": "マッチの受信を開始するためにプロフィールを完成させてください。",
+    "noProfileDesc": "プロフィールを完成させると、おすすめのつながりが届くようになります。",
     "createProfile": "プロフィールを作成",
     "years_one": "{{count}}年",
     "years_other": "{{count}}年",
@@ -494,13 +502,13 @@
     "years_few": "{{count}}年",
     "years_many": "{{count}}年",
     "workStyle": "働き方",
-    "topMatch": "トップマッチ",
+    "topMatch": "ベストなつながり",
     "loading": "ダッシュボードを読み込み中",
     "loadingDesc": "あなたの機会を検索中...",
     "restricted": "アクセス制限",
     "opportunities": "オポチュニティ",
-    "goldBannerTitle": "おめでとうございます！ゴールドシールを受け取りました！",
-    "goldBannerBody": "MMMのゴールドメンバーがあなたにゴールド機関限定シールを授与しました。",
+    "goldBannerTitle": "ゴールドステータスへようこそ！",
+    "goldBannerBody": "MMMのプレミアムカテゴリーであるゴールドステータスが有効になりました。",
     "close": "閉じる",
     "userFallback": "ユーザー",
     "aiPrefix": "AI:",
@@ -550,12 +558,12 @@
     "pendingInvites_two": "未回答の招待 {{count}}件",
     "pendingInvites_few": "未回答の招待 {{count}}件",
     "pendingInvites_many": "未回答の招待 {{count}}件",
-    "greetingUnseen_one": "{{count}}件の新しいマッチ",
-    "greetingUnseen_other": "{{count}}件の新しいマッチ",
-    "greetingUnseen_zero": "{{count}}件の新しいマッチ",
-    "greetingUnseen_two": "{{count}}件の新しいマッチ",
-    "greetingUnseen_few": "{{count}}件の新しいマッチ",
-    "greetingUnseen_many": "{{count}}件の新しいマッチ",
+    "greetingUnseen_one": "{{count}}件の新しいおすすめのつながり",
+    "greetingUnseen_other": "{{count}}件の新しいおすすめのつながり",
+    "greetingUnseen_zero": "{{count}}件の新しいおすすめのつながり",
+    "greetingUnseen_two": "{{count}}件の新しいおすすめのつながり",
+    "greetingUnseen_few": "{{count}}件の新しいおすすめのつながり",
+    "greetingUnseen_many": "{{count}}件の新しいおすすめのつながり",
     "greetingUnseenSuffix": "あなたの確認をお待ちしています",
     "greetingTotal_one": "あなたに適合するオポチュニティが{{count}}件見つかりました",
     "greetingTotal_other": "あなたに適合するオポチュニティが{{count}}件見つかりました",
@@ -563,7 +571,7 @@
     "greetingTotal_two": "あなたに適合するオポチュニティが{{count}}件見つかりました",
     "greetingTotal_few": "あなたに適合するオポチュニティが{{count}}件見つかりました",
     "greetingTotal_many": "あなたに適合するオポチュニティが{{count}}件見つかりました",
-    "greetingWelcome": "MMMへようこそ！下で最初のマッチを生成しましょう",
+    "greetingWelcome": "MMMへようこそ！下で最初のおすすめのつながりを生成しましょう",
     "anonTitle": "ネットワークのメンバー",
     "anonAvatarAlt": "非公開の本人情報",
     "anonListNotice": "プライバシー保護のため、双方が関心を示したときにのみ名前が表示されます。",
@@ -572,7 +580,7 @@
     "acceptReveal": "承認して公開する",
     "acceptRevealHint": "承認すると、お互いの名前が表示されます。",
     "revealedBadge": "本人情報を公開済み",
-    "revealedNote": "双方が関心を示しました。相手にもあなたの名前が表示されます。",
+    "revealedNote": "つながりが生まれました！双方が関心を示しました。相手にもあなたの名前が表示されます。",
     "interestDeclined": "関心は承認されませんでした",
     "interestInReview": "配信担当者が確認中",
     "interestNotForwarded": "関心は届けられませんでした",
@@ -671,7 +679,9 @@
     "dim1": "あなたの主な専門分野",
     "dim2": "あなたが探しているもの",
     "dim3": "価値観と目的",
-    "dim4": "投資能力"
+    "dim4": "投資能力",
+    "badgeTitle": "AIによるつながり",
+    "badgeDesc": "6つの基準で分析"
   },
   "aiSection": {
     "label": "人工知能",
@@ -684,30 +694,39 @@
   },
   "governance": {
     "label": "ガバナンス",
-    "title1": "機関の誠実さを持つ",
-    "title2": "プラットフォーム",
-    "subtitle": "MMMへのアクセスは購入できません。獲得するものです。",
+    "subtitle": "プロフィールを充実させ、可能性を広げ、どこまで進むかを選びましょう。",
     "silver": {
       "title": "シルバーメンバー",
-      "desc": "プラットフォームに登録するすべての方はシルバーメンバーとして参加します。マッチングシステム、公開機会、ネットワーク内の他のメンバーとのつながりへの完全なアクセス。",
-      "access": "登録によるアクセス: コストなし、選考なし"
+      "desc": "充実したプロフィールがあれば、私たちのインテリジェンスはあなたが誰で、何を提供でき、何を求めているのかをより深く理解できます — そして、あなたに提示されるつながりや機会の精度が高まります。",
+      "stage": "充実したプロフィール",
+      "tagline": "より多くの情報。より高い精度。より良いつながり。",
+      "highlight": "戦略的なつながりと、より精度の高いBusiness Matchのための充実したプロフィール。"
     },
     "gold": {
-      "badge": "認定",
       "title": "ゴールドステータス",
-      "desc": "功績によって付与される機関的認定。制限された戦略的機会、国際ミッション、高影響力グループへのアクセス。",
-      "access": "申請、購入、またはサブスクリプションで取得することはできません。プラットフォームのゴールドメンバーによって功績に基づいてのみ付与されます。"
-    },
-    "president": {
-      "title": "ゴールドメンバー",
-      "desc": "ガバナンスの守護者。ゴールドステータスを承認・取り消し、地域リーダーを認定し、戦略的機会を検証します。ネットワークの誠実さを代表します。",
-      "access": "プラットフォーム内で功績に基づいて付与される認定"
+      "desc": "ゴールドステータスは、国内外に広がる私たちのネットワークで、最良の機会、つながり、戦略的な場により近くありたい方のためのプレミアムな体験です。",
+      "stage": "プレミアム体験 + 戦略的アクセス",
+      "tagline": "大きな機会が最初に届く場所へ。",
+      "benefits": {
+        "b1": "厳選された国内外のビジネス機会に、いち早くアクセスできます。",
+        "b2": "ネットワークが提供する戦略的なつながりと機会に、優先的にアクセスできます。",
+        "b3": "ネットワークが主催または厳選する国内外の戦略的な集まりへの招待と参加。",
+        "b4": "ハイレベルな交流の体験と場。",
+        "b5": "ゴールドカテゴリー限定の機会を優先してお知らせします。"
+      },
+      "highlight": "すべての機会が、全員に同時に届くわけではありません。",
+      "closing": "ゴールドとは、つながりと大きなビジネスが生まれる場所に、より近くいること。",
+      "fee": "月額制のプレミアムカテゴリーです。"
     },
     "bronze": {
       "title": "ブロンズメンバー",
-      "desc": "プラットフォームへの新規参加者。公開機会、基本的なマッチング、MMMコミュニティへのアクセス。ネットワークで成長するための出発点。",
-      "access": "登録によるアクセス: すべてのメンバーの初期レベル"
-    }
+      "desc": "あなたはすでにネットワークの一員です。これからプロフィールが充実し、質が高まるほど、私たちのインテリジェンスはあなたに合うつながりを見つけやすくなります。",
+      "stage": "プロフィール作成中",
+      "tagline": "ここが出発点です。",
+      "highlight": "「私は誰か」「持っているもの」「必要なもの」を充実させて、Business Matchの精度を高めましょう。"
+    },
+    "title": "プラットフォームがあなたを知るほど、つながりはより的確になります。",
+    "noFee": "月額料金はありません。プラットフォームは、その仲介によって実際に成立したビジネスに、各取引に適用される条件に従って参加します。"
   },
   "profile": {
     "sections": {
@@ -742,10 +761,10 @@
       "sizeSmall": "小規模企業",
       "sizeMedium": "中規模企業",
       "sizeLarge": "大企業",
-      "cnpj": "CNPJ",
-      "cnpjPlaceholder": "00.000.000/0000-00",
-      "cnpjHint": "ある場合のみ入力してください。",
-      "cnpjInvalid": "有効なCNPJを入力してください。"
+      "registrationNumber": "事業者登録番号",
+      "registrationNumberPlaceholder": "英字と数字のみ",
+      "registrationNumberHint": "MEI、企業、非営利団体は入力必須です。",
+      "registrationNumberRequired": "事業者登録番号を入力してください。"
     }
   },
   "network": {
@@ -1179,7 +1198,8 @@
     "guideline2": "完全かつ正確な情報",
     "guideline3": "確実なリターンを約束する行為",
     "guideline4": "ねずみ講やマルチ商法",
-    "guideline5": "違法な製品やサービス"
+    "guideline5": "違法な製品やサービス",
+    "toastDescriptionTooLong": "説明が長すぎます（最大5000文字、現在{{atual}}文字）"
   },
   "opportunityDetail": {
     "typeOffer": "提供",
@@ -1411,13 +1431,14 @@
     "reprocessError": "ミーティングを再処理できませんでした。",
     "recordingExpiredNoTranscript": "このミーティングに保存された音声はありません。音声の保存期間は最長30日です。",
     "decisionsPaused": "処理が完了すると操作できます。",
-    "storedAudioMissing": "このミーティングの保存された音声が見つかりません。"
+    "storedAudioMissing": "このミーティングの保存された音声が見つかりません。",
+    "audioDurationUnreadable": "この音声の長さを読み取れませんでした。MP3またはM4Aのファイルを送信してください。"
   },
   "connections": {
     "messageSent": "メッセージを送信しました",
     "sendMessageError": "メッセージの送信に失敗しました",
     "goldRestrictedTitle": "ゴールドステータス限定のアクセス",
-    "goldRestrictedDescription": "戦略的つながりは、プラットフォームのゴールドメンバーが功績に基づいて付与する機関的な認定であるゴールドステータスのメンバー限定です。",
+    "goldRestrictedDescription": "戦略的つながりは、月額制のプレミアムカテゴリーであるゴールドステータス限定です。",
     "goldAccessListTitle": "アクセスできるようになるもの：",
     "goldAccessItemMessages": "他のリーダーとのダイレクトメッセージ",
     "goldAccessItemGroups": "分野・国別の戦略グループ",
@@ -1449,19 +1470,20 @@
   "intelligentMatches": {
     "seloMutuo": "↔ 相互のつながり",
     "seloCategoria": "同じカテゴリー",
+    "seloFamilia": "同じ種類のサービス",
     "seloSignificados": "似た意味",
     "seloOfertaProcura": "提供と希望",
     "seloTagExata": "完全一致タグ",
-    "toastRevogado": "許可を取り消しました。マッチングは無効になりました。",
+    "toastRevogado": "許可を取り消しました。照合は無効になりました。",
     "erroRevogar": "取り消せませんでした。",
     "toastRecalculado": "{{total}}件の案件を分析しました。",
-    "erroAtualizarMatches": "マッチを更新できませんでした。",
+    "erroAtualizarMatches": "おすすめのつながりを更新できませんでした。",
     "toastItemRemovido": "項目を削除し、提案を更新しました。",
     "erroRemoverItem": "項目を削除できませんでした。",
     "toastOfertaSalva": "完了しました！提供内容を保存し、提案を更新しました。",
     "toastNecessidadeSalva": "完了しました！ニーズを保存し、提案を更新しました。",
     "erroFormularioIncompleto": "連絡先を選び、項目を記入してください。",
-    "titulo": "スマートコネクション",
+    "titulo": "スマートなつながり",
     "eyebrow": "非公開ネットワーク",
     "subtitulo": "自分の連絡先同士のつながりの機会を見つけましょう。他のユーザーとは何も共有されません。",
     "botaoAtualizar": "提案を更新",
@@ -1502,10 +1524,10 @@
     "botaoDispensar": "却下",
     "statusAceita": "つながりを承認済み",
     "statusDispensada": "却下済み",
-    "autorizadoTexto": "スマートマッチングはあなたにより許可されています",
+    "autorizadoTexto": "スマート照合はあなたにより許可されています",
     "autorizadoDesde": "{{data}}から",
     "botaoRevogar": "許可を取り消す",
-    "avisoRevogar": "マッチングのみが無効になります。連絡先、案件、ミーティングは引き続きご利用いただけます。",
+    "avisoRevogar": "照合のみが無効になります。連絡先、案件、ミーティングは引き続きご利用いただけます。",
     "ocultarHistorico": "非表示",
     "verHistoricoBotao": "表示",
     "registroAutorizacoesLabel": "許可の履歴（{{count}}）",
@@ -1516,6 +1538,62 @@
     "aceitaEm": "承認日：",
     "revogadaEmData": "· {{data}}に取り消し",
     "termoMudouAviso": "· その後、条項が変更されました"
+  },
+  "networkPanel": {
+    "eyebrow": "あなたの非公開ネットワーク",
+    "title": "マイ・インテリジェント・ネットワーク",
+    "subtitle": "あなたは価値あるネットワークを築いてきました。私たちのインテリジェンスが、その価値を忘れないようお手伝いします。",
+    "loading": "読み込み中…",
+    "meetings": "マイミーティング",
+    "meetingsDetail": "文字起こし済み：{{transcritas}}",
+    "contacts": "マイ連絡先",
+    "contactsDetail": "初期設定で非公開",
+    "incomplete": "不足している情報",
+    "incompleteDetail": "情報が足りない連絡先",
+    "internalMatches": "おすすめの内部のつながり",
+    "internalMatchesDetail": "新着：{{novos}}",
+    "internalMatchesNoConsent": "スマートコネクションを有効にすると表示されます",
+    "minutesTitle": "ミーティングの分数",
+    "minutesUsed": "保存中のミーティング",
+    "minutesUsedHelp": "アカウントに残っている文字起こし済みミーティングの合計時間です。",
+    "minutesLimit": "1回あたりの無料上限",
+    "minutesLimitHelp": "録音とアップロードした音声ファイルのそれぞれに適用されます。",
+    "minutesValue": "{{minutos}}分",
+    "moreTime": "もっと時間が必要ですか？ミーティングの分数を増やしましょう。",
+    "moreTimeUnavailable": "月額プランで分数を増やす機能はまだ利用できません。現在、各ミーティングは最大{{minutos}}分です。",
+    "actionsTitle": "ここから始める",
+    "actionRecord": "ミーティングを録音・アップロード",
+    "actionRecordDesc": "1回あたり最大{{minutos}}分。文字起こしと、話に出た連絡先の提案付き。",
+    "consentNotice": "録音の前に、参加者全員の同意を得て、適用されるプライバシー規則を守る責任はあなたにあります。",
+    "actionContacts": "連絡先を整理する",
+    "actionContactsDesc": "あなたの非公開の連絡先です。連絡先がメンバーになったり、プラットフォーム上にプロフィールが作られたりすることはありません。",
+    "actionSearch": "ネットワークを検索",
+    "actionSearchDesc": "「製薬業界に知り合いはいる？」のように、自分の言葉で質問できます。検索対象はあなたのネットワークだけです。",
+    "actionMatches": "ネットワーク内の機会",
+    "actionMatchesDesc": "すでにある連絡先どうしのビジネス提案です。",
+    "incompleteTitle": "情報が不足している連絡先",
+    "alert": "この連絡先をあなたのインテリジェント・ネットワークでもっと役立てるための重要な情報が不足しています。",
+    "alertLabel": "不足している情報",
+    "missing": "不足：",
+    "complete": "情報を補う",
+    "incompleteMore": "{{total}}件中{{mostrados}}件を表示。",
+    "seeAllContacts": "すべての連絡先を見る",
+    "incompleteEmpty": "すべての連絡先で「私は誰か」「持っているもの」「必要なもの」が入力済みです。",
+    "noContacts": "まだ連絡先がありません。ミーティングを録音するか、最初の連絡先を追加してください。",
+    "dashboardCard": "非公開ネットワークのミーティング、連絡先、不足情報、機会。",
+    "open": "開く",
+    "whoAmI": "私は誰か",
+    "statusMissing": "不足",
+    "fields": {
+      "nome": "氏名または会社名",
+      "telefone": "電話番号",
+      "email": "メールアドレス",
+      "tenho": "持っているもの",
+      "preciso": "必要なもの"
+    },
+    "completeByText": "テキストで補う",
+    "completeHint": "下のアシスタントに答えてください。確認した内容だけが保存されます。電話番号とメールアドレスは「編集」でも入力できます。",
+    "contactNotFound": "この連絡先はあなたのネットワークに見つかりません。"
   },
   "inactivityGuard": {
     "warningTitle_one": "⏰ セッションは{{count}}分後に終了します",
@@ -1557,8 +1635,10 @@
       "meetingsDesc": "録音と文字起こし",
       "memory": "AI メモリー",
       "memoryDesc": "あなたの履歴に質問する",
-      "intelligentMatches": "スマートコネクション",
-      "intelligentMatchesDesc": "連絡先どうしのマッチング提案"
+      "intelligentMatches": "スマートなつながり",
+      "intelligentMatchesDesc": "連絡先どうしのつながりの提案",
+      "smartNetwork": "マイ・インテリジェント・ネットワーク",
+      "smartNetworkDesc": "ネットワークのミーティング・連絡先・機会"
     }
   },
   "conta": {
@@ -1582,6 +1662,581 @@
       "confirmar": "完全に削除",
       "excluindo": "削除中...",
       "sucesso": "アカウントとデータを削除しました。"
+    }
+  },
+  "termoGeral": {
+    "etapaTitulo": "一般利用規約",
+    "etapaSubtitulo": "登録を完了するには、お読みのうえ同意してください",
+    "titulo": "一般利用規約・データ保護およびデジタル仲介規約",
+    "versao": "バージョン {{versao}}（{{data}} 公開）",
+    "textoIntegral": "一般利用規約の全文",
+    "avisoIdioma": "本規約はポルトガル語で作成されており、相違がある場合はポルトガル語版が優先されます（第25.6条）。",
+    "aceite": "本一般利用規約・データ保護およびデジタル仲介規約を読み、その全文に同意します。",
+    "obrigatorio": "本規約に同意しないと登録を完了できません。",
+    "carregando": "規約を読み込んでいます…",
+    "erroCarregar": "一般利用規約を読み込めませんでした。",
+    "erroCarregarDica": "何も保存されていません。しばらくしてからもう一度お試しください。",
+    "tentarDeNovo": "再試行",
+    "naoPublicado": "一般利用規約はまだ公開されていません。",
+    "naoPublicadoDica": "規約がないと登録を完了できません。サポートに連絡し、後でもう一度お試しください。入力した内容はこの画面に残っています。",
+    "versaoMudou": "お読みいただいている間に規約が更新されました。新しいバージョンを読み、もう一度同意にチェックしてください。",
+    "erroAceite": "規約への同意を記録できませんでした。何も保存されていません。もう一度お試しください。"
+  },
+  "assistenteTexto": {
+    "gravar": "音声を録音",
+    "gravarDica": "回答を音声で録音します。文字起こしされたテキストが欄に入るので、確認してください。",
+    "parar": "停止して文字起こし",
+    "gravando": "録音中 {{tempo}} / {{limite}}",
+    "transcrevendo": "文字起こし中…",
+    "transcricaoPronta": "音声のテキストを欄に入力しました。次に進む前に確認・編集してください。",
+    "semSuporte": "このブラウザでは音声を録音できません。テキストを入力してください。",
+    "microfoneNegado": "マイクを使用できませんでした。ブラウザの許可設定を確認してください。",
+    "audioVazio": "音声が録音されませんでした。もう一度お試しください。",
+    "audioGrande": "録音が大きすぎます。もっと短く録音してください。",
+    "erroTranscrever": "音声を文字起こしできませんでした。もう一度試すか、テキストを入力してください。",
+    "revisar": "文章を校正",
+    "revisarDica": "内容を変えずに、つづり・文法・句読点を修正します。",
+    "revisando": "校正中…",
+    "sugestaoTitulo": "校正の提案",
+    "sugestaoDica": "つづり・文法・句読点のみです。使う前に確認してください。",
+    "usar": "校正後の文章を使う",
+    "descartar": "破棄",
+    "semCorrecoes": "修正は必要ありません。",
+    "erroRevisar": "現在、文章を校正できません。何も変更されていません。",
+    "revisaoRecusada": "提案が表記以上の変更を含んでいたため破棄しました。何も変更されていません。",
+    "textoCurto": "校正を依頼する前に文章を入力してください。",
+    "muitosPedidos": "連続したリクエストが多すぎます。数分待ってからもう一度お試しください。",
+    "contador": "{{atual}}/{{maximo}}",
+    "textoLongo": "文章が上限の {{maximo}} 文字を超えています。短くしてから次に進んでください。"
+  },
+  "governanca": {
+    "dashboard": {
+      "title": "レベル別メンバー数",
+      "bronze": "ブロンズメンバー",
+      "silver": "シルバーメンバー",
+      "gold": "ゴールドメンバー"
+    },
+    "perfil": {
+      "titulo": "ブロンズメンバー：プロフィールは充実化の途中です",
+      "texto": "プロフィールが充実し、情報の質が高いほど、つながりの精度が上がります。シルバーメンバーになるには、次の項目が必要です：",
+      "prontoParaPrata": "プロフィールはすでにシルバーメンバーの基準を満たしています。プロフィールを保存すると変更が完了します。",
+      "semMensalidade": "ブロンズとシルバーに月額料金はありません。充実したプロフィールを保存すると、自動的にシルバーになります。",
+      "completar": "プロフィールを完成させる",
+      "promovida": "おめでとうございます！充実したプロフィールにより、シルバーメンバーになりました。"
+    },
+    "pendencias": {
+      "nome": "表示名",
+      "cidade": "都市",
+      "atuacao": "あなたの活動分野",
+      "apresentacao": "あなたが誰で何をしているかを伝える、{{minimo}}語以上の自己紹介",
+      "oQueTenho": "「私が持つもの」に1つ以上の項目",
+      "oQuePreciso": "「私が必要なもの」に1つ以上の項目"
+    }
+  },
+  "oQueBusca": {
+    "opcoes": {
+      "expandir_negocio": {
+        "titulo": "事業を拡大したい",
+        "descricao": "新しい市場・都市・国"
+      },
+      "parceiro_estrategico": {
+        "titulo": "戦略的パートナー",
+        "descricao": "共同経営者、商業・機関パートナー"
+      },
+      "investimento_capital": {
+        "titulo": "投資 / 資本",
+        "descricao": "投資家、ファンド、資金へのアクセス"
+      },
+      "clientes_compradores": {
+        "titulo": "顧客 / 購入者",
+        "descricao": "あなたの提供するものを必要とする人"
+      },
+      "fornecedores_produtos": {
+        "titulo": "サプライヤー / 製品",
+        "descricao": "製品、原材料、メーカー、販売代理店"
+      },
+      "internacionalizacao": {
+        "titulo": "海外展開",
+        "descricao": "他の国への進出・拡大"
+      },
+      "conexoes_institucionais": {
+        "titulo": "機関とのつながり",
+        "descricao": "団体、協会、戦略的なネットワーク"
+      },
+      "tecnologia_solucoes": {
+        "titulo": "テクノロジー / ソリューション",
+        "descricao": "事業のための技術、イノベーション、ソリューション"
+      },
+      "talentos_especialistas": {
+        "titulo": "人材 / 専門家",
+        "descricao": "専門職や特定のスキル"
+      },
+      "servico_especializado": {
+        "titulo": "専門サービス",
+        "descricao": "法務、税務、規制対応、マーケティングなど"
+      },
+      "visibilidade_posicionamento": {
+        "titulo": "認知度 / ポジショニング",
+        "descricao": "イベント、メディア、ブランド、戦略的なつながり"
+      },
+      "outra_necessidade": {
+        "titulo": "その他のニーズ",
+        "descricao": "探しているものを具体的に記入してください"
+      }
+    },
+    "outraNecessidadeRotulo": "探しているものを記入してください",
+    "outraNecessidadePlaceholder": "例：果物を輸出するため、サントスの冷蔵倉庫が必要です",
+    "outraNecessidadeObrigatoria": "「その他のニーズ」を選んだ場合は必須です。"
+  },
+  "networkInteligente": {
+    "contact": {
+      "personType": "区分",
+      "personFisica": "個人",
+      "personJuridica": "法人",
+      "personUnknown": "未入力",
+      "anonymousId": "匿名ID",
+      "anonymousIdHelp": "この連絡先はプラットフォーム上でこのIDとして表示されます。IDと「私は誰か」の対応はあなただけが見られます。",
+      "editInNetwork": "マイネットワークで編集",
+      "emptyItems": "まだ登録がありません。",
+      "meetingsTitle": "関連する会議",
+      "meetingsEmpty": "この連絡先に関連する会議はありません。",
+      "topics": "話題：{{lista}}",
+      "connectionsTitle": "コネクションと仲介",
+      "connectionsNoConsent": "この連絡先のコネクションを見るには、スマートコネクションを有効にしてください。",
+      "searchGlobal": "この連絡先のコネクションをグローバルネットワークで探す"
+    },
+    "availability": {
+      "title": "この連絡先をネットワークの機会に公開する",
+      "yes": "はい",
+      "no": "いいえ",
+      "help": "「はい」の場合、プラットフォームが使うのは匿名ID、「持っているもの」、「必要なもの」だけです。氏名、電話番号、メール、音声、文字起こし、個人メモは決して共有されません。許可はいつでも取り消せます。",
+      "saved": "公開設定を更新しました。",
+      "error": "公開設定を更新できませんでした。",
+      "changedAt": "{{data}} に変更"
+    },
+    "suggestions": {
+      "title": "確認待ちのAI提案",
+      "subtitle": "あなたが確認するまで、連絡先には何も追加されません。必要なら確認前に値を修正してください。",
+      "empty": "確認待ちの提案はありません。",
+      "originMeeting": "会議から",
+      "originVoice": "あなたの音声から",
+      "originText": "あなたのテキストから",
+      "confidence": "信頼度 {{pct}}%",
+      "valueLabel": "提案された値",
+      "evidence": "抜粋：「{{trecho}}」",
+      "confirm": "確認",
+      "ignore": "無視",
+      "confirmed": "情報を確認しました。",
+      "ignored": "提案を無視しました。",
+      "error": "判断を保存できませんでした。"
+    },
+    "complete": {
+      "title": "情報を補完する",
+      "byText": "テキストで",
+      "byVoice": "音声で",
+      "textPlaceholder": "知っていることを書いてください：その人や会社が何をしていて、何を提供し、何を探しているか、連絡方法など。",
+      "interpret": "解析する",
+      "interpreting": "解析中…",
+      "created": "確認用の提案を作成しました：{{quantidade}} 件。",
+      "noneCreated": "この内容から新しい情報は見つかりませんでした。AIは話されていないことを補いません。",
+      "error": "現在は解析できません。",
+      "record": "音声を録音（最長2分）",
+      "stop": "停止して送信",
+      "sending": "文字起こしと解析を実行中…",
+      "heard": "理解した内容：「{{texto}}」",
+      "voiceNotStored": "音声は保存されません。文字起こし後に破棄されます。",
+      "micError": "マイクを使用できませんでした。",
+      "unsupported": "このブラウザでは音声を録音できません。"
+    },
+    "timeline": {
+      "title": "関係のメモリー",
+      "subtitle": "非公開のタイムライン：あなただけが見られます。",
+      "created": "連絡先を登録",
+      "meeting": "会議：{{titulo}}",
+      "context": "出会った場所：{{nome}}",
+      "have": "持っているもの：{{valor}}",
+      "need": "必要なもの：{{valor}}",
+      "confirmed": "「私は誰か」を確認：{{valor}}",
+      "availableYes": "ネットワークの機会に公開",
+      "availableNo": "ネットワークへの許可を取り消し",
+      "connection": "プラットフォームがコネクションを記録",
+      "stage": "コネクションの段階：{{etapa}}"
+    },
+    "connections": {
+      "title": "記録されたコネクション",
+      "subtitle": "プラットフォームが見つけたコネクションはすべて、発生元、段階、手数料の状況とともに記録されます。連絡先の身元は保護されたままです。",
+      "empty": "記録されたコネクションはまだありません。",
+      "noConsent": "コネクションを見て記録するには、スマートコネクションを有効にしてください。",
+      "internalAlert": "あなた自身のネットワーク内に機会が見つかりました。",
+      "memberSide": "プラットフォームのメンバー",
+      "contactSide": "別のネットワークの連絡先（{{codigo}}）",
+      "itemLine": "持っている：{{tem}} ・ 必要：{{precisa}}",
+      "registeredAt": "{{data}} に記録",
+      "platformCommission": "プラットフォームの手数料：{{status}}",
+      "originatorCommission": "紹介者としてのあなたの取り分：{{status}}",
+      "discard": "見送る",
+      "stepSaved": "段階を記録しました。",
+      "stepError": "段階を記録できませんでした。",
+      "commissionNotice": "手数料はプラットフォームの商業上・契約上のルールに従い、状況として記録されます。割合、金額、請求が自動で適用されることはありません。",
+      "status": {
+        "identificada": "特定済み",
+        "apresentacao": "紹介済み",
+        "negociacao": "交渉中",
+        "fechada": "成約",
+        "descartada": "見送り"
+      },
+      "origin": {
+        "PLATFORM_MATCH": "プラットフォームのメンバー同士",
+        "NETWORK_PLATFORM_MATCH": "あなたのネットワーク × プラットフォームのメンバー",
+        "PRIVATE_NETWORK_MATCH": "あなたのネットワーク内",
+        "NETWORK_NETWORK_MATCH": "あなたのネットワーク × 別のネットワーク"
+      },
+      "commission": {
+        "sem_negocio": "取引なし",
+        "a_apurar": "確認中",
+        "devida": "対象",
+        "nao_devida": "対象外"
+      },
+      "next": {
+        "apresentacao": "紹介を記録",
+        "negociacao": "交渉を記録",
+        "fechada": "成約を記録"
+      },
+      "closingAwaiting": "成約を確認しました。相手側の確認を待っています。",
+      "discardConfirmTitle": "このコネクションを見送りますか？",
+      "discardConfirmText": "見送りは取り消せません。このコネクションはあなたにとって見送りのままとなり、次の段階に進めることはできなくなります。",
+      "discardConfirmButton": "コネクションを見送る",
+      "discardConfirmCancel": "キャンセル"
+    },
+    "global": {
+      "description": "公開した連絡先は、プラットフォームのメンバーや許可された他のネットワークと照合されます。使われるのは匿名ID、「持っているもの」、「必要なもの」だけです。氏名、電話番号、メール、音声、文字起こし、メモは外に出ません。",
+      "search": "グローバルネットワークでコネクションを探す",
+      "searching": "検索中…",
+      "found": "見つかり記録されたコネクション：{{quantidade}} 件。",
+      "noneFound": "現在、グローバルネットワークとの新しいコネクションはありません。",
+      "noneAvailable": "公開中の連絡先がありません。連絡先を開き、「この連絡先をネットワークの機会に公開する」で「はい」を選んでください。",
+      "error": "現在は検索できません。"
+    },
+    "search": {
+      "title": "マイネットワークのスマート検索",
+      "onlyYourNetwork": "自分の言葉で質問してください。検索対象はあなたの非公開ネットワークだけです。",
+      "placeholder": "例：販売代理店を探している知り合いは誰？",
+      "button": "検索",
+      "searching": "検索中…",
+      "noContacts": "この質問に該当する連絡先はネットワーク内にありませんでした。",
+      "error": "現在は検索できません。",
+      "pending": "ネットワークはまだインデックス作成中です（待機中の記録：{{quantidade}}）。回答が不完全な可能性があります。しばらくしてからもう一度質問してください。",
+      "truncated": "検索対象外の記録：{{quantidade}}。アカウントがメモリの文書上限を超えたため、検索ではそれらを参照できません。"
+    },
+    "panel": {
+      "registryLabel": "コネクション、仲介、取引",
+      "availableContacts": "公開中の連絡先",
+      "availableContactsDetail": "匿名ID、「持っているもの」、「必要なもの」のみ",
+      "globalConnections": "グローバルネットワークとのコネクション",
+      "globalConnectionsDetail": "メンバーや許可された他のネットワークと",
+      "opportunities": "見つかった機会",
+      "opportunitiesDetail": "記録済みで見送られていないコネクション",
+      "intermediations": "仲介",
+      "intermediationsDetail": "紹介が記録されたコネクション",
+      "dealsInProgress": "進行中の取引",
+      "dealsInProgressDetail": "紹介中または交渉中",
+      "dealsClosed": "成約した取引",
+      "dealsClosedDetail": "記録された成約",
+      "commissions": "手数料",
+      "commissionsDetail": "プラットフォームが確認中（金額は未設定）",
+      "internalRegistered": "記録された内部コネクション",
+      "internalRegisteredDetail": "あなた自身のネットワークの連絡先同士"
+    },
+    "minutes": {
+      "usedThisMonth": "今月の使用分",
+      "usedThisMonthHelp": "1日以降に文字起こしした会議と音声メモ。",
+      "monthlyLimit": "月間上限",
+      "noMonthlyLimit": "月間上限なし",
+      "noMonthlyLimitHelp": "無料プランでは、上限は会議ごとに適用されます。",
+      "dependsOnPayment": "月額プランは、まだプラットフォームにない決済連携が必要です。料金は一切発生しません。"
+    },
+    "detailLink": {
+      "availableYes": "ネットワークの機会に公開：はい",
+      "availableNo": "ネットワークの機会に公開：いいえ",
+      "open": "プロフィール、AI提案、音声での補完、履歴を開く"
+    },
+    "meetingProposal": {
+      "pendingAfterCreate": "連絡先を作成すると、「持っているもの」と「必要なもの」はそのプロフィールであなたの確認を待ちます。",
+      "review": "マイ・スマートネットワークで確認"
+    },
+    "dashboard": {
+      "minutesLine": "今月 {{usados}} 分使用 · 会議ごとに最大 {{limite}} 分",
+      "expandSoon": "拡張は今後の連携次第"
+    }
+  },
+  "oQuePreciso": {
+    "textoExplicativo": "ビジネスを成長させ、つながり、拡大するために必要なものを選んでください。",
+    "fraseDiscreta": "具体的であるほど、つながりはより賢くなります。",
+    "demandaN": "ニーズ {{n}}",
+    "adicionarDemanda": "ニーズをもう1件追加",
+    "concluir": "完了",
+    "editar": "編集",
+    "remover": "削除",
+    "desmarcarCategoria": "カテゴリーの選択を解除",
+    "sim": "はい",
+    "nao": "いいえ",
+    "descricaoCurta": "{{minimo}}文字以上で記入してください。",
+    "servicoObrigatorio": "サービスまたは専門家を選んでください。",
+    "categoriaSemDemanda": "ニーズを少なくとも1件詳しく記入してください。カテゴリーだけではつながりは生まれません。",
+    "faltaDetalhar": "続けるには、次の詳細を記入してください：{{categorias}}。",
+    "demandasDetalhadas": "詳細を記入したニーズ：{{n}}",
+    "limiteDaCategoria": "1カテゴリーにつき最大{{maximo}}件です。",
+    "limiteTotal": "合計で最大{{maximo}}件です。",
+    "categoriasAnteriores": "新しいリスト以前に選択した項目",
+    "categoriaAntigaSemDetalhe": "このカテゴリーの詳細を記入すると、つながりの精度が上がります。",
+    "institucionalAviso": "正当かつプロフェッショナルな機関とのつながりを目指します。",
+    "semDemandaDetalhada": "詳細なニーズはありません。",
+    "categorias": {
+      "compradores": {
+        "titulo": "購入者 / 顧客",
+        "descricao": "私が販売・提供するものを必要としている人を見つける。",
+        "pergunta": "何を販売したいですか？ 誰を見つける必要がありますか？",
+        "exemplo": "例：ブラジル製品の販売に関心のあるアフリカの薬局チェーンを探しています。"
+      },
+      "distribuidores": {
+        "titulo": "販売代理店 / 代理人",
+        "descricao": "流通、販売代理、販売チャネル。",
+        "pergunta": "どのような販売代理店・代理人を探していますか？",
+        "exemplo": "例：東アフリカで医薬品を流通させるパートナーを探しています。"
+      },
+      "fornecedores": {
+        "titulo": "サプライヤー / メーカー",
+        "descricao": "製品、原材料、産業、生産。",
+        "pergunta": "何を調達または生産する必要がありますか？",
+        "exemplo": "例：食品向け認証を持つガラス容器メーカーが必要です。"
+      },
+      "parceiros": {
+        "titulo": "戦略的パートナー",
+        "descricao": "合弁事業、アライアンス、共同経営者、ビジネスパートナー。",
+        "pergunta": "どのようなパートナーシップを探していますか？",
+        "exemplo": "例：ブラジル北東部で店舗を開くため、小売経験のある共同経営者を探しています。"
+      },
+      "investidores": {
+        "titulo": "投資家",
+        "descricao": "投資、エクイティ、ファンド、プライベート資本。",
+        "pergunta": "どのような投資を探していますか？",
+        "exemplo": "例：工場を拡張し生産能力を倍増するための投資を探しています。"
+      },
+      "financiamento": {
+        "titulo": "融資 / ファイナンス",
+        "descricao": "銀行、与信枠、プロジェクトファイナンス。",
+        "pergunta": "どのような融資を探していますか？",
+        "exemplo": "例：コーヒー輸出の運転資金のための与信枠。"
+      },
+      "expansao_internacionalizacao": {
+        "titulo": "事業拡大 / 国際展開",
+        "descricao": "新しい州・国・市場に進出する。",
+        "pergunta": "どこで、どのように拡大したいですか？",
+        "exemplo": "例：医薬品事業をモザンビークに拡大する。"
+      },
+      "conexoes_institucionais": {
+        "titulo": "機関とのつながり",
+        "descricao": "団体、協会、商工会議所、機関との対話。",
+        "pergunta": "どのような機関とのつながりが必要ですか？",
+        "exemplo": "例：ポルトガルへのビジネスミッションに参加するため、商工会議所とつながりたい。"
+      },
+      "licencas": {
+        "titulo": "ライセンス / 規制",
+        "descricao": "ライセンス、登録、認証、承認。",
+        "pergunta": "どのライセンス、登録、認証、承認が必要ですか？",
+        "exemplo": "例：ヘアケア製品ラインの化粧品をANVISAに登録する。"
+      },
+      "tecnologia": {
+        "titulo": "テクノロジー / イノベーション",
+        "descricao": "システム、AI、テクノロジー、イノベーション、デジタル変革。",
+        "pergunta": "どのようなテクノロジーやソリューションを探していますか？",
+        "exemplo": "例：ECサイトと在庫に連携した管理システム。"
+      },
+      "especialistas_servicos": {
+        "titulo": "専門家 / サービス",
+        "descricao": "法務、税務、会計、規制対応、マーケティング、貿易、その他の専門サービス。",
+        "pergunta": "どのサービスまたは専門家に依頼する必要がありますか？",
+        "exemplo": "例：ブラジルの製造業向けに税額控除の回収を専門とする法律事務所を探しています。"
+      },
+      "talentos_equipe": {
+        "titulo": "人材 / チーム",
+        "descricao": "経営幹部、専門職、特定のスキル。",
+        "pergunta": "どのような人材やスキルを探していますか？",
+        "exemplo": "例：欧州向け輸出の経験がある営業部長。"
+      },
+      "imoveis_estrutura": {
+        "titulo": "不動産 / 施設",
+        "descricao": "用地、不動産、工場、オフィス、インフラ。",
+        "pergunta": "どのような施設が必要ですか？",
+        "exemplo": "例：サントス港近くの2,000㎡の倉庫（保管用）。"
+      },
+      "logistica_comercio_exterior": {
+        "titulo": "物流 / 貿易",
+        "descricao": "輸送、保管、輸入、輸出、国際オペレーション。",
+        "pergunta": "どのようなオペレーションを実現する必要がありますか？",
+        "exemplo": "例：ブラジルからオランダへの果物の冷蔵輸送。"
+      },
+      "midia_visibilidade": {
+        "titulo": "メディア / 認知度",
+        "descricao": "広報、イベント、プレス、ポジショニング、プロモーション。",
+        "pergunta": "どのような認知度を求めていますか？",
+        "exemplo": "例：ヨーロッパのファッションイベントでのブランド発信。"
+      },
+      "conhecimento_mentoria": {
+        "titulo": "知識 / メンタリング",
+        "descricao": "専門家、研修、助言、経験。",
+        "pergunta": "どのような知識や経験を探していますか？",
+        "exemplo": "例：投資家を迎える準備のためのガバナンスに関するメンタリング。"
+      },
+      "outra_necessidade": {
+        "titulo": "その他のニーズ",
+        "descricao": "探しているものを自由に記入してください。",
+        "pergunta": "必要なものを具体的に教えてください。",
+        "exemplo": "例：サンパウロで招待客200人のイベントを開く会場。"
+      }
+    },
+    "campos": {
+      "produtoOuServico": "製品またはサービス",
+      "tipoDeComprador": "購入者/顧客の種類",
+      "setor": "業界",
+      "paisRegiaoDeInteresse": "関心のある国/地域",
+      "volumeOuCapacidade": "おおよその数量・能力（該当する場合）",
+      "descricao": "説明",
+      "produtoServico": "製品/サービス",
+      "paisRegiao": "国/地域",
+      "exclusividade": "独占契約",
+      "descricaoDaNecessidade": "ニーズの説明",
+      "produtoInsumo": "製品/原材料",
+      "quantidadeAproximada": "おおよその数量",
+      "certificacoes": "必要な認証（ある場合）",
+      "descricaoDetalhada": "詳しい説明",
+      "valorAproximado": "おおよその金額",
+      "pais": "国",
+      "estagio": "事業/プロジェクトの段階",
+      "modalidade": "希望する形態",
+      "descricaoDoProjeto": "プロジェクトの説明",
+      "finalidade": "目的",
+      "empresaProjeto": "企業/プロジェクト",
+      "prazoDesejado": "希望する期間",
+      "paisRegiaoDeDestino": "進出先の国/地域",
+      "objetivoDaExpansao": "拡大の目的",
+      "objetivoDaConexao": "つながりの目的",
+      "tipo": "種類",
+      "produtoEmpresa": "製品/企業",
+      "orgaoEntidade": "機関・団体（わかる場合）",
+      "descricaoDoServico": "必要なサービスを具体的に記入してください。",
+      "cargoEspecialidade": "役職/専門分野",
+      "localizacao": "所在地",
+      "tipoDeParticipacao": "関わり方",
+      "cidade": "都市",
+      "estadoRegiao": "州/地域",
+      "areaAproximada": "おおよその面積",
+      "origem": "出発地",
+      "destino": "到着地",
+      "area": "分野",
+      "objetivo": "目的",
+      "paisRegiaoSeRelevante": "国/地域（関係する場合）",
+      "conteExatamente": "必要なものを具体的に教えてください。"
+    },
+    "opcoes": {
+      "parceiros": {
+        "socio": "共同経営者",
+        "parceiro_comercial": "ビジネスパートナー",
+        "joint_venture": "合弁事業",
+        "representacao": "代理",
+        "distribuicao": "流通",
+        "desenvolvimento_de_projeto": "プロジェクト開発",
+        "parceiro_institucional": "機関パートナー",
+        "outro": "その他"
+      },
+      "investidores": {
+        "equity": "エクイティ",
+        "fundo": "ファンド",
+        "investidor_estrategico": "戦略的投資家",
+        "outro": "その他"
+      },
+      "expansao_internacionalizacao": {
+        "vender": "販売する",
+        "distribuir": "流通させる",
+        "abrir_empresa": "会社を設立する",
+        "instalar_operacao": "拠点を設ける",
+        "encontrar_parceiro_local": "現地パートナーを見つける",
+        "encontrar_investidores": "投資家を見つける",
+        "importar": "輸入する",
+        "exportar": "輸出する",
+        "outro": "その他"
+      },
+      "conexoes_institucionais": {
+        "associacao_empresarial": "経済団体",
+        "camara_de_comercio": "商工会議所",
+        "entidade_setorial": "業界団体",
+        "universidade": "大学",
+        "instituicao_financeira": "金融機関",
+        "organismo_internacional": "国際機関",
+        "outra_instituicao": "その他の機関"
+      },
+      "tecnologia": {
+        "software": "ソフトウェア",
+        "inteligencia_artificial": "人工知能",
+        "automacao": "自動化",
+        "plataforma": "プラットフォーム",
+        "desenvolvimento": "開発",
+        "integracao": "インテグレーション",
+        "equipamentos": "機器",
+        "healthtech": "ヘルステック",
+        "fintech": "フィンテック",
+        "outro": "その他"
+      },
+      "especialistas_servicos": {
+        "juridico": "法務",
+        "tributario": "税務",
+        "contabil": "会計",
+        "regulatorio": "規制対応",
+        "comercio_exterior": "貿易",
+        "marketing": "マーケティング",
+        "tecnologia": "テクノロジー",
+        "estrategia": "戦略",
+        "financeiro": "財務",
+        "recursos_humanos": "人事",
+        "engenharia": "エンジニアリング",
+        "arquitetura": "建築",
+        "outro": "その他"
+      },
+      "imoveis_estrutura": {
+        "terreno": "土地",
+        "escritorio": "オフィス",
+        "loja": "店舗",
+        "galpao": "倉庫",
+        "planta_industrial": "工場",
+        "laboratorio": "研究所・ラボ",
+        "clinica": "クリニック",
+        "centro_de_distribuicao": "物流センター",
+        "outro": "その他"
+      },
+      "logistica_comercio_exterior": {
+        "importacao": "輸入",
+        "exportacao": "輸出",
+        "transporte_internacional": "国際輸送",
+        "transporte_nacional": "国内輸送",
+        "armazenagem": "保管",
+        "desembaraco_aduaneiro": "通関",
+        "freight_forwarder": "フォワーダー",
+        "distribuicao": "流通",
+        "outro": "その他"
+      },
+      "midia_visibilidade": {
+        "imprensa": "プレス",
+        "eventos": "イベント",
+        "relacoes_publicas": "広報（PR）",
+        "posicionamento_de_marca": "ブランドポジショニング",
+        "influenciadores": "インフルエンサー",
+        "patrocinio": "スポンサーシップ",
+        "divulgacao_internacional": "海外プロモーション",
+        "outro": "その他"
+      }
+    },
+    "legado": {
+      "consultoria": "コンサルティング"
     }
   }
 }

@@ -41,12 +41,79 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import mysql from "mysql2/promise";
-import { lerBaseline, compararComBanco } from "./baseline.mjs";
+import { lerBaseline, compararComBanco, valoresDeEnum } from "./baseline.mjs";
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const PASTA = join(AQUI, "..", "drizzle");
 
 const simular = process.argv.includes("--simular");
+
+/**
+ * Nome e colunas (nome -> definição) de um `CREATE TABLE` no formato do
+ * drizzle-kit, ou null se o comando não for um. Aceita CRLF: há migração
+ * versionada com fim de linha do Windows.
+ */
+export function lerCreateTable(comando) {
+  const m = String(comando).match(/^CREATE TABLE\s+`([^`]+)`\s*\(([\s\S]*)\)\s*;?\s*$/i);
+  if (!m) return null;
+  const colunas = new Map();
+  for (const linhaCrua of m[2].split(/\r?\n/)) {
+    const linha = linhaCrua.trim().replace(/,$/, "");
+    const coluna = linha.match(/^`([^`]+)` (.+)$/);
+    if (coluna) colunas.set(coluna[1], coluna[2]);
+  }
+  return { tabela: m[1], colunas };
+}
+
+/**
+ * Decide se um comando que falhou já valia no banco, e a migração pode seguir.
+ *
+ * Coluna ou índice que a migração cria e o banco JÁ TEM: herança da era dos
+ * scripts à mão, que a adoção tolera como extra, ou resto de uma tentativa
+ * anterior que caiu no meio. O estado final é idêntico, então a migração
+ * converge em vez de morrer.
+ *
+ * Tabela que JÁ EXISTE é o mesmo caso, mas só converge conferida: DDL no MySQL
+ * não desfaz com rollback, e um boot que perde a conexão depois do primeiro
+ * CREATE deixa a tabela criada e a migração sem anotar. Sem esta tolerância,
+ * todo deploy seguinte morria no mesmo CREATE até alguém mexer à mão no banco
+ * de produção. A tabela existente precisa ter cada coluna do CREATE (e, nos
+ * enums, cada valor); uma homônima de outro desenho continua parando o boot.
+ *
+ * `consultar` é uma função async (sql, params) => linhas.
+ */
+export async function comandoJaValiaNoBanco(erro, comando, consultar, nomeDoBanco) {
+  if (erro?.code === "ER_DUP_FIELDNAME" || erro?.code === "ER_DUP_KEYNAME") return { converge: true };
+  if (erro?.code !== "ER_TABLE_EXISTS_ERROR") return { converge: false };
+
+  const criacao = lerCreateTable(comando);
+  if (!criacao || !criacao.colunas.size) {
+    return { converge: false, motivo: "a tabela já existe e o comando não é um CREATE TABLE legível para conferir." };
+  }
+  const linhas = await consultar(
+    "SELECT COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?",
+    [nomeDoBanco, criacao.tabela],
+  );
+  const noBanco = new Map(linhas.map(l => [l.COLUMN_NAME, l.COLUMN_TYPE]));
+
+  const faltas = [];
+  for (const [coluna, definicao] of criacao.colunas) {
+    if (!noBanco.has(coluna)) {
+      faltas.push(`coluna ${coluna}`);
+      continue;
+    }
+    const esperado = valoresDeEnum(definicao);
+    if (esperado) {
+      const atual = valoresDeEnum(noBanco.get(coluna));
+      const faltam = [...esperado].filter(v => !atual?.has(v));
+      if (faltam.length) faltas.push(`enum ${coluna} sem ${faltam.join(", ")}`);
+    }
+  }
+  if (faltas.length) {
+    return { converge: false, motivo: `a tabela ${criacao.tabela} já existe com outro desenho (falta: ${faltas.join("; ")}).` };
+  }
+  return { converge: true };
+}
 
 export async function migrar(databaseUrl, { relatarApenas = false } = {}) {
   // O Aiven entrega a URI com ?ssl-mode=REQUIRED, sintaxe do cliente de linha
@@ -141,17 +208,19 @@ export async function migrar(databaseUrl, { relatarApenas = false } = {}) {
         try {
           await conexao.query(comando);
         } catch (erro) {
-          // Coluna ou índice que a migração cria e o banco JÁ TEM: herança da
-          // era dos scripts à mão, que a adoção tolera como extra. O estado
-          // final é idêntico, então a migração converge em vez de morrer —
-          // mesma filosofia do "já havia" do antigo criar-banco para tabelas.
-          if (erro.code === "ER_DUP_FIELDNAME" || erro.code === "ER_DUP_KEYNAME") {
+          // Coluna, índice ou tabela que o banco JÁ TEM (ver comandoJaValiaNoBanco):
+          // o estado final é idêntico, então a migração converge em vez de morrer.
+          const veredito = await comandoJaValiaNoBanco(erro, comando, async (sql, params) => {
+            const [linhas] = await conexao.query(sql, params);
+            return linhas;
+          }, banco);
+          if (veredito.converge) {
             process.stdout.write("(um comando já valia no banco) ");
             continue;
           }
           // DDL no MySQL não desfaz com rollback: parar aqui, sem anotar a
           // migração, é o que permite investigar e rodar de novo depois.
-          console.error(`\n\nFALHOU em ${tag}:\n  ${erro.message}\n  comando: ${comando.slice(0, 160).replace(/\s+/g, " ")}`);
+          console.error(`\n\nFALHOU em ${tag}:\n  ${erro.message}${veredito.motivo ? `\n  ${veredito.motivo}` : ""}\n  comando: ${comando.slice(0, 160).replace(/\s+/g, " ")}`);
           return { ok: false, aplicadas: 0 };
         }
       }

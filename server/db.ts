@@ -18,6 +18,7 @@ import {
   type EnrichmentSession, type EnrichmentMessage, type EnrichmentSuggestion,
   contactAssets, contactNeeds, aiMatchSuggestions,
   meetings, meetingContactSuggestions,
+  networkSugestoes, conexoesParticipantes,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import nodeCrypto from "node:crypto";
@@ -25,6 +26,8 @@ import { slugifyMatchTag } from "./match-service";
 import { normalizar } from "@shared/direcao-do-termo";
 import { BancoIndisponivel } from "./banco-indisponivel";
 import { condicaoDeStatusNasListas } from "./oportunidade-acesso";
+import { consolidarPerfil } from "./perfil-consolidado";
+import { avaliarQualificacaoDoPerfil } from "@shared/qualificacao-do-perfil";
 import { contextoParaOferecer } from "./contexto-oferecido";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -118,7 +121,9 @@ export async function updateUser(id: number, data: Partial<InsertUser>) {
 export async function getUserProfile(userId: number) {
   const db = await exigirDb();
   const rows = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
-  return rows[0] ?? null;
+  // Cargo e empresa saem da coluna que fica, com a antiga só tapando buraco
+  // (etapa 1 da consolidação das colunas duplicadas).
+  return rows[0] ? consolidarPerfil(rows[0]) : null;
 }
 
 // Os mesmos 10 campos da antiga saveUserProfile (matching.ts), que ficou órfã
@@ -309,12 +314,80 @@ export async function grantGoldAccess(grantedTo: number, grantedBy: number, reas
   await db.update(users).set({ role: "gold" }).where(eq(users.id, grantedTo));
 }
 
-export async function revokeGoldAccess(grantedTo: number, revokedBy: number, reason?: string) {
+/**
+ * Revogar o Ouro devolve a pessoa ao nível que o PERFIL sustenta, pela mesma
+ * régua da promoção Bronze → Prata (shared/qualificacao-do-perfil.ts): Prata
+ * se qualificado, Bronze se não. Antes gravava 'silver' sempre, e um cadastro
+ * Bronze que recebeu Ouro (a Gestão Ouro lista Bronze e Prata) virava Prata
+ * sem ter o perfil que a Prata exige. Devolve o nível gravado.
+ */
+export async function revokeGoldAccess(grantedTo: number, revokedBy: number, reason?: string): Promise<"silver" | "bronze"> {
   const db = await exigirDb();
   await db.update(goldAccessGrants)
     .set({ revokedAt: new Date(), revokedBy, revokeReason: reason })
     .where(and(eq(goldAccessGrants.grantedTo, grantedTo)));
-  await db.update(users).set({ role: "silver" }).where(eq(users.id, grantedTo));
+  const { qualificado } = avaliarQualificacaoDoPerfil(await getUserProfile(grantedTo));
+  const nivel = qualificado ? "silver" : "bronze";
+  await db.update(users).set({ role: nivel }).where(eq(users.id, grantedTo));
+  return nivel;
+}
+
+/**
+ * Bronze → Prata pela qualidade do perfil (server/nivel-do-perfil.ts). O UPDATE
+ * leva `role = 'bronze'` no WHERE: se no meio do caminho alguém concedeu Ouro
+ * ou um admin mudou o nível à mão, nada casa e nada muda. Devolve se promoveu.
+ */
+export async function promoverBronzeAPrata(userId: number): Promise<boolean> {
+  const db = await exigirDb();
+  const resultado = await db.update(users).set({ role: "silver" })
+    .where(and(eq(users.id, userId), eq(users.role, "bronze")));
+  return linhasAfetadas(resultado) > 0;
+}
+
+/**
+ * As contas Prata de hoje, para a reavaliação única da Prata automática
+ * (server/nivel-do-perfil.ts, reavaliarPrataAutomaticaAntiga). Para cada uma,
+ * diz se o nível tem ORIGEM REGISTRADA: alguma linha em gold_access_grants
+ * (recebeu Ouro, e a Prata veio da revogação) ou alguma auditoria de
+ * `acoesQueMudamNivel` sobre a conta. Sem origem registrada, a Prata é a que o
+ * cadastro gravava para todas antes de 14/09. Lê só ids: nada pessoal sai daqui.
+ */
+export async function listarPrataParaReavaliacao(
+  acoesQueMudamNivel: readonly string[],
+): Promise<Array<{ id: number; origemRegistrada: boolean }>> {
+  const db = await exigirDb();
+  const prata = await db.select({ id: users.id }).from(users)
+    .where(eq(users.role, "silver")).orderBy(asc(users.id));
+  if (prata.length === 0) return [];
+  const ids = prata.map(p => p.id);
+
+  const comOuro = await db.selectDistinct({ id: goldAccessGrants.grantedTo }).from(goldAccessGrants)
+    .where(inArray(goldAccessGrants.grantedTo, ids));
+  const comMudancaAuditada = acoesQueMudamNivel.length === 0 ? [] : await db
+    .selectDistinct({ id: auditLogs.resourceId }).from(auditLogs)
+    .where(and(
+      eq(auditLogs.resource, "users"),
+      inArray(auditLogs.action, [...acoesQueMudamNivel]),
+      inArray(auditLogs.resourceId, ids.map(String)),
+    ));
+
+  const registradas = new Set<string>([
+    ...comOuro.map(l => String(l.id)),
+    ...comMudancaAuditada.map(l => String(l.id)),
+  ]);
+  return ids.map(id => ({ id, origemRegistrada: registradas.has(String(id)) }));
+}
+
+/**
+ * Prata → Bronze da reavaliação única. O UPDATE leva `role = 'silver'` no
+ * WHERE: se no meio do caminho alguém concedeu Ouro ou mudou o nível à mão,
+ * nada casa e nada muda. Devolve se rebaixou.
+ */
+export async function rebaixarPrataABronze(userId: number): Promise<boolean> {
+  const db = await exigirDb();
+  const resultado = await db.update(users).set({ role: "bronze" })
+    .where(and(eq(users.id, userId), eq(users.role, "silver")));
+  return linhasAfetadas(resultado) > 0;
 }
 
 // ─── Distribuidor do Smart Match ──────────────────────────────
@@ -383,8 +456,10 @@ function projecaoParaAnalise(
     isVerified: conta.isVerified,
     onboardingCompleted: conta.onboardingCompleted,
     displayName: perfil.displayName,
-    company: sql<string | null>`COALESCE(${perfil.company}, ${conta.company})`,
-    jobTitle: sql<string | null>`COALESCE(${perfil.jobTitle}, ${conta.position})`,
+    // A coluna antiga do perfil (preenchida pelo Onboarding até a consolidação)
+    // vem antes da conta: sem ela, quem só respondeu o Onboarding saía sem cargo.
+    company: sql<string | null>`COALESCE(${perfil.company}, ${perfil.currentCompany}, ${conta.company})`,
+    jobTitle: sql<string | null>`COALESCE(${perfil.jobTitle}, ${perfil.currentRole}, ${conta.position})`,
     city: perfil.city,
     country: sql<string | null>`COALESCE(${perfil.country}, ${conta.country})`,
     sector: perfil.sector,
@@ -393,6 +468,8 @@ function projecaoParaAnalise(
     whatIHave: perfil.whatIHave,
     whatINeed: perfil.whatINeed,
     seekingTypes: perfil.seekingTypes,
+    // "Outra necessidade" é necessidade declarada: sem ela o distribuidor via serviço sem demanda num par que o portão liberou por esse texto.
+    seekingOtherNeed: perfil.seekingOtherNeed,
     profileCompleteness: perfil.profileCompleteness,
   };
 }
@@ -601,9 +678,12 @@ export async function markNotificationsRead(userId: number) {
  * as duas precisam das MESMAS condições, senão "Mostrando 100 de N" mente
  * (molde de listPrivateContacts, que já conta com a tag da página).
  */
-function condicoesDeUsuarias(filters: { role?: string; search?: string }) {
+function condicoesDeUsuarias(filters: { role?: string; roles?: string[]; search?: string }) {
   const conditions: any[] = [];
   if (filters.role) conditions.push(eq(users.role, filters.role as any));
+  // Vários níveis de uma vez: a Gestão Ouro lista Bronze E Prata, porque o Ouro
+  // é adesão à categoria premium, não degrau depois da Prata (Governança, 14/09).
+  if (filters.roles && filters.roles.length > 0) conditions.push(inArray(users.role, filters.roles as any));
   if (filters.search) {
     // `%` e `_` são curingas do LIKE: sem escapar, "a_L" casava "abL" e "%"
     // casava todo mundo. O escape é `\` (o padrão do MySQL), e a barra em si
@@ -614,7 +694,7 @@ function condicoesDeUsuarias(filters: { role?: string; search?: string }) {
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
-export async function listUsers(filters: { role?: string; search?: string; limit?: number; offset?: number }) {
+export async function listUsers(filters: { role?: string; roles?: string[]; search?: string; limit?: number; offset?: number }) {
   const db = await exigirDb();
   return db.select({
     id: users.id, name: users.name, email: users.email, role: users.role,
@@ -629,7 +709,7 @@ export async function listUsers(filters: { role?: string; search?: string; limit
 }
 
 /** Quantas usuárias casam com os filtros — o total real, não o tamanho da página. */
-export async function contarUsuarias(filters: { role?: string; search?: string }) {
+export async function contarUsuarias(filters: { role?: string; roles?: string[]; search?: string }) {
   const db = await exigirDb();
   const [row] = await db
     .select({ count: sql<number>`COUNT(*)` })
@@ -942,12 +1022,16 @@ export async function createPrivateContact(
 ): Promise<number> {
   const db = await exigirDb();
   const now = Date.now();
-  const [result] = await db.insert(privateContacts).values({
+  // Meu Network Inteligente (item 13): o contato nasce com o ID anônimo. A
+  // colisão do índice único, rara, grava de novo com outro código.
+  const { comCodigoAnonimo } = await import("./network-codigo-anonimo");
+  const [result] = await comCodigoAnonimo(codigoAnonimo => db.insert(privateContacts).values({
     ...data,
+    codigoAnonimo,
     ownerId,
     createdAt: now,
     updatedAt: now,
-  });
+  }));
   return (result as any).insertId as number;
 }
 
@@ -1095,6 +1179,14 @@ export async function apagarRastroDoContato(
       eq(meetingContactSuggestions.ownerId, ownerId),
       eq(meetingContactSuggestions.existingContactId, contactId),
     ));
+  // Meu Network Inteligente: as pendências da IA sobre a pessoa (Quem Sou, O
+  // Que Tenho, O Que Preciso, com o trecho da fonte) saem com ela. Nas
+  // conexões registradas o ponteiro para o contato é anulado e o ID anônimo
+  // fica: é a prova comercial de que a conexão existiu, sem dado da pessoa.
+  await db.delete(networkSugestoes)
+    .where(and(eq(networkSugestoes.ownerId, ownerId), eq(networkSugestoes.contactId, contactId)));
+  await db.update(conexoesParticipantes).set({ contactId: null, updatedAt: Date.now() })
+    .where(and(eq(conexoesParticipantes.ownerId, ownerId), eq(conexoesParticipantes.contactId, contactId)));
   // O enriquecimento: sugestões apontam o contato direto; as mensagens só
   // conhecem a sessão, então primeiro a lista de sessões, depois as mensagens
   // delas, e as sessões por último — nenhuma ordem deixa órfão se cair no meio.

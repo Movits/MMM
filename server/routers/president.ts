@@ -30,15 +30,17 @@ export const presidentRouter = router({
         await createNotification({
           userId: input.userId,
           type: "gold_granted",
-          title: "⭐ Parabéns, você agora é nível OURO!",
-          body: `Olá${firstName ? ", " + firstName : ""}! Parabéns, você agora é nível OURO! Um Presidente do MMM reconheceu o seu potencial e concedeu a você o Selo de Exclusividade Institucional Ouro. Boas-vindas ao grupo mais seleto da plataforma!`,
+          // Ouro é a categoria premium da rede (Governança, 14/09/2026), não
+          // prêmio por mérito: o texto fala de acesso, não de reconhecimento.
+          title: "⭐ Boas-vindas ao Status Ouro!",
+          body: `Olá${firstName ? ", " + firstName : ""}! Seu Status Ouro está ativo. Você passa a ter acesso em primeira mão a oportunidades selecionadas de negócios nacionais e internacionais e a encontros estratégicos da rede, conforme disponibilidade e regras da plataforma.`,
           actionUrl: "/dashboard",
         });
       } catch (_) { /* não bloquear se notificação falhar */ }
       // Enviar mensagem direta na caixa de mensagens da usuária promovida
       try {
         const { directMessages } = await import("../../drizzle/schema");
-        const goldMsg = `⭐ Parabéns${firstName ? ", " + firstName : ""}! Você acaba de ser promovido ao nível OURO no MMM!\n\nUm membro Ouro do MMM reconheceu o seu potencial e concedeu a você o Selo de Exclusividade Institucional Ouro. A partir de agora você tem acesso completo a todas as funcionalidades da plataforma: Deal Rooms, Conexões Estratégicas, Painel Ouro e muito mais.\n\nMotivo da promoção: ${input.reason || "Promovido pelo Presidente do MMM"}\n\nBoas-vindas ao grupo mais seleto da plataforma! 🌟`;
+        const goldMsg = `⭐ Boas-vindas ao Status Ouro${firstName ? ", " + firstName : ""}!\n\nO Status Ouro é a categoria premium do MMM. A partir de agora você tem acesso em primeira mão a oportunidades selecionadas, a Deal Rooms, Conexões Estratégicas, ao Painel Ouro e aos encontros estratégicos nacionais e internacionais da rede, conforme disponibilidade e regras da plataforma.\n\nObservação: ${input.reason || "Promovido pelo Presidente do MMM"}\n\nEsteja onde as grandes oportunidades chegam primeiro. 🌟`;
         await db.insert(directMessages).values({
           senderId: ctx.user.id, // mensagem enviada pela presidente
           recipientId: input.userId,
@@ -54,19 +56,21 @@ export const presidentRouter = router({
       reason: z.string().min(10).max(500),
     }))
     .mutation(async ({ ctx, input }) => {
-      await revokeGoldAccess(input.userId, ctx.user.id, input.reason);
-      await createAuditLog({ userId: ctx.user.id, action: "PRESIDENT_REVOKE_GOLD", resource: "users", resourceId: String(input.userId), details: { reason: input.reason }, status: "success", riskLevel: "high" });
-      // Notificar a usuária sobre a revogação
+      // O nível de volta sai do perfil (Prata se qualificado, Bronze se não).
+      const novoNivel = await revokeGoldAccess(input.userId, ctx.user.id, input.reason);
+      await createAuditLog({ userId: ctx.user.id, action: "PRESIDENT_REVOKE_GOLD", resource: "users", resourceId: String(input.userId), details: { reason: input.reason, newRole: novoNivel }, status: "success", riskLevel: "high" });
+      // Notificar a usuária sobre a revogação, no mesmo vocabulário da concessão:
+      // Ouro é categoria premium, não selo de reconhecimento.
       try {
         await createNotification({
           userId: input.userId,
           type: "gold_revoked",
-          title: "Selo Ouro revogado",
-          body: `Seu Selo de Exclusividade Institucional Ouro foi revogado por um Presidente do MMM. Motivo: ${input.reason}`,
+          title: "Status Ouro revogado",
+          body: `Seu Status Ouro, a categoria premium do MMM, foi revogado por um Presidente do MMM. Sua conta continua ativa como ${novoNivel === "bronze" ? "Bronze" : "Prata"}. Motivo: ${input.reason}`,
           actionUrl: "/dashboard",
         });
       } catch (_) { /* não bloquear se notificação falhar */ }
-      return { success: true };
+      return { success: true, novoNivel };
     }),
 
   getGoldGrants: presidentProcedure.query(async ({ ctx }) => {
@@ -94,6 +98,9 @@ export const presidentRouter = router({
   listAllUsers: presidentProcedure
     .input(z.object({
       role: z.enum(["bronze", "silver", "gold", "president", "admin"]).optional(),
+      // Vários níveis numa consulta só (a Gestão Ouro lista Bronze e Prata),
+      // com a mesma paginação e o mesmo COUNT da busca por um nível.
+      roles: z.array(z.enum(["bronze", "silver", "gold", "president", "admin"])).min(1).max(5).optional(),
       search: z.string().optional(),
       limit: z.number().int().min(1).max(200).default(100),
       offset: z.number().int().min(0).default(0),

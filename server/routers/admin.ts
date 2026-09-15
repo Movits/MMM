@@ -64,7 +64,7 @@ export const adminRouter = router({
       if (input.role === "gold" && ctx.user.role !== "president" && ctx.user.role !== "gold" && ctx.user.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "O Status Ouro é um reconhecimento institucional. Apenas membros Ouro podem conceder ou revogar este status."
+          message: "O Status Ouro é a categoria premium da rede. Apenas membros Ouro podem conceder ou revogar este status."
         });
       }
 

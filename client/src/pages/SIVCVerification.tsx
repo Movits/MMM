@@ -270,19 +270,24 @@ export default function SIVCVerification() {
             </p>
           </div>
 
-          {/* Níveis */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          {/* Situação da verificação. Não é o nível de membro: Bronze e Prata
+              medem a qualificação do perfil (Governança, 14/09/2026), e a
+              verificação de identidade nunca mudou o nível da conta. */}
+          <div className="grid grid-cols-2 gap-4 mb-3">
             <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-4 text-center">
-              <div className="text-3xl mb-2">🥉</div>
-              <h3 className="font-bold text-white mb-1">Bronze</h3>
-              <p className="text-xs text-zinc-500">Cadastro básico sem comprovação de documentos obrigatórios</p>
+              <div className="text-3xl mb-2">🪪</div>
+              <h3 className="font-bold text-white mb-1">Não verificada</h3>
+              <p className="text-xs text-zinc-500">Cadastro sem comprovação dos documentos obrigatórios</p>
             </div>
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 text-center">
-              <div className="text-3xl mb-2">🥈</div>
-              <h3 className="font-bold text-amber-400 mb-1">Prata</h3>
+              <div className="text-3xl mb-2">✅</div>
+              <h3 className="font-bold text-amber-400 mb-1">Verificada</h3>
               <p className="text-xs text-zinc-400">Identidade verificada e nota de pelo menos 80% nos documentos obrigatórios</p>
             </div>
           </div>
+          <p className="text-xs text-zinc-500 text-center mb-8">
+            A verificação de identidade não muda o seu nível de membro: Bronze e Prata refletem a qualificação do seu perfil.
+          </p>
 
           {/* O que é verificado */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 mb-6">
@@ -293,7 +298,7 @@ export default function SIVCVerification() {
             <div className="space-y-2">
               {[
                 { icon: "🪪", label: "Identidade", desc: "RG, CNH, Passaporte + Comprovante de Endereço", mandatory: true },
-                { icon: "🏢", label: "Corporativo", desc: "CNPJ, Contrato Social, Certidão da Junta", mandatory: false },
+                { icon: "🏢", label: "Corporativo", desc: "Número de Cadastro Empresarial, Contrato Social, Certidão da Junta", mandatory: false },
                 { icon: "💰", label: "Financeiro", desc: "Balanço, DRE, Open Finance", mandatory: false },
                 { icon: "🎓", label: "Acadêmico", desc: "Diplomas, Certificados, Histórico Escolar", mandatory: false },
                 { icon: "🔍", label: "Antecedentes", desc: "Certidões, Sanções, Presença Digital", mandatory: false },
@@ -369,9 +374,10 @@ export default function SIVCVerification() {
           <ScoreRing score={score} size={100} />
           <div className="flex-1 text-center md:text-left">
             <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
-              <span className="text-2xl">{level === "silver" ? "🥈" : "🥉"}</span>
+              {/* `level` é o nome herdado da coluna: aqui mede a verificação, não o nível de membro. */}
+              <span className="text-2xl">{level === "silver" ? "✅" : "🪪"}</span>
               <h2 className="text-xl font-black text-white">
-                Nível {level === "silver" ? "Prata" : "Bronze"}
+                {level === "silver" ? "Identidade verificada" : "Verificação em andamento"}
               </h2>
               {level === "silver" && (
                 <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full px-2 py-0.5">
@@ -394,10 +400,10 @@ export default function SIVCVerification() {
               </div>
             </div>
           </div>
-          {/* Progresso para Prata */}
+          {/* Progresso da verificação */}
           {level !== "silver" && (
             <div className="shrink-0 text-center">
-              <div className="text-xs text-zinc-500 mb-1">Para atingir Prata</div>
+              <div className="text-xs text-zinc-500 mb-1">Para concluir a verificação</div>
               <div className="text-sm text-amber-400 font-semibold">
                 {mandatoryPassed ? `Faltam ${Math.max(0, 80 - Math.round(score))}% no score` : "Complete os módulos obrigatórios"}
               </div>

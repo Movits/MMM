@@ -13,7 +13,22 @@ interface ProtectedRouteProps {
   requireOpportunities?: boolean;
   /** Rota para redirecionar se não autenticado. Padrão: URL de login */
   redirectTo?: string;
+  /**
+   * Deixa entrar quem ainda não concluiu o cadastro. Só a rota /onboarding usa:
+   * é nela que o cadastro termina, com o aceite do Termo Geral de Uso.
+   */
+  permitirCadastroIncompleto?: boolean;
 }
+
+/**
+ * Cadastro não concluído (logo, sem o Termo Geral de Uso aceito) vai para
+ * /onboarding em qualquer rota protegida. A regra de verdade mora no servidor
+ * (server/cadastro-concluido.ts responde PRECONDITION_FAILED); aqui é para a
+ * tela não abrir cheia de erros quando a pessoa digita /dashboard na barra.
+ * `=== false`, como no servidor: sem o campo não há veredito para barrar.
+ */
+const cadastroIncompleto = (user?: { onboardingCompleted?: boolean | null } | null) =>
+  user?.onboardingCompleted === false;
 
 // Hierarquia de acesso
 const isGoldOrAbove = (role?: string) =>
@@ -39,6 +54,7 @@ export default function ProtectedRoute({
   requireGold = false,
   requireOpportunities = false,
   redirectTo,
+  permitirCadastroIncompleto = false,
 }: ProtectedRouteProps) {
   const { user, loading, isAuthenticated, error, refresh } = useAuth();
   const [tentandoDeNovo, setTentandoDeNovo] = useState(false);
@@ -57,6 +73,11 @@ export default function ProtectedRoute({
       return;
     }
 
+    if (!permitirCadastroIncompleto && cadastroIncompleto(user)) {
+      window.location.href = "/onboarding";
+      return;
+    }
+
     if (requireAdmin && user?.role !== "admin") {
       window.location.href = "/404";
       return;
@@ -70,7 +91,7 @@ export default function ProtectedRoute({
     if (requireOpportunities && !canAccessOpportunities(user?.role)) {
       window.location.href = "/dashboard";
     }
-  }, [loading, isAuthenticated, verificacaoFalhou, requireAdmin, requireGold, requireOpportunities, user, redirectTo]);
+  }, [loading, isAuthenticated, verificacaoFalhou, requireAdmin, requireGold, requireOpportunities, permitirCadastroIncompleto, user, redirectTo]);
 
   // Mostrar spinner enquanto verifica autenticação
   if (loading) {
@@ -115,6 +136,11 @@ export default function ProtectedRoute({
 
   // Não renderizar conteúdo se não autenticado (evita flash de conteúdo)
   if (!isAuthenticated) {
+    return null;
+  }
+
+  // Cadastro não concluído: nada da página, só o redirecionamento para /onboarding.
+  if (!permitirCadastroIncompleto && cadastroIncompleto(user)) {
     return null;
   }
 

@@ -16,7 +16,10 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  * - o teto de 3 pedidos aceitos a cada 10 minutos por dona, sem contar recusas;
  * - submitRecording numa reunião que já recebeu áudio dá CONFLICT;
  * - decidir sobre sugestão ou entidade com a reunião em 'processing' dá
- *   CONFLICT, sem criar contato nem atualizar nada.
+ *   CONFLICT, sem criar contato nem atualizar nada;
+ * - a sugestão de contato só é decidida UMA vez: a tomada leva status
+ *   'pending' no WHERE, e o duplo clique ou a aba velha dão CONFLICT sem
+ *   duplicar o contato nem mexer nas pendências do Meu Network Inteligente.
  */
 
 const iniciarReprocessamento = vi.fn();
@@ -28,9 +31,23 @@ const banco = {
   entidade: null as Record<string, unknown> | null,
   sugestao: null as Record<string, unknown> | null,
   statusDaReuniao: "ready",
-  atualizacoes: [] as Array<{ tabela: unknown; valores: Record<string, unknown> }>,
+  atualizacoes: [] as Array<{ tabela: unknown; valores: Record<string, unknown>; sql: string; params: unknown[] }>,
   leituras: [] as Array<{ tabela: unknown; sql: string; params: unknown[] }>,
 };
+
+// O UPDATE da sugestão obedece ao status do WHERE, como o MySQL: com
+// `status = ?` e a sugestão em outro status, 0 linhas e nada muda.
+const CONDICAO_DE_STATUS = "`meeting_contact_suggestions`.`status` = ?";
+function atualizarSugestao(valores: Record<string, unknown>, sql: string, params: unknown[]) {
+  if (!banco.sugestao) return 0;
+  if (sql.includes(CONDICAO_DE_STATUS)) {
+    const exigido = params[sql.slice(0, sql.indexOf(CONDICAO_DE_STATUS)).split("?").length - 1];
+    if (banco.sugestao.status !== exigido) return 0;
+  }
+  if (sql.includes("`meeting_contact_suggestions`.`existing_contact_id` is null") && banco.sugestao.existingContactId != null) return 0;
+  banco.sugestao = { ...banco.sugestao, ...valores };
+  return 1;
+}
 
 const schema = await import("../drizzle/schema");
 // O WHERE de cada leitura, renderizado pelo dialeto do MySQL: prova QUAL reunião
@@ -43,14 +60,16 @@ vi.mock("./db", () => ({
       const { sql, params } = condicao ? dialeto.sqlToQuery(condicao) : { sql: "", params: [] as unknown[] };
       banco.leituras.push({ tabela, sql, params });
       const linhas = tabela === schema.meetingEntities ? (banco.entidade ? [banco.entidade] : [])
-        : tabela === schema.meetingContactSuggestions ? (banco.sugestao ? [banco.sugestao] : [])
+        : tabela === schema.meetingContactSuggestions ? (banco.sugestao ? [{ ...banco.sugestao }] : [])
           : tabela === schema.meetings ? [{ status: banco.statusDaReuniao }]
             : [];
       return { limit: async () => linhas };
     } }) }),
-    update: (tabela: unknown) => ({ set: (valores: Record<string, unknown>) => ({ where: async () => {
-      banco.atualizacoes.push({ tabela, valores });
-      return [{ affectedRows: 1 }];
+    update: (tabela: unknown) => ({ set: (valores: Record<string, unknown>) => ({ where: async (condicao?: SQL) => {
+      const { sql, params } = condicao ? dialeto.sqlToQuery(condicao) : { sql: "", params: [] as unknown[] };
+      banco.atualizacoes.push({ tabela, valores, sql, params });
+      const affectedRows = tabela === schema.meetingContactSuggestions ? atualizarSugestao(valores, sql, params) : 1;
+      return [{ affectedRows }];
     } }) }),
   }),
   createPrivateContact: (...args: unknown[]) => createPrivateContact(...(args as [])),
@@ -65,7 +84,7 @@ vi.mock("./meeting-service", async importOriginal => ({
   processMeetingRecording: (...args: unknown[]) => processMeetingRecording(...(args as [])),
 }));
 
-const { meetingsRouter, esquecerTentativasDeReprocesso, MENSAGEM_REUNIAO_PROCESSANDO } = await import("./routers/meetings");
+const { meetingsRouter, esquecerTentativasDeReprocesso, MENSAGEM_REUNIAO_PROCESSANDO, MENSAGEM_SUGESTAO_JA_DECIDIDA } = await import("./routers/meetings");
 const { ReprocessamentoRecusado, ReuniaoForaDoEstado, ReuniaoTomadaPorOutraExecucao } = await import("./meeting-service");
 
 const ID = "8b1f6a2e-3c4d-4e5f-8a9b-0c1d2e3f4a5b";
@@ -88,7 +107,8 @@ beforeEach(() => {
   createAuditLog.mockClear();
   createPrivateContact.mockClear();
   banco.entidade = { meetingId: "reuniao-da-entidade" };
-  banco.sugestao = { id: ID, meetingId: "reuniao-da-sugestao", fullName: "Ana Souza", jobTitle: null, company: null, phone: null, email: null };
+  banco.sugestao = { id: ID, meetingId: "reuniao-da-sugestao", status: "pending", existingContactId: null, fullName: "Ana Souza", jobTitle: null, company: null, phone: null, email: null };
+  createPrivateContact.mockImplementation(async () => 99);
   banco.statusDaReuniao = "ready";
   banco.atualizacoes = [];
   banco.leituras = [];
@@ -230,5 +250,63 @@ describe("decisões durante o reprocessamento", () => {
     banco.statusDaReuniao = "failed";
     await expect(rota().decideEntity({ entityId: ID, status: "confirmed" })).resolves.toEqual({ success: true });
     expect(banco.atualizacoes).toHaveLength(1);
+  });
+});
+
+describe("meetings.decideContactSuggestion — uma decisão só por sugestão", () => {
+  const atualizacoesDe = (tabela: unknown) => banco.atualizacoes.filter(atualizacao => atualizacao.tabela === tabela);
+
+  it("criar: a sugestão é tomada com status 'pending' no WHERE, o contato nasce e as pendências da IA vão para ele", async () => {
+    await expect(rota().decideContactSuggestion({ suggestionId: ID, action: "create" })).resolves.toEqual({ success: true, contactId: 99 });
+    const [tomada] = atualizacoesDe(schema.meetingContactSuggestions);
+    expect(tomada.sql).toContain(CONDICAO_DE_STATUS);
+    expect(tomada.params).toEqual([ID, "dona-1", "pending"]);
+    expect(banco.sugestao).toMatchObject({ status: "created", existingContactId: 99 });
+    expect(atualizacoesDe(schema.networkSugestoes).map(({ valores }) => valores.contactId)).toEqual([99]);
+  });
+
+  it.each(["create", "ignore"] as const)("sugestão já decidida (aba velha ou API): '%s' dá CONFLICT sem criar contato nem tocar nas pendências", async action => {
+    banco.sugestao = { ...banco.sugestao!, status: "created", existingContactId: 42 };
+    await expect(rota().decideContactSuggestion({ suggestionId: ID, action }))
+      .rejects.toMatchObject({ code: "CONFLICT", message: MENSAGEM_SUGESTAO_JA_DECIDIDA });
+    expect(createPrivateContact).not.toHaveBeenCalled();
+    expect(banco.atualizacoes).toEqual([]);
+    expect(banco.sugestao).toMatchObject({ status: "created", existingContactId: 42 });
+  });
+
+  it("duplo clique simultâneo em 'Criar contato': um só contato, a outra requisição dá CONFLICT e as pendências mudam uma vez", async () => {
+    const resultados = await Promise.all([1, 2].map(() =>
+      rota().decideContactSuggestion({ suggestionId: ID, action: "create" }).then(() => "ok", (erro: { code?: string }) => erro.code)));
+    expect(resultados.sort()).toEqual(["CONFLICT", "ok"]);
+    expect(createPrivateContact).toHaveBeenCalledTimes(1);
+    expect(atualizacoesDe(schema.networkSugestoes)).toHaveLength(1);
+    expect(banco.sugestao).toMatchObject({ status: "created", existingContactId: 99 });
+  });
+
+  it("'Ignorar' que chega depois de 'Criar contato' não ignora as pendências do contato criado", async () => {
+    const [criar, ignorar] = await Promise.allSettled([
+      rota().decideContactSuggestion({ suggestionId: ID, action: "create" }),
+      rota().decideContactSuggestion({ suggestionId: ID, action: "ignore" }),
+    ]);
+    expect(criar.status).toBe("fulfilled");
+    expect(ignorar).toMatchObject({ status: "rejected", reason: { code: "CONFLICT" } });
+    expect(atualizacoesDe(schema.networkSugestoes).map(({ valores }) => valores.status)).toEqual([undefined]);
+    expect(banco.sugestao).toMatchObject({ status: "created", existingContactId: 99 });
+  });
+
+  it("contato não nasceu (erro no INSERT): a sugestão volta a pendente, o erro sobe e as pendências ficam como estavam", async () => {
+    createPrivateContact.mockImplementation(async () => { throw new Error("falha no insert"); });
+    await expect(rota().decideContactSuggestion({ suggestionId: ID, action: "create" })).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+    expect(banco.sugestao).toMatchObject({ status: "pending", existingContactId: null });
+    expect(atualizacoesDe(schema.networkSugestoes)).toEqual([]);
+    // e dá para decidir de novo
+    createPrivateContact.mockImplementation(async () => 99);
+    await expect(rota().decideContactSuggestion({ suggestionId: ID, action: "create" })).resolves.toMatchObject({ contactId: 99 });
+  });
+
+  it("vincular a contato que não é da dona: NOT_FOUND ANTES da tomada, a sugestão continua pendente", async () => {
+    await expect(rota().decideContactSuggestion({ suggestionId: ID, action: "link", contactId: 5 })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(banco.atualizacoes).toEqual([]);
+    expect(banco.sugestao).toMatchObject({ status: "pending" });
   });
 });

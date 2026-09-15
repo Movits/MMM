@@ -6,7 +6,7 @@ import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { generateMatchesForUser, dismissMatch } from "./matching";
-import { users, userProfiles, matches } from "../drizzle/schema";
+import { users, userProfiles, matches, conexoesParticipantes, conexoesRegistradas } from "../drizzle/schema";
 
 /**
  * Prova comportamental contra um banco real DE TESTE: a regeneração faz UPSERT
@@ -73,7 +73,10 @@ describe.skipIf(!temBanco)("Match — regeneração não duplica (integração)"
 });
 
 async function limpar(db: NonNullable<Awaited<ReturnType<typeof getDb>>>) {
+  // A rodada também registra o par como PLATFORM_MATCH (network-registro.ts).
+  await db.delete(conexoesRegistradas).where(eq(conexoesRegistradas.chaveDoPar, `PLATFORM_MATCH|membro:${A}|membro:${B}`));
   for (const id of [A, B]) {
+    await db.delete(conexoesParticipantes).where(eq(conexoesParticipantes.userId, id));
     await db.delete(matches).where(eq(matches.userId, id));
     await db.delete(matches).where(eq(matches.matchedUserId, id));
     await db.delete(userProfiles).where(eq(userProfiles.userId, id));

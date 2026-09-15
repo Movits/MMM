@@ -28,7 +28,7 @@ import { readFile } from "node:fs/promises";
 import mysql from "mysql2/promise";
 
 // Espelha o DOCUMENT_TYPES de server/routers/consent.ts (e o enum do banco).
-const TIPOS = ["termo_smart_match", "acordo_intermediacao", "contrato_comissao", "termo_gravacao", "termo_acesso_ouro"];
+const TIPOS = ["termo_smart_match", "acordo_intermediacao", "contrato_comissao", "termo_gravacao", "termo_acesso_ouro", "termo_geral_de_uso"];
 
 // Provisório, para a mecânica poder ser construída e testada antes do texto
 // jurídico existir. Descreve o que o sistema realmente faz hoje.
@@ -180,6 +180,9 @@ try {
       contrato_comissao: "O Contrato de Comissão",
       termo_gravacao: "O Termo de Gravação de Reuniões",
       termo_acesso_ouro: "O Termo de Acesso Ouro",
+      // Hoje só o cadastro pede este aceite: o aviso no sino levaria a quem já
+      // tem conta a um "/dashboard" sem tela para aceitar. Publique com --sem-aviso.
+      termo_geral_de_uso: "O Termo Geral de Uso, Proteção de Dados e Intermediação Digital",
     };
     await conexao.query(
       "INSERT INTO platform_notifications (userId, type, title, body, actionUrl, isRead) " +
