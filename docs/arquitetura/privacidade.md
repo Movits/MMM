@@ -373,3 +373,12 @@ dois perfis antes da entrega. Registrado em decisoes-em-aberto.md (D7).
 - [ ] Revogar autorização tira o acesso na consulta seguinte
 - [ ] Áudio de reunião e cartões de visita ficam em storage cifrado, com URL
       temporária, não em link público permanente
+- [ ] Áudio de reunião sai do bucket (todas as versões, não só a atual) e de
+      `meeting_recordings` na primeira passada da varredura (de 5 em 5 min) depois
+      de 24 h da transcrição ou da primeira falha; um reprocesso aceito antes do
+      prazo segura o apagamento até terminar ou ser dado como interrompido. A
+      transcrição continua na conta
+- [ ] Excluir a reunião ou a conta tira o áudio do bucket com todas as versões; se
+      o bucket recusar, a linha da gravação fica e a varredura tenta de novo
+- [ ] As versões de áudio escondidas antes do deploy da regra das 24 h, que não têm
+      linha no banco, saíram do B2 (pendência em `docs/deploy.md`)

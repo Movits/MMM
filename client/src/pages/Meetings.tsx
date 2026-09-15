@@ -16,6 +16,12 @@ function formatDuration(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+// O áudio vive só 24 horas depois da transcrição: "até 15/09" sem a hora
+// esconde que ele pode sumir logo de manhã. Data e hora, no idioma da dona.
+function formatarPrazo(ms: number, idioma: string) {
+  return new Date(ms).toLocaleString(idioma, { dateStyle: "short", timeStyle: "short" });
+}
+
 type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 
 function statusLabel(t: TranslateFn, status: string) {
@@ -421,7 +427,7 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
           e o servidor recusaria o pedido. */}
       {recording && !audioGuardadoAusente && recording.expiresAt - Date.now() > LIMITE_PROCESSAMENTO_MS ? (
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-red-100/75">{t("meetings.reprocessHint", { date: new Date(recording.expiresAt).toLocaleDateString(i18n.language) })}</p>
+          <p className="text-sm text-red-100/75">{t("meetings.reprocessHint", { date: formatarPrazo(recording.expiresAt, i18n.language) })}</p>
           <button type="button" onClick={() => reprocessar.mutate({ meetingId })} disabled={reprocessar.isPending}
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#c98f70] px-4 py-2 text-sm font-bold text-[#1a120c] hover:bg-[#efcba8] disabled:opacity-60">
             <RefreshCw size={15} className={reprocessar.isPending ? "animate-spin" : ""}/> {t("meetings.reprocessButton")}
@@ -443,10 +449,24 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
           onLoadedData={() => setFalhaNoAudio(false)}>
           {t("meetings.audioNotSupported")}
         </audio>
+        {/* Em processamento o prazo gravado ainda é provisório: o definitivo
+            nasce na transcrição ou na falha. Mostrar essa data seria prometer
+            uma hora que vai mudar; a tela diz a regra, e inteira, com a falha:
+            um reprocesso também passa por aqui, e se ele falhar de novo o
+            áudio sai 24 horas depois da falha ANTERIOR, não de uma transcrição
+            que não veio. O "·" vem na própria frase, para cada idioma pôr a
+            data onde ela cabe. */}
         {falhaNoAudio
           ? <p className="text-xs text-amber-200/80 mt-2">{t("meetings.audioLoadError")}</p>
-          : <p className="text-xs text-white/45 mt-2">{t("meetings.durationLabel")} {formatDuration(recording.durationSeconds)} · {t("meetings.availableUntil")} {new Date(recording.expiresAt).toLocaleDateString(i18n.language)}</p>}
-      </> : recordingExpired ? (
+          : <p className="text-xs text-white/45 mt-2">{t("meetings.durationLabel")} {formatDuration(recording.durationSeconds)} {emProcessamento ? t("meetings.audioDeadlinePending") : t("meetings.availableUntilAt", { date: formatarPrazo(recording.expiresAt, i18n.language) })}</p>}
+      </> : emProcessamento ? (
+        // Em processamento o servidor esconde o áudio vencido, mas não o apaga:
+        // a execução em curso ainda pode terminar em 'ready' e renovar o prazo,
+        // e o áudio volta a tocar. Dizer ao lado de "Transcrevendo" que ele já
+        // foi apagado, ou que não há áudio, seria falso; o aviso de privacidade
+        // logo abaixo já diz a regra.
+        null
+      ) : recordingExpired ? (
         // "A transcrição continua aqui" só é verdade com transcrição, e numa
         // reunião que falhou antes de guardar o áudio não houve gravação apagada.
         <p className="text-sm text-white/50 mt-3">{transcript ? t("meetings.recordingExpiredNotice") : t("meetings.recordingExpiredNoTranscript")}</p>

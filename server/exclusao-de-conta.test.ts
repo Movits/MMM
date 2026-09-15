@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { and, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { readFileSync } from "node:fs";
@@ -40,7 +40,7 @@ import {
 } from "./exclusao-de-conta";
 import { COLUNAS_DE_USUARIA } from "../scripts/exame/limpeza.mjs";
 import {
-  contextMedia, dealRoomDocuments, dealRooms, loginAttempts, meetingRecordings,
+  contextMedia, dealRoomDocuments, dealRooms, loginAttempts, meetingRecordings, meetings,
   opportunities, opportunityMatches, privateContacts, sivcDocuments, sivcVerifications,
   strategicGroups, users,
 } from "../drizzle/schema";
@@ -203,7 +203,7 @@ beforeEach(() => {
     [sivcVerifications, [{ id: 9 }]],
     [privateContacts, [{ foto: "/manus-storage/contacts/open-7/foto.jpg", cartao: null }]],
     [contextMedia, [{ caminho: "contexts/open-7/ctx/imagem.png", miniatura: "contexts/open-7/ctx/mini.png" }]],
-    [meetingRecordings, [{ chave: "meetings/open-7/reuniao-1/recording.webm" }]],
+    [meetingRecordings, [{ id: "gravacao-1", chave: "meetings/open-7/reuniao-1/recording.webm" }]],
     [sivcDocuments, [{ chave: "sivc/7/9/1234-rg.png" }]],
     [dealRoomDocuments, [{ chave: "deal-rooms/55/1234-planilha.xlsx", sala: 55 }]],
     [strategicGroups, [
@@ -251,6 +251,32 @@ describe("B) excluirConta apaga o que é da conta, na ordem, e nada além", () =
     expect(relatorio.arquivosComFalha).toEqual(["sivc/7/9/1234-rg.png"]);
     expect(relatorio.arquivosApagados).toBeGreaterThan(0);
     expect(delecoes[delecoes.length - 1].tabela).toBe(users);
+    // o documento não é áudio: a linha dele sai com as outras, e as gravações saem inteiras
+    const gravacoes = delecoes.filter(d => d.tabela === meetingRecordings);
+    expect(gravacoes.map(d => d.colunas)).toEqual([["owner_id"]]);
+  });
+
+  it("falha ao apagar o ÁUDIO de uma reunião: a conta sai, mas a linha DESSA gravação fica (filtrada pelo id) para a varredura tentar de novo", async () => {
+    const erros = vi.spyOn(console, "error").mockImplementation(() => {});
+    bucketFalha.add("meetings/open-7/reuniao-1/recording.webm");
+    linhasPorTabela.set(meetingRecordings, [
+      { id: "gravacao-1", chave: "/manus-storage/meetings/open-7/reuniao-1/recording.webm" },
+      { id: "gravacao-2", chave: "meetings/open-7/reuniao-2/recording.webm" },
+    ]);
+
+    const relatorio = await excluirConta(fakeDb, CONTA, { apagarArquivo });
+
+    expect(relatorio.arquivosComFalha).toEqual(["meetings/open-7/reuniao-1/recording.webm"]);
+    const [gravacoes] = delecoes.filter(d => d.tabela === meetingRecordings);
+    // pela dona E fora da gravação que ficou — pelo ID, que casa mesmo com a chave legada em "/manus-storage/"
+    expect(gravacoes.colunas).toEqual(["owner_id", "id"]);
+    expect(gravacoes.sql).toContain("gravacao-1");
+    expect(gravacoes.sql).not.toContain("gravacao-2");
+    // a reunião e o resto saem, e a conta por último
+    expect(delecoes.some(d => d.tabela === meetings)).toBe(true);
+    expect(delecoes[delecoes.length - 1].tabela).toBe(users);
+    // a chave carrega o openId: não vai para o log
+    expect(JSON.stringify(erros.mock.calls)).not.toContain("open-7");
   });
 
   it("o passo de audit_logs preserva as duas ações da decisão de 02/09", async () => {
@@ -291,6 +317,56 @@ describe("B) excluirConta apaga o que é da conta, na ordem, e nada além", () =
     expect(relatorio.linhasApagadas).toBeGreaterThan(0);
     expect(relatorio.passos.map(p => p.nome)).toContain("users.id + users.openId");
     expect(relatorio.passos.every(p => p.linhas > 0)).toBe(true);
+  });
+});
+
+// ═══════ B1) sem apagador injetado: o ÁUDIO sai com todas as versões ══════════
+// O bucket de verdade (storage.ts) é dublado só aqui: os outros testes injetam
+// o apagador. O B2 guarda versões, e o DELETE simples só esconderia a voz das
+// participantes; fotos, contextos, SIVC e sala seguem com storageDelete (F11).
+const bucketDaConta = vi.hoisted(() => ({ comVersoes: [] as string[], simples: [] as string[], listagemFalha: false }));
+vi.mock("./storage", async importOriginal => ({
+  ...await importOriginal<typeof import("./storage")>(),
+  storageApagarTodasAsVersoes: async (chave: string) => {
+    bucketDaConta.comVersoes.push(chave);
+    // Um 503 passageiro na listagem das versões: o arquivo foi escondido, mas a voz ficou.
+    if (bucketDaConta.listagemFalha) throw new Error("ServiceUnavailable");
+  },
+  storageDelete: async (chave: string) => { bucketDaConta.simples.push(chave); },
+}));
+
+describe("B1) sem apagador injetado, o áudio de reunião sai do bucket com todas as versões", () => {
+  beforeEach(() => {
+    bucketDaConta.comVersoes.length = 0;
+    bucketDaConta.simples.length = 0;
+    bucketDaConta.listagemFalha = false;
+  });
+
+  it("as chaves de meeting_recordings vão para storageApagarTodasAsVersoes; as outras seguem com storageDelete", async () => {
+    const relatorio = await excluirConta(fakeDb, CONTA);
+
+    expect(bucketDaConta.comVersoes).toEqual(["meetings/open-7/reuniao-1/recording.webm"]);
+    expect([...bucketDaConta.simples].sort()).toEqual([
+      "contacts/open-7/foto.jpg", "contexts/open-7/ctx/imagem.png", "contexts/open-7/ctx/mini.png",
+      "deal-rooms/55/1234-planilha.xlsx", "sivc/7/9/1234-rg.png",
+    ]);
+    expect(relatorio.arquivosComFalha).toEqual([]);
+    expect(relatorio.arquivosApagados).toBe(6);
+  });
+
+  it("o expurgo das versões falha: a chave volta no relatório, a linha da gravação fica (sem reunião, a varredura tenta de novo) e a conta sai", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    bucketDaConta.listagemFalha = true;
+
+    const relatorio = await excluirConta(fakeDb, CONTA);
+
+    expect(relatorio.arquivosComFalha).toEqual(["meetings/open-7/reuniao-1/recording.webm"]);
+    expect(relatorio.arquivosApagados).toBe(5);
+    const [gravacoes] = delecoes.filter(d => d.tabela === meetingRecordings);
+    expect(gravacoes.colunas).toEqual(["owner_id", "id"]);
+    expect(gravacoes.sql).toContain("gravacao-1");
+    expect(delecoes.some(d => d.tabela === meetings)).toBe(true);
+    expect(delecoes[delecoes.length - 1].tabela).toBe(users);
   });
 });
 
