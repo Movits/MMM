@@ -917,6 +917,8 @@
     "salvando": "Enregistrement...",
     "botaoSalvar": "✓ Enregistrer",
     "vincularContatoTitulo": "Lier un contact",
+    "editarVinculoTitulo": "Modifier le lien",
+    "badgeJaVinculado": "Déjà lié",
     "toastVinculadoSucesso": "Lien de {{name}} avec {{context}} créé !",
     "toastVinculoAtualizado": "Lien de {{name}} avec {{context}} mis à jour.",
     "toastErroVincular": "Erreur lors de la liaison : {{message}}",

@@ -52,8 +52,13 @@ const aplicar = args.includes("--aplicar");
 const soModelo = args.includes("--modelo");
 const posEnv = args.indexOf("--env");
 // O caminho da planilha é o primeiro argumento que não é opção — e não pode ser
-// o valor de `--env`.
-const caminho = args.find((a, i) => !a.startsWith("--") && i !== posEnv + 1);
+// o valor de `--env`. Quando `--env` NÃO aparece, posEnv é -1 e posEnv+1 vira 0
+// — exatamente o índice onde a planilha fica quando é o primeiro argumento.
+// Sem o `posEnv < 0`, isso descartava a própria planilha e o script recusava
+// com "Uso:" mesmo com tudo certo. Achado ao rodar de verdade sem --env,
+// usando só DATABASE_URL do ambiente (a forma que o comentário do topo do
+// arquivo descreve como válida).
+const caminho = args.find((a, i) => !a.startsWith("--") && (posEnv < 0 || i !== posEnv + 1));
 const caminhoDoLog = (args.find(a => a.startsWith("--log=")) || "").slice("--log=".length)
   || `importacao-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
 

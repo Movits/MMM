@@ -164,6 +164,51 @@ function temCartaoPendente(rows: MensagemDoServidor[]) {
   return rows.some(m => m.suggestions?.some(s => s.status === "pending"));
 }
 
+// ─── Oferta de criar o contexto ───────────────────────────────────────────────
+// A resposta de "como se conheceram" não casou com contexto nenhum e ficou só
+// na nota. Criar o contexto é decisão da dona: só "Criar" chama o servidor, e
+// "Agora não" some com a pergunta sem gravar nada. Componente próprio para a
+// mutação só existir enquanto a pergunta está na tela.
+function OfertaDeContexto({ oferta, onCriado, onFechar }: {
+  oferta: { suggestionId: string; nome: string };
+  onCriado: () => void;
+  onFechar: () => void;
+}) {
+  const criarMut = trpc.enrichment.createSuggestedContext.useMutation({
+    onSuccess: r => {
+      toast.success(r.resultado === "criado"
+        ? `Contexto "${r.nome}" criado e vinculado ao contato.`
+        : `O contexto "${r.nome}" já existia: o contato foi vinculado a ele.`);
+      onCriado();
+    },
+    onError: e => {
+      // Já aceita em outra aba, desfeita, ou o contato saiu: não há o que insistir.
+      if (e.data?.code === "NOT_FOUND") {
+        toast.info("Esse contexto não pode mais ser criado por aqui.");
+        onFechar();
+        return;
+      }
+      toast.error("Não consegui criar o contexto. Tente de novo.");
+    },
+  });
+
+  return (
+    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-3">
+      <p className="text-sm text-white/85 mb-2">Criar o contexto “{oferta.nome}”?</p>
+      <div className="flex gap-2">
+        <Button size="sm" onClick={() => criarMut.mutate({ suggestionId: oferta.suggestionId })} disabled={criarMut.isPending}
+          className="h-7 px-3 text-xs bg-amber-500 hover:bg-amber-400 text-[#151312]">
+          {criarMut.isPending ? "Criando..." : "Criar"}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onFechar} disabled={criarMut.isPending}
+          className="h-7 px-3 text-xs text-white/50 hover:text-white/80">
+          Agora não
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export function EnrichmentChat({ contactId, contactName }: { contactId: number; contactName: string }) {
   const [expanded, setExpanded] = useState(true);
@@ -173,6 +218,9 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
   const [isComplete, setIsComplete] = useState(false);
   const [completionSummary, setCompletionSummary] = useState<string | null>(null);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  // "Criar o contexto X?": só na tela. Fechar o chat sem responder vale como
+  // "Agora não" — a resposta já está na nota do contato.
+  const [ofertaDeContexto, setOfertaDeContexto] = useState<{ suggestionId: string; nome: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const handledSuggestionIds = useRef(new Set<string>());
   const utils = trpc.useUtils();
@@ -314,6 +362,11 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
     onSuccess: (data, { suggestionId }) => {
       marcarSugestao(suggestionId, "applied");
       toast.success("Informação salva no perfil!");
+      // "Como se conheceram" que não casou com contexto nenhum: o servidor não
+      // criou nada, só devolveu o nome para perguntar.
+      if ("contextoParaCriar" in data && data.contextoParaCriar) {
+        setOfertaDeContexto({ suggestionId, nome: data.contextoParaCriar });
+      }
       // A etapa de lista pode ter vários cartões: a digitação só volta quando
       // o servidor diz que não sobrou nenhum — é ele quem conta.
       setAwaitingConfirmation(data.pendentesRestantes > 0);
@@ -448,6 +501,16 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
                 onIgnore={handleIgnore} />
             ))}
             {sendMut.isPending && <ThinkingIndicator />}
+
+            {ofertaDeContexto && (
+              <OfertaDeContexto oferta={ofertaDeContexto}
+                onCriado={() => {
+                  setOfertaDeContexto(null);
+                  void utils.contexts.listByContact.invalidate({ contactId });
+                  sincronizarDepoisDoServidor();
+                }}
+                onFechar={() => setOfertaDeContexto(null)} />
+            )}
 
             {/* Resumo de conclusão */}
             {isComplete && completionSummary && (
