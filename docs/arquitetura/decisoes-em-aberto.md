@@ -294,12 +294,25 @@ Perguntas:
 2. O distribuidor recebe e-mail além do sino? Hoje é só o sino, e um pedido pode
    esperar dias sem ninguém abrir o Painel Ouro.
 3. Um pedido `not_forwarded` pode ser reconsiderado? Hoje não: a solicitante vê
-   "não encaminhado" e o par fica fechado. Se a outra pessoa clicar depois, nada
-   acontece (a resposta de `send` é a mesma de sempre) — limite conhecido.
+   "não encaminhado" e não pode pedir de novo. Se a outra pessoa clicar depois, o
+   clique vira um pedido novo dela, analisado pelos próprios méritos (responder
+   "nada" deixaria o cartão parado, e isso denunciaria a recusa).
 4. Com mais de um distribuidor, a fila é uma só. Atribuir por região/setor?
 
-Pendência técnica ligada: índice único no par de `connections` (exige colunas de
-par ordenado e backfill; hoje a trava contra dupla revelação é o status no WHERE).
+Pendência técnica ligada: índice único em `connections`, mas NÃO no par sem ordem.
+Desde a #115 o par pode ter duas linhas de propósito (o pedido `not_forwarded` de uma
+pessoa e, depois, o pedido novo da outra), e um índice único no par quebraria esse
+fluxo. O que cabe é único por direção (`requesterId`, `recipientId`): o código já não
+insere segunda linha da mesma pessoa no par (`sendConnectionRequest`), e o índice
+fecharia a corrida de dois cliques simultâneos DELA (clique duplo, duas abas). Ele não
+fecha a corrida cruzada: as duas pessoas clicando uma na outra ao mesmo tempo geram
+uma linha em cada direção, e o índice por direção aceita as duas; para esse caso seria
+preciso serializar o clique no par. Exige migração (fora do congelamento de
+16/09/2026) e conferir antes se há duplicatas antigas. Hoje: a trava contra dupla
+revelação é o status no WHERE; o botão "Demonstrar Interesse" fica desabilitado
+enquanto o clique está a caminho; e o cartão e a aba Conexões escolhem a linha do par
+pelo estado (`linhaVisivelDoPar`), para uma duplicata não esconder a conexão aceita
+nem o pedido que a pessoa precisa responder (revisão da #115).
 
 ---
 

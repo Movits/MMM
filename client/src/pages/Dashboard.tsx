@@ -257,8 +257,10 @@ type MatchData = {
   displayName: string | null;
 };
 
-function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, index }: {
+function MatchCard({ match, onInterest, enviandoInteresse, onDismiss, onResponder, onVerConexoes, index }: {
   match: MatchData; onInterest: (matchId: number) => void;
+  // O clique deste cartão ainda está a caminho do servidor.
+  enviandoInteresse: boolean;
   onDismiss: (mid: number) => void;
   onResponder: (connectionId: number, accept: boolean) => void;
   onVerConexoes: () => void; index: number;
@@ -434,9 +436,13 @@ function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, i
                     : t("dashboard.interestDeclined")}
             </button>
           ) : (
+            // Travado enquanto o clique está a caminho: o servidor lê o par antes de
+            // gravar e não há índice único nele, então um clique duplo rápido criava
+            // duas linhas do mesmo pedido.
             <button
               onClick={() => onInterest(match.matchId)}
-              className="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-md shadow-[#c98f70]/15">
+              disabled={enviandoInteresse}
+              className="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-md shadow-[#c98f70]/15 disabled:opacity-60">
               {t("dashboard.connect")}
             </button>
           )}
@@ -861,7 +867,9 @@ export default function Dashboard() {
   const interestMutation = trpc.connections.send.useMutation({
     // `matchesQuery` também: o estado do cartão ("em análise") vem do servidor,
     // e sem este refetch o botão continuava "Demonstrar Interesse" até o F5.
-    onSuccess: () => { toast.success(t("dashboard.interestSent")); connectionsQuery.refetch(); matchesQuery.refetch(); },
+    // `revelou`: o clique completou um par já encaminhado e os nomes aparecem agora —
+    // dizer que "um distribuidor confere antes" seria falso com o nome já na tela.
+    onSuccess: (r) => { toast.success(r.revelou ? t("dashboard.connectionAccepted") : t("dashboard.interestSent")); connectionsQuery.refetch(); matchesQuery.refetch(); },
     onError: (err) => toast.error(err.message || t("dashboard.interestError")),
   });
   const respondMutation = trpc.connections.respond.useMutation({
@@ -1075,6 +1083,7 @@ export default function Dashboard() {
                     {matches.map((match, i) => (
                       <MatchCard key={match.matchId} match={match} index={i}
                         onInterest={(matchId) => interestMutation.mutate({ matchId })}
+                        enviandoInteresse={interestMutation.isPending && interestMutation.variables?.matchId === match.matchId}
                         onResponder={(connectionId, accept) => respondMutation.mutate({ connectionId, accept })}
                         onVerConexoes={() => switchTab("connections")}
                         onDismiss={(mid) => dismissMutation.mutate({ matchId: mid })} />
@@ -1104,7 +1113,9 @@ export default function Dashboard() {
                   </button>
                 </div>
               ) : connections.map((conn, i) => (
-                <div key={conn.id}
+                // A chave é a posição: o servidor só manda o id da conexão no pedido
+                // que ela responde (o id sequencial contava quem clicou primeiro).
+                <div key={i}
                   style={{
                     opacity: 1,
                     animation: `fadeInScale 0.35s cubic-bezier(0.23,1,0.32,1) ${i * 0.06}s both`,
@@ -1128,13 +1139,13 @@ export default function Dashboard() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {conn.status === "pending" && conn.souDestinataria ? (
+                    {conn.status === "pending" && conn.souDestinataria && conn.id !== null ? (
                       <>
-                        <button onClick={() => respondMutation.mutate({ connectionId: conn.id, accept: true })}
+                        <button onClick={() => respondMutation.mutate({ connectionId: conn.id!, accept: true })}
                           className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-400 hover:bg-emerald-500 text-black transition-all duration-200 active:scale-95">
                           {t("dashboard.acceptReveal")}
                         </button>
-                        <button onClick={() => respondMutation.mutate({ connectionId: conn.id, accept: false })}
+                        <button onClick={() => respondMutation.mutate({ connectionId: conn.id!, accept: false })}
                           className="px-4 py-2 rounded-xl text-xs font-medium border border-white/15 text-white/50 hover:border-white/30 hover:text-white transition-all duration-200">
                           {t("dashboard.decline")}
                         </button>

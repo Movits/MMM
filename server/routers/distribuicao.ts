@@ -7,6 +7,7 @@ import {
   listarPedidosEmAnalise, lerPedidoDeMatch, decidirPedidoDeMatch, listarHistoricoDeDistribuicao, idsDeContasAtivas,
 } from "../db";
 import { createAuditLog } from "../security";
+import { selarAlcaDoPedido, abrirAlcaDoPedido } from "../alca-do-pedido";
 import { registrarRevelacao } from "./connections";
 import { mascararContatosEmTexto } from "@shared/contato-em-texto";
 
@@ -20,7 +21,8 @@ import { mascararContatosEmTexto } from "@shared/contato-em-texto";
 // de análise, por sua vez, exige `distribuidorProcedure` (a flag, não o nível).
 //
 // Idempotência: conceder a quem já tem, ou revogar de quem não tem, responde
-// sucesso sem gravar nada — sem auditoria nem notificação repetidas.
+// sucesso sem gravar nada — sem auditoria nem notificação repetidas, nem quando
+// duas requisições chegam juntas (o UPDATE só muda a linha no estado de antes).
 
 const TITULO_CONCEDIDO = "Você agora é distribuidor do Smart Match";
 const CORPO_CONCEDIDO =
@@ -28,6 +30,7 @@ const CORPO_CONCEDIDO =
   "os pedidos de interesse do Smart Match passam pela sua análise antes de chegar à outra pessoa. " +
   "A fila de análise fica no Painel Ouro, na aba Distribuição.";
 const TITULO_REVOGADO = "Poder de distribuição revogado";
+const PEDIDO_AUSENTE = "Pedido não encontrado ou já decidido.";
 
 type PerfilCru = Awaited<ReturnType<typeof listarPedidosEmAnalise>>[number]["solicitante"];
 
@@ -53,7 +56,8 @@ export const distribuicaoRouter = router({
       if (!alvo) throw new TRPCError({ code: "NOT_FOUND", message: "Conta não encontrada." });
       if (alvo.isDistributor === true) return { success: true as const };
 
-      await definirPoderDeDistribuicao(input.userId, true);
+      const mudou = await definirPoderDeDistribuicao(input.userId, true);
+      if (!mudou) return { success: true as const }; // outra requisição concedeu antes
       await createAuditLog({
         userId: ctx.user.id, action: "DISTRIBUTOR_GRANTED", resource: "users", resourceId: String(input.userId),
         details: { reason: input.reason ?? null }, status: "success", riskLevel: "high",
@@ -76,7 +80,8 @@ export const distribuicaoRouter = router({
       if (!alvo) throw new TRPCError({ code: "NOT_FOUND", message: "Conta não encontrada." });
       if (alvo.isDistributor !== true) return { success: true as const };
 
-      await definirPoderDeDistribuicao(input.userId, false);
+      const mudou = await definirPoderDeDistribuicao(input.userId, false);
+      if (!mudou) return { success: true as const }; // outra requisição revogou antes
       await createAuditLog({
         userId: ctx.user.id, action: "DISTRIBUTOR_REVOKED", resource: "users", resourceId: String(input.userId),
         details: { reason: input.reason }, status: "success", riskLevel: "high",
@@ -95,7 +100,8 @@ export const distribuicaoRouter = router({
   // Os pedidos `in_review`, com as DUAS partes nomeadas, a nota do Smart Match na
   // direção do pedido e as travas que a aprovação vai reconferir (termo, conta
   // ativa, portão da demanda expressa). É a leitura nominal que atravessa donas,
-  // como o acervo Ouro, e por isso fica na trilha de auditoria.
+  // como o acervo Ouro, e por isso fica na trilha de auditoria. Os pedidos em que
+  // quem consulta é parte não vêm (listarPedidosEmAnalise).
   fila: distribuidorProcedure.query(async ({ ctx }) => {
     const pedidos = await listarPedidosEmAnalise(ctx.user.id);
     const ids = Array.from(new Set(pedidos.flatMap(p => [p.requesterId, p.recipientId])));
@@ -109,10 +115,13 @@ export const distribuicaoRouter = router({
       userId: ctx.user.id, action: "DISTRIBUTOR_VIEW_QUEUE", resource: "connections",
       details: { pedidos: pedidos.length }, status: "success", riskLevel: "medium",
     });
-    // Os ids das partes serviram às travas acima e PARAM aqui: a fila age pelo
-    // `connectionId`. Lista-branca explícita, como em profileMatches.
+    // Os ids das partes serviram às travas acima e PARAM aqui, e o id do pedido
+    // também: a fila age pela alça opaca, presa a quem leu (server/alca-do-pedido.ts).
+    // Com o `connections.id` sequencial na tela ("Pedido #18"), a distribuidora que
+    // também recebe pedidos achava pelos buracos da sequência o pedido oculto para
+    // ela. Lista-branca explícita, como em profileMatches.
     return pedidos.map((p, i) => ({
-      connectionId: p.connectionId,
+      alca: selarAlcaDoPedido(p.connectionId, ctx.user.id),
       createdAt: p.createdAt,
       reciprocado: p.reciprocatedAt !== null,
       solicitante: perfilParaAnalise(p.solicitante),
@@ -124,27 +133,49 @@ export const distribuicaoRouter = router({
     }));
   }),
 
-  // A decisão. Um único UPDATE com `status = 'in_review'` no WHERE: a segunda
-  // pessoa (ou a segunda aba) que decide o mesmo pedido leva CONFLICT e não
-  // produz efeito nenhum. Aprovar reconfere as travas ANTES do UPDATE: o termo
+  // A decisão. O desfecho sai do BANCO no instante da escrita (decidirPedidoDeMatch):
+  // a segunda pessoa (ou a segunda aba) que decide o mesmo pedido não produz efeito
+  // nenhum — leva "não encontrado ou já decidido" se leu depois da primeira decisão,
+  // ou CONFLICT se as duas leram antes —, e o clique recíproco que chega durante a
+  // decisão vira `accepted`. Aprovar reconfere as travas ANTES do UPDATE: o termo
   // pode ter sido revogado e o perfil pode ter mudado desde o clique.
   decidir: distribuidorProcedure
     .input(z.object({
-      connectionId: z.number().int(),
+      alca: z.string().min(1).max(200),
       aprovar: z.boolean(),
       nota: z.string().max(1000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const pedido = await lerPedidoDeMatch(input.connectionId);
-      if (!pedido) throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
-      if (pedido.requesterId === ctx.user.id || pedido.recipientId === ctx.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Ninguém decide o próprio pedido de interesse." });
-      }
-      if (pedido.status !== "in_review") throw new TRPCError({ code: "CONFLICT", message: "Este pedido já foi decidido." });
-
+      // A nota é conferida ANTES de abrir a alça e de ler o banco: é validação da
+      // entrada, e a resposta a um pedido sem nota não pode mudar conforme a alça
+      // valha ou o pedido ainda esteja em análise.
       const nota = input.nota?.trim() || null;
       if (!input.aprovar && !nota) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Diga por que não encaminhou. A nota fica só na trilha interna." });
+      }
+
+      const connectionId = abrirAlcaDoPedido(input.alca, ctx.user.id);
+      if (connectionId === null) {
+        // Alça que a fila não entregou a esta conta: inventada, adulterada ou de
+        // outra distribuidora. Fica na trilha como a alça inválida de
+        // connections.send, para a varredura não ser silenciosa.
+        await createAuditLog({
+          userId: ctx.user.id, action: "MATCH_HANDLE_INVALID", resource: "distribuicao.decidir",
+          status: "blocked", riskLevel: "high",
+        });
+        throw new TRPCError({ code: "NOT_FOUND", message: PEDIDO_AUSENTE });
+      }
+
+      const pedido = await lerPedidoDeMatch(connectionId, ctx.user.id);
+      if (!pedido) {
+        // A alça é legítima, e a fila nunca traz pedido de que quem consulta é
+        // parte: o pedido saiu da análise depois que esta fila carregou (outra
+        // pessoa decidiu) ou a conta de uma das partes foi excluída. É clique em
+        // fila velha, não tentativa de nada: sem linha de bloqueio na trilha, que
+        // antes enchia o painel de "alto risco" num uso normal da tela. Nada aqui
+        // denuncia pedido oculto, porque nenhuma alça aponta para um. A resposta é a
+        // mesma da alça inválida, e a tela recarrega a fila.
+        throw new TRPCError({ code: "NOT_FOUND", message: PEDIDO_AUSENTE });
       }
 
       if (input.aprovar) {
@@ -166,26 +197,27 @@ export const distribuicaoRouter = router({
         }
       }
 
-      const statusFinal = !input.aprovar ? "not_forwarded" : pedido.reciprocatedAt !== null ? "accepted" : "pending";
-      const decidiu = await decidirPedidoDeMatch(pedido.id, { statusFinal, moderatedBy: ctx.user.id, moderationNote: nota });
-      if (!decidiu) throw new TRPCError({ code: "CONFLICT", message: "Outra pessoa acabou de decidir este pedido." });
+      const decisao = await decidirPedidoDeMatch(pedido.id, { aprovar: input.aprovar, moderatedBy: ctx.user.id, moderationNote: nota });
+      // Corrida: outra distribuidora decidiu entre a leitura e o UPDATE. Só chega
+      // aqui quem NÃO é parte (a leitura recortou pelas partes, que nunca mudam), e
+      // o pedido estava na fila dela: este CONFLICT não denuncia pedido oculto.
+      if (!decisao) throw new TRPCError({ code: "CONFLICT", message: "Outra pessoa acabou de decidir este pedido." });
+      const { status: statusFinal, reciprocado } = decisao;
 
       await createAuditLog({
         userId: ctx.user.id,
         action: input.aprovar ? "MATCH_REVIEW_APPROVED" : "MATCH_REVIEW_REJECTED",
         resource: "connections", resourceId: String(pedido.id),
-        details: {
-          requesterId: pedido.requesterId, recipientId: pedido.recipientId,
-          reciprocado: pedido.reciprocatedAt !== null, statusFinal, nota,
-        },
+        details: { requesterId: pedido.requesterId, recipientId: pedido.recipientId, reciprocado, statusFinal, nota },
         status: "success", riskLevel: "medium",
       });
       if (statusFinal === "accepted") {
         await registrarRevelacao(pedido.id, pedido.requesterId, pedido.recipientId, "distribuidor");
       }
 
-      // Avisos no sino. Recusa: só a solicitante, sem o motivo (a nota é interna);
-      // a destinatária nunca soube do pedido e continua sem saber.
+      // Avisos no sino. Recusa: quem pediu (e a destinatária, só se ela também
+      // clicou), sempre sem o motivo — a nota é interna. A destinatária que não
+      // clicou nunca soube do pedido e continua sem saber.
       try {
         if (statusFinal === "pending") {
           await createNotification({
@@ -205,29 +237,39 @@ export const distribuicaoRouter = router({
             await createNotification({
               userId, type: "interest_received",
               title: "Interesse mútuo: nomes revelados",
-              body: "Vocês dois demonstraram interesse e o distribuidor encaminhou o match. Os nomes já aparecem na aba Conexões.",
+              body: "As duas pessoas demonstraram interesse e o distribuidor encaminhou o match. Os nomes já aparecem na aba Conexões.",
               actionUrl: "/dashboard",
             });
           }
         } else {
-          await createNotification({
-            userId: pedido.requesterId, type: "system",
-            title: "Interesse não encaminhado",
-            body: "O distribuidor conferiu o seu pedido de interesse e não o encaminhou desta vez. A outra pessoa não foi avisada.",
-            actionUrl: "/dashboard",
-          });
+          // Não encaminhado: o MESMO aviso para cada pessoa que clicou, tenha sido um
+          // clique ou dois. Um texto próprio do caso recíproco ("as duas partes")
+          // contaria a cada uma que a outra também clicou, sem encaminhamento
+          // nenhum; e uma frase só do caso solitário ("a outra pessoa não foi
+          // avisada") contaria o mesmo pela ausência. Privacidade vence (revisão da
+          // #115, 14/09/2026).
+          const quemClicou = reciprocado ? [pedido.requesterId, pedido.recipientId] : [pedido.requesterId];
+          for (const userId of quemClicou) {
+            await createNotification({
+              userId, type: "system",
+              title: "Interesse não encaminhado",
+              body: "O distribuidor conferiu o seu pedido de interesse e não o encaminhou desta vez. Seu nome não foi revelado à outra pessoa.",
+              actionUrl: "/dashboard",
+            });
+          }
         }
       } catch (_) { /* a decisão já está gravada; o sino é acessório */ }
 
-      return { success: true as const, statusFinal };
+      return { success: true as const, statusFinal, reciprocado };
     }),
 
   // As decisões já tomadas (de qualquer distribuidor), com os nomes das partes:
-  // leitura nominal, auditada como a fila.
+  // leitura nominal, auditada como a fila, sem os pedidos em que quem consulta
+  // é parte e sem o id da conexão (listarHistoricoDeDistribuicao).
   historico: distribuidorProcedure
     .input(z.object({ limit: z.number().int().min(1).max(100).default(50) }))
     .query(async ({ ctx, input }) => {
-      const decisoes = await listarHistoricoDeDistribuicao(input.limit);
+      const decisoes = await listarHistoricoDeDistribuicao(ctx.user.id, input.limit);
       await createAuditLog({
         userId: ctx.user.id, action: "DISTRIBUTOR_VIEW_QUEUE", resource: "connections",
         details: { escopo: "historico", decisoes: decisoes.length }, status: "success", riskLevel: "medium",

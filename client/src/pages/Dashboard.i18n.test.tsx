@@ -457,7 +457,7 @@ describe("o passo do distribuidor no idioma da tela", () => {
     semPortugues("cartão em análise");
 
     fireEvent.click(screen.getByRole("button", { name: "Connections (1)" }));
-    expect(await screen.findByText("🔎 Under review")).toBeInTheDocument();
+    expect(await screen.findByText("🔎 Under review", {}, ESPERA)).toBeInTheDocument();
     semPortugues("aba Conexões em análise");
   });
 
