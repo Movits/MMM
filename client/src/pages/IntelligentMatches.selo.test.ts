@@ -62,3 +62,16 @@ describe("seloDoMatch — a mesma pergunta que o motor fez (14/09)", () => {
     expect(seloDoMatch({ matchType: "category", matchedAssets: [item("Advogado e contador")], matchedNeeds: [item("Contador")] }, t)).toBe("seloFamilia");
   });
 });
+
+describe("seloDoMatch — o 100 pelo mesmo serviço não é 'Tag exata' (revisão de 14/09 na #127)", () => {
+  it("especialidade ou família escritas de outro jeito dizem 'Mesmo serviço'", () => {
+    for (const [ativo, necessidade] of [["Advocacia tributária", "Advogado tributarista"], ["Contabilidade", "Contador"], ["律师事务所", "律师"]]) {
+      expect(seloDoMatch({ matchType: "exact", matchedAssets: [item(ativo)], matchedNeeds: [item(necessidade)] }, t), `${ativo} × ${necessidade}`).toBe("seloMesmoServico");
+    }
+  });
+
+  it("a mesma tag e o mesmo objeto seguem dizendo 'Tag exata'", () => {
+    expect(seloDoMatch({ matchType: "exact", matchedAssets: [item("Consultoria tributária")], matchedNeeds: [item("Consultoria tributária")] }, t)).toBe("seloTagExata");
+    expect(seloDoMatch({ matchType: "exact", matchedAssets: [item("Terras raras")], matchedNeeds: [item("Procura terras raras")] }, t)).toBe("seloTagExata");
+  });
+});

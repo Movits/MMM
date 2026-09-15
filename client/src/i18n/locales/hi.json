@@ -1436,7 +1436,8 @@
   "intelligentMatches": {
     "seloMutuo": "↔ आपसी कनेक्शन",
     "seloCategoria": "समान श्रेणी",
-    "seloFamilia": "समान सेवा श्रेणी",
+    "seloFamilia": "एक ही प्रकार की सेवा",
+    "seloMesmoServico": "समान सेवा",
     "seloSignificados": "मिलते-जुलते अर्थ",
     "seloOfertaProcura": "पेशकश और मांग",
     "seloTagExata": "सटीक टैग",

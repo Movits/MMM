@@ -442,3 +442,28 @@ describe("Portão da IA — revisão adversarial da correção empilhada sobre a
     expect(citando("Buscamos consultoria em e-commerce.", "consultoria em e-commerce", oferece("Consultoria jurídica"))).toBe(false);
   });
 });
+
+/**
+ * Revisão de 14/09 na #127, item 6: chinês e japonês não separam palavras, e a
+ * citação inteira chegava como UMA palavra — menos que as duas exigidas. O
+ * serviço nunca passava nesses idiomas, nem com a necessidade declarada.
+ */
+describe("Portão da IA — citação em chinês e japonês, sem espaço (revisão de 14/09 na #127)", () => {
+  it("confere quando o trecho está literalmente na fonte e tem ao menos quatro caracteres", () => {
+    expect(citacaoConfere("我们需要税务咨询服务", "我们需要税务咨询服务")).toBe(true);
+    expect(citacaoConfere("我们需要税务咨询服务", "新工厂项目 | 我们需要税务咨询服务，以便处理进口关税。")).toBe(true);
+    expect(citacaoConfere("税務コンサルティングが必要です", "当社は税務コンサルティングが必要です。")).toBe(true);
+    // Trecho que não está na fonte, ou curto demais para ser declaração, não confere.
+    expect(citacaoConfere("我们需要法律咨询服务", "我们需要税务咨询服务")).toBe(false);
+    expect(citacaoConfere("咨询", "我们需要税务咨询服务")).toBe(false);
+    expect(citacaoConfere("新工厂项目我们需要", "新工厂项目 | 我们需要税务咨询服务")).toBe(false);
+  });
+
+  it("e o match apoiado nela passa no portão; citação inventada não", () => {
+    const passa = (oferta: string, citacao: string, fonte: string) =>
+      passaNoPortao({ tipoDaOferta: "servico", necessidadeExpressa: citacao }, fonte, { whatIHave: [oferta], whatINeed: [] });
+    expect(passa("税务咨询", "我们需要税务咨询服务", "新工厂项目 | 我们需要税务咨询服务")).toBe(true);
+    expect(passa("税務コンサルティング", "税務コンサルティングが必要です", "当社は税務コンサルティングが必要です。")).toBe(true);
+    expect(passa("税务咨询", "我们需要法律咨询服务", "新工厂项目 | 我们需要税务咨询服务")).toBe(false);
+  });
+});

@@ -134,10 +134,33 @@ const PALAVRAS_VAZIAS = PALAVRAS_VAZIAS_DA_CITACAO;
  * 70% deixava passar duas palavras inventadas a partir de sete (revisões
  * adversariais de 12/09). Uma citação inventada não passa, porque as palavras
  * dela não estão na fonte.
+ *
+ * Chinês e japonês não separam palavras, e a citação inteira chegava como UMA
+ * palavra: "我们需要税务咨询服务" nunca conferia, e o serviço não passava nesses
+ * idiomas nem com a necessidade declarada (revisão de 14/09 na #127). Ali a
+ * conferência é literal: cada pedaço citado precisa estar inteiro dentro de um
+ * pedaço da fonte, sem tolerância (não há palavra para contar), com ao menos
+ * quatro caracteres — duas palavras de dois —, e as palavras latinas da mesma
+ * citação também precisam estar todas na fonte.
  */
+const ESCRITA_SEM_ESPACO = new RegExp("[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]", "u");
+const MINIMO_DE_CARACTERES_SEM_ESPACO = 4;
+
 export function citacaoConfere(citacao: unknown, fonte: string): boolean {
   if (typeof citacao !== "string") return false;
-  const palavras = tokensDoTermo(citacao).filter(palavra => palavra.length >= 3 && !PALAVRAS_VAZIAS.has(palavra));
+  const pedacos = tokensDoTermo(citacao);
+  const semEspaco = pedacos.filter(pedaco => ESCRITA_SEM_ESPACO.test(pedaco));
+  if (semEspaco.length > 0) {
+    const pedacosDaFonte = tokensDoTermo(fonte);
+    const caracteres = semEspaco.reduce((total, pedaco) => total + Array.from(pedaco).length, 0);
+    if (caracteres < MINIMO_DE_CARACTERES_SEM_ESPACO) return false;
+    if (!semEspaco.every(pedaco => pedacosDaFonte.some(daFonte => daFonte.includes(pedaco)))) return false;
+    const latinasDaFonte = new Set(pedacosDaFonte);
+    return pedacos
+      .filter(pedaco => !ESCRITA_SEM_ESPACO.test(pedaco) && pedaco.length >= 3 && !PALAVRAS_VAZIAS.has(pedaco))
+      .every(pedaco => latinasDaFonte.has(pedaco));
+  }
+  const palavras = pedacos.filter(palavra => palavra.length >= 3 && !PALAVRAS_VAZIAS.has(palavra));
   if (palavras.length < 2) return false;
   const daFonte = new Set(tokensDoTermo(fonte));
   const ausentes = palavras.filter(palavra => !daFonte.has(palavra));
