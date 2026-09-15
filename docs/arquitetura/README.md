@@ -143,9 +143,12 @@ Limites aceitos e decisões pendentes (revisão adversarial de 13/09/2026):
 - a categoria é texto livre e decide o tipo quando o texto não decide: "Cafeteira
   industrial" [Consultoria] vira serviço e cai no portão (decisão do time em 14/09; a
   causa raiz virou cartão próprio);
-- a especialidade escrita de outro jeito só é lida em pt, en e es; nos outros 7 idiomas
-  as listas reconhecem a família do serviço (#124), e a especialidade só casa escrita
-  igual;
+- a especialidade escrita de outro jeito é lida em pt, en e es; nos outros 7 idiomas as
+  listas reconhecem a família do serviço (#124) e a especialidade só onde há lema curado (a
+  tributária em fr, ru, ar, zh e ja). O par que nesses idiomas só não casa por palavra que
+  as listas não leem não é bloqueado nos motores determinísticos: vale a categoria em
+  comum, como antes da regra, e nunca 0 por falta de regra (`regraNaoLeOPar`, decisão da
+  revisão de 14/09 na #127);
 - "Consultoria jurídica" oferecida não atende a necessidade "Advogado" nos motores
   determinísticos ("Legal advisory" × "Lawyer" deixou de dar 100); na IA, fica com o
   modelo. O inverso, "Assessoria jurídica" pedida diante de "Advocacia" oferecida, atende
@@ -153,8 +156,9 @@ Limites aceitos e decisões pendentes (revisão adversarial de 13/09/2026):
 - advocacia empresarial, societária e de contratos são áreas distintas para a regra
   ("Advocacia corporativa" é societária; fora da advocacia, corporativo é empresarial) —
   decisão pendente do time;
-- em chinês e japonês só a família é lida: a oferta atende a necessidade genérica escrita
-  em outro idioma ("律师" × "Advogado"), e nenhuma especialidade;
+- em chinês e japonês o serviço é lido pelo fim do termo, onde as duas línguas põem a
+  cabeça ("会计软件" é software; "律师事务所" é advocacia), e a especialidade só onde há lema
+  curado ("税务");
 - no motor privado, "Consultoria" digitada não é atendida por advocacia nem por
   contabilidade; no de perfis, a opção fixa "Consultoria" é atendida pela família da
   cabeça (advocacia, contabilidade, auditoria, mentoria, coaching);

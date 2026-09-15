@@ -324,18 +324,68 @@ describe("Serviço × necessidade declarada com outra flexão — casa (defeito 
  * inglês e espanhol. Nos outros 7 idiomas nada era classificado como serviço,
  * então o portão NUNCA disparava — a regra da cliente simplesmente não valia
  * para quem escreve neles, e um serviço casava por categoria como antes da #101.
+ *
+ * Revisão de 14/09 na #127 (itens 3 e 6): com a categoria "Serviços" o par já
+ * dava 0 na main, porque a categoria sozinha classifica o item como serviço — o
+ * teste não provava nada sobre o idioma. Com a categoria escrita no idioma, na
+ * main o par valia 60. E o conserto não pode ter levado a zero o que casava:
+ * o mesmo serviço nesses idiomas vale 100, e o que as listas não leem vale a
+ * categoria, como na main.
  */
 describe("O portão dispara nos 10 idiomas (defeito da #101)", () => {
   it.each([
-    ["de", "Steuerberatung", "Maschinen"],
-    ["fr", "Conseil fiscal", "Machines"],
-    ["ru", "Налоговый консалтинг", "Покупатели"],
-    ["hi", "कर परामर्श", "खरीदार"],
-    ["ar", "استشارات ضريبية", "مشترون"],
-    ["zh", "税务咨询", "买家"],
-    ["ja", "税務コンサルティング", "買い手"],
-  ])("%s: serviço × necessidade presumida de mesma categoria não casa", (_idioma, oferta, necessidade) => {
-    expect(scoreMatch(item(oferta, "Serviços"), item(necessidade, "Serviços")).score).toBe(0);
+    ["pt", "Consultoria tributária", "Compradores", "Finanças"],
+    ["en", "Tax consulting", "Buyers", "Finance"],
+    ["es", "Asesoría fiscal", "Compradores", "Finanzas"],
+    ["de", "Steuerberatung", "Maschinen", "Finanzen"],
+    ["fr", "Conseil fiscal", "Machines", "Finances"],
+    ["ru", "Налоговый консалтинг", "Покупатели", "Финансы"],
+    ["hi", "कर परामर्श", "खरीदार", "वित्त"],
+    ["ar", "استشارات ضريبية", "مشترون", "مالية"],
+    ["zh", "税务咨询", "买家", "财务"],
+    ["ja", "税務コンサルティング", "買い手", "財務"],
+  ])("%s: serviço × necessidade presumida, com a categoria no idioma, não casa", (_idioma, oferta, necessidade, categoria) => {
+    const r = scoreMatch(item(oferta, categoria), item(necessidade, categoria));
+    expect(r.score).toBe(0);
+    expect((r as { bloqueio?: string }).bloqueio).toBe("servico-sem-demanda-expressa");
+  });
+
+  it.each([
+    ["ru", "Налоговый консалтинг", "Налоговая консультация", "Финансы"],
+    ["fr", "Avocat fiscaliste", "Avocat fiscal", "Finances"],
+    ["fr", "Conseil fiscal", "Conseil en fiscalité", "Finances"],
+    ["zh", "税务咨询", "税务顾问", "财务"],
+    ["zh", "税务咨询", "税务咨询服务", "财务"],
+    ["ja", "税務コンサルティング", "税務コンサル", "財務"],
+    ["zh", "律师事务所", "律师", "财务"],
+    ["de", "Steuerberatung", "Suche Steuerberater", "Finanzen"],
+  ])("%s: o mesmo serviço escrito de outro jeito vale 100, com e sem categoria — %s × %s", (_idioma, oferta, necessidade, categoria) => {
+    for (const cat of [categoria, null]) {
+      expect(scoreMatch(item(oferta, cat), item(necessidade, cat)), `[${cat}]`).toEqual({ score: 100, type: "exact" });
+    }
+  });
+
+  it("o que as listas não leem num idioma novo não é bloqueado: vale a categoria, como na main", () => {
+    expect(scoreMatch(item("Steuerberatung für Erbschaften", "Finanzen"), item("Steuerberater für Erbschaftsteuer", "Finanzen"))).toEqual({ score: 60, type: "category" });
+    expect(scoreMatch(item("Conseil en fiscalité internationale", "Finances"), item("Conseil en fiscalité des entreprises", "Finances"))).toEqual({ score: 60, type: "category" });
+    // Sem categoria em comum, zero sem o bloqueio nomeado — também como a main.
+    const semCategoria = scoreMatch(item("Steuerberatung für Erbschaften"), item("Steuerberater für Erbschaftsteuer"));
+    expect(semCategoria.score).toBe(0);
+    expect((semCategoria as { bloqueio?: string }).bloqueio).toBeUndefined();
+  });
+
+  it("e o que o motor entende continua barrado: outra família, outra especialidade entendida, e o português segue estrito", () => {
+    for (const [oferta, necessidade, categoria] of [
+      ["Налоговый консалтинг", "Юрист", "Финансы"], ["Налоговый консалтинг", "Юридическая консультация", "Финансы"],
+      ["税务咨询", "法律咨询", "财务"], ["Consultoria em exportação", "Consultoria em comércio exterior", "Serviços"],
+      ["Consultoria em segurança do trabalho", "Consultoria trabalhista", "Finanças"],
+      // A palavra desconhecida do lado em português ("segurança") continua valendo contra o par, mesmo diante de francês.
+      ["Consultoria em segurança do trabalho", "Conseil en droit du travail", "Services"],
+    ] as Array<[string, string, string]>) {
+      const r = scoreMatch(item(oferta, categoria), item(necessidade, categoria));
+      expect(r.score, `${oferta} × ${necessidade}`).toBe(0);
+      expect((r as { bloqueio?: string }).bloqueio, `${oferta} × ${necessidade}`).toBe("servico-sem-demanda-expressa");
+    }
   });
 });
 
@@ -459,7 +509,9 @@ describe("Revisão adversarial da correção empilhada sobre a #124 — notas do
     expect(scoreMatch(item("Property lawyer"), item("Advogado imobiliário"))).toEqual({ score: 100, type: "exact" });
     expect(scoreMatch(item("Advocacia tributária"), item("Assessoria jurídica tributária"))).toEqual({ score: 100, type: "exact" });
     expect(scoreMatch(item("Advogada consultora"), item("Advogada"))).toEqual({ score: 60, type: "category" });
-    expect(scoreMatch(item("律师"), item("Advogado"))).toEqual({ score: 60, type: "category" });
+    // Valia 60 até a revisão de 14/09 na #127: "律师" (advogado) e "Advogado" são o mesmo serviço sem mais nada dos
+    // dois lados, a regra de "Contabilidade" × "Contador", agora lida também em chinês ("律师事务所" × "律师").
+    expect(scoreMatch(item("律师"), item("Advogado"))).toEqual({ score: 100, type: "exact" });
     expect(scoreMatch(item("Advocacia trabalhista"), item("Assessoria jurídica e tributária"))).toEqual({ score: 60, type: "category" });
   });
 

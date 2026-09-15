@@ -339,3 +339,18 @@ describe("calculateCompatibilityScore — revisão adversarial da correção emp
     expect(diferente.bloqueio).toBe("servico-sem-demanda-expressa");
   });
 });
+
+describe("calculateCompatibilityScore — idiomas novos (revisão de 14/09 na #127)", () => {
+  it("o mesmo serviço escrito de outro jeito atende; o que as listas não leem não bloqueia; o presumido segue bloqueado", () => {
+    const ru = calculateCompatibilityScore(perfil({ whatIHave: ["Налоговый консалтинг"] }), perfil({ whatINeed: ["Налоговая консультация"] }));
+    expect(ru.bloqueio).toBeUndefined();
+    expect(ru.complementarity).toBe(60);
+    // Como na main: sem bloqueio, e sem contar como necessidade atendida.
+    const naoLe = calculateCompatibilityScore(perfil({ whatIHave: ["Steuerberatung für Erbschaften"] }), perfil({ whatINeed: ["Steuerberater für Erbschaftsteuer"] }));
+    expect(naoLe.bloqueio).toBeUndefined();
+    expect(naoLe.complementarity).toBe(20);
+    for (const [have, need] of [["Steuerberatung", "Maschinen"], ["税务咨询", "买家"], ["Налоговый консалтинг", "Юрист"]] as Array<[string, string]>) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] })).bloqueio, `${have} × ${need}`).toBe("servico-sem-demanda-expressa");
+    }
+  });
+});

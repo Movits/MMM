@@ -232,7 +232,13 @@ cita o trecho da oportunidade que declara a necessidade e
 perfil oferece, antes de exibir. A categoria digitada ainda decide o tipo quando o texto
 não decide (decisão do time em 14/09). Família de serviço é lema, não área,
 e a equivalência é ESTRITA: só casa o que as listas entendem (palavra desconhecida precisa
-aparecer igual dos dois lados; na IA, o que o texto não entende fica com o modelo). Produtos,
+aparecer igual dos dois lados; na IA, o que o texto não entende fica com o modelo). Exceção
+decidida na revisão de 14/09 da #127: em fr, de, ru, hi, ar, zh e ja, onde as listas são
+curtas, o par que só não casa por palavra que elas não leem NÃO é bloqueado nos motores
+determinísticos — vale a categoria em comum, como antes da regra, e nunca 0 por falta de regra
+(`regraNaoLeOPar`); onde há regra no idioma (lema curado, marcador de pedido, a leitura do
+chinês e do japonês pelo fim do termo), o motor decide como em português, e o que ele entende
+continua barrado. pt, en e es seguem estritos. Produtos,
 ativos, investimento, conexões, tecnologia e imóveis não mudam.
 
 **`server/_core/` é a infraestrutura herdada do Manus** (o projeto nasceu na
