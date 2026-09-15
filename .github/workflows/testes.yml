@@ -119,9 +119,16 @@ jobs:
       # O tsc só olha client/, shared/ e server/; os scripts de operação (.mjs)
       # não passam por ninguém. Um erro de sintaxe no exame de produção apareceria
       # pela primeira vez com contas QA já inseridas no Aiven.
+      #
+      # scripts/*/*.mjs cobre qualquer subpasta de scripts/ (hoje exame/ e
+      # importacao/), no lugar de listar cada uma. Achado em 13/09: a pasta
+      # importacao/ ficava de fora do glob antigo (scripts/exame/*.mjs listada
+      # à parte) — e é onde mora a lógica que importar-participantes.mjs usa
+      # para ler a planilha, a ferramenta mais perigosa do repositório. Um erro
+      # de sintaxe ali só apareceria rodando a carga de verdade contra produção.
       - name: Sintaxe dos scripts
         run: |
-          for f in scripts/*.mjs scripts/exame/*.mjs .claude/hooks/*.mjs; do
+          for f in scripts/*.mjs scripts/*/*.mjs .claude/hooks/*.mjs; do
             [ -e "$f" ] || continue
             node --check "$f" || exit 1
           done
