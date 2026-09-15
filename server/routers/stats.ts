@@ -7,6 +7,21 @@ import { users, opportunities, connections } from "../../drizzle/schema";
 // ESTATÍSTICAS PÚBLICAS DA PLATAFORMA
 // Números reais exibidos na página inicial — nunca valores fictícios.
 // ============================================================
+/**
+ * Só países de verdade entram nas contagens públicas.
+ *
+ * "XX" é a opção "outro país" do Onboarding (quem não achou o próprio país na
+ * lista) — é a ausência de país, não um país. O globo já o excluía desde a #52;
+ * o contador da home não, e somava +1 ao número de países assim que a primeira
+ * pessoa marcasse "outro". As duas consultas passam a usar este mesmo predicado
+ * para não voltarem a divergir.
+ *
+ * É função, e não constante, para cada consulta receber o seu próprio
+ * fragmento em vez de compartilhar o mesmo objeto.
+ */
+const paisDeVerdade = () =>
+  sql`${users.country} IS NOT NULL AND ${users.country} <> '' AND ${users.country} <> 'XX'`;
+
 export const statsRouter = router({
   platform: publicProcedure.query(async () => {
     const empty = { users: 0, opportunities: 0, connections: 0, countries: 0, bronze: 0, silver: 0, gold: 0 };
@@ -27,7 +42,7 @@ export const statsRouter = router({
         count(db.select({ n: sql`COUNT(*)` }).from(users)),
         count(db.select({ n: sql`COUNT(*)` }).from(opportunities).where(eq(opportunities.status, "active"))),
         count(db.select({ n: sql`COUNT(*)` }).from(connections).where(eq(connections.status, "accepted"))),
-        count(db.select({ n: sql`COUNT(DISTINCT ${users.country})` }).from(users).where(sql`${users.country} IS NOT NULL AND ${users.country} <> ''`)),
+        count(db.select({ n: sql`COUNT(DISTINCT ${users.country})` }).from(users).where(paisDeVerdade())),
         count(db.select({ n: sql`COUNT(*)` }).from(users).where(eq(users.role, "bronze"))),
         count(db.select({ n: sql`COUNT(*)` }).from(users).where(eq(users.role, "silver"))),
         // Ouro inclui os papéis herdados president/admin, que compartilham o mesmo nível de acesso.
@@ -43,10 +58,10 @@ export const statsRouter = router({
 
   // Presença agregada POR PAÍS — nunca por pessoa: só a sigla ISO e a
   // contagem saem daqui. É o que o globo da home desenha no lugar das praças
-  // inventadas do protótipo (PR #52). "XX" é o "outro país" do Onboarding e
-  // não tem lugar no mapa. Mesma exceção deliberada ao exigirDb() do
-  // platform acima: a home é pública e degrada para vazio com erro no log —
-  // sem praças o planeta continua inteiro.
+  // inventadas do protótipo (PR #52). Mesmo recorte de paisDeVerdade() do
+  // contador acima, para o mapa e o número nunca contarem coisas diferentes.
+  // Mesma exceção deliberada ao exigirDb() do platform acima: a home é pública
+  // e degrada para vazio com erro no log — sem praças o planeta continua inteiro.
   presencaPorPais: publicProcedure.query(async (): Promise<Array<{ pais: string; total: number }>> => {
     const db = await getDb();
     if (!db) {
@@ -57,7 +72,7 @@ export const statsRouter = router({
       const linhas = await db
         .select({ pais: users.country, total: sql`COUNT(*)` })
         .from(users)
-        .where(sql`${users.country} IS NOT NULL AND ${users.country} <> '' AND ${users.country} <> 'XX'`)
+        .where(paisDeVerdade())
         .groupBy(users.country);
       return linhas
         .map(l => ({ pais: String(l.pais).toUpperCase(), total: Number(l.total) }))

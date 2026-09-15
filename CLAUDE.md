@@ -256,6 +256,20 @@ vão para storage compatível com S3 (`STORAGE_*`; Backblaze B2 em produção), 
 pelo proxy autenticado `/manus-storage/*`, que exige sessão e posse; esse prefixo
 está gravado nas URLs do banco, não renomeie sem migração de dados.
 
+**Reunião que falha na IA se reprocessa pelo áudio guardado.** `processMeetingRecording`
+guarda o áudio no bucket antes da IA; `meetings.reprocess` (`iniciarReprocessamento` em
+`server/meeting-service.ts`) lê esses bytes de volta (`storageGetBytes`) e roda de novo
+transcrição e extração, sem gravar áudio nem renovar os 30 dias. Cada execução tem uma
+FICHA: o `updated_at` que ela grava ao tomar a reunião para `processing` (UPDATE
+condicional a partir de `recording` no envio e de `failed` no reprocesso). Releitura,
+`ready` e `failed` exigem `status = 'processing' AND updated_at = ficha`: quem tomou a
+reunião por último (reprocesso novo, ou a varredura de interrompidas, que grava
+`updated_at` novo) vence, e a execução velha sai sem escrever. O reprocesso responde na
+hora e segue em segundo plano (a tela consulta a cada 5 s); o trabalho nunca rejeita,
+porque rejeição solta derruba o processo. Os derivados da tentativa anterior só saem
+depois de a IA dar certo, e decidir sobre sugestão ou entidade com a reunião em
+`processing` dá CONFLICT. Teto brando de 3 reprocessos aceitos por dona a cada 10 min.
+
 **Client.** Não há AuthContext: `useAuth` é `trpc.auth.me` no cache do React Query.
 `ProtectedRoute` aplica `requireAdmin`, `requireGold` e `requireOpportunities`; páginas
 em `client/src/pages/` roteadas com wouter em `App.tsx`; shadcn/ui em
