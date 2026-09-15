@@ -306,7 +306,7 @@ describe("Cobertura de idiomas — a regra existia só em pt, en e es (defeito r
     ["ar", "استشارات ضريبية", "consultoria"],
     ["ar", "خدمات محاماة", "advocacia"],
     // Chinês e japonês não separam palavra por espaço: aqui quem reconhece é
-    // SERVICOS_SEM_ESPACO, por substring.
+    // SERVICOS_SEM_ESPACO, pelo fim do termo.
     ["zh", "税务咨询", "consultoria"],
     ["zh", "法律服务", "advocacia"],
     ["ja", "税務コンサルティング", "consultoria"],
@@ -728,5 +728,60 @@ describe("Reverificação dos consertos da correção empilhada (14/09)", () => 
     expect(servicoAtendeNecessidade("Consultoria em empresas familiares", "Consultoria familiar")).toBe(false);
     expect(servicoAtendeNecessidade("Advocacia de família", "Advogado de família")).toBe(true);
     expect(servicoAtendeNecessidade("Family lawyer", "Advogado de família")).toBe(true);
+  });
+});
+
+/**
+ * Revisão de 14/09 na #127, item 4: nos idiomas novos a classificação dizia
+ * "serviço" para o que não é (na main, "outros"). Serviço por engano sujeita o
+ * item ao portão e apaga o match que ele tinha pela categoria.
+ */
+describe("Falsos positivos de classificação nos idiomas novos (revisão de 14/09 na #127)", () => {
+  it("em chinês e japonês o serviço precisa TERMINAR o termo: software, placa, centro, móveis e fundo não são serviço", () => {
+    for (const rotulo of ["会计软件", "广告牌", "设计软件", "培训中心", "法律数据库", "デザイン家具", "保守的な投資ファンド", "採用実績のある技術", "会計ソフト"]) {
+      expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
+    }
+    expect(classificarOferta("会计软件", "技术")).not.toBe("servico");
+  });
+
+  it("escritório, agência, 'serviço' e o sufixo de quem presta depois do serviço seguem sendo serviço", () => {
+    for (const [rotulo, familia] of [
+      ["会計事務所", "contabilidade"], ["税理士事務所", "contabilidade"], ["広告代理店", "publicidade"], ["律師事務所", "advocacia"],
+      ["會計師事務所", "contabilidade"], ["律师事务所", "advocacia"], ["会计师事务所", "contabilidade"], ["法律服务", "advocacia"],
+    ] as Array<[string, string]>) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe(familia);
+    }
+  });
+
+  it("'avocat' sem qualificador é também o abacate, e 'conseil' de órgão é o conselho", () => {
+    for (const [rotulo, categoria] of [
+      ["Avocat", null], ["Avocats bio", null], ["Avocat", "Fruits"], ["Conseil d'administration", null],
+      ["Membre du conseil d'administration", null], ["Conseil municipal", null],
+    ] as Array<[string, string | null]>) {
+      expect(classificarOferta(rotulo, categoria), `${rotulo} [${categoria}]`).not.toBe("servico");
+    }
+    for (const rotulo of ["Avocat fiscaliste", "Avocat d'affaires", "Cabinet d'avocats", "Avocate", "Conseil fiscal", "Conseil en stratégie"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    }
+    // A categoria continua decidindo o que o texto não decidiu.
+    expect(classificarOferta("Avocat", "Services juridiques")).toBe("servico");
+  });
+
+  it("adjetivo de profissão diante de substantivo que não é serviço não é serviço; diante de substantivo de serviço, é", () => {
+    for (const rotulo of ["Juristische Person", "Données comptables", "Юридический адрес", "Бухгалтерский баланс", "कानूनी दस्तावेज़", "مستند قانوني", "عمارة سكنية"]) {
+      expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
+    }
+    for (const [rotulo, familia] of [
+      ["Juristische Beratung", "consultoria"], ["Юридические услуги", "advocacia"], ["Бухгалтерские услуги", "contabilidade"],
+      ["Бухгалтерский учёт", "contabilidade"], ["कानूनी सेवाएं", "advocacia"], ["Expert-comptable", "contabilidade"],
+      ["Cabinet comptable", "contabilidade"], ["Comptable", "contabilidade"],
+    ] as Array<[string, string]>) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe(familia);
+    }
+    // No trecho da IA, "un comptable" continua sendo o contador pedido, e não o adjetivo.
+    expect(trechoNomeiaServicoAtendido("nous cherchons un comptable", ["Tax lawyer"])).toBe("nao-atende");
+    expect(trechoNomeiaServicoAtendido("nous cherchons un comptable", ["Expert-comptable"])).toBe("atende");
   });
 });
