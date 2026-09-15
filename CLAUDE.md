@@ -242,14 +242,16 @@ necessidade que declara o ASSUNTO do serviço sem nomeá-lo → 60 com tipo `sem
 (`necessidadeDeclaraOAssuntoDoServico`: vocabulário curado de tributário, internacionalização e
 regulatório sanitário, e a necessidade tem de pedir ajuda ou uma ação, sem pedir no resto a
 contraparte, o capital ou o registro de marca: "Entrada de investidor internacional" não casa),
-mesma categoria → 60 (não vale para serviço); o critério semântico
+mesma categoria → 60 (para serviço, só no par que a regra não lê num idioma novo,
+`regraNaoLeOPar`); o critério semântico
 vale 45, abaixo do limiar 50, logo está desligado por construção e o texto não sai
 para embeddings. `server/matching.ts` cruza perfis de usuárias em 6 dimensões
 ponderadas, com LLM só no insight. `routers/profileMatches.ts` expõe esses matches no
 Dashboard com trava de consentimento dos dois lados. **Regra da demanda expressa
 (12/09/2026), nos três motores e nos prompts:** item de "o que tenho" classificado como
 SERVIÇO (`shared/tipo-da-oferta.ts`) só casa com necessidade DECLARADA em "o que
-preciso" — no motor privado a categoria em comum não vale para serviço; no de perfis o
+preciso" — no motor privado a categoria em comum não vale para serviço (salvo a exceção dos
+idiomas novos, abaixo); no de perfis o
 par sustentado só por serviço sem demanda expressa dá zero, não é gravado e a leitura da
 lista esconde a linha antiga (sem apagá-la, para a dispensa da dona sobreviver), e com
 "o que tenho" vazio a especialidade e a área de atuação são a oferta; nos dois
@@ -266,7 +268,13 @@ não decide (decisão do time em 14/09). **Logística, transporte, frete e armaz
 serviço** (decisão do Nicolas, 14/09), inclusive a opção fixa "Logística"; galpão, armazém
 e frota continuam imóvel e ativo. Família de serviço é lema, não área,
 e a equivalência é ESTRITA: só casa o que as listas entendem (palavra desconhecida precisa
-aparecer igual dos dois lados; na IA, o que o texto não entende fica com o modelo). Entrada
+aparecer igual dos dois lados; na IA, o que o texto não entende fica com o modelo). Exceção
+da revisão de 14/09 da #127 (portada em 15/09): em fr, de, ru, hi, ar, zh e ja, onde as listas
+são curtas, o par que só não casa por palavra que elas não leem NÃO é bloqueado nos motores
+determinísticos — vale a categoria em comum, nunca 0 por falta de regra (`regraNaoLeOPar`);
+onde há regra no idioma (lema curado, marcador de pedido, chinês e japonês lidos pelo fim do
+termo) o motor decide como em português, o pedido precisa pedir o serviço e o que ele entende
+continua barrado. pt, en e es seguem estritos, também dentro de rótulo bilíngue. Entrada
 nova no vocabulário de assunto entra com o teste negativo dela
 (`server/demanda-expressa-exemplos-da-spec.test.ts`). Produtos,
 ativos, investimento, conexões, tecnologia e imóveis não mudam.

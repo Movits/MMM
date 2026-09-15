@@ -1537,7 +1537,8 @@
     "versaoLabel": "バージョン",
     "aceitaEm": "承認日：",
     "revogadaEmData": "· {{data}}に取り消し",
-    "termoMudouAviso": "· その後、条項が変更されました"
+    "termoMudouAviso": "· その後、条項が変更されました",
+    "seloMesmoServico": "同じサービス"
   },
   "networkPanel": {
     "eyebrow": "あなたの非公開ネットワーク",

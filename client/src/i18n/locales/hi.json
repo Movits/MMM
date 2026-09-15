@@ -1470,7 +1470,7 @@
   "intelligentMatches": {
     "seloMutuo": "↔ आपसी कनेक्शन",
     "seloCategoria": "समान श्रेणी",
-    "seloFamilia": "समान सेवा श्रेणी",
+    "seloFamilia": "एक ही प्रकार की सेवा",
     "seloSignificados": "मिलते-जुलते अर्थ",
     "seloOfertaProcura": "पेशकश और मांग",
     "seloTagExata": "सटीक टैग",
@@ -1537,7 +1537,8 @@
     "versaoLabel": "वर्ज़न",
     "aceitaEm": "स्वीकृत तिथि",
     "revogadaEmData": "· {{data}} को रद्द की गई",
-    "termoMudouAviso": "· शर्तें उसके बाद बदल गईं"
+    "termoMudouAviso": "· शर्तें उसके बाद बदल गईं",
+    "seloMesmoServico": "समान सेवा"
   },
   "networkPanel": {
     "eyebrow": "आपका निजी नेटवर्क",

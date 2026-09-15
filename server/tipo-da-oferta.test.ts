@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normalizar, tokensDoTermo } from "@shared/direcao-do-termo";
-import { classificarOferta, ehServico, ehServicoDeAssessoria, especialidadeDoServico, familiaDoServico, LISTAS_POR_TIPO, mesmaFamiliaEEspecialidade, necessidadeGenericaNomeiaOServico, necessidadeNomeiaOServico, servicoAtendeNecessidade, TIPOS_DA_OFERTA, trechoNomeiaServicoAtendido } from "@shared/tipo-da-oferta";
+import { classificarOferta, ehServico, ehServicoDeAssessoria, especialidadeDoServico, familiaDoServico, LISTAS_POR_TIPO, mesmaFamiliaEEspecialidade, necessidadeGenericaNomeiaOServico, necessidadeNomeiaOServico, regraNaoLeOPar, servicoAtendeNecessidade, TIPOS_DA_OFERTA, trechoNomeiaServicoAtendido } from "@shared/tipo-da-oferta";
 
 /**
  * Regra da demanda expressa (12/09/2026) — a classificação que vem ANTES do
@@ -271,6 +271,13 @@ describe("Imóvel residencial — a cabeça decide antes da categoria", () => {
     expect(classificarOferta("Sala de reunião", "Serviços"), "sala de reunião").not.toBe("imovel");
     expect(classificarOferta("Cobertura jornalística", "Serviços"), "cobertura jornalística").not.toBe("imovel");
   });
+
+  it("'Consulting house' é a consultoria, também com a categoria de imóvel (46c79b8 e 96fdc30 da #127)", () => {
+    // A 46c79b8 fazia "house", "flat" e "store" valerem só na cabeça; a 96fdc30 ficou com a lista curta da d7fac93, e
+    // desta decisão sobra o que continua valendo: "house" no fim do composto em inglês é a empresa, não o imóvel.
+    expect(classificarOferta("Consulting house")).toBe("servico");
+    expect(classificarOferta("Consulting house", "Imóveis")).toBe("servico");
+  });
 });
 
 describe("Família do serviço e necessidade genérica", () => {
@@ -330,7 +337,7 @@ describe("Cobertura de idiomas — a regra existia só em pt, en e es (defeito r
     ["ar", "استشارات ضريبية", "consultoria"],
     ["ar", "خدمات محاماة", "advocacia"],
     // Chinês e japonês não separam palavra por espaço: aqui quem reconhece é
-    // SERVICOS_SEM_ESPACO, por substring.
+    // SERVICOS_SEM_ESPACO, pelo fim do termo (9e027bf da #127).
     ["zh", "税务咨询", "consultoria"],
     ["zh", "法律服务", "advocacia"],
     ["ja", "税務コンサルティング", "consultoria"],
@@ -909,5 +916,142 @@ describe("Classificação — revisão de 15/09 dos consertos da #127 (116bb56, 
     for (const rotulo of ["Boutique de joias de design", "Casa de câmbio", "Casa de software", "Hub logístico", "Hub de logística", "Casa em Cascais"]) {
       expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
     }
+  });
+});
+
+/**
+ * Porte na #135 dos commits noturnos da #127 que faltavam (9e027bf e e6ddfa4, com o acabamento que a 116bb56 deu a
+ * eles). 9e027bf, item 4 da revisão de 14/09: nos idiomas novos a classificação dizia "serviço" para o que não é (na
+ * main, "outros"). Serviço por engano sujeita o item ao portão e apaga o match que ele tinha pela categoria.
+ */
+describe("Falsos positivos de classificação nos idiomas novos (9e027bf da #127, portada)", () => {
+  it("em chinês e japonês o serviço precisa TERMINAR o termo: software, placa, centro, móveis e fundo não são serviço", () => {
+    for (const rotulo of ["会计软件", "广告牌", "设计软件", "培训中心", "法律数据库", "デザイン家具", "保守的な投資ファンド", "採用実績のある技術", "会計ソフト"]) {
+      expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
+    }
+    expect(classificarOferta("会计软件", "技术")).not.toBe("servico");
+    // Os serviços de logística e de saúde que a #135 leu em 14/09 seguem a mesma regra: o equipamento não é o serviço.
+    for (const rotulo of ["物流设备", "诊所设备", "医師用品"]) {
+      expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
+    }
+    for (const [rotulo, familia] of [["物流服务", "logistica"], ["心理咨询", "psicologia"], ["看護師", "enfermagem"]] as Array<[string, string]>) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe(familia);
+    }
+  });
+
+  it("escritório, agência, 'serviço' e o sufixo de quem presta depois do serviço seguem sendo serviço", () => {
+    for (const [rotulo, familia] of [
+      ["会計事務所", "contabilidade"], ["税理士事務所", "contabilidade"], ["広告代理店", "publicidade"], ["律師事務所", "advocacia"],
+      ["會計師事務所", "contabilidade"], ["律师事务所", "advocacia"], ["会计师事务所", "contabilidade"], ["法律服务", "advocacia"],
+    ] as Array<[string, string]>) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe(familia);
+    }
+  });
+
+  it("'avocat' sem qualificador é também o abacate, e 'conseil' de órgão é o conselho", () => {
+    for (const [rotulo, categoria] of [
+      ["Avocat", null], ["Avocats bio", null], ["Avocat", "Fruits"], ["Conseil d'administration", null],
+      ["Membre du conseil d'administration", null], ["Conseil municipal", null],
+    ] as Array<[string, string | null]>) {
+      expect(classificarOferta(rotulo, categoria), `${rotulo} [${categoria}]`).not.toBe("servico");
+    }
+    for (const rotulo of ["Avocat fiscaliste", "Avocat d'affaires", "Cabinet d'avocats", "Avocate", "Conseil fiscal", "Conseil en stratégie"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    }
+    // A categoria continua decidindo o que o texto não decidiu.
+    expect(classificarOferta("Avocat", "Services juridiques")).toBe("servico");
+  });
+
+  it("adjetivo de profissão diante de substantivo que não é serviço não é serviço; diante de substantivo de serviço, é", () => {
+    for (const rotulo of ["Juristische Person", "Données comptables", "Юридический адрес", "Бухгалтерский баланс", "कानूनी दस्तावेज़", "مستند قانوني", "عمارة سكنية"]) {
+      expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
+    }
+    for (const [rotulo, familia] of [
+      ["Juristische Beratung", "consultoria"], ["Юридические услуги", "advocacia"], ["Бухгалтерские услуги", "contabilidade"],
+      ["Бухгалтерский учёт", "contabilidade"], ["कानूनी सेवाएं", "advocacia"], ["Expert-comptable", "contabilidade"],
+      ["Cabinet comptable", "contabilidade"], ["Comptable", "contabilidade"],
+    ] as Array<[string, string]>) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe(familia);
+    }
+    // No trecho da IA, "un comptable" continua sendo o contador pedido, e não o adjetivo.
+    expect(trechoNomeiaServicoAtendido("nous cherchons un comptable", ["Tax lawyer"])).toBe("nao-atende");
+    expect(trechoNomeiaServicoAtendido("nous cherchons un comptable", ["Expert-comptable"])).toBe("atende");
+  });
+
+  it("'cabinet' e 'expert' só são o escritório com o serviço logo no começo do complemento (116bb56 sobre a 9e027bf)", () => {
+    expect(classificarOferta("Cabinets de cuisine design")).not.toBe("servico");
+    for (const rotulo of ["Cabinet comptable", "Cabinet juridique", "Cabinet d'avocats", "Expert-comptable"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    }
+  });
+});
+
+describe("Leitura do chinês e do japonês pelo fim do termo e travas dos idiomas novos (e6ddfa4 e 116bb56 da #127, portadas)", () => {
+  it("nos idiomas novos, a forma usual do serviço e do profissional é serviço", () => {
+    for (const [rotulo, familia] of [
+      ["税务师事务所", "contabilidade"], ["税務コンサルティングが必要です", "consultoria"], ["会計士募集", "contabilidade"],
+      ["コンサルティングファーム", "consultoria"], ["设计工作室", "design"], ["顧問", "consultoria"],
+      ["Маркетинговая консультация", "consultoria"], ["Переводческие услуги", "traducao"],
+    ] as Array<[string, string]>) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+      expect(familiaDoServico(rotulo), rotulo).toBe(familia);
+    }
+  });
+
+  it("a especialidade de antes do serviço é lida: '税务' é a tributária, e o que as listas não leem só casa escrito igual", () => {
+    expect(especialidadeDoServico("税务咨询")).toEqual(["tributario"]);
+    expect(mesmaFamiliaEEspecialidade("税务咨询", null, "Consultoria tributária")).toBe(true);
+    expect(mesmaFamiliaEEspecialidade("Consultoria tributária", null, "税務コンサルティング")).toBe(true);
+    expect(necessidadeGenericaNomeiaOServico("税务咨询", null, "咨询")).toBe(true);
+    expect(necessidadeNomeiaOServico("税务咨询", null, "营销咨询")).toBe(false);
+    expect(necessidadeNomeiaOServico("税务咨询", null, "法律咨询")).toBe(false);
+    // O pedido e as partículas não são especialidade.
+    expect(mesmaFamiliaEEspecialidade("税务咨询", null, "我们需要税务咨询服务")).toBe(true);
+  });
+
+  it("'招聘' é quem contrata diante do profissional e o recrutamento diante da prestação", () => {
+    // "招聘咨询" é consultoria de recrutamento: não é a consultoria genérica que "税务咨询" atenderia.
+    expect(necessidadeNomeiaOServico("税务咨询", null, "招聘咨询")).toBe(false);
+    expect(necessidadeGenericaNomeiaOServico("招聘咨询", null, "咨询")).toBe(true);
+    // "招聘律师" é contratar advogado: o mesmo serviço de "律师"; "招聘医生", contratar médico.
+    expect(mesmaFamiliaEEspecialidade("律师", null, "招聘律师")).toBe(true);
+    expect(mesmaFamiliaEEspecialidade("医生", null, "招聘医生")).toBe(true);
+  });
+
+  it("regraNaoLeOPar: só no par que as listas não leem num idioma novo; pt, en e es seguem estritos", () => {
+    expect(regraNaoLeOPar("Steuerberatung für Erbschaften", "Finanzen", "Steuerberater für Erbschaftsteuer")).toBe(true);
+    expect(regraNaoLeOPar("Conseil en fiscalité internationale", "Finances", "Conseil en fiscalité des entreprises")).toBe(true);
+    // O par que casa não é "não lido"; o que o motor entende e barra também não.
+    expect(regraNaoLeOPar("Налоговый консалтинг", null, "Налоговая консультация")).toBe(false);
+    expect(regraNaoLeOPar("Налоговый консалтинг", null, "Юрист")).toBe(false);
+    expect(regraNaoLeOPar("Steuerberatung", null, "Maschinen")).toBe(false);
+    // Palavra desconhecida em português segue valendo contra o par, também diante de francês e em rótulo bilíngue.
+    expect(regraNaoLeOPar("Consultoria em segurança do trabalho", null, "Conseil en droit du travail")).toBe(false);
+    expect(regraNaoLeOPar("Consultoria em segurança do trabalho / 安全咨询", null, "Consultoria trabalhista")).toBe(false);
+    expect(regraNaoLeOPar("Consultoria em segurança do trabalho", null, "Consultoria trabalhista")).toBe(false);
+    // O pedido precisa pedir o serviço.
+    expect(regraNaoLeOPar("Advogado", null, "Bureaux pour avocats")).toBe(false);
+    expect(regraNaoLeOPar("Advocacia", null, "Juristische Person")).toBe(false);
+  });
+});
+
+describe("classificarOferta — revisão de 15/09 do porte da 9e027bf", () => {
+  it("o 'D' de R&D e P&D não é o genitivo do francês: segue serviço", () => {
+    for (const rotulo of ["R&D consulting", "R&D services", "R&D tax consulting", "R&D tax credit advisory", "P&D consulting"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    }
+    // E o "d'" com apóstrofo, reto ou curvo, segue lido: o escritório de advocacia; o conselho de administração, não.
+    for (const rotulo of ["Cabinet d'avocats", "Cabinet d’avocats", "Avocat d'affaires"]) expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    expect(classificarOferta("Conseil d'administration")).not.toBe("servico");
+  });
+
+  it("o serviço em chinês com a cidade entre parênteses, depois de ' - ' ou separada por espaço segue serviço; o software, não", () => {
+    for (const rotulo of ["律师事务所（北京）", "税务咨询（上海）", "会计服务 - 深圳", "律师事务所 北京", "北京律师事务所"]) {
+      expect(classificarOferta(rotulo), rotulo).toBe("servico");
+    }
+    for (const rotulo of ["会计软件", "会计软件（北京）"]) expect(classificarOferta(rotulo), rotulo).not.toBe("servico");
   });
 });

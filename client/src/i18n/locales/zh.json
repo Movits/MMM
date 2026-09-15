@@ -1537,7 +1537,8 @@
     "versaoLabel": "版本",
     "aceitaEm": "接受于",
     "revogadaEmData": "· 撤销于 {{data}}",
-    "termoMudouAviso": "· 此后条款已发生变更"
+    "termoMudouAviso": "· 此后条款已发生变更",
+    "seloMesmoServico": "相同服务"
   },
   "networkPanel": {
     "eyebrow": "您的私人人脉",

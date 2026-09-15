@@ -425,3 +425,63 @@ describe("calculateCompatibilityScore — revisão de 15/09 dos consertos da #12
     }
   });
 });
+
+describe("calculateCompatibilityScore — idiomas novos (e6ddfa4 e 116bb56 da #127, portadas)", () => {
+  it("o mesmo serviço escrito de outro jeito atende; o que as listas não leem não bloqueia; o presumido segue bloqueado", () => {
+    const ru = calculateCompatibilityScore(perfil({ whatIHave: ["Налоговый консалтинг"] }), perfil({ whatINeed: ["Налоговая консультация"] }));
+    expect(ru.bloqueio).toBeUndefined();
+    expect(ru.complementarity).toBe(60);
+    // Como na main: sem bloqueio, e sem contar como necessidade atendida.
+    const naoLe = calculateCompatibilityScore(perfil({ whatIHave: ["Steuerberatung für Erbschaften"] }), perfil({ whatINeed: ["Steuerberater für Erbschaftsteuer"] }));
+    expect(naoLe.bloqueio).toBeUndefined();
+    expect(naoLe.complementarity).toBe(20);
+    for (const [have, need] of [["Steuerberatung", "Maschinen"], ["税务咨询", "买家"], ["Налоговый консалтинг", "Юрист"]] as Array<[string, string]>) {
+      expect(calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] })).bloqueio, `${have} × ${need}`).toBe("servico-sem-demanda-expressa");
+    }
+  });
+
+  it("o mesmo serviço entre idiomas atende, e a exceção vale também para a especialidade que é a oferta", () => {
+    const zh = calculateCompatibilityScore(perfil({ whatIHave: ["税务咨询"] }), perfil({ whatINeed: ["Consultoria tributária"] }));
+    expect(zh.bloqueio).toBeUndefined();
+    expect(zh.complementarity).toBe(60);
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Steuerberatung"] }), perfil({ whatINeed: ["Steuerberaterin gesucht"] })).bloqueio).toBeUndefined();
+    // Nesta branch, com "o que tenho" vazio a especialidade é a oferta (lacuna depois da #127): o par que a regra não lê
+    // num idioma novo também não é bloqueado por ela.
+    const naEspecialidade = calculateCompatibilityScore(perfil({ primarySpecialty: "Steuerberatung für Erbschaften" }), perfil({ whatINeed: ["Steuerberater für Erbschaftsteuer"] }));
+    expect(naEspecialidade.bloqueio).toBeUndefined();
+    const presumido = calculateCompatibilityScore(perfil({ primarySpecialty: "Steuerberatung" }), perfil({ whatINeed: ["Maschinen"] }));
+    expect(presumido.bloqueio).toBe("servico-sem-demanda-expressa");
+  });
+});
+
+describe("calculateCompatibilityScore — revisão de 15/09 do porte da #127", () => {
+  it("o par que a regra não lê num idioma novo não conta como necessidade atendida, nem pelo assunto curado", () => {
+    for (const [have, need] of [
+      ["Conseil en fiscalité", "Conseil en fiscalité des entreprises"], ["Conseil en fiscalité internationale", "Conseil en fiscalité des entreprises"],
+      ["استشارات ضريبية دولية", "استشارات ضريبية للشركات"],
+    ] as Array<[string, string]>) {
+      const r = calculateCompatibilityScore(perfil({ whatIHave: [have] }), perfil({ whatINeed: [need] }));
+      expect(r.bloqueio, `${have} × ${need}`).toBeUndefined();
+      expect(r.complementarity, `${have} × ${need}`).toBe(20);
+    }
+    // O mesmo par em português segue bloqueado.
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria tributária"] }), perfil({ whatINeed: ["Consultoria tributária de empresas"] })).bloqueio)
+      .toBe("servico-sem-demanda-expressa");
+  });
+
+  it("'les' em espanhol não joga a descrição nos idiomas novos: o serviço presumido segue bloqueado", () => {
+    const descricao = "Necesitamos una consultoría de recursos humanos que les ayude a los gerentes a contratar";
+    const detalhada = perfil({ whatINeed: ["especialistas_servicos"], whatINeedDetails: [{ id: "d1", category: "especialistas_servicos", service: "recursos_humanos", description: descricao }] } as unknown as Partial<UserProfile>);
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria em comércio exterior"] }), detalhada).bloqueio).toBe("servico-sem-demanda-expressa");
+    expect(calculateCompatibilityScore(perfil({ primarySpecialty: "Consultoria em comércio exterior" }), detalhada).bloqueio).toBe("servico-sem-demanda-expressa");
+    const outra = perfil({ seekingTypes: ["outra_necessidade"], seekingOtherNeed: descricao } as unknown as Partial<UserProfile>);
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria em comércio exterior"] }), outra).bloqueio).toBe("servico-sem-demanda-expressa");
+  });
+
+  it("R&D, I+D e o serviço em chinês com a cidade seguem serviço e não casam com a contraparte", () => {
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["R&D tax consulting"] }), perfil({ whatINeed: ["Distribuidor para expansão na África"] })).bloqueio).toBe("servico-sem-demanda-expressa");
+    expect(calculateCompatibilityScore(perfil({ whatIHave: ["Consultoria tributária"] }), perfil({ whatINeed: ["Consultoría en I+D"] })).bloqueio).toBe("servico-sem-demanda-expressa");
+    const distribuidores = perfil({ whatINeed: ["distribuidores"], whatINeedDetails: [{ id: "d1", category: "distribuidores", description: "寻找非洲市场的经销商" }] } as unknown as Partial<UserProfile>);
+    expect(calculateCompatibilityScore(perfil({ primarySpecialty: "律师事务所（北京）" }), distribuidores).bloqueio).toBe("servico-sem-demanda-expressa");
+  });
+});

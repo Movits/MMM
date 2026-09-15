@@ -1537,7 +1537,8 @@
     "versaoLabel": "versão",
     "aceitaEm": "aceita em",
     "revogadaEmData": "· revogada em {{data}}",
-    "termoMudouAviso": "· o termo mudou depois disso"
+    "termoMudouAviso": "· o termo mudou depois disso",
+    "seloMesmoServico": "Mesmo serviço"
   },
   "networkPanel": {
     "eyebrow": "SUA REDE PARTICULAR",

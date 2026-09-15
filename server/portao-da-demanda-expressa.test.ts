@@ -532,3 +532,91 @@ describe("Portão da IA — imóvel pedido pela cabeça (porte da d7fac93 na #13
     }
   });
 });
+
+/**
+ * 9e866b9 da #127 (item 6 da revisão de 14/09, portada): chinês e japonês não
+ * separam palavras, e a citação inteira chegava como UMA palavra — menos que as
+ * duas exigidas. O serviço nunca passava nesses idiomas, nem com a necessidade
+ * declarada. E a 0d6643d (revisão de 15/09): a conferência literal vale só para
+ * a citação de fato chinesa ou japonesa, não para a frase latina com um nome.
+ */
+describe("Portão da IA — citação em chinês e japonês, sem espaço (9e866b9 e 0d6643d da #127, portadas)", () => {
+  it("confere quando o trecho está literalmente na fonte e tem ao menos quatro caracteres", () => {
+    expect(citacaoConfere("我们需要税务咨询服务", "我们需要税务咨询服务")).toBe(true);
+    expect(citacaoConfere("我们需要税务咨询服务", "新工厂项目 | 我们需要税务咨询服务，以便处理进口关税。")).toBe(true);
+    expect(citacaoConfere("税務コンサルティングが必要です", "当社は税務コンサルティングが必要です。")).toBe(true);
+    // Trecho que não está na fonte, ou curto demais para ser declaração, não confere.
+    expect(citacaoConfere("我们需要法律咨询服务", "我们需要税务咨询服务")).toBe(false);
+    expect(citacaoConfere("咨询", "我们需要税务咨询服务")).toBe(false);
+    expect(citacaoConfere("新工厂项目我们需要", "新工厂项目 | 我们需要税务咨询服务")).toBe(false);
+  });
+
+  it("e o match apoiado nela passa no portão; citação inventada não", () => {
+    const passa = (oferta: string, citacao: string, fonte: string) =>
+      passaNoPortao({ tipoDaOferta: "servico", necessidadeExpressa: citacao }, fonte, { whatIHave: [oferta], whatINeed: [] });
+    expect(passa("税务咨询", "我们需要税务咨询服务", "新工厂项目 | 我们需要税务咨询服务")).toBe(true);
+    expect(passa("税務コンサルティング", "税務コンサルティングが必要です", "当社は税務コンサルティングが必要です。")).toBe(true);
+    expect(passa("税务咨询", "我们需要法律咨询服务", "新工厂项目 | 我们需要税务咨询服务")).toBe(false);
+  });
+
+  it("frase latina com um nome curto em chinês ou japonês segue a regra das palavras, e o nome só precisa estar na fonte (0d6643d)", () => {
+    // Antes o "東京" (dois caracteres) levava a citação inteira para a conferência literal e ela não conferia.
+    expect(citacaoConfere("Precisamos de consultoria tributária para a filial de 東京", "Nova filial | Precisamos de consultoria tributária para a filial de 東京")).toBe(true);
+    expect(citacaoConfere("We need tax consulting for our 日本橋 office", "New office | We need tax consulting for our 日本橋 office")).toBe(true);
+    // A tolerância de uma palavra ausente continua valendo, também com o nome japonês na frase.
+    expect(citacaoConfere("Precisamos urgentemente de consultoria tributária para 株式会社トヨタ", "Precisamos de consultoria tributária para 株式会社トヨタ")).toBe(true);
+    // O nome que não está na fonte não confere.
+    expect(citacaoConfere("Precisamos de consultoria tributária para a filial de 東京", "Precisamos de consultoria tributária para a filial")).toBe(false);
+    // Parte latina inventada: com duas palavras cai na regra de sempre; com uma, na conferência literal.
+    expect(citacaoConfere("我们需要税务咨询服务 transfer pricing", "我们需要税务咨询服务")).toBe(false);
+    expect(citacaoConfere("我们需要税务咨询服务 pricing", "我们需要税务咨询服务")).toBe(false);
+    expect(passaNoPortao(
+      { tipoDaOferta: "servico", necessidadeExpressa: "Precisamos de consultoria tributária para a filial de 東京" },
+      "Nova filial | Precisamos de consultoria tributária para a filial de 東京",
+      { whatIHave: ["Consultoria tributária"], whatINeed: [] },
+    )).toBe(true);
+  });
+
+  it("os invariantes da #135 continuam valendo com a citação em chinês: a contraparte e o serviço lido e diferente barram", () => {
+    // O serviço em chinês agora é lido (e6ddfa4): "税务咨询" diante de "consultoria em marketing" é barrado como
+    // "Consultoria tributária" seria.
+    expect(passaNoPortao(
+      { tipoDaOferta: "servico", necessidadeExpressa: "Precisamos de consultoria em marketing" },
+      "Nova loja | Precisamos de consultoria em marketing digital",
+      { whatIHave: ["税务咨询"], whatINeed: [] },
+    )).toBe(false);
+    // A citação que pede a contraparte segue barrada, com o perfil em chinês.
+    expect(passaNoPortao(
+      { tipoDaOferta: "servico", necessidadeExpressa: "busca distribuidor para expansão na África" },
+      "Indústria farmacêutica | busca distribuidor para expansão na África",
+      { whatIHave: ["税务咨询"], whatINeed: [] },
+    )).toBe(false);
+  });
+
+  it("e com a CITAÇÃO em chinês ou japonês o portão fecha por padrão: só passa o pedaço que nomeia um serviço do perfil (revisão de 15/09 do porte)", () => {
+    // O resto do portão não lê essa escrita: contraparte, capital, imóvel, autodescrição e outro serviço caíam em "não
+    // nomeia serviço" e passavam — em português são barrados.
+    const passa = (oferta: string, citacao: string, fonte = `新项目 | ${citacao}。`, tipo = "servico") =>
+      passaNoPortao({ tipoDaOferta: tipo, necessidadeExpressa: citacao }, fonte, { whatIHave: [oferta], whatINeed: [] });
+    for (const oferta of ["Consultoria tributária", "税务咨询"]) {
+      for (const [citacao, fonte] of [
+        ["我们需要分销商", undefined], ["我们需要投资者", undefined], ["我们需要寻找买家", undefined], ["我们是一家国际贸易公司", undefined],
+        ["我们需要律师", undefined], ["我们需要营销咨询", undefined],
+        ["非洲扩张的经销商", "寻找非洲扩张的经销商"], ["有国际业务的巴西公司", "我们是一家有国际业务的巴西公司"],
+        ["投资者扩建工厂", "寻找投资者扩建工厂"], ["上海的办公室", "我们需要上海的办公室"], ["市场营销咨询", "我们需要市场营销咨询"],
+      ] as Array<[string, string | undefined]>) {
+        expect(passa(oferta, citacao, fonte), `${oferta} :: ${citacao}`).toBe(false);
+      }
+    }
+    expect(passa("Consultoria em internacionalização", "我们需要分销商")).toBe(false);
+    expect(passa("税務コンサルティング", "販売代理店を探しています")).toBe(false);
+    expect(passa("税務コンサルティング", "弁護士が必要です")).toBe(false);
+    // O piso: perfil só de serviço e o modelo dizendo "produto".
+    expect(passa("Consultoria tributária", "我们需要寻找买家", undefined, "produto")).toBe(false);
+    // O pedido do serviço oferecido, lido pelo fim do termo, continua passando.
+    expect(passa("税务咨询", "我们需要税务咨询服务")).toBe(true);
+    expect(passa("Consultoria tributária", "我们需要税务咨询服务")).toBe(true);
+    expect(passa("税務コンサルティング", "税務コンサルティングが必要です")).toBe(true);
+    expect(passa("会计师事务所", "我们需要会计服务")).toBe(true);
+  });
+});

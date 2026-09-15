@@ -118,7 +118,10 @@ gravada antes da regra (sem apagá-la: a dispensa da dona sobrevive); nos dois p
 por LLM de `routers/matching.ts`, o modelo classifica o item, cita o trecho literal do
 título, das tags ou da descrição da oportunidade que declara a necessidade e
 `server/portao-da-demanda-expressa.ts` confere a citação nesse texto (no máximo uma
-palavra ausente) antes de exibir — e usa o classificador como piso: perfil que só tem
+palavra ausente; em chinês e japonês, que não separam palavras, o trecho precisa estar
+literalmente na fonte, sem tolerância e com ao menos quatro caracteres, e só passa quando nomeia
+um serviço que o perfil oferece, porque o resto do portão não lê essa escrita — o nome curto numa
+frase latina, como "filial de 東京", só precisa estar na fonte) antes de exibir — e usa o classificador como piso: perfil que só tem
 serviço e nada em "preciso" exige citação seja qual for o tipo que o modelo escreveu.
 Prompt é pedido, a conferência é a garantia.
 
@@ -131,7 +134,8 @@ tradução...) e especialidade (lemas curados: tributário = tributarista = fisc
 ICMS) iguais dão 100 no motor privado e satisfazem o de perfis — também entre consultoria e
 assessoria e no apoio que nomeia a profissão ("Assessoria jurídica tributária" diante de
 "Advocacia tributária"), e quando os dois lados nomeiam a família e nada mais
-("Contabilidade" e "Serviços contábeis" diante de "Contador"); a necessidade que nomeia só a
+("Contabilidade" e "Serviços contábeis" diante de "Contador"; na tela do Smart Match esse 100
+tem o selo "Mesmo serviço", e não "Tag exata"); a necessidade que nomeia só a
 família ("Advogado" diante de "Advocacia tributária") vale 60. **Palavra igual não é serviço
 igual, e na dúvida não casa:** o motor só afirma equivalência do que entende. Palavra
 fora das listas precisa aparecer igual dos dois lados, e a oferta não pode ter palavra
@@ -206,9 +210,17 @@ Limites aceitos e decisões pendentes (revisão adversarial de 13/09/2026):
 - a categoria é texto livre e decide o tipo quando o texto não decide: "Cafeteira
   industrial" [Consultoria] vira serviço e cai no portão (decisão do time em 14/09; a
   causa raiz virou cartão próprio);
-- a especialidade escrita de outro jeito só é lida em pt, en e es; nos outros 7 idiomas
-  as listas reconhecem a família do serviço (#124), e a especialidade só casa escrita
-  igual;
+- a especialidade escrita de outro jeito é lida em pt, en e es; nos outros 7 idiomas as
+  listas reconhecem a família do serviço (#124) e a especialidade só onde há lema curado (a
+  tributária em fr, ru, ar, zh e ja). O par que nesses idiomas só não casa por palavra que
+  as listas não leem não é bloqueado nos motores determinísticos: vale a categoria em
+  comum, como antes da regra, e nunca 0 por falta de regra (`regraNaoLeOPar`, e6ddfa4 da
+  #127, portada na #135). Em pt, en e es nada muda: os exemplos da spec, o vocabulário
+  curado de assunto e as opções genéricas seguem estritos. No par que a exceção cobre, o
+  assunto curado não decide antes dela: "Conseil en fiscalité internationale" × "Conseil en
+  fiscalité des entreprises" vale 60 pela categoria em comum [Finances] e 0 sem ela, e no motor
+  de perfis não conta como necessidade atendida (o mesmo par em português segue barrado);
+  "les" e "une" são espanhol e não marcam o francês;
 - "Consultoria jurídica" oferecida não atende a necessidade "Advogado" nos motores
   determinísticos ("Legal advisory" × "Lawyer" deixou de dar 100); na IA, fica com o
   modelo. O inverso, "Assessoria jurídica" pedida diante de "Advocacia" oferecida, atende
@@ -216,8 +228,19 @@ Limites aceitos e decisões pendentes (revisão adversarial de 13/09/2026):
 - advocacia empresarial, societária e de contratos são áreas distintas para a regra
   ("Advocacia corporativa" é societária; fora da advocacia, corporativo é empresarial) —
   decisão pendente do time;
-- em chinês e japonês só a família é lida: a oferta atende a necessidade genérica escrita
-  em outro idioma ("律师" × "Advogado"), e nenhuma especialidade;
+- em chinês e japonês o serviço é lido pelo fim do termo, onde as duas línguas põem a
+  cabeça ("会计软件" é software; "律师事务所" é advocacia), e a especialidade só onde há lema
+  curado ("税务"): "律师" × "Advogado" e "税务咨询" × "Consultoria tributária" valem 100,
+  "税务咨询" × "咨询" vale 60 (9e027bf e e6ddfa4 da #127, portadas); a cidade depois do serviço,
+  entre parênteses, depois de " - " ou separada por espaço ("律师事务所（北京）", "会计服务 - 深圳"),
+  não muda a leitura;
+- nos idiomas novos, a exceção do que as listas não leem tem duas travas (116bb56 da #127):
+  o pedido precisa pedir o serviço ("Bureaux pour avocats", "Juristische Person",
+  "Conseil d'administration" citam a família sem pedir), e o pedido que só fica genérico
+  porque saiu a palavra desconhecida não casa com oferta de especialidade entendida —
+  "Консультация по логистике" é 0 diante de "Consultoria tributária". Num rótulo bilíngue o
+  idioma se decide por trecho ("/", parênteses, travessão) e por palavra: a parte em pt, en
+  ou es segue estrita;
 - na oferta, o público que leva a 100 diante da necessidade que só nomeia o serviço é o
   destinatário (pequenas empresas, MEI, PMEs, startups, pessoa física: `DESTINATARIOS_COMUNS`);
   setor, finalidade e grupo depois de "para" ("para restaurantes", "para exportação", "para
@@ -255,19 +278,26 @@ Limites aceitos e decisões pendentes (revisão adversarial de 13/09/2026):
   "Vaga de emprego" não;
 - nos idiomas novos as listas leem a forma usual do profissional (femininos alemães em -in,
   "Kanzlei", "juriste", "traductrice", acusativo e genitivo russos, o artigo árabe colado,
-  "مستشار", "लेखा"), mas a regra segue estrita: palavra de pedido que as listas não leem
-  ("Steuerberaterin GESUCHT", "लेखाकार चाहिए") é especialidade desconhecida, e o par é barrado. A
-  exceção da #127 para o que as listas não leem (`regraNaoLeOPar`, e6ddfa4), a leitura do chinês e
-  do japonês pelo fim do termo (9e027bf, e6ddfa4, 0d6643d) e o selo "Mesmo serviço" (9e866b9) não
-  foram portados para a #135 — decisão pendente do Roberto e do Nicolas (15/09): "税务咨询" ×
-  "Consultoria tributária" e "Steuerberatung" × "Steuerberaterin gesucht" dão 0 aqui e 100 na #127,
-  e o 100 pelo mesmo serviço aparece como "Tag exata";
+  "مستشار", "लेखा") e os marcadores de pedido de de, fr, ru, hi e ar ("Steuerberaterin GESUCHT",
+  "लेखाकार चाहिए" valem 100). A exceção do que as listas não leem, a leitura do chinês e do
+  japonês pelo fim do termo, a conferência da citação sem espaço e o selo "Mesmo serviço"
+  (76cd7da a 0d6643d da #127) foram portados para a #135 em 15/09. Diferenças que ficam de
+  propósito: na necessidade que nomeia só a família diante da oferta sem especialidade, a #127
+  lê a necessidade ao pé da letra e aqui valem 100 o adjetivo sozinho ("Contabilidade" ×
+  "Contábil", "Law firm" × "Jurídico") e o lugar ("Contador em Campinas/SP"), que lá valem 60
+  — o qualificador de quem presta ("Contador sênior", "urgente", "de confiança", "com CRC",
+  "Advogado especializado", "Consultoria especializada") fica em 60 nos dois; o assunto curado da spec
+  decide antes da categoria em pt, en e es, mas não no par que a exceção dos idiomas novos
+  cobre. Na citação em chinês ou japonês o portão fecha por padrão (só passa o trecho que nomeia
+  um serviço do perfil), enquanto na #127 a citação que o texto não lê fica com o modelo; e o
+  "d'" do francês é lido sem tirar o "D" de "R&D" e "I+D" do serviço;
 - no motor privado, "Consultoria" digitada não é atendida por advocacia nem por
   contabilidade; no de perfis, a opção fixa "Consultoria" é atendida pela família da
   cabeça (advocacia, contabilidade, auditoria, mentoria, coaching);
 - a regra estrita troca match falso por falso negativo: o mesmo serviço escrito com
-  palavra que as listas não conhecem e só um lado usa ("Consultoria em exportação" ×
-  "Consultoria em comércio exterior", "Contador para projeto aprovado na Lei Rouanet")
+  palavra que as listas não conhecem e só um lado usa ("Contador para projeto aprovado na
+  Lei Rouanet"; "Consultoria em exportação" × "Consultoria em comércio exterior" saiu deste
+  limite com o vocabulário curado de internacionalização, e vale 60)
   não casa nos motores determinísticos, como antes da correção;
 - na IA, citação de finalidade sem especialidade reconhecida ("Buscamos consultoria para
   aumentar vendas no Instagram"), especialidade que as listas não leem ("advogado de

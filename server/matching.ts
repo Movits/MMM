@@ -9,7 +9,7 @@ import { eq, ne, and, desc, inArray } from "drizzle-orm";
 import crypto from "crypto";
 import { hasValidConsent, usersComConsentimento } from "./routers/consent";
 import { nomeiamAMesmaCoisa, slugDoTermo } from "@shared/direcao-do-termo";
-import { ehServico, ehServicoDeAssessoria, necessidadeDeclaraOAssuntoDoServico, necessidadeNomeiaOServico } from "@shared/tipo-da-oferta";
+import { ehServico, ehServicoDeAssessoria, necessidadeDeclaraOAssuntoDoServico, necessidadeNomeiaOServico, regraNaoLeOPar } from "@shared/tipo-da-oferta";
 import { chaveAtualDaBusca } from "@shared/o-que-busca";
 import { CATEGORIAS_O_QUE_PRECISO, O_QUE_PRECISO_LEGADO } from "@shared/o-que-preciso";
 import { necessidadesEscritasDoPerfil, rotularBuscas } from "./portao-da-demanda-expressa";
@@ -251,7 +251,10 @@ function satisfaz(have: string, need: string): boolean {
   // A necessidade que declara o ASSUNTO do serviço sem nomeá-lo ("Apoio para
   // estruturar a entrada da minha empresa no Paraguai" diante de "Consultoria em
   // internacionalização") também é demanda expressa — spec da Glenda, 14/09.
-  if (necessidadeDeclaraOAssuntoDoServico(have, null, need)) return true;
+  // Não no par que a regra não lê num idioma novo (`regraNaoLeOPar`): ali ele
+  // não é bloqueado nem conta como necessidade atendida, como no motor privado
+  // (revisão de 15/09 do porte da e6ddfa4).
+  if (necessidadeDeclaraOAssuntoDoServico(have, null, need) && !regraNaoLeOPar(have, null, need)) return true;
   return slugDoTermo(need) === "consultoria" && ehServicoDeAssessoria(have);
 }
 
@@ -421,10 +424,14 @@ export function calculateCompatibilityScore(
   const bOferece = ofertasDoPerfil(b, bHave);
   const aCobreB = aHave.length > 0 ? aCoversB : coversNeeds(aOferece, bNeed);
   const bCobreA = bHave.length > 0 ? bCoversA : coversNeeds(bOferece, aNeed);
-  const soOfereceServicoPresumido = (ofertas: string[], cobre: number) =>
-    ofertas.length > 0 && cobre === 0 && ofertas.every(item => ehServico(item));
+  //
+  // O par que a regra não lê num idioma novo (e6ddfa4 da #127, revisão de 14/09)
+  // não é bloqueado nem conta como necessidade atendida: fica como na main.
+  const regraNaoLe = (ofertas: string[], need: string[]) => ofertas.some(item => need.some(necessidade => regraNaoLeOPar(item, null, necessidade)));
+  const soOfereceServicoPresumido = (ofertas: string[], cobre: number, need: string[]) =>
+    ofertas.length > 0 && cobre === 0 && ofertas.every(item => ehServico(item)) && !regraNaoLe(ofertas, need);
   const semBaseExpressa = aCobreB === 0 && bCobreA === 0 && !investimentoExpresso;
-  const bloqueio = semBaseExpressa && (soOfereceServicoPresumido(aOferece, aCobreB) || soOfereceServicoPresumido(bOferece, bCobreA))
+  const bloqueio = semBaseExpressa && (soOfereceServicoPresumido(aOferece, aCobreB, bNeed) || soOfereceServicoPresumido(bOferece, bCobreA, aNeed))
     ? ("servico-sem-demanda-expressa" as const)
     : undefined;
 

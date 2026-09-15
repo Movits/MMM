@@ -1537,7 +1537,8 @@
     "versaoLabel": "version",
     "aceitaEm": "acceptée le",
     "revogadaEmData": "· révoquée le {{data}}",
-    "termoMudouAviso": "· les conditions ont changé depuis"
+    "termoMudouAviso": "· les conditions ont changé depuis",
+    "seloMesmoServico": "Même service"
   },
   "networkPanel": {
     "eyebrow": "VOTRE RÉSEAU PRIVÉ",

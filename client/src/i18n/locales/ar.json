@@ -1470,7 +1470,7 @@
   "intelligentMatches": {
     "seloMutuo": "↔ اتصال متبادل",
     "seloCategoria": "نفس الفئة",
-    "seloFamilia": "نفس فئة الخدمة",
+    "seloFamilia": "نفس نوع الخدمة",
     "seloSignificados": "معانٍ متشابهة",
     "seloOfertaProcura": "عرض وطلب",
     "seloTagExata": "الوسم نفسه",
@@ -1537,7 +1537,8 @@
     "versaoLabel": "الإصدار",
     "aceitaEm": "قُبلت في",
     "revogadaEmData": "· أُلغيت في {{data}}",
-    "termoMudouAviso": "· تغيّرت الشروط بعد ذلك"
+    "termoMudouAviso": "· تغيّرت الشروط بعد ذلك",
+    "seloMesmoServico": "نفس الخدمة"
   },
   "networkPanel": {
     "eyebrow": "شبكتك الخاصة",

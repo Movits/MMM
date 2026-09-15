@@ -1537,7 +1537,8 @@
     "versaoLabel": "версия",
     "aceitaEm": "принята",
     "revogadaEmData": "· отозвана {{data}}",
-    "termoMudouAviso": "· соглашение изменилось после этого"
+    "termoMudouAviso": "· соглашение изменилось после этого",
+    "seloMesmoServico": "Та же услуга"
   },
   "networkPanel": {
     "eyebrow": "ВАША ЛИЧНАЯ СЕТЬ",

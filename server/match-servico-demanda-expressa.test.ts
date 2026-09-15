@@ -17,6 +17,7 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  */
 const { scoreMatch, slugifyMatchTag } = await import("./match-service");
 const { nucleoDoTermo, nomeiamAMesmaCoisa, slugDoTermo } = await import("@shared/direcao-do-termo");
+const { regraNaoLeOPar } = await import("@shared/tipo-da-oferta");
 
 const item = (label: string, category: string | null = null) =>
   ({ slug: slugifyMatchTag(label), label, category });
@@ -100,12 +101,75 @@ describe("Serviço × necessidade que o NOMEIA — casa em 100", () => {
     // cai junto.
     expect(scoreMatch(item("Consultoria jurídica", "Serviços"), item("Consultoria", "Serviços")).score).toBe(60);
     expect(scoreMatch(item("Consultoria de marketing", "Serviços"), item("Consultoria", "Serviços")).score).toBe(60);
-    // Dois serviços na oferta, ou oferta lida só por substring (zh/ja, sem saber a especialidade), seguem na família.
+    // Dois serviços na oferta seguem na família.
     expect(scoreMatch(item("Tradução e interpretação"), item("Intérprete")).score).toBe(60);
-    expect(scoreMatch(item("律师"), item("Advogado")).score).toBe(60);
+    // "律师" valia 60 enquanto a oferta em chinês era lida por substring, sem saber a especialidade. Com a leitura pelo
+    // fim do termo (9e027bf e e6ddfa4 da #127, portadas) ela é a advocacia sem especialidade, a regra de
+    // "Contabilidade" × "Contador"; com a especialidade escrita ("税务咨询" × "咨询"), segue na família.
+    expect(scoreMatch(item("律师"), item("Advogado")).score).toBe(100);
+    expect(scoreMatch(item("税务咨询"), item("咨询")).score).toBe(60);
     // Com especialidade de um lado só, nada muda: a necessidade genérica vale 60, a especializada diante da oferta genérica, 0.
     expect(scoreMatch(item("Advocacia tributária"), item("Advogado")).score).toBe(60);
     expect(scoreMatch(item("Advocacia"), item("Advogado trabalhista")).score).toBe(0);
+    // Cabeça neutra é estrutura, como "empresa" e "procura" no teste acima (76cd7da da #127, portada).
+    expect(scoreMatch(item("Escritório de contabilidade"), item("Contador"))).toEqual({ score: 100, type: "exact" });
+    // Na #127 "Contabilidade" × "Contábil" fica em 60 (a necessidade tem de nomear o serviço por substantivo). Na #135 o
+    // adjetivo sozinho dos dois lados nomeia só a família e vale 100, como na main — ver "adjetivo sozinho e lugar dos DOIS
+    // lados genéricos" abaixo. A diferença é deliberada e fica fixada nos dois lugares.
+    expect(scoreMatch(item("Contabilidade"), item("Contábil")).score).toBe(100);
+    // Mas o qualificador de quem presta, na necessidade, é algo além da família: 60, como na #127 (que lê a necessidade
+    // ao pé da letra, 76cd7da e ff9564f). Com o critério "pedido genérico" estes valiam 100 e mandavam e-mail (revisão de
+    // 15/09 do porte).
+    for (const [oferta, necessidade] of [
+      ["Contabilidade", "Contador sênior"], ["Contabilidade", "Contador urgente"], ["Contabilidade", "Contador de confiança"],
+      ["Contabilidade", "Contador com CRC"], ["Contabilidade", "Bom contador"], ["Contabilidade", "Contador online"],
+      ["Advocacia", "Advogado especializado"], ["Consultoria", "Consultoria especializada"], ["Accounting services", "Experienced accountant"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
+    }
+    // Artigo e verbo de quem pede seguem estrutura.
+    expect(scoreMatch(item("Contabilidade"), item("Precisamos de um contador"))).toEqual({ score: 100, type: "exact" });
+    expect(scoreMatch(item("Lawyer"), item("Looking for a lawyer"))).toEqual({ score: 100, type: "exact" });
+  });
+
+  it("do lado da OFERTA, público e lugar não são especialidade: 100 diante da necessidade que nomeia só o serviço (ff9564f, portada)", () => {
+    // Revisão de 14/09 na #127: "Contabilidade para pequenas empresas" × "Contador" ficava em 60, abaixo do
+    // EMAIL_THRESHOLD, e o mesmo em inglês e espanhol. "Contabilidade em São Paulo" × "Contador" valia 60 por um teste da
+    // integração da 9615971 (76cd7da), e passa a 100 pela mesma regra.
+    for (const [oferta, necessidade] of [
+      ["Contabilidade para pequenas empresas", "Contador"], ["Contabilidade em São Paulo", "Contador"],
+      ["Accounting services", "Accountant"], ["Despacho de abogados", "Abogado"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 100, type: "exact" });
+    }
+    // O que diz algo a mais sobre O QUE se presta segue na nota da família: a especialidade (o conserto do defeito 3), o
+    // público que é especialidade curada ("divórcio" é família) e o público que nomeia outro serviço.
+    for (const [oferta, necessidade] of [
+      ["Consultoria tributária", "Consultoria"], ["Advogado para divórcio", "Advogado"], ["Marketing para advogados", "Marketing"],
+    ] as Array<[string, string]>) {
+      for (const categoria of [null, "Serviços"]) {
+        expect(scoreMatch(item(oferta, categoria), item(necessidade, categoria)), `${oferta} × ${necessidade} [${categoria}]`).toEqual({ score: 60, type: "category" });
+      }
+    }
+  });
+
+  it("o mesmo serviço com escritório, 'firm' ou adjetivo de estilo vale 100; o falso positivo provado segue fechado (ff9564f, portada)", () => {
+    // Revisão de 14/09 na #127: a regra estrita da palavra desconhecida cortava estes pares. Só saem da especialidade a
+    // cabeça neutra (inclusive colada depois do serviço, "law FIRM") e "estratégica" ao lado de especialidade reconhecida.
+    for (const [oferta, necessidade] of [
+      ["Escritório de advocacia", "Escritório de advogados"], ["Tax law firm", "Tax lawyer"],
+      ["Advocacia tributária estratégica", "Advogado tributarista"], ["Boutique de advocacia tributária", "Advogado tributarista"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 100, type: "exact" });
+    }
+    // Sozinha, "estratégica" é o assunto da consultoria, não a genérica.
+    expect(scoreMatch(item("Consultoria estratégica"), item("Consultoria"))).toEqual({ score: 60, type: "category" });
+    for (const [oferta, necessidade] of [
+      ["Consultoria em segurança do trabalho", "Consultoria trabalhista"], ["Consultoria em seguros empresariais", "Consultoria empresarial"],
+      ["Sell-side advisory", "Buy-side advisory"], ["Consultoria publicitária imobiliária", "Consultoria imobiliária"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta, "Serviços"), item(necessidade, "Serviços")).score, `${oferta} × ${necessidade}`).toBe(0);
+    }
   });
 
   it("\"cobertura\" não é imóvel: reportagem não escapa do portão", () => {
@@ -114,6 +178,8 @@ describe("Serviço × necessidade que o NOMEIA — casa em 100", () => {
     // ou telhado. Classificado como imóvel, o item SAI do portão da demanda
     // expressa e volta a casar por categoria — o vazamento que a #101 fecha.
     expect(scoreMatch(item("Cobertura jornalística", "Serviços"), item("Compradores", "Serviços")).score).toBe(0);
+    // 46c79b8 da #127 (portada): "house" no fim do composto em inglês é a empresa, não o imóvel.
+    expect(scoreMatch(item("Consulting house", "Consulting"), item("Buyers", "Consulting")).score).toBe(0);
   });
 
   it("mas a necessidade que nomeia a ESPECIALIDADE, e não só a família, segue valendo 100", () => {
@@ -284,18 +350,110 @@ describe("Serviço × necessidade declarada com outra flexão — casa (defeito 
  * inglês e espanhol. Nos outros 7 idiomas nada era classificado como serviço,
  * então o portão NUNCA disparava — a regra da cliente simplesmente não valia
  * para quem escreve neles, e um serviço casava por categoria como antes da #101.
+ *
+ * e6ddfa4 da #127 (itens 3 e 6 da revisão de 14/09, portada na #135): com a
+ * categoria "Serviços" o par já dava 0 na main, porque a categoria sozinha
+ * classifica o item como serviço — o teste não provava nada sobre o idioma. Com
+ * a categoria escrita no idioma, na main o par valia 60. E o conserto não pode
+ * ter levado a zero o que casava: o mesmo serviço nesses idiomas vale 100, e o
+ * que as listas não leem vale a categoria, como na main (`regraNaoLeOPar`).
  */
 describe("O portão dispara nos 10 idiomas (defeito da #101)", () => {
   it.each([
-    ["de", "Steuerberatung", "Maschinen"],
-    ["fr", "Conseil fiscal", "Machines"],
-    ["ru", "Налоговый консалтинг", "Покупатели"],
-    ["hi", "कर परामर्श", "खरीदार"],
-    ["ar", "استشارات ضريبية", "مشترون"],
-    ["zh", "税务咨询", "买家"],
-    ["ja", "税務コンサルティング", "買い手"],
-  ])("%s: serviço × necessidade presumida de mesma categoria não casa", (_idioma, oferta, necessidade) => {
+    ["pt", "Consultoria tributária", "Compradores", "Finanças"],
+    ["en", "Tax consulting", "Buyers", "Finance"],
+    ["es", "Asesoría fiscal", "Compradores", "Finanzas"],
+    ["de", "Steuerberatung", "Maschinen", "Finanzen"],
+    ["fr", "Conseil fiscal", "Machines", "Finances"],
+    ["ru", "Налоговый консалтинг", "Покупатели", "Финансы"],
+    ["hi", "कर परामर्श", "खरीदार", "वित्त"],
+    ["ar", "استشارات ضريبية", "مشترون", "مالية"],
+    ["zh", "税务咨询", "买家", "财务"],
+    ["ja", "税務コンサルティング", "買い手", "財務"],
+  ])("%s: serviço × necessidade presumida, com a categoria no idioma, não casa", (_idioma, oferta, necessidade, categoria) => {
+    const r = scoreMatch(item(oferta, categoria), item(necessidade, categoria));
+    expect(r.score).toBe(0);
+    expect((r as { bloqueio?: string }).bloqueio).toBe("servico-sem-demanda-expressa");
+    // A categoria "Serviços" de antes continua dando zero.
     expect(scoreMatch(item(oferta, "Serviços"), item(necessidade, "Serviços")).score).toBe(0);
+  });
+
+  it.each([
+    ["ru", "Налоговый консалтинг", "Налоговая консультация", "Финансы"],
+    ["fr", "Avocat fiscaliste", "Avocat fiscal", "Finances"],
+    ["fr", "Conseil fiscal", "Conseil en fiscalité", "Finances"],
+    ["zh", "税务咨询", "税务顾问", "财务"],
+    ["zh", "税务咨询", "税务咨询服务", "财务"],
+    ["ja", "税務コンサルティング", "税務コンサル", "財務"],
+    ["zh", "律师事务所", "律师", "财务"],
+    ["de", "Steuerberatung", "Suche Steuerberater", "Finanzen"],
+  ])("%s: o mesmo serviço escrito de outro jeito vale 100, com e sem categoria — %s × %s", (_idioma, oferta, necessidade, categoria) => {
+    for (const cat of [categoria, null]) {
+      expect(scoreMatch(item(oferta, cat), item(necessidade, cat)), `[${cat}]`).toEqual({ score: 100, type: "exact" });
+    }
+  });
+
+  it("o que as listas não leem num idioma novo não é bloqueado: vale a categoria, como na main", () => {
+    expect(scoreMatch(item("Steuerberatung für Erbschaften", "Finanzen"), item("Steuerberater für Erbschaftsteuer", "Finanzen"))).toEqual({ score: 60, type: "category" });
+    // Como na #127. O assunto curado ("fiscalité" entrou no lema tributário com a e6ddfa4) NÃO decide antes da exceção:
+    // se decidisse, o par valia 60 também sem categoria e virava sugestão, enquanto o mesmo par em português segue
+    // barrado (revisão de 15/09 do porte).
+    expect(scoreMatch(item("Conseil en fiscalité internationale", "Finances"), item("Conseil en fiscalité des entreprises", "Finances"))).toEqual({ score: 60, type: "category" });
+    // Sem categoria em comum, zero sem o bloqueio nomeado — também como a main.
+    for (const [oferta, necessidade] of [
+      ["Steuerberatung für Erbschaften", "Steuerberater für Erbschaftsteuer"],
+      ["Conseil en fiscalité", "Conseil en fiscalité des entreprises"], ["Conseil en fiscalité internationale", "Conseil en fiscalité des entreprises"],
+      ["استشارات ضريبية دولية", "استشارات ضريبية للشركات"], ["Consultoria tributária internacional", "Conseil en fiscalité des entreprises"],
+    ] as Array<[string, string]>) {
+      const semCategoria = scoreMatch(item(oferta), item(necessidade));
+      expect(semCategoria.score, `${oferta} × ${necessidade}`).toBe(0);
+      expect((semCategoria as { bloqueio?: string }).bloqueio, `${oferta} × ${necessidade}`).toBeUndefined();
+    }
+    // O mesmo par em português segue barrado.
+    expect(scoreMatch(item("Consultoria tributária"), item("Consultoria tributária de empresas"))).toEqual({ score: 0, type: "semantic", bloqueio: "servico-sem-demanda-expressa" });
+  });
+
+  it("'les' e 'une' são espanhol: a frase em espanhol segue estrita e barrada (revisão de 15/09 do porte)", () => {
+    for (const [oferta, necessidade] of [
+      ["Consultoria em comércio exterior", "Consultoría en recursos humanos que les ayude a contratar"],
+      ["Consultoria em gestão", "Busco consultoría para pymes que les falta estructura"], ["Consultoria", "Consultor que une ventas y marketing"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta, "Consultoria"), item(necessidade, "Consultoria")), `${oferta} × ${necessidade}`)
+        .toEqual({ score: 0, type: "semantic", bloqueio: "servico-sem-demanda-expressa" });
+    }
+  });
+
+  it("o 'D' de R&D, P&D e I+D não é o 'd'' do francês (revisão de 15/09 do porte da 9e027bf)", () => {
+    expect(scoreMatch(item("Consultoria", "Consultoria"), item("Consultoría en I+D", "Consultoria"))).toEqual({ score: 0, type: "semantic", bloqueio: "servico-sem-demanda-expressa" });
+    expect(scoreMatch(item("Consultoria tributária"), item("Consultoría en I+D"))).toEqual({ score: 0, type: "semantic", bloqueio: "servico-sem-demanda-expressa" });
+    expect(scoreMatch(item("R&D services", "Technology"), item("Distributors in Africa", "Technology"))).toEqual({ score: 0, type: "semantic", bloqueio: "servico-sem-demanda-expressa" });
+    // O "d'" com apóstrofo, reto ou curvo, segue genitivo.
+    expect(scoreMatch(item("Cabinet d’avocats"), item("Avocat"))).toEqual({ score: 100, type: "exact" });
+  });
+
+  it("serviço em chinês com a cidade entre parênteses, depois de ' - ' ou separada por espaço segue serviço (revisão de 15/09 do porte)", () => {
+    expect(scoreMatch(item("税务咨询（上海）", "Tecnologia"), item("经销商", "Tecnologia"))).toEqual({ score: 0, type: "semantic", bloqueio: "servico-sem-demanda-expressa" });
+    expect(scoreMatch(item("律师事务所（北京）"), item("律师"))).toEqual({ score: 100, type: "exact" });
+  });
+
+  it("e o que o motor entende continua barrado: outra família, outra especialidade entendida, e o português segue estrito", () => {
+    for (const [oferta, necessidade, categoria] of [
+      ["Налоговый консалтинг", "Юрист", "Финансы"], ["Налоговый консалтинг", "Юридическая консультация", "Финансы"],
+      ["税务咨询", "法律咨询", "财务"],
+      ["Consultoria em segurança do trabalho", "Consultoria trabalhista", "Finanças"],
+      // A palavra desconhecida do lado em português ("segurança") continua valendo contra o par, mesmo diante de francês.
+      ["Consultoria em segurança do trabalho", "Conseil en droit du travail", "Services"],
+    ] as Array<[string, string, string]>) {
+      const r = scoreMatch(item(oferta, categoria), item(necessidade, categoria));
+      expect(r.score, `${oferta} × ${necessidade}`).toBe(0);
+      expect((r as { bloqueio?: string }).bloqueio, `${oferta} × ${necessidade}`).toBe("servico-sem-demanda-expressa");
+    }
+    // Na #127 "Consultoria em exportação" × "Consultoria em comércio exterior" [Serviços] é 0 com bloqueio: palavra
+    // desconhecida em português. Na #135 "comércio exterior" é movimento para fora e "exportação" é internacionalização
+    // no vocabulário curado de assunto (exemplo 4 da spec da Glenda): a necessidade declara o assunto do serviço, 60 com o
+    // selo de significados parecidos. Não é a exceção dos idiomas novos, que segue sem valer em português.
+    expect(scoreMatch(item("Consultoria em exportação", "Serviços"), item("Consultoria em comércio exterior", "Serviços"))).toEqual({ score: 60, type: "semantic" });
+    expect(regraNaoLeOPar("Consultoria em exportação", "Serviços", "Consultoria em comércio exterior")).toBe(false);
   });
 });
 
@@ -432,7 +590,9 @@ describe("Revisão adversarial da correção empilhada sobre a #124 — notas do
     expect(scoreMatch(item("Property lawyer"), item("Advogado imobiliário"))).toEqual({ score: 100, type: "exact" });
     expect(scoreMatch(item("Advocacia tributária"), item("Assessoria jurídica tributária"))).toEqual({ score: 100, type: "exact" });
     expect(scoreMatch(item("Advogada consultora"), item("Advogada"))).toEqual({ score: 60, type: "category" });
-    expect(scoreMatch(item("律师"), item("Advogado"))).toEqual({ score: 60, type: "category" });
+    // Valia 60 até a e6ddfa4 da #127 (portada): "律师" (advogado) e "Advogado" são o mesmo serviço sem mais nada dos
+    // dois lados, a regra de "Contabilidade" × "Contador", agora lida também em chinês ("律师事务所" × "律师").
+    expect(scoreMatch(item("律师"), item("Advogado"))).toEqual({ score: 100, type: "exact" });
     expect(scoreMatch(item("Advocacia trabalhista"), item("Assessoria jurídica e tributária"))).toEqual({ score: 60, type: "category" });
   });
 
@@ -484,8 +644,8 @@ describe("scoreMatch — lacunas do classificador depois da #127: serviço que c
  * junto de cabeça genérica ou neutra, o destinatário comum na oferta, a leitura
  * do complemento da cabeça neutra, e o abacate. Os pares dos idiomas novos que
  * dependiam da exceção do que as listas não leem (`regraNaoLeOPar`) e da leitura
- * do chinês pelo fim do termo não estão aqui: essa camada não entrou nesta
- * branch, e a regra aqui é estrita nos 10 idiomas.
+ * do chinês pelo fim do termo estão em "O portão dispara nos 10 idiomas" e nos
+ * testes da e6ddfa4, portada em 15/09.
  */
 describe("Revisão de 15/09 dos consertos da #127 — motor privado", () => {
   it("o serviço nomeado pelo adjetivo junto de cabeça genérica ou neutra é o mesmo serviço: 100, nos dois sentidos", () => {
@@ -528,13 +688,18 @@ describe("Revisão de 15/09 dos consertos da #127 — motor privado", () => {
   it("o que a classificação diz serviço, a leitura do serviço também lê: não é barrado diante do próprio profissional", () => {
     for (const [oferta, necessidade, categoria] of [
       ["Empresa de gestão contábil", "Contador", "Contabilidade"], ["Escritório de soluções jurídicas", "Advogado", "Jurídico"],
-      ["Gestão contábil", "Contador", "Contabilidade"],
-      ["Cabinet d'expertise comptable", "Comptable", "Comptabilité"], ["Gestion comptable", "Comptable", "Comptabilité"],
+      ["Gestão contábil", "Contador", "Contabilidade"], ["Gestion comptable", "Comptable", "Comptabilité"],
     ] as Array<[string, string, string]>) {
       expect(scoreMatch(item(oferta, categoria), item(necessidade, categoria)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
     }
     // "Expertise" qualifica quem presta nesta branch (QUALIFICA_O_ASSUNTO): "Expertise comptable" é a contabilidade e nada mais.
     expect(scoreMatch(item("Comptable", "Comptabilité"), item("Expertise comptable", "Comptabilité"))).toEqual({ score: 100, type: "exact" });
+    // "Cabinet d'expertise comptable" valia 60 aqui antes do porte da 9e027bf da #127: "cabinet" era cabeça desconhecida e
+    // ficava como especialidade. Com "cabinet" neutra e o "d'" genitivo, é o escritório, e "expertise" qualifica quem
+    // presta (acima): a contabilidade e nada mais, 100 — a mudança deliberada da 9e027bf, "Cabinet d'avocats" × "Avocat"
+    // de 60 para 100. Na #127, sem "expertise" em QUALIFICA_O_ASSUNTO, o par fica em 60.
+    expect(scoreMatch(item("Cabinet d'expertise comptable", "Comptabilité"), item("Comptable", "Comptabilité"))).toEqual({ score: 100, type: "exact" });
+    expect(scoreMatch(item("Cabinet d'avocats"), item("Avocat"))).toEqual({ score: 100, type: "exact" });
     // A cabeça desconhecida fica como especialidade: quem PROCURA "Pessoa jurídica" não pediu a advocacia genérica.
     for (const [oferta, necessidade] of [["Advocacia", "Pessoa jurídica"], ["Advocacia", "Estrutura jurídica em Portugal"], ["Contabilidade", "Dados contábeis"]] as Array<[string, string]>) {
       const r = scoreMatch(item(oferta), item(necessidade));
@@ -571,6 +736,28 @@ describe("Revisão de 15/09 dos consertos da #127 — motor privado", () => {
       expect(r.score, `${oferta} × ${necessidade}`).toBe(0);
       expect((r as { bloqueio?: string }).bloqueio, `${oferta} × ${necessidade}`).toBe("servico-sem-demanda-expressa");
     }
+    // A genérica que alguém escreveu, e o par que só não casa pelo que as listas não leem, seguem valendo a categoria
+    // (`regraNaoLeOPar`, e6ddfa4 e 116bb56 da #127, portadas): "电商咨询" é consultoria com assunto que as listas não leem.
+    expect(scoreMatch(item("Consultoria", "Serviços"), item("电商咨询", "Serviços"))).toEqual({ score: 60, type: "category" });
+    expect(scoreMatch(item("Steuerberatung für Erbschaften", "Finanzen"), item("Steuerberater für Erbschaftsteuer", "Finanzen"))).toEqual({ score: 60, type: "category" });
+  });
+
+  it("idiomas novos: a forma usual do profissional é lida, e '税务' vale entre grafias e idiomas (e6ddfa4 e 116bb56, portadas)", () => {
+    for (const [oferta, necessidade, categoria] of [
+      ["税務コンサルティング", "税務コンサルタント", "財務"], ["Бухгалтерские услуги", "Ищем бухгалтера", "Финансы"], ["Steuerberatung", "Steuerberaterin gesucht", "Finanzen"],
+      ["Cabinet d'avocats", "Juriste", "Droit"], ["خدمات محاسبة", "المحاسب", "مالية"], ["लेखा सेवाएं", "लेखाकार चाहिए", "वित्त"], ["Conseil fiscal", "Conseillère fiscale", "Finances"],
+      // francês e alemão escritos com o empréstimo do inglês também são idioma novo
+      ["Conseil en fiscalité internationale", "Consultant en fiscalité des entreprises", "Finances"], ["Beratung für Datenschutz", "Consulting zum Datenschutz", "IT"],
+    ] as Array<[string, string, string]>) {
+      expect(scoreMatch(item(oferta, categoria), item(necessidade, categoria)).score, `${oferta} × ${necessidade}`).toBeGreaterThanOrEqual(60);
+    }
+    // Com a especialidade curada apagada, estes caem de 100 para 0: o teste precisa quebrar (os pares com "税务" igual dos
+    // dois lados não quebravam).
+    for (const [oferta, necessidade] of [
+      ["税務コンサルティング", "税务咨询"], ["税务咨询", "Consultoria tributária"], ["税务律师", "Advogado tributarista"], ["Consultoria tributária", "税務コンサルティング"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 100, type: "exact" });
+    }
   });
 });
 
@@ -593,7 +780,9 @@ describe("Porte da madrugada de 15/09 na #135 — faltas do cético", () => {
     ] as Array<[string, string, string | null]>) {
       expect(scoreMatch(item(oferta, categoria), item(necessidade, categoria)), `${oferta} × ${necessidade}`).toEqual({ score: 100, type: "exact" });
     }
-    expect(scoreMatch(item("Cabinet d'avocats", "Droit"), item("Juriste", "Droit"))).toEqual({ score: 60, type: "category" });
+    // Valia 60 antes do porte da 9e027bf da #127 ("cabinet" desconhecida era especialidade); com "cabinet" neutra e o
+    // "d'" genitivo, "Cabinet d'avocats" é a advocacia sem mais nada, e "Juriste" também: 100.
+    expect(scoreMatch(item("Cabinet d'avocats", "Droit"), item("Juriste", "Droit"))).toEqual({ score: 100, type: "exact" });
     // "مستشار" é o consultor: "مستشار قانوني" é a consultoria jurídica, e não atende "محامي", como "Consultoria jurídica"
     // não atende "Advogado" (na árvore do porte valia 60 pela categoria vazando).
     barrado("مستشار قانوني", "محامي");

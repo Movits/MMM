@@ -65,13 +65,27 @@ describe("seloDoMatch — a mesma pergunta que o motor fez (14/09)", () => {
 
 describe("seloDoMatch — o mesmo objeto do serviço segue 'Tag exata' (revisão de 15/09 na #127, ac298b3)", () => {
   it("a mesma tag e o mesmo objeto de um SERVIÇO dizem 'Tag exata'", () => {
-    // Na #127 o selo "Mesmo serviço" (9e866b9) só sai quando as tags não nomeiam a mesma coisa (`nomeiamAMesmaCoisa`), e
-    // um mutante que tirava essa pergunta sobrevivia à suíte: os casos eram produtos ("Terras raras"). Esta branch não tem
-    // o selo "Mesmo serviço"; os pares ficam fixados para que ele, se vier, não troque o selo das tags iguais a menos do "Procura".
+    // O selo "Mesmo serviço" (9e866b9, portada abaixo) só sai quando as tags não nomeiam a mesma coisa
+    // (`nomeiamAMesmaCoisa`), e um mutante que tirava essa pergunta sobrevivia à suíte da #127: os casos eram produtos
+    // ("Terras raras"). Com serviços iguais a menos do "Procura", a mesma tag segue "Tag exata".
     expect(seloDoMatch({ matchType: "exact", matchedAssets: [item("Consultoria tributária")], matchedNeeds: [item("Consultoria tributária")] }, t)).toBe("seloTagExata");
     expect(seloDoMatch({ matchType: "exact", matchedAssets: [item("Terras raras")], matchedNeeds: [item("Procura terras raras")] }, t)).toBe("seloTagExata");
     for (const [ativo, necessidade] of [["Consultoria tributária", "Procura consultoria tributária"], ["Contabilidade", "Procura contabilidade"]]) {
       expect(seloDoMatch({ matchType: "exact", matchedAssets: [item(ativo)], matchedNeeds: [item(necessidade)] }, t), `${ativo} × ${necessidade}`).toBe("seloTagExata");
     }
+  });
+});
+
+describe("seloDoMatch — o 100 pelo mesmo serviço não é 'Tag exata' (9e866b9 da #127, portada)", () => {
+  it("especialidade ou família escritas de outro jeito dizem 'Mesmo serviço'", () => {
+    for (const [ativo, necessidade] of [["Advocacia tributária", "Advogado tributarista"], ["Contabilidade", "Contador"], ["律师事务所", "律师"]]) {
+      expect(seloDoMatch({ matchType: "exact", matchedAssets: [item(ativo)], matchedNeeds: [item(necessidade)] }, t), `${ativo} × ${necessidade}`).toBe("seloMesmoServico");
+    }
+  });
+
+  it("a mesma tag e o mesmo objeto seguem dizendo 'Tag exata', e a direção oposta 'Oferta e procura'", () => {
+    expect(seloDoMatch({ matchType: "exact", matchedAssets: [item("Consultoria tributária")], matchedNeeds: [item("Consultoria tributária")] }, t)).toBe("seloTagExata");
+    expect(seloDoMatch({ matchType: "exact", matchedAssets: [item("Terras raras")], matchedNeeds: [item("Procura terras raras")] }, t)).toBe("seloTagExata");
+    expect(seloDoMatch({ matchType: "exact", matchedAssets: [item("Exportar vinho")], matchedNeeds: [item("Importar vinho")] }, t)).toBe("seloOfertaProcura");
   });
 });

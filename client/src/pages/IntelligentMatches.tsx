@@ -7,8 +7,8 @@ import { trpc } from "@/lib/trpc";
 import { AppHeader } from "@/components/AppHeader";
 import { ErroDeConsulta } from "@/components/ErroDeConsulta";
 import { SmartMatchConsent } from "@/components/SmartMatchConsent";
-import { analisarTermo } from "@shared/direcao-do-termo";
-import { familiaDoServico, necessidadeGenericaNomeiaOServico } from "@shared/tipo-da-oferta";
+import { analisarTermo, nomeiamAMesmaCoisa, slugDoTermo } from "@shared/direcao-do-termo";
+import { familiaDoServico, mesmaFamiliaEEspecialidade, necessidadeGenericaNomeiaOServico } from "@shared/tipo-da-oferta";
 
 type EntryKind = "asset" | "need";
 
@@ -49,7 +49,16 @@ export function seloDoMatch(match: { matchType: string; matchedAssets: ItemDoMat
       return a.objeto === n.objeto && a.direcao !== "neutro" && n.direcao !== "neutro" && a.direcao !== n.direcao;
     }));
 
-  return porDirecaoOposta ? t("intelligentMatches.seloOfertaProcura") : t("intelligentMatches.seloTagExata");
+  if (porDirecaoOposta) return t("intelligentMatches.seloOfertaProcura");
+
+  // O 100 pelo mesmo serviço escrito de outro jeito ("Advocacia tributária" × "Advogado tributarista", "Contabilidade"
+  // × "Contador") também não é tag exata: as tags na linha de baixo são visivelmente outras (9e866b9 da #127). A mesma
+  // tag e o mesmo objeto seguem "Tag exata" (ac298b3), por isso a pergunta do slug e de `nomeiamAMesmaCoisa` vem antes.
+  const mesmaTag = match.matchedAssets.some(ativo => match.matchedNeeds.some(necessidade =>
+    slugDoTermo(ativo.label) === slugDoTermo(necessidade.label) || nomeiamAMesmaCoisa(ativo.label, necessidade.label)));
+  const mesmoServico = !mesmaTag && match.matchedAssets.some(ativo => match.matchedNeeds.some(necessidade =>
+    mesmaFamiliaEEspecialidade(ativo.label, ativo.category, necessidade.label)));
+  return t(mesmoServico ? "intelligentMatches.seloMesmoServico" : "intelligentMatches.seloTagExata");
 }
 
 export default function IntelligentMatches() {

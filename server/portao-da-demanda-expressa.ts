@@ -143,12 +143,49 @@ const PALAVRAS_VAZIAS = PALAVRAS_VAZIAS_DA_CITACAO;
  * 70% deixava passar duas palavras inventadas a partir de sete (revisões
  * adversariais de 12/09). Uma citação inventada não passa, porque as palavras
  * dela não estão na fonte.
+ *
+ * Chinês e japonês não separam palavras, e a citação inteira chegava como UMA
+ * palavra: "我们需要税务咨询服务" nunca conferia, e o serviço não passava nesses
+ * idiomas nem com a necessidade declarada (9e866b9 da #127, revisão de 14/09).
+ * Ali a conferência é literal: cada pedaço citado precisa estar inteiro dentro de
+ * um pedaço da fonte, sem tolerância (não há palavra para contar), com ao menos
+ * quatro caracteres — duas palavras de dois —, e as palavras latinas da mesma
+ * citação também precisam estar todas na fonte.
+ *
+ * A conferência literal só vale quando a citação é, de fato, chinesa ou
+ * japonesa: com duas palavras latinas de conteúdo ou mais, é uma frase latina
+ * com um nome no meio ("Precisamos de consultoria tributária para a filial de
+ * 東京"). Ali as palavras seguem a regra de sempre, com a tolerância, e o nome
+ * só precisa estar na fonte — antes o nome curto (menos de quatro caracteres)
+ * derrubava a citação inteira, e o portão barrava o match (0d6643d da #127,
+ * revisão de 15/09).
  */
+const ESCRITA_SEM_ESPACO = new RegExp("[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]", "u");
+const MINIMO_DE_CARACTERES_SEM_ESPACO = 4;
+
+/** Os pedaços da citação em escrita sem espaço, as palavras latinas de conteúdo e se ela vai à conferência literal. */
+function lerCitacao(citacao: string): { semEspaco: string[]; palavras: string[]; literal: boolean } {
+  const pedacos = tokensDoTermo(citacao);
+  const semEspaco = pedacos.filter(pedaco => ESCRITA_SEM_ESPACO.test(pedaco));
+  const palavras = pedacos.filter(palavra => !ESCRITA_SEM_ESPACO.test(palavra) && palavra.length >= 3 && !PALAVRAS_VAZIAS.has(palavra));
+  return { semEspaco, palavras, literal: semEspaco.length > 0 && palavras.length < 2 };
+}
+
 export function citacaoConfere(citacao: unknown, fonte: string): boolean {
   if (typeof citacao !== "string") return false;
-  const palavras = tokensDoTermo(citacao).filter(palavra => palavra.length >= 3 && !PALAVRAS_VAZIAS.has(palavra));
+  const pedacosDaFonte = tokensDoTermo(fonte);
+  const { semEspaco, palavras, literal } = lerCitacao(citacao);
+  if (semEspaco.length > 0) {
+    if (!semEspaco.every(pedaco => pedacosDaFonte.some(daFonte => daFonte.includes(pedaco)))) return false;
+    if (literal) {
+      const caracteres = semEspaco.reduce((total, pedaco) => total + Array.from(pedaco).length, 0);
+      if (caracteres < MINIMO_DE_CARACTERES_SEM_ESPACO) return false;
+      const latinasDaFonte = new Set(pedacosDaFonte);
+      return palavras.every(pedaco => latinasDaFonte.has(pedaco));
+    }
+  }
   if (palavras.length < 2) return false;
-  const daFonte = new Set(tokensDoTermo(fonte));
+  const daFonte = new Set(pedacosDaFonte);
   const ausentes = palavras.filter(palavra => !daFonte.has(palavra));
   if (ausentes.some(palavra => PALAVRAS_DE_SERVICO.has(palavra))) return false;
   return palavras.length <= 3 ? ausentes.length === 0 : ausentes.length <= 1;
@@ -357,14 +394,28 @@ export function exigeCitacao(item: ItemComPortao, perfil?: PerfilNoPortao): bool
  * (`citacaoPedeServicoOferecido`, que localiza a citação na fonte e completa a
  * especialidade). Trecho sem palavra de serviço é paráfrase e fica com a IA,
  * como antes; perfil sem serviço classificável também.
+ *
+ * Salvo em chinês e japonês (a citação que vai à conferência literal, ver
+ * `citacaoConfere`): ali o resto do portão não lê a escrita — contraparte
+ * ("我们需要分销商", distribuidores), capital, imóvel, autodescrição e outro
+ * serviço caíam em "não nomeia serviço" e passavam, e o invariante que barra
+ * essas citações em português deixava de valer nesses idiomas (revisão de 15/09
+ * do porte da 9e866b9). O portão fecha por padrão: só passa quando um pedaço
+ * citado NOMEIA um serviço que o perfil oferece, pela leitura do chinês e do
+ * japonês pelo fim do termo ("我们需要税务咨询服务" para "税务咨询" ou para
+ * "Consultoria tributária"). Até o porte a citação sem espaço nem conferia, e o
+ * portão fechava sempre.
  */
 export function citacaoAmarradaAoPerfil(citacao: unknown, fonte: string, perfil?: PerfilNoPortao): boolean {
-  if (typeof citacao !== "string" || !perfil) return true;
+  if (typeof citacao !== "string") return true;
+  const { semEspaco, literal } = lerCitacao(citacao);
+  if (!perfil) return !literal;
   // Os serviços do perfil vêm de "O que tenho" E da área e da especialidade: a UI só grava
   // ids fixos em "O que tenho", e a advogada que marcou "Canais comerciais" continua advogada.
   const declaradas = lista(perfil.whatIHave);
   const candidatas = [...declaradas, ...texto(perfil.activityArea), ...texto(perfil.primarySpecialty)];
   const servicos = candidatas.filter(oferta => servicoDoTermo(oferta) !== null);
+  if (literal) return semEspaco.some(pedaco => servicos.some(servico => necessidadeNomeiaOServico(servico, null, pedaco)));
   if (servicos.length === 0) return true;
   const temOutraBase = declaradas.some(oferta => servicoDoTermo(oferta) === null);
   return citacaoPedeServicoOferecido(citacao, fonte, servicos, temOutraBase);

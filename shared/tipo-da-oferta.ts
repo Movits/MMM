@@ -51,8 +51,8 @@
  *   6. cabeça neutra (empresa, escritório, despacho...): o complemento pelo
  *      genitivo decide ("Escritório de advocacia", "Escritório jurídico";
  *      "Escritório para advogados" não — "para" não é genitivo);
- *   6b. escrita sem fronteira de palavra (chinês, japonês): vocabulário por
- *      substring (`SERVICOS_SEM_ESPACO`);
+ *   6b. escrita sem fronteira de palavra (chinês, japonês): vocabulário pelo
+ *      FIM do termo, onde as duas línguas põem a cabeça (`SERVICOS_SEM_ESPACO`);
  *   7. a categoria que a usuária digitou ("Jurídico", "Marketing", "Produto";
  *      palavra específica de serviço decide, o genérico "serviços" cede a
  *      outro tipo: "Serviços financeiros" é capital) — assim por decisão do
@@ -65,7 +65,25 @@
  * modificador ou outro item, e tratá-lo como tipo apagava o match por
  * categoria que esses itens tinham (revisões adversariais de 12/09).
  */
-import { ARTIGOS, ehLugar, GENITIVOS, MARCADORES_FRACOS, normalizar, tokensDoTermo } from "./direcao-do-termo";
+import { ARTIGOS, ehLugar, GENITIVOS as GENITIVOS_DO_TERMO, MARCADORES_FRACOS, tokensDoTermo as tokensDoTermoBase } from "./direcao-do-termo";
+
+/**
+ * O "d'" do francês ("Cabinet D'avocats", "Avocat D'affaires", "Conseil D'administration") vira uma palavra
+ * própria, com o apóstrofo modificador (U+02BC, que é letra e não se separa): sem isso ele virava o "d" solto, o
+ * mesmo de "R&D", "P&D", "D&I" e "I+D" — e com o "d" no genitivo "R&D consulting" deixava de ser serviço e
+ * "Consultoría en I+D" perdia a especialidade (revisão de 15/09 do porte da 9e027bf). Todas as leituras deste
+ * arquivo passam por aqui; a direção do termo não lê francês e segue com a sua.
+ */
+const D_APOSTROFO = "dʼ";
+const APOSTROFO_DO_D = new RegExp("(^|[^\\p{L}\\p{M}\\p{N}])[dD]['\\u2019](?=\\p{L})", "gu");
+const tokensDoTermo = (texto: string) => tokensDoTermoBase(texto.replace(APOSTROFO_DO_D, `$1${D_APOSTROFO} `));
+
+/**
+ * O genitivo do analisador de termo e o do francês ("Cabinet D'avocats", "Conseil en fiscalité DES entreprises"):
+ * sem "d'", "du" e "des", o complemento da cabeça neutra parava no apóstrofo (9e027bf da #127, revisão de 14/09).
+ * Fica só aqui, porque a direção do termo não lê francês. O "d" solto não entra: é o de "R&D" (ver `D_APOSTROFO`).
+ */
+const GENITIVOS: ReadonlySet<string> = new Set([...Array.from(GENITIVOS_DO_TERMO), D_APOSTROFO, "du", "des"]);
 
 export type TipoDaOferta =
   | "servico"
@@ -96,6 +114,44 @@ export const TIPOS_DA_OFERTA: ReadonlyArray<{ tipo: TipoDaOferta; rotulo: string
 // confere, porque uma repetição sobrescreveria a anterior em silêncio.
 
 /**
+ * As palavras de serviço do alemão e do francês, à parte porque são latinas: é
+ * por elas (e pelas palavras de ligação) que `palavrasPorIdioma` reconhece esses
+ * dois idiomas (o russo, o hindi, o árabe, o chinês e o japonês se reconhecem
+ * pela escrita; e6ddfa4 e 116bb56 da #127). A normalização já tirou o trema
+ * ("Übersetzung" vira "ubersetzung"), então as formas aqui são as normalizadas.
+ */
+const ASSESSORIA_EM_FRANCES_E_ALEMAO = [
+  // de — com os femininos em -in ("Steuerberaterin gesucht") e "Kanzlei", que eram a forma usual que faltava
+  // (revisão de 15/09 na #127, 116bb56). Os adjetivos com as terminações de caso ("Juristische Person", "juristischer
+  // Beistand") estão também em ADJETIVOS_ANTEPOSTOS (9e027bf).
+  "beratung", "beratungen", "berater", "beraterin", "unternehmensberatung",
+  "rechtsberatung", "rechtsanwalt", "rechtsanwalte", "rechtsanwaltin", "anwalt", "anwalte", "anwaltin",
+  "kanzlei", "anwaltskanzlei", "rechtsanwaltskanzlei", "steuerkanzlei",
+  "juristisch", "juristische", "juristischer", "juristischen", "juristisches", "buchhaltung", "buchfuhrung", "buchhalter", "buchhalterin",
+  "steuerberatung", "steuerberater", "steuerberaterin", "wirtschaftsprufung", "wirtschaftsprufer", "wirtschaftspruferin",
+  // fr — "conseiller" de órgão ("Conseiller municipal") sai da classificação, ver `semConselhoDeOrgao`
+  "conseil", "conseils", "consultante", "conseiller", "conseillers", "conseillere", "conseilleres", "avocat", "avocats", "avocate",
+  "juriste", "juristes", "juridique", "juridiques", "comptabilite", "comptable", "comptables", "auditeur", "auditeurs",
+];
+const OUTROS_SERVICOS_EM_FRANCES_E_ALEMAO = [
+  // de — "Dienstleistungen" é o "serviços" genérico (ver GENERICAS_DEMAIS)
+  "dienstleistung", "dienstleistungen",
+  "werbung", "ubersetzung", "ubersetzungen", "ubersetzer", "ubersetzerin", "dolmetschen", "dolmetscher", "dolmetscherin",
+  "schulung", "schulungen", "weiterbildung", "architektur", "architekt", "architektin",
+  "ingenieurwesen", "ingenieur", "ingenieurin", "wartung", "instandhaltung",
+  "personalvermittlung", "makler", "maklerin", "vermittlung",
+  "logistik", "spedition", "arzt", "arztin", "arzte", "zahnarzt", "zahnarztin", "tierarzt",
+  "physiotherapie", "physiotherapeut", "psychologe", "psychologin", "psychotherapie", "psychotherapeut",
+  "ernahrungsberater",
+  // fr
+  "publicite", "traduction", "traductions", "traducteur", "traducteurs", "traductrice", "traductrices",
+  "architecte", "architectes", "courtage", "courtier", "courtiers", "recrutement", "mentorat",
+  "logistique", "fret", "transporteur", "transporteurs", "medecin", "medecins", "dentiste", "dentistes",
+  "kinesitherapie", "kinesitherapeute", "psychologue", "psychologues", "psychotherapeute",
+  "infirmier", "infirmiere", "infirmiers", "infirmieres", "nutritionniste", "orthophoniste", "veterinaire",
+];
+
+/**
  * Serviços de ASSESSORIA: consultoria, jurídico, contábil, auditoria, mentoria.
  * É o subconjunto que atende a opção "Consultoria" da lista fixa de "O que
  * preciso" do onboarding — a única opção da lista em que alguém DECLARA
@@ -122,25 +178,20 @@ const ASSESSORIA = [
   "asesoria", "asesorias", "asesor", "asesora", "asesores", "asesoras",
   "abogacia", "abogado", "abogada", "abogados", "abogadas",
   "contabilidad", "contable", "contables",
-  // de — a normalização já tirou o trema ("Übersetzung" vira "ubersetzung"),
-  // então as formas aqui são as normalizadas. Com os femininos em -in
-  // ("Steuerberaterin gesucht") e "Kanzlei", que eram a forma usual que faltava
-  // (revisão de 15/09 na #127, 116bb56, portada).
-  "beratung", "beratungen", "berater", "beraterin", "unternehmensberatung",
-  "rechtsberatung", "rechtsanwalt", "rechtsanwalte", "rechtsanwaltin", "anwalt", "anwalte", "anwaltin",
-  "kanzlei", "anwaltskanzlei", "rechtsanwaltskanzlei", "steuerkanzlei",
-  "juristisch", "juristische", "buchhaltung", "buchfuhrung", "buchhalter", "buchhalterin",
-  "steuerberatung", "steuerberater", "steuerberaterin", "wirtschaftsprufung", "wirtschaftsprufer", "wirtschaftspruferin",
-  // fr — "conseiller" de órgão ("Conseiller municipal") sai da classificação, ver `semConselhoDeOrgao`
-  "conseil", "conseils", "consultante", "conseiller", "conseillers", "conseillere", "conseilleres", "avocat", "avocats", "avocate",
-  "juriste", "juristes", "juridique", "juridiques", "comptabilite", "comptable", "comptables", "auditeur", "auditeurs",
+  // de e fr
+  ...ASSESSORIA_EM_FRANCES_E_ALEMAO,
   // ru — os substantivos também no acusativo, no genitivo e no plural, que é como se pede ("Ищем бухгалтера",
-  // "услуги юриста"); sem eles o profissional pedido não era lido (revisão de 15/09 na #127, 116bb56, portada)
-  "консалтинг", "консалтинга", "консультация", "консультации", "консультацию", "консультаций", "консультирование",
+  // "услуги юриста"); sem eles o profissional pedido não era lido (revisão de 15/09 na #127, 116bb56, portada).
+  // Os adjetivos com as formas de gênero e caso mais comuns ("Юридическая консультация", "Бухгалтерские услуги",
+  // "Маркетинговая консультация") estão também em ADJETIVOS_ANTEPOSTOS (9e027bf e 116bb56).
+  "консалтинг", "консалтинга", "консалтингу", "консультация", "консультации", "консультацию", "консультаций", "консультирование",
   "консультант", "консультанта", "консультанты", "консультантов",
-  "юридический", "юридические", "юрист", "юриста", "юристы", "юристов", "адвокат", "адвоката", "адвокаты", "адвокатов",
-  "бухгалтерия", "бухгалтерии", "бухгалтерский", "бухгалтер", "бухгалтера", "бухгалтеры", "бухгалтеров",
-  "аудит", "аудита", "аудитор", "аудитора",
+  "консалтинговый", "консалтинговая", "консалтинговое", "консалтинговые", "консалтинговых", "консалтинговой", "консалтингового",
+  "юридический", "юридическая", "юридическое", "юридические", "юридических", "юридической", "юридического",
+  "юрист", "юриста", "юристы", "юристов", "адвокат", "адвоката", "адвокаты", "адвокатов",
+  "бухгалтерия", "бухгалтерии", "бухгалтерский", "бухгалтерская", "бухгалтерское", "бухгалтерские", "бухгалтерских", "бухгалтерской", "бухгалтерского",
+  "бухгалтер", "бухгалтера", "бухгалтеры", "бухгалтеров", "аудит", "аудита", "аудиту", "аудитор", "аудитора", "аудиторы", "аудиторов",
+  "аудиторский", "аудиторская", "аудиторское", "аудиторские", "аудиторских", "аудиторской", "аудиторского",
   "наставничество", "менторство",
   // hi — "लेखा" é a contabilidade ("लेखा सेवाएं"), "सलाह" o aconselhamento ("कानूनी सलाह")
   "परामर्श", "सलाह", "सलाहकार", "कानूनी", "वकील", "अधिवक्ता", "लेखा", "लेखांकन", "लेखाकार", "अंकेक्षण",
@@ -243,38 +294,53 @@ const OUTROS_SERVICOS = [
   "mantenimiento", "soporte",
   "flete", "fletes", "almacenaje",
   "enfermeria", "enfermero", "enfermera", "enfermeros", "enfermeras",
-  // de — "Dienstleistungen" é o "serviços" genérico (ver GENERICAS_DEMAIS)
-  "dienstleistung", "dienstleistungen",
-  "werbung", "ubersetzung", "ubersetzungen", "ubersetzer", "ubersetzerin", "dolmetschen", "dolmetscher", "dolmetscherin",
-  "schulung", "schulungen", "weiterbildung", "architektur", "architekt", "architektin",
-  "ingenieurwesen", "ingenieur", "ingenieurin", "wartung", "instandhaltung",
-  "personalvermittlung", "makler", "maklerin", "vermittlung",
-  "logistik", "spedition", "arzt", "arztin", "arzte", "zahnarzt", "zahnarztin", "tierarzt",
-  "physiotherapie", "physiotherapeut", "psychologe", "psychologin", "psychotherapie", "psychotherapeut",
-  "ernahrungsberater",
-  // fr
-  "publicite", "traduction", "traductions", "traducteur", "traducteurs", "traductrice", "traductrices",
-  "architecte", "architectes", "courtage", "courtier", "courtiers", "recrutement", "mentorat",
-  "logistique", "fret", "transporteur", "transporteurs", "medecin", "medecins", "dentiste", "dentistes",
-  "kinesitherapie", "kinesitherapeute", "psychologue", "psychologues", "psychotherapeute",
-  "infirmier", "infirmiere", "infirmiers", "infirmieres", "nutritionniste", "orthophoniste", "veterinaire",
-  // ru
-  "маркетинг", "реклама", "переводчик", "обучение", "тренинг", "тренинги",
-  "дизайн", "дизайнер", "архитектура", "архитектор", "инжиниринг", "инженер",
+  // de e fr
+  ...OUTROS_SERVICOS_EM_FRANCES_E_ALEMAO,
+  // ru — "услуги" é o "serviços" genérico (ver GENERICAS_DEMAIS; 9e027bf). "перевод" sozinho fica de fora: é também a
+  // transferência de dinheiro ("денежный перевод"). As formas de caso e os adjetivos de marketing e tradução vieram
+  // com a 116bb56 ("Маркетинговая консультация", "Переводческие услуги").
+  "услуга", "услуги", "услуг",
+  "маркетинг", "маркетинга", "маркетингу", "маркетингом", "реклама", "переводчик", "переводчика", "переводчики", "переводчиков",
+  "маркетинговый", "маркетинговая", "маркетинговое", "маркетинговые", "маркетинговых", "маркетинговой", "маркетингового",
+  "переводческий", "переводческая", "переводческое", "переводческие", "переводческих", "переводческой", "переводческого",
+  "обучение", "тренинг", "тренинги",
+  "дизайн", "дизайна", "дизайну", "дизайнер", "дизайнера", "архитектура", "архитектор", "инжиниринг", "инженер",
   "обслуживание", "техобслуживание", "рекрутинг", "брокер", "брокерские", "посредничество",
   "логистика", "перевозка", "перевозки", "грузоперевозки", "экспедирование",
   "врач", "врачи", "стоматолог", "стоматология", "физиотерапия", "физиотерапевт",
   "психолог", "психологи", "психотерапия", "психотерапевт", "психиатр", "медсестра", "диетолог",
-  // hi
+  // hi — "सेवा" é o "serviços" genérico (9e027bf)
+  "सेवा", "सेवाएं", "सेवाएँ", "सेवाओं",
   "विपणन", "मार्केटिंग", "अनुवाद", "अनुवादक", "प्रशिक्षण", "डिजाइन",
   "वास्तुकला", "वास्तुकार", "इंजीनियरिंग", "अभियांत्रिकी", "रखरखाव", "भर्ती", "दलाली", "दलाल",
   "लॉजिस्टिक्स", "परिवहन", "चिकित्सक", "डॉक्टर", "फिजियोथेरेपी", "मनोवैज्ञानिक", "नर्स",
-  // ar — "خدمات" é o "serviços" genérico ("خدمات محاسبة", serviços de contabilidade; ver GENERICAS_DEMAIS)
+  // ar — "خدمات" é o "serviços" genérico ("خدمات محاسبة", serviços de contabilidade; ver GENERICAS_DEMAIS).
+  // "عمارة" saiu: é arquitetura e também o prédio ("عمارة سكنية", prédio residencial virava serviço; 9e027bf da #127).
   "خدمة", "خدمات",
-  "تسويق", "التسويق", "ترجمة", "مترجم", "المترجم", "تدريب", "تصميم", "مصمم", "عمارة", "هندسة", "مهندس",
+  "تسويق", "التسويق", "ترجمة", "مترجم", "المترجم", "تدريب", "تصميم", "مصمم", "هندسة", "مهندس",
   "صيانة", "توظيف", "وساطة", "وسيط",
   "لوجستية", "لوجستيات", "طبيب", "طبيبة", "ممرض", "ممرضة",
 ];
+
+/**
+ * Adjetivos de profissão que o alemão, o russo e o hindi põem ANTES do
+ * substantivo. Seguidos de substantivo que não é serviço, qualificam outra
+ * coisa e não decidem pela cabeça: "Juristische Person" (pessoa jurídica),
+ * "Юридический адрес" (endereço jurídico), "Бухгалтерский баланс" (balanço
+ * contábil), "कानूनी दस्तावेज़" (documento jurídico). Estavam na lista como
+ * substantivo e viravam serviço (9e027bf da #127, revisão de 14/09; os de
+ * consultoria, auditoria, marketing e tradução em russo, 116bb56).
+ */
+const ADJETIVOS_ANTEPOSTOS = new Set([
+  "juristisch", "juristische", "juristischer", "juristischen", "juristisches",
+  "юридический", "юридическая", "юридическое", "юридические", "юридических", "юридической", "юридического",
+  "бухгалтерский", "бухгалтерская", "бухгалтерское", "бухгалтерские", "бухгалтерских", "бухгалтерской", "бухгалтерского",
+  "консалтинговый", "консалтинговая", "консалтинговое", "консалтинговые", "консалтинговых", "консалтинговой", "консалтингового",
+  "аудиторский", "аудиторская", "аудиторское", "аудиторские", "аудиторских", "аудиторской", "аудиторского",
+  "маркетинговый", "маркетинговая", "маркетинговое", "маркетинговые", "маркетинговых", "маркетинговой", "маркетингового",
+  "переводческий", "переводческая", "переводческое", "переводческие", "переводческих", "переводческой", "переводческого",
+  "कानूनी",
+]);
 
 /**
  * Adjetivos de serviço: só decidem atrás de cabeça NEUTRA ("Escritório
@@ -285,6 +351,10 @@ const ADJETIVOS_DE_SERVICO = new Set([
   "juridico", "juridica", "juridicos", "juridicas", "contabil", "contabeis", "contable", "contables", "legal", "legales",
   // "publicitário" é adjetivo em "Material publicitário", "Espaço publicitário" (revisão de 13/09)
   "publicitario", "publicitaria", "publicitarios", "publicitarias",
+  // Os mesmos adjetivos em francês e árabe, pospostos como em português: "Données comptables" e "مستند قانوني"
+  // (documento jurídico) não são serviço; "Comptable" sozinho segue sendo, pela cabeça (9e027bf da #127).
+  "juridique", "juridiques", "comptable", "comptables", "قانوني", "قانونية",
+  ...Array.from(ADJETIVOS_ANTEPOSTOS),
   // "Galpão logístico", "Equipamento médico", "Material odontológico", "Produtos veterinários" (14/09)
   "logistica", "logisticas", "logistico", "logisticos",
   "medico", "medica", "medicos", "medicas", "odontologico", "odontologica", "odontologicos", "odontologicas",
@@ -299,6 +369,8 @@ const ADJETIVOS_DE_SERVICO = new Set([
  */
 const GENERICAS_DEMAIS = new Set([
   "servico", "servicos", "service", "services", "servicio", "servicios", "prestacao",
+  // "Юридические услуги", "कानूनी सेवाएं": sem o genérico, o adjetivo anteposto ficava sem substantivo de serviço (9e027bf).
+  "услуга", "услуги", "услуг", "सेवा", "सेवाएं", "सेवाएँ", "सेवाओं",
   // "Juristische Dienstleistungen", "خدمات محاسبة" (revisão de 15/09 na #127, 116bb56, portada)
   "dienstleistung", "dienstleistungen", "خدمة", "خدمات",
 ]);
@@ -332,22 +404,22 @@ const SUBSTANTIVOS_DE_SERVICO = new Set(
  * (`SINONIMOS_PROXIMOS`). Palavra fora do mapa é a própria família.
  */
 const FAMILIAS: Record<string, readonly string[]> = {
-  advocacia: ["advocacia", "advogado", "advogada", "advogados", "advogadas", "juridico", "juridica", "juridicos", "juridicas", "lawyer", "lawyers", "attorney", "attorneys", "law", "legal", "legales", "abogacia", "abogado", "abogada", "abogados", "abogadas", "rechtsberatung", "rechtsanwalt", "rechtsanwalte", "rechtsanwaltin", "anwalt", "anwalte", "anwaltin", "kanzlei", "anwaltskanzlei", "rechtsanwaltskanzlei", "juristisch", "juristische", "avocat", "avocats", "avocate", "juriste", "juristes", "juridique", "juridiques", "юридический", "юридические", "юрист", "юриста", "юристы", "юристов", "адвокат", "адвоката", "адвокаты", "адвокатов", "कानूनी", "वकील", "अधिवक्ता", "محاماة", "محامي", "المحاماة", "المحامي", "قانوني", "قانونية"],
-  consultoria: ["consultoria", "consultorias", "consultor", "consultora", "consultores", "consultoras", "consulting", "consultancy", "consultant", "consultants", "beratung", "beratungen", "berater", "beraterin", "unternehmensberatung", "conseil", "conseils", "consultante", "conseiller", "conseillers", "conseillere", "conseilleres", "консалтинг", "консалтинга", "консультация", "консультации", "консультацию", "консультаций", "консультирование", "консультант", "консультанта", "консультанты", "консультантов", "परामर्श", "सलाह", "सलाहकार", "استشارات", "استشارة", "استشاري", "مستشار", "الاستشارات", "الاستشارة", "المستشار"],
+  advocacia: ["advocacia", "advogado", "advogada", "advogados", "advogadas", "juridico", "juridica", "juridicos", "juridicas", "lawyer", "lawyers", "attorney", "attorneys", "law", "legal", "legales", "abogacia", "abogado", "abogada", "abogados", "abogadas", "rechtsberatung", "rechtsanwalt", "rechtsanwalte", "rechtsanwaltin", "anwalt", "anwalte", "anwaltin", "kanzlei", "anwaltskanzlei", "rechtsanwaltskanzlei", "juristisch", "juristische", "juristischer", "juristischen", "juristisches", "avocat", "avocats", "avocate", "juriste", "juristes", "juridique", "juridiques", "юридический", "юридическая", "юридическое", "юридические", "юридических", "юридической", "юридического", "юрист", "юриста", "юристы", "юристов", "адвокат", "адвоката", "адвокаты", "адвокатов", "कानूनी", "वकील", "अधिवक्ता", "محاماة", "محامي", "المحاماة", "المحامي", "قانوني", "قانونية"],
+  consultoria: ["consultoria", "consultorias", "consultor", "consultora", "consultores", "consultoras", "consulting", "consultancy", "consultant", "consultants", "beratung", "beratungen", "berater", "beraterin", "unternehmensberatung", "conseil", "conseils", "consultante", "conseiller", "conseillers", "conseillere", "conseilleres", "консалтинг", "консалтинга", "консалтингу", "консультация", "консультации", "консультацию", "консультаций", "консультирование", "консультант", "консультанта", "консультанты", "консультантов", "консалтинговый", "консалтинговая", "консалтинговое", "консалтинговые", "консалтинговых", "консалтинговой", "консалтингового", "परामर्श", "सलाह", "सलाहकार", "استشارات", "استشارة", "استشاري", "مستشار", "الاستشارات", "الاستشارة", "المستشار"],
   assessoria: ["assessoria", "assessorias", "assessor", "assessora", "assessores", "assessoras", "advisory", "advisor", "advisors", "adviser", "advisers", "asesoria", "asesorias", "asesor", "asesora", "asesores", "asesoras"],
-  contabilidade: ["contabilidade", "contabil", "contabeis", "contador", "contadora", "contadores", "contadoras", "contabilista", "contabilistas", "accounting", "accountant", "accountants", "bookkeeping", "bookkeeper", "bookkeepers", "contabilidad", "contable", "contables", "buchhaltung", "buchfuhrung", "buchhalter", "buchhalterin", "steuerberatung", "steuerberater", "steuerberaterin", "steuerkanzlei", "comptabilite", "comptable", "comptables", "бухгалтерия", "бухгалтерии", "бухгалтерский", "бухгалтер", "бухгалтера", "бухгалтеры", "бухгалтеров", "लेखा", "लेखांकन", "लेखाकार", "محاسبة", "محاسب", "المحاسبة", "المحاسب"],
-  auditoria: ["auditoria", "auditorias", "auditor", "auditora", "auditores", "auditoras", "audit", "auditing", "audits", "wirtschaftsprufung", "wirtschaftsprufer", "wirtschaftspruferin", "auditeur", "auditeurs", "аудит", "аудита", "аудитор", "аудитора", "अंकेक्षण", "تدقيق", "مدقق", "المدقق"],
+  contabilidade: ["contabilidade", "contabil", "contabeis", "contador", "contadora", "contadores", "contadoras", "contabilista", "contabilistas", "accounting", "accountant", "accountants", "bookkeeping", "bookkeeper", "bookkeepers", "contabilidad", "contable", "contables", "buchhaltung", "buchfuhrung", "buchhalter", "buchhalterin", "steuerberatung", "steuerberater", "steuerberaterin", "steuerkanzlei", "comptabilite", "comptable", "comptables", "бухгалтерия", "бухгалтерии", "бухгалтерский", "бухгалтерская", "бухгалтерское", "бухгалтерские", "бухгалтерских", "бухгалтерской", "бухгалтерского", "бухгалтер", "бухгалтера", "бухгалтеры", "бухгалтеров", "लेखा", "लेखांकन", "लेखाकार", "محاسبة", "محاسب", "المحاسبة", "المحاسب"],
+  auditoria: ["auditoria", "auditorias", "auditor", "auditora", "auditores", "auditoras", "audit", "auditing", "audits", "wirtschaftsprufung", "wirtschaftsprufer", "wirtschaftspruferin", "auditeur", "auditeurs", "аудит", "аудита", "аудиту", "аудитор", "аудитора", "аудиторы", "аудиторов", "аудиторский", "аудиторская", "аудиторское", "аудиторские", "аудиторских", "аудиторской", "аудиторского", "अंकेक्षण", "تدقيق", "مدقق", "المدقق"],
   mentoria: ["mentoria", "mentorias", "mentor", "mentora", "mentores", "mentoras", "mentoring", "mentorship", "наставничество", "менторство", "mentorat"],
   coaching: ["coaching", "coach"],
-  marketing: ["marketing", "маркетинг", "विपणन", "मार्केटिंग", "تسويق", "التسويق"],
+  marketing: ["marketing", "маркетинг", "маркетинга", "маркетингу", "маркетингом", "маркетинговый", "маркетинговая", "маркетинговое", "маркетинговые", "маркетинговых", "маркетинговой", "маркетингового", "विपणन", "मार्केटिंग", "تسويق", "التسويق"],
   publicidade: ["publicidade", "propaganda", "advertising", "publicidad", "publicitario", "publicitaria", "publicitarios", "publicitarias", "werbung", "publicite", "реклама"],
-  design: ["design", "designer", "designers", "diseno", "disenador", "disenadora", "disenadores", "дизайн", "дизайнер", "डिजाइन", "تصميم", "مصمم"],
-  arquitetura: ["arquitetura", "arquiteto", "arquiteta", "arquitetos", "arquitetas", "architecture", "architect", "architects", "arquitectura", "arquitecto", "arquitecta", "arquitectos", "architektur", "architekt", "architektin", "architecte", "architectes", "архитектура", "архитектор", "वास्तुकला", "वास्तुकार", "عمارة"],
+  design: ["design", "designer", "designers", "diseno", "disenador", "disenadora", "disenadores", "дизайн", "дизайна", "дизайну", "дизайнер", "дизайнера", "डिजाइन", "تصميم", "مصمم"],
+  arquitetura: ["arquitetura", "arquiteto", "arquiteta", "arquitetos", "arquitetas", "architecture", "architect", "architects", "arquitectura", "arquitecto", "arquitecta", "arquitectos", "architektur", "architekt", "architektin", "architecte", "architectes", "архитектура", "архитектор", "वास्तुकला", "वास्तुकार"],
   engenharia: ["engenharia", "engenheiro", "engenheira", "engenheiros", "engenheiras", "engineering", "engineer", "engineers", "ingenieria", "ingeniero", "ingeniera", "ingenieros", "ingenieras", "ingenieurwesen", "ingenieur", "ingenieurin", "инжиниринг", "инженер", "इंजीनियरिंग", "अभियांत्रिकी", "هندسة", "مهندس"],
   treinamento: ["treinamento", "treinamentos", "capacitacao", "capacitacoes", "training", "trainings", "capacitacion", "formacion", "entrenamiento", "schulung", "schulungen", "weiterbildung", "обучение", "тренинг", "тренинги", "प्रशिक्षण", "تدريب"],
   curso: ["curso", "cursos"],
   palestra: ["palestra", "palestras", "palestrante", "palestrantes"],
-  traducao: ["traducao", "traducoes", "tradutor", "tradutora", "tradutores", "tradutoras", "translation", "translations", "translator", "translators", "traduccion", "traducciones", "traductor", "traductora", "traductores", "ubersetzung", "ubersetzungen", "ubersetzer", "ubersetzerin", "traduction", "traductions", "traducteur", "traducteurs", "traductrice", "traductrices", "переводчик", "अनुवाद", "अनुवादक", "ترجمة", "مترجم", "المترجم"],
+  traducao: ["traducao", "traducoes", "tradutor", "tradutora", "tradutores", "tradutoras", "translation", "translations", "translator", "translators", "traduccion", "traducciones", "traductor", "traductora", "traductores", "ubersetzung", "ubersetzungen", "ubersetzer", "ubersetzerin", "traduction", "traductions", "traducteur", "traducteurs", "traductrice", "traductrices", "переводчик", "переводчика", "переводчики", "переводчиков", "переводческий", "переводческая", "переводческое", "переводческие", "переводческих", "переводческой", "переводческого", "अनुवाद", "अनुवादक", "ترجمة", "مترجم", "المترجم"],
   interpretacao: ["interpretacao", "interprete", "interpretes", "interpreting", "interpreter", "interpreters", "dolmetschen", "dolmetscher", "dolmetscherin"],
   despachante: ["despachante", "despachantes", "desembaraco"],
   corretagem: ["corretagem", "corretor", "corretora", "corretores", "corretoras", "brokerage", "broker", "brokers", "corretaje", "makler", "maklerin", "courtage", "courtier", "courtiers", "брокер", "брокерские", "दलाली", "दलाल", "وساطة", "وسيط"],
@@ -388,33 +460,44 @@ const FAMILIAS: Record<string, readonly string[]> = {
  * nesses dois idiomas, e a regra da cliente simplesmente não existia para
  * quem escreve neles (defeito relatado depois da #101).
  *
- * Aqui o casamento é por SUBSTRING, que é como se reconhece vocabulário
- * fechado em escrita sem fronteira de palavra. A lista é curta e conservadora
- * de propósito: termo que também é palavra comum fora de serviço (支持/サポート
- * "suporte", 工程 "obra") ficou de fora, porque classificar como serviço por
- * engano SUJEITA o item ao portão — erra para o lado de barrar match legítimo.
- * Faltar termo aqui só mantém o que já havia. As famílias seguem as de
- * FAMILIAS: publicidade (广告) e interpretação (通訳) são famílias próprias.
+ * O serviço é reconhecido pelo FIM do termo, que é onde as duas línguas põem
+ * a cabeça: "税务咨询" é consultoria (tributária), "会计软件" é o software (de
+ * contabilidade), "培训中心" é o centro (de treinamento). Até 14/09 bastava o
+ * termo CONTER a palavra, e "会计软件", "广告牌", "设计软件", "培训中心",
+ * "法律数据库", "デザイン家具", "保守的な投資ファンド" e "採用実績のある技術"
+ * viravam serviço e caíam no portão (9e027bf da #127, revisão de 14/09). Depois
+ * do serviço só pode vir estrutura (`ESTRUTURA_DEPOIS_DO_SERVICO`): "律师事务所"
+ * é advocacia, "広告代理店" é publicidade, "會計師事務所" é contabilidade.
+ *
+ * A lista é curta e conservadora de propósito: termo que também é palavra
+ * comum fora de serviço (支持/サポート "suporte", 工程 "obra") ficou de fora,
+ * porque classificar como serviço por engano SUJEITA o item ao portão — erra
+ * para o lado de barrar match legítimo. Faltar termo aqui só mantém o que já
+ * havia. As famílias seguem as de FAMILIAS: publicidade (广告) e interpretação
+ * (通訳) são famílias próprias.
  *
  * Ordenado do mais longo para o mais curto: "建築設計" tem de ganhar de "設計".
  */
 const SERVICOS_SEM_ESPACO: Array<[string, string]> = ([
-  // zh
+  // zh (simplificado e, onde a grafia muda, tradicional: 律師, 會計)
   ["市场营销", "marketing"], ["建筑设计", "arquitetura"],
   ["咨询", "consultoria"], ["諮詢", "consultoria"], ["顾问", "consultoria"],
-  ["律师", "advocacia"], ["法律", "advocacia"],
-  ["会计", "contabilidade"], ["审计", "auditoria"],
+  ["律师", "advocacia"], ["律師", "advocacia"], ["法律", "advocacia"],
+  ["会计", "contabilidade"], ["會計", "contabilidade"], ["审计", "auditoria"],
   ["营销", "marketing"], ["广告", "publicidade"],
   ["翻译", "traducao"], ["培训", "treinamento"], ["设计", "design"],
   ["维护", "manutencao"], ["招聘", "recrutamento"], ["经纪", "corretagem"],
+  // "税务师"/"稅務師" é o agente tributário certificado, como o "税理士" japonês (116bb56 da #127)
+  ["税务师", "contabilidade"], ["稅務師", "contabilidade"],
   // 14/09: logística e saúde. "运输" (transporte) e "仓储" (armazenagem) ficam de
   // fora: "运输设备" é o equipamento e "仓储中心" é o galpão.
   ["物流", "logistica"], ["货运代理", "frete"], ["诊所", "clinica"], ["医生", "medicina"],
   ["物理治疗", "fisioterapia"], ["心理咨询", "psicologia"], ["心理治疗", "psicoterapia"],
-  // ja
-  ["コンサルティング", "consultoria"], ["マーケティング", "marketing"],
+  // ja — "コンサルタント" (consultor) e "顧問" (assessor contratado) são a forma usual de pedir o profissional (116bb56)
+  ["コンサルティング", "consultoria"], ["コンサルタント", "consultoria"], ["マーケティング", "marketing"],
   ["メンテナンス", "manutencao"], ["人材紹介", "recrutamento"], ["建築設計", "arquitetura"],
-  ["コンサル", "consultoria"], ["弁護士", "advocacia"], ["法務", "advocacia"],
+  ["コンサル", "consultoria"], ["顧問", "consultoria"], ["弁護士", "advocacia"], ["法務", "advocacia"],
+  ["会計", "contabilidade"], ["税理士", "contabilidade"], ["広告", "publicidade"],
   ["監査", "auditoria"], ["翻訳", "traducao"], ["通訳", "interpretacao"],
   ["研修", "treinamento"], ["デザイン", "design"], ["設計", "design"],
   ["保守", "manutencao"], ["採用", "recrutamento"], ["仲介", "corretagem"],
@@ -422,11 +505,131 @@ const SERVICOS_SEM_ESPACO: Array<[string, string]> = ([
   ["クリニック", "clinica"], ["医師", "medicina"], ["理学療法", "fisioterapia"], ["看護師", "enfermagem"], ["歯科医", "odontologia"],
 ] as Array<[string, string]>).sort((a, b) => b[0].length - a[0].length);
 
-/** A família do serviço nomeado por substring, ou null — ver SERVICOS_SEM_ESPACO. */
-function servicoPorSubstring(rotulo: string): string | null {
-  const texto = normalizar(rotulo);
-  for (const [termo, familia] of SERVICOS_SEM_ESPACO) if (texto.includes(termo)) return familia;
-  return null;
+/** Chinês e japonês: han, hiragana e katakana. */
+const ESCRITA_SEM_ESPACO = new RegExp("[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]", "u");
+
+/**
+ * O que pode vir DEPOIS do serviço sem mudar o que se presta: "服务"/"サービス"
+ * (serviço), "事务所"/"事務所" (escritório), "代理店" (agência), "公司"/"会社"
+ * (empresa), o sufixo de quem presta (师/師 em "会计师", 士 em "会計士") e o
+ * pedido que o japonês põe no fim ("税務コンサルティングが必要です", "会計士募集";
+ * 9e027bf e e6ddfa4 da #127).
+ */
+const ESTRUTURA_DEPOIS_DO_SERVICO = [
+  "服务", "服務", "サービス", "事务所", "事務所", "代理店", "有限公司", "公司", "会社", "师", "師", "士",
+  // "監査法人", "コンサルティングファーム", "研修プログラム", "培训课程", "设计工作室", "营销策划", "採用支援":
+  // eram "outros" (116bb56). "有限公司" antes de "公司", porque a busca pega o primeiro que termina o termo.
+  "法人", "ファーム", "プログラム", "课程", "課程", "工作室", "策划", "支援",
+  "が必要です", "が必要", "を探しています", "を探す", "を募集", "募集",
+];
+/**
+ * O sufixo de quem presta ("会计师", "会計士") e os serviços que já nomeiam o profissional ("律师", "弁護士"). Os
+ * profissionais de saúde que a #135 leu em 14/09 ("医生", "医師", "看護師", "歯科医") entram também: "招聘医生" é
+ * contratar médico, como "招聘律师" é contratar advogado.
+ */
+const SUFIXOS_DE_QUEM_PRESTA = new Set(["师", "師", "士"]);
+const PROFISSIONAIS_SEM_ESPACO = new Set(["律师", "律師", "弁護士", "会计", "會計", "翻译", "翻訳", "税理士", "税务师", "稅務師", "医生", "医師", "看護師", "歯科医"]);
+
+/**
+ * O serviço que TERMINA o último pedaço em escrita sem espaço, tirada a
+ * estrutura do fim: a família, o que vem antes dele ("税务" em "税务咨询服务") e
+ * se o termo nomeia quem presta ("会计师", "律师") ou a prestação ("咨询").
+ * null quando o termo não termina em serviço — ver SERVICOS_SEM_ESPACO.
+ *
+ * O termo é o primeiro trecho em escrita sem espaço, antes do complemento entre
+ * parênteses ou depois de " - ", e sem o lugar que vem depois dele separado por
+ * espaço: "律师事务所（北京）", "会计服务 - 深圳" e "律师事务所 北京" são advocacia e
+ * contabilidade, como eram na leitura por substring (revisão de 15/09 do porte da
+ * 9e027bf). Palavra que não é lugar continua decidindo: "会计软件（北京）" segue
+ * software.
+ */
+const ABRE_COMPLEMENTO_SEM_ESPACO = new RegExp("[(\\[{\\uFF08\\u3010\\u300C\\u300E\\uFF3B]|\\s[-\\u2013\\u2014]\\s|[\\u2013\\u2014]", "u");
+/** Lugares que vêm depois do serviço em chinês e japonês: as cidades e os países mais citados. */
+const LUGARES_SEM_ESPACO = new Set([
+  "中国", "中國", "北京", "上海", "深圳", "广州", "廣州", "香港", "澳门", "澳門", "台湾", "台灣", "台北", "臺北", "天津", "重庆", "重慶",
+  "成都", "杭州", "南京", "苏州", "蘇州", "武汉", "武漢", "西安", "厦门", "廈門", "青岛", "青島",
+  "日本", "东京", "東京", "大阪", "京都", "横浜", "名古屋", "福岡", "札幌", "神戸",
+  "巴西", "圣保罗", "聖保羅", "ブラジル", "サンパウロ",
+]);
+
+function servicoNoFimSemEspaco(rotulo: string): { familia: string; antes: string; profissional: boolean } | null {
+  const trecho = rotulo.split(ABRE_COMPLEMENTO_SEM_ESPACO).find(parte => tokensDoTermo(parte).some(palavra => ESCRITA_SEM_ESPACO.test(palavra)));
+  const palavras = tokensDoTermo(trecho ?? "");
+  let fim = palavras.length - 1;
+  while (fim > 0 && LUGARES_SEM_ESPACO.has(palavras[fim])) fim -= 1;
+  let resto = palavras[fim] ?? "";
+  if (!ESCRITA_SEM_ESPACO.test(resto)) return null;
+  let profissional = false;
+  for (;;) {
+    const servico = SERVICOS_SEM_ESPACO.find(([termo]) => resto.endsWith(termo));
+    if (servico) {
+      return { familia: servico[1], antes: resto.slice(0, resto.length - servico[0].length), profissional: profissional || PROFISSIONAIS_SEM_ESPACO.has(servico[0]) };
+    }
+    const estrutura = ESTRUTURA_DEPOIS_DO_SERVICO.find(sufixo => resto.length > sufixo.length && resto.endsWith(sufixo));
+    if (!estrutura) return null;
+    if (SUFIXOS_DE_QUEM_PRESTA.has(estrutura)) profissional = true;
+    resto = resto.slice(0, resto.length - estrutura.length);
+  }
+}
+
+const familiaSemEspaco = (rotulo: string) => servicoNoFimSemEspaco(rotulo)?.familia ?? null;
+
+/** A especialidade lida em chinês e japonês, no que vem antes do serviço: "税务" em "税务咨询" (e6ddfa4 da #127). */
+const ESPECIALIDADES_SEM_ESPACO: Array<[string, string]> = [["税务", "tributario"], ["税務", "tributario"], ["稅務", "tributario"]];
+
+/** Quem pede e as partículas, que não são especialidade: "我们需要税务咨询", "当社は税務コンサルティング", "招聘律师". */
+const PEDIDO_SEM_ESPACO = ["我们", "我們", "我司", "需要", "急需", "寻找", "尋找", "寻求", "想要", "招聘", "当社", "弊社", "私たち", "我", "的", "の", "は", "が", "を"]
+  .sort((a, b) => b.length - a.length);
+
+/**
+ * As especialidades do que vem ANTES do serviço em chinês e japonês, lido do
+ * começo para o fim: pedido e partícula saem, especialidade curada e outro
+ * serviço do vocabulário são reconhecidos ("法律" em "法律咨询" é a advocacia,
+ * como "jurídica" em "Consultoria jurídica"), e o resto é palavra que as listas
+ * não conhecem ("国际" em "国际税务咨询") — que, como em português, só casa
+ * escrita igual (e6ddfa4 da #127).
+ */
+function especialidadesSemEspaco(antes: string, familia: string, profissional: boolean): EspecialidadeDoServico[] {
+  const lemas = new Set<string>();
+  const conhecidos = new Set<string>();
+  const servicos = new Set<string>();
+  const assunto = new Set<string>();
+  let desconhecido = "";
+  const fecharDesconhecido = () => {
+    if (desconhecido) {
+      lemas.add(desconhecido);
+      assunto.add(desconhecido);
+    }
+    desconhecido = "";
+  };
+  let resto = antes;
+  while (resto) {
+    // "招聘" é quem contrata diante do profissional ("招聘律师", contratar advogado) e o serviço de recrutamento diante da
+    // prestação ("招聘咨询" é consultoria de recrutamento): lido sempre como pedido, a necessidade virava a consultoria
+    // genérica e casava com "税务咨询" (116bb56 da #127).
+    const pedido = PEDIDO_SEM_ESPACO.find(termo => resto.startsWith(termo) && (termo !== "招聘" || profissional));
+    const especialidade = pedido ? undefined : ESPECIALIDADES_SEM_ESPACO.find(([termo]) => resto.startsWith(termo));
+    const servico = pedido || especialidade ? undefined : SERVICOS_SEM_ESPACO.find(([termo]) => resto.startsWith(termo));
+    const reconhecido = pedido ?? especialidade?.[0] ?? servico?.[0];
+    if (!reconhecido) {
+      const letra = Array.from(resto)[0];
+      desconhecido += letra;
+      resto = resto.slice(letra.length);
+      continue;
+    }
+    fecharDesconhecido();
+    const lema = especialidade?.[1] ?? servico?.[1];
+    if (lema && lema !== familia) {
+      lemas.add(lema);
+      conhecidos.add(lema);
+      if (servico && !PROFISSOES_PELO_ADJETIVO.has(lema)) servicos.add(lema);
+    }
+    resto = resto.slice(reconhecido.length);
+  }
+  fecharDesconhecido();
+  return lemas.size > 0
+    ? [{ lemas, conhecidos, servicos, publico: new Set<string>(), publicoEspecifico: new Set<string>(), assunto }]
+    : [];
 }
 const FAMILIA_DA_PALAVRA = new Map<string, string>(
   Object.entries(FAMILIAS).flatMap(([familia, palavras]) => palavras.map(palavra => [palavra, familia] as const)),
@@ -437,6 +640,9 @@ const familiaDaPalavra = (palavra: string) => FAMILIA_DA_PALAVRA.get(palavra) ??
 const PREPOSICOES = new Set([
   ...Array.from(GENITIVOS), "para", "em", "no", "na", "nos", "nas", "com", "por", "sobre", "ao", "aos", "a", "as",
   "for", "to", "in", "on", "with", "from", "at", "en", "con", "al", "del", "desde", "hacia",
+  // O "para" e o "com" do francês, do alemão e do russo, e o "sobre" do russo: sem eles "Bureaux POUR avocats" e
+  // "Software FÜR Buchhaltung" liam o serviço no fim, como se fossem o pedido (116bb56 da #127, trava de `regraNaoLeOPar`).
+  "pour", "avec", "fur", "zum", "zur", "mit", "для", "по",
 ]);
 /** Conjunção coordena OUTRO item: "Mina e consultoria mineral" fica com a mina. */
 const CONJUNCOES = new Set(["e", "and", "y", "ou", "or"]);
@@ -588,7 +794,20 @@ const CABECAS_NEUTRAS = new Set([
   // "Operador logístico", "Consultório odontológico"; "Operador de máquinas" e "Consultório para alugar" não (14/09).
   "operador", "operadora", "operadores", "operadoras", "consultorio", "consultorios", "provider", "providers",
   ...CABECAS_DE_ESTRUTURA_AMBIGUAS,
+  // "Cabinet comptable", "Expert-comptable": com "comptable" lido como adjetivo, a cabeça francesa precisa ser neutra
+  // (9e027bf da #127). Só decidem com o serviço no começo do complemento, ver CABECAS_NEUTRAS_SO_COM_O_SERVICO_NO_COMECO.
+  "cabinet", "cabinets", "expert", "experts",
 ]);
+
+/**
+ * "Cabinet" é também o armário ("Cabinets de cuisine design") e "expert" o perito de qualquer coisa: na classificação só
+ * decidem serviço com o serviço LOGO no começo do complemento, substantivo ou adjetivo ("Cabinet comptable", "Cabinet
+ * d'avocats", "Expert-comptable"); com o serviço adiante, o armário virava serviço e caía no portão (116bb56 da #127). É
+ * a regra que a #127 dá também a "boutique"; aqui "boutique" segue a leitura mais estreita da #135
+ * (CABECAS_DE_ESTRUTURA_AMBIGUAS: genitivo e substantivo), porque "Boutique jurídica" não apareceu em caso real e "Hub
+ * logístico" mostrou o custo do adjetivo.
+ */
+const CABECAS_NEUTRAS_SO_COM_O_SERVICO_NO_COMECO = new Set(["cabinet", "cabinets", "expert", "experts"]);
 
 /** Com cabeça ambígua, o índice do serviço logo depois do genitivo, se for substantivo de serviço: "Casa DE consultoria". */
 function servicoLogoDepoisDaCabeca(palavras: readonly string[], indice: number): number | null {
@@ -610,6 +829,9 @@ const COMPOSTOS = new Map<string, TipoDaOferta>([
   ["law firm", "servico"],
   ["legal advisory", "servico"],
   ["legal services", "servico"],
+  // "бухгалтерский учёт" é a contabilidade em russo; "учёт" sozinho é registro de qualquer coisa (9e027bf da #127).
+  ["бухгалтерский учет", "servico"],
+  ["бухгалтерский учёт", "servico"],
   // 14/09: prestações que não têm substantivo de serviço nas listas.
   ["comercio exterior", "servico"],
   ["social media", "servico"],
@@ -664,6 +886,11 @@ const VERBOS_DE_NECESSIDADE = new Set([
   "precisamos", "buscamos", "procuramos", "queremos", "necessitamos", "desejamos", "gostariamos",
   "contratar", "contratamos", "contrata", "contratando", "estamos", "estou", "gostaria", "se",
   "necesitamos", "necesitan", "we", "are", "am",
+  // Nos idiomas novos (e6ddfa4 da #127): sem estes, "Suche Steuerberater" lia "suche" como especialidade.
+  "suche", "suchen", "sucht", "gesucht", "benotige", "benotigen", "benotigt", "brauche", "brauchen", "braucht", "wir", "ich",
+  "cherche", "cherchons", "recherche", "recherchons", "besoin", "nous", "je",
+  "нужен", "нужна", "нужно", "нужны", "ищем", "ищу", "требуется", "требуются", "нам", "мне",
+  "चाहिए", "हमें", "मुझे", "जरूरत", "نحتاج", "نبحث", "مطلوب", "أحتاج",
 ]);
 
 /** A cabeça do termo (a primeira palavra que não é marcador fraco, verbo de quem pede, artigo nem genitivo) e onde ela está. */
@@ -839,7 +1066,7 @@ function servicoSemPalavraDeServico(palavras: string[], indice: number, cabeca: 
  */
 const AVOCAT = new Set(["avocat", "avocats"]);
 const QUALIFICA_O_AVOCAT = new Set(["droit", "affaires", "barreau", "cabinet", "cabinets"]);
-const LIGA_O_AVOCAT = new Set(["d", "de", "du", "des", "l", "la", "le", "les", "en", "au", "aux"]);
+const LIGA_O_AVOCAT = new Set([D_APOSTROFO, "de", "du", "des", "l", "la", "le", "les", "en", "au", "aux"]);
 const AREAS_DO_AVOCAT = new Set(["tributario", "trabalhista", "societario", "previdenciario", "criminal", "civil", "familia", "imigracao", "contratual", "imobiliario", "ambiental"]);
 /** Não é palavra de nenhuma lista: os tokens só têm letras e dígitos. */
 const PALAVRA_SEM_TIPO = "~";
@@ -867,7 +1094,7 @@ function semAbacate(palavras: string[]): string[] {
  * 9e027bf e da 116bb56 da #127, portada com "conseiller" nas listas).
  */
 const CONSEIL = new Set(["conseil", "conseils", "conseiller", "conseillers", "conseillere", "conseilleres"]);
-const LIGA_O_CONSEIL = new Set(["d", "de", "du", "des", "l", "la", "le", "les"]);
+const LIGA_O_CONSEIL = new Set([D_APOSTROFO, "de", "du", "des", "l", "la", "le", "les"]);
 const ORGAOS_DO_CONSEIL = new Set([
   "administration", "surveillance", "municipal", "municipaux", "regional", "regionaux", "general", "generaux",
   "departemental", "national", "constitutionnel", "ministres", "etat", "securite", "prud", "ordre",
@@ -934,8 +1161,10 @@ function classificarPeloTexto(rotulo: string, categoria?: string | null): TipoDa
   //     Antes da cabeça, porque "Software development" e "Projetos estruturais"
   //     têm cabeça de tecnologia e de oportunidade.
   if (servicoSemPalavraDeServico(palavras, indice, cabeca, junto)) return "servico";
-  // 4. A cabeça manda.
-  if (!CABECAS_NEUTRAS.has(cabeca)) {
+  // 4. A cabeça manda — salvo o adjetivo de profissão anteposto com substantivo colado que não é serviço
+  //    ("Juristische Person", "Бухгалтерский баланс"): a cabeça de fato é o substantivo. Com substantivo de serviço
+  //    colado ("Juristische Beratung", "Юридические услуги") o passo 2 já decidiu (9e027bf da #127).
+  if (!CABECAS_NEUTRAS.has(cabeca) && !(ADJETIVOS_ANTEPOSTOS.has(cabeca) && junto.length > 0)) {
     const pelaCabeca = TIPO_POR_CABECA.get(cabeca);
     if (pelaCabeca) return pelaCabeca;
   }
@@ -947,14 +1176,17 @@ function classificarPeloTexto(rotulo: string, categoria?: string | null): TipoDa
     const complemento = complementoDaCabeca(palavras, indice);
     // A primeira palavra do complemento de outro tipo manda: "Empresa especializada em SOFTWARES jurídicos" é tecnologia.
     const primeiraDeOutroTipo = tipoNaoServico(complemento[0] ?? "") !== null;
-    if (!primeiraDeOutroTipo && complemento.some((palavra, k) => SUBSTANTIVOS_DE_SERVICO.has(palavra) || ADJETIVOS_DE_SERVICO.has(palavra) || areaDoDireito(complemento, k) !== null)) {
+    // "Cabinet" e "expert" só com o serviço logo no começo: "Cabinets de cuisine DESIGN" é o armário.
+    const ondeOServicoDecide = CABECAS_NEUTRAS_SO_COM_O_SERVICO_NO_COMECO.has(cabeca) ? complemento.slice(0, 1) : complemento;
+    if (!primeiraDeOutroTipo && ondeOServicoDecide.some((palavra, k) => SUBSTANTIVOS_DE_SERVICO.has(palavra) || ADJETIVOS_DE_SERVICO.has(palavra) || areaDoDireito(complemento, k) !== null)) {
       return "servico";
     }
   }
   // 6. Escrita sem fronteira de palavra (chinês, japonês): a esta altura o
   //    caminho por token não achou nada, porque o rótulo inteiro é um token só.
-  //    Vem por último de propósito — não passa por cima de decisão nenhuma.
-  if (servicoPorSubstring(rotulo)) return "servico";
+  //    Vem por último de propósito — não passa por cima de decisão nenhuma. O
+  //    serviço precisa TERMINAR o termo (9e027bf da #127): "会计软件" é o software.
+  if (familiaSemEspaco(rotulo)) return "servico";
   // 7. A CATEGORIA decide o que o texto não decidiu. Isto já foi relatado como
   //    defeito duas vezes, por revisores diferentes — "Cafeteira industrial" na
   //    categoria "Consultoria" vira serviço e cai no portão, que é restrição —
@@ -1017,7 +1249,8 @@ export function ehServico(rotulo: string, categoria?: string | null): boolean {
 // lados, e a oferta não pode ter palavra desconhecida a mais ("Consultoria em
 // SEGURANÇA do trabalho" não é consultoria trabalhista, "Consultoria em
 // SEGUROS empresariais" não é consultoria empresarial). Na dúvida, não casa —
-// que é o comportamento de antes da correção.
+// que é o comportamento de antes da correção. Nos idiomas em que as listas são
+// curtas, o que elas não leem não é bloqueado: ver `regraNaoLeOPar`.
 
 /**
  * Consultoria e assessoria são lemas diferentes, mas próximos: "Consultoria
@@ -1053,7 +1286,7 @@ const APOIO_QUE_ACONSELHA = new Set(["consultoria", "assessoria"]);
  * "Advogado DE imigração". As demais ("para", "com", "for", "to"...) abrem
  * público-alvo ou finalidade.
  */
-const PREPOSICOES_DE_ASSUNTO = new Set([...Array.from(GENITIVOS), "em", "no", "na", "nos", "nas", "sobre", "in", "on", "en", "del"]);
+const PREPOSICOES_DE_ASSUNTO = new Set([...Array.from(GENITIVOS), "em", "no", "na", "nos", "nas", "sobre", "in", "on", "en", "del", "по"]);
 
 /** Palavras que qualificam quem presta ou como se pede, não o que se presta. */
 const PALAVRAS_SEM_ESPECIALIDADE = new Set([
@@ -1090,8 +1323,13 @@ const LEMAS_DE_ESPECIALIDADE: Record<string, readonly string[]> = {
   tributario: ["tributario", "tributaria", "tributarios", "tributarias", "tributarista", "tributaristas", "tributo", "tributos", "tributacao", "fiscal", "fiscais", "fiscalista", "fiscalistas", "fiscaliste", "fiscalistes",
     // o feminino francês ("Conseillère fiscale") e o imposto em hindi ("कर सलाहकार", consultor tributário): sem eles o
     // pedido ficava com especialidade que as listas não leem (revisão de 15/09 na #127, 116bb56, portada)
-    "fiscale", "fiscales", "कर", "करों", "imposto", "impostos", "tax", "taxes", "taxation", "icms", "iss", "pis", "cofins", "irpj", "csll", "impuesto", "impuestos", "tributacion"],
-  trabalhista: ["trabalhista", "trabalhistas", "trabalho", "laboral", "laborais", "laboralista", "laboralistas", "labor", "labour", "employment", "laborales"],
+    "fiscale", "fiscales", "कर", "करों", "imposto", "impostos", "tax", "taxes", "taxation", "icms", "iss", "pis", "cofins", "irpj", "csll", "impuesto", "impuestos", "tributacion",
+    // fr, ru e ar (e6ddfa4 da #127: "Налоговый консалтинг" × "Налоговая консультация" [Финансы] caía de 60 para 0). Em
+    // chinês e japonês a especialidade tributária é lida em ESPECIALIDADES_SEM_ESPACO ("税务", "税務", "稅務").
+    "fiscalite", "налог", "налоги", "налогов", "налогам", "налогами", "налогах", "налоговый", "налоговая", "налоговое", "налоговые",
+    "налоговых", "налоговой", "налогового", "налогообложение", "налогообложения",
+    "ضريبي", "ضريبية", "ضرائب", "الضرائب", "الضريبية"],
+  trabalhista: ["trabalhista", "trabalhistas", "trabalho", "laboral", "laborais", "laboralista", "laboralistas", "labor", "labour", "employment", "laborales", "travail"],
   societario: ["societario", "societaria", "societarios", "societarias", "societarista", "societaristas"],
   previdenciario: ["previdenciario", "previdenciaria", "previdenciarios", "previdenciarias", "previdenciarista", "previdenciaristas", "previdencia"],
   criminal: ["criminal", "criminais", "criminalista", "criminalistas", "penal", "penais", "penalista", "penalistas", "penales"],
@@ -1296,8 +1534,8 @@ const EMPRESTIMOS_POSPOSTOS = new Set(["compliance", "seo", "branding", "valuati
  * (revisão de 14/09).
  */
 const ADJETIVOS_DE_PROFISSAO_POSPOSTOS = new Set([
-  "juridique", "juridiques", "juristisch", "juristische", "comptable", "comptables",
-  "юридический", "юридические", "бухгалтерский", "कानूनी", "قانوني", "قانونية",
+  "juridique", "juridiques", "comptable", "comptables", "قانوني", "قانونية",
+  ...Array.from(ADJETIVOS_ANTEPOSTOS),
 ]);
 
 /**
@@ -1539,7 +1777,10 @@ function entenderServico(rotulo: string): ServicoNomeado | null {
   if (guardado !== undefined) return guardado;
   const palavras = palavrasDe(rotulo);
   const nucleo = nucleoDoServico(palavras);
-  return guardar(cacheDoServico, rotulo, nucleo ? { familia: nucleo.familia, especialidades: especialidadesDoServico(palavras, nucleo) } : null);
+  if (nucleo) return guardar(cacheDoServico, rotulo, { familia: nucleo.familia, especialidades: especialidadesDoServico(palavras, nucleo) });
+  // Chinês e japonês: o serviço que termina o termo, e a especialidade no que vem antes dele (e6ddfa4 da #127).
+  const semEspaco = servicoNoFimSemEspaco(rotulo);
+  return guardar(cacheDoServico, rotulo, semEspaco ? { familia: semEspaco.familia, especialidades: especialidadesSemEspaco(semEspaco.antes, semEspaco.familia, semEspaco.profissional) } : null);
 }
 
 /**
@@ -1555,11 +1796,11 @@ export function servicoDoTermo(rotulo: string): ServicoNomeado | null {
  * "Advocacia tributária", "Advogada tributarista" e "Serviços jurídicos";
  * "consultoria" em "Consultoria jurídica" e "Tax consulting". null quando o
  * item não é serviço ou só diz "serviços". Em chinês e japonês a família vem
- * do vocabulário por substring.
+ * do vocabulário pelo fim do termo.
  */
 export function familiaDoServico(rotulo: string, categoria?: string | null): string | null {
   if (!ehServico(rotulo, categoria)) return null;
-  return entenderServico(rotulo)?.familia ?? servicoPorSubstring(rotulo);
+  return entenderServico(rotulo)?.familia ?? familiaSemEspaco(rotulo);
 }
 
 /**
@@ -1775,6 +2016,21 @@ const DESTINATARIOS_COMUNS = new Set([
   "pyme", "pymes", "mediana", "medianas", "emprendedor", "emprendedores", "emprendedora", "emprendedoras",
 ].map(palavra => lemaDaEspecialidade(palavra)));
 
+/**
+ * As palavras de PALAVRAS_SEM_ESPECIALIDADE que qualificam QUEM presta ou como presta — senioridade, urgência,
+ * confiança, registro profissional, modalidade. Não viram especialidade, mas a necessidade que as usa diz algo além
+ * da família: ver `comoAtende`. Artigo, possessivo, verbo de quem pede, "indicação" e "contratação" são estrutura.
+ */
+const QUALIFICA_QUEM_PRESTA = new Set([
+  "especializado", "especializada", "especializados", "especializadas", "specialized",
+  "urgente", "urgentes", "urgentemente", "experiente", "experientes", "qualificado", "qualificada", "qualificados", "qualificadas",
+  "bom", "boa", "bons", "boas", "confiavel", "confiaveis", "confianca", "online",
+  "senior", "junior", "pleno", "bilingue", "trilingue", "altamente", "freelancer", "autonomo", "autonoma",
+  "inscrito", "inscrita", "registrado", "registrada", "habilitado", "habilitada", "oab", "crc", "crea",
+  "experienced", "reliable", "good", "qualified", "trusted",
+]);
+const qualificaQuemPresta = (necessidade: string) => palavrasDe(necessidade).some(palavra => QUALIFICA_QUEM_PRESTA.has(palavra));
+
 /** O serviço oferecido não tem especialidade, e o público dele (se houver) é só destinatário comum. */
 const soDestinatarioComum = (servico: ServicoNomeado) => servico.especialidades.every(especialidade =>
   especialidade.lemas.size === 0 && Array.from(especialidade.publico).every(lema => DESTINATARIOS_COMUNS.has(lema)));
@@ -1796,10 +2052,9 @@ function comoAtende(oferta: string, categoriaDaOferta: string | null | undefined
   if (classificarOferta(oferta, categoriaDaOferta) !== "servico") return null;
   const pedidos = servicosDoRotulo(necessidade);
   if (pedidos.length === 0) return null;
+  // Chinês e japonês entram pela leitura do serviço (`entenderServico`), com a especialidade de antes do serviço
+  // (e6ddfa4 da #127): "律师事务所" oferecido é a advocacia sem especialidade, "税务咨询" a consultoria tributária.
   const oferecidos = servicosDoRotulo(oferta);
-  // Chinês e japonês: a oferta só tem a família, lida por substring ("律师"), e atende a necessidade genérica dela.
-  const familiaSemEspaco = oferecidos.length === 0 ? servicoPorSubstring(oferta) : null;
-  if (familiaSemEspaco) oferecidos.push({ familia: familiaSemEspaco, especialidades: [] });
   // Os DOIS lados nomeiam a família e nada além dela: "Contabilidade" oferecida diante de "Contador" procurado,
   // "Advocacia" diante de "Advogado", "Empresa de consultoria" diante de "Procura consultoria". Não há o que
   // distinguir — a necessidade nomeia exatamente o que está sendo oferecido, e não uma família da qual a oferta
@@ -1808,15 +2063,25 @@ function comoAtende(oferta: string, categoriaDaOferta: string | null | undefined
   //
   // "Nada além dela" é um serviço só de cada lado, lido por palavra, sem especialidade nem público. É o que
   // separa "Contabilidade" de "Consultoria jurídica" e "Consultoria de marketing" (a segunda palavra é o objeto do
-  // serviço, e quem procurou só "Consultoria" não pediu aquele objeto), de "Tradução e interpretação" e
-  // "Advogada consultora" (dois serviços) e de "律师" (lido por substring: não se sabe se tem especialidade).
+  // serviço, e quem procurou só "Consultoria" não pediu aquele objeto) e de "Tradução e interpretação" e
+  // "Advogada consultora" (dois serviços). Em chinês e japonês vale o mesmo, desde que a leitura pelo fim do termo
+  // lê a especialidade (e6ddfa4 da #127): "律师事务所" × "律师" e "律师" × "Advogado" são o mesmo serviço (100), e
+  // "税务咨询" × "咨询" fica na nota da família (60).
   //
   // Do lado da oferta, o DESTINATÁRIO comum também não é especialidade: "Contabilidade para pequenas empresas",
   // "Contabilidad para pymes" e "Accounting for small businesses" diante de "Contador" são o mesmo serviço, e na
   // main valiam 100. O que vem depois de "para" e não é destinatário diz o que se presta — a finalidade ou o setor
   // ("Consultoria para exportação", "Marketing para restaurantes", "Advogado para causas do trabalho") — e fica na
   // nota da família, como a mesma especialidade escrita com "em" (revisão de 15/09 na #127, 116bb56, portada).
-  const soAFamiliaNaOferta = !familiaSemEspaco && oferecidos.length === 1 && soDestinatarioComum(oferecidos[0]);
+  //
+  // Do lado da NECESSIDADE, o qualificador de quem presta também é algo além da família: "Contador sênior",
+  // "Advogado especializado", "Consultoria especializada", "Contador de confiança", "Contador com CRC", "Bom
+  // contador" e "Contador online" ficam na nota da família (60), como na #127, que lê a necessidade ao pé da letra
+  // (`familiaSemMaisNada` da 76cd7da, mantida na ff9564f) e rejeitou de propósito o critério "pedido genérico":
+  // a leitura do serviço descarta essas palavras sem virar especialidade, e com ele o par valia 100 e mandava
+  // e-mail. Ficam em 100 aqui, por decisão já fixada nos testes da #135, o adjetivo sozinho ("Contabilidade" ×
+  // "Contábil") e o lugar ("Contador em Campinas/SP"), que na #127 valem 60 (revisão de 15/09 do porte).
+  const nadaAlemDaFamilia = oferecidos.length === 1 && soDestinatarioComum(oferecidos[0]) && !qualificaQuemPresta(necessidade);
   let melhor: ComoAtende | null = null;
   for (const pedido of pedidos) {
     // Cada alternativa por si: em "Assessoria jurídica e tributária" diante de "Advocacia trabalhista", só a parte
@@ -1830,7 +2095,7 @@ function comoAtende(oferta: string, categoriaDaOferta: string | null | undefined
         const soAFamilia = alternativa.especialidades.every(especialidade =>
           especialidade.publico.size === 0 && Array.from(especialidade.lemas).every(lema => lema === oferecido.familia));
         if (!soAFamilia) return "especifico";
-        if (soAFamiliaNaOferta && pedidos.length === 1 && ehGenerico(pedido) && pedido.familia === oferecido.familia) return "especifico";
+        if (nadaAlemDaFamilia && pedidos.length === 1 && ehGenerico(pedido) && pedido.familia === oferecido.familia) return "especifico";
         melhor = "familia";
       }
     }
@@ -1868,6 +2133,157 @@ export function servicoAtendeNecessidade(oferta: string, necessidade: string): b
   return comoAtende(oferta, null, necessidade) !== null;
 }
 
+// ─── O que a regra não lê num idioma novo (e6ddfa4 e 116bb56 da #127) ────────
+//
+// Em francês, alemão, russo, hindi, árabe, chinês e japonês as listas são
+// curtas, e a regra estrita levava a ZERO o que só não sabia ler: "Налоговый
+// консалтинг" × "Налоговая консультация" [Финансы] valia 60 na main (a
+// categoria em comum) e caiu para 0. A regra, decidida na revisão de 14/09 da
+// #127:
+//   - onde há regra no idioma (lema curado, marcador de pedido, a leitura do
+//     chinês e do japonês pelo fim do termo), o motor decide como em
+//     português: 100, 60 ou 0;
+//   - onde o par só não casa por palavra que as listas não conhecem, escrita
+//     num desses idiomas, o portão NÃO bloqueia: o par vale o que valia na
+//     main, a categoria em comum, e nunca 0 por falta de regra;
+//   - o que o motor entende continua barrado: necessidade que não nomeia
+//     serviço ("Maschinen"), outra família ("Юрист" para consultoria) e
+//     especialidade entendida e diferente ("Юридическая консультация" para
+//     "Налоговый консалтинг");
+//   - duas travas da revisão de 15/09: o pedido precisa pedir o serviço
+//     (`pedeServico`: "Bureaux pour avocats" cita a família sem pedir), e o
+//     pedido que só fica genérico porque saiu o que as listas não leem não casa
+//     com oferta de especialidade entendida.
+// Em português, inglês e espanhol a regra segue estrita, também na parte de um
+// rótulo bilíngue escrita nesses idiomas (`palavrasPorIdioma`) — e com ela os
+// exemplos da spec da Glenda, o vocabulário curado de assunto e as opções
+// genéricas de "O que você busca?" e "O que preciso", que só se escrevem assim.
+
+/** Letra de escrita não latina: russo, hindi, árabe, chinês, japonês. */
+const LETRA_NAO_LATINA = new RegExp("[^\\p{Script=Latin}\\p{N}\\p{M}]", "u");
+const SERVICO_EM_FRANCES_OU_ALEMAO = new Set([...ASSESSORIA_EM_FRANCES_E_ALEMAO, ...OUTROS_SERVICOS_EM_FRANCES_E_ALEMAO]);
+
+/**
+ * Palavras de ligação que só o francês e o alemão usam. Reconhecem esses idiomas
+ * também quando o serviço vem no empréstimo do inglês ("Consultant en fiscalité
+ * DES entreprises", "IT-Consulting FÜR DEN Mittelstand"), que era lido como
+ * inglês e seguia estrito (116bb56 da #127). Não entra o que também é palavra do
+ * português, do inglês ou do espanhol ("de", "la", "en", "die", "das"): "les"
+ * (pronome) e "une" (de unir) são espanhol comum, e uma delas bastava para jogar
+ * o trecho inteiro nos idiomas novos — "Necesitamos una consultoría de recursos
+ * humanos que LES ayude" deixava de ser barrada diante de "Consultoria em
+ * comércio exterior" (revisão de 15/09 do porte). "des" fica: em espanhol é só o
+ * subjuntivo informal de "dar" ("que me des"), que não aparece em rótulo nem em
+ * pedido de serviço, e sem ele "Consultant en fiscalité DES entreprises" volta a
+ * ser lido como inglês.
+ */
+const LIGACOES_DO_FRANCES_E_DO_ALEMAO = new Set([
+  "des", "du", "pour", "avec", "aux", "au", "dans", "chez",
+  "fur", "fuer", "zum", "zur", "und", "mit", "der", "dem", "den", "vom", "beim",
+]);
+/** Onde um rótulo bilíngue troca de idioma: barra, parênteses, colchetes, travessão, "|" e " - ". */
+const TROCA_DE_IDIOMA = new RegExp("[/|()\\[\\]{}\\u2013\\u2014]|\\s-\\s", "u");
+
+/**
+ * As palavras de um rótulo separadas pelo idioma: `novas` são as de escrita não
+ * latina e as latinas do trecho em francês ou alemão (palavra de serviço ou de
+ * ligação desses idiomas); `estritas`, as demais, em português, inglês ou
+ * espanhol. A decisão é por trecho e por palavra, não pelo rótulo inteiro: em
+ * "Consultoria em segurança do trabalho / 安全咨询" só o chinês é idioma novo, e
+ * o "segurança" do português continua valendo contra o par (116bb56 da #127).
+ */
+function palavrasPorIdioma(rotulo: string): { novas: string[]; estritas: string[] } {
+  const novas: string[] = [];
+  const estritas: string[] = [];
+  for (const trecho of rotulo.split(TROCA_DE_IDIOMA)) {
+    const palavras = tokensDoTermo(trecho);
+    const francesOuAlemao = palavras.some(palavra => SERVICO_EM_FRANCES_OU_ALEMAO.has(palavra) || LIGACOES_DO_FRANCES_E_DO_ALEMAO.has(palavra));
+    // O "d'" (`D_APOSTROFO`) tem o apóstrofo de escrita comum, mas é latino: decide como o "d" decidia.
+    for (const palavra of palavras) (francesOuAlemao || (palavra !== D_APOSTROFO && LETRA_NAO_LATINA.test(palavra)) ? novas : estritas).push(palavra);
+  }
+  return { novas, estritas };
+}
+
+/**
+ * O serviço só com o que as listas leem: sem os lemas desconhecidos nem o público
+ * que elas não reconhecem. O que foi escrito em português, inglês ou espanhol
+ * (`estritos`, em lema) nunca sai.
+ */
+function soOQueAsListasLeem(servico: ServicoNomeado, estritos: ReadonlySet<string>): ServicoNomeado {
+  const lido = (lema: string) => lemaCuradoOuIdioma(lema) || FAMILIAS_CONHECIDAS.has(lema) || estritos.has(lema);
+  return {
+    familia: servico.familia,
+    especialidades: servico.especialidades
+      .map(especialidade => ({
+        ...especialidade,
+        lemas: new Set(Array.from(especialidade.lemas).filter(lema => especialidade.conhecidos.has(lema) || estritos.has(lema))),
+        publico: new Set(Array.from(especialidade.publico).filter(lido)),
+        publicoEspecifico: new Set(Array.from(especialidade.publicoEspecifico).filter(lido)),
+        assunto: new Set<string>(),
+      }))
+      .filter(especialidade => especialidade.lemas.size > 0 || especialidade.publico.size > 0),
+  };
+}
+
+/**
+ * A necessidade num idioma novo PEDE um serviço? O serviço precisa ser o que se
+ * pede, não a palavra da família num pedido de outra coisa, que a main barrava e
+ * a exceção dos idiomas novos soltava (116bb56 da #127):
+ *   - "Bureaux POUR avocats", "Räume FÜR Schulungen": o serviço atrás de "para"
+ *     é para quem (ver PREPOSICOES), e `nucleoDoServico` não o lê;
+ *   - "वकील के लिए कार्यालय" (escritório para advogado): em hindi o "para" vem
+ *     depois de quem se atende, e o que se pede é o que vem depois de "के लिए";
+ *   - "Juristische Person", "Юридический адрес": o adjetivo de profissão
+ *     anteposto qualifica o substantivo seguinte, que não é serviço;
+ *   - "Conseil d'administration": o conselho, não a consultoria (já sai em `palavrasDe`).
+ */
+function pedeServico(rotulo: string): boolean {
+  const palavras = palavrasDe(rotulo);
+  const posposicao = palavras.findIndex((palavra, i) => palavra === "लिए" && palavras[i - 1] === "के");
+  const termo = posposicao > 0 ? palavras.slice(posposicao + 1) : palavras;
+  const inicio = inicioDoServico(termo);
+  const cabeca = termo[inicio] ?? "";
+  const seguinte = termo[inicio + 1];
+  if (ADJETIVOS_ANTEPOSTOS.has(cabeca) && seguinte !== undefined && !FRONTEIRAS.has(seguinte) && !ehPalavraDeServico(seguinte)
+    && COMPOSTOS.get(`${cabeca} ${seguinte}`) !== "servico") return false;
+  // Chinês e japonês: o serviço que termina o termo ("招聘律师", "我们需要税务咨询").
+  return nucleoDoServico(termo) !== null || (posposicao < 0 && servicoNoFimSemEspaco(rotulo) !== null);
+}
+
+/**
+ * A regra NÃO LÊ este par? Verdadeiro quando a oferta é serviço, o par não
+ * casa, ao menos um lado está num idioma novo e, tirado DESSE lado o que as
+ * listas não conhecem, o serviço oferecido atenderia o pedido — a única razão
+ * do zero é palavra que o motor não sabe ler ("Steuerberatung für Erbschaften"
+ * × "Steuerberater für Erbschaftsteuer"). Palavra desconhecida do lado escrito
+ * em português, inglês ou espanhol continua valendo contra o par. Os motores
+ * determinísticos tratam o par como a main: sem bloqueio, com a categoria.
+ */
+export function regraNaoLeOPar(oferta: string, categoriaDaOferta: string | null | undefined, necessidade: string): boolean {
+  if (classificarOferta(oferta, categoriaDaOferta) !== "servico") return false;
+  const daOferta = palavrasPorIdioma(oferta);
+  const daNecessidade = palavrasPorIdioma(necessidade);
+  const ofertaEmIdiomaNovo = daOferta.novas.length > 0;
+  const necessidadeEmIdiomaNovo = daNecessidade.novas.length > 0;
+  if (!ofertaEmIdiomaNovo && !necessidadeEmIdiomaNovo) return false;
+  if (comoAtende(oferta, categoriaDaOferta, necessidade) !== null) return false;
+  if (necessidadeEmIdiomaNovo && !pedeServico(necessidade)) return false;
+  const emLema = (palavras: string[]) => new Set(palavras.map(lemaDaEspecialidade));
+  const estritosDaOferta = emLema(daOferta.estritas);
+  const estritosDaNecessidade = emLema(daNecessidade.estritas);
+  const oferecidos = servicosDoRotulo(oferta).map(servico => (ofertaEmIdiomaNovo ? soOQueAsListasLeem(servico, estritosDaOferta) : servico));
+  return servicosDoRotulo(necessidade).some(pedido => {
+    const lido = necessidadeEmIdiomaNovo ? soOQueAsListasLeem(pedido, estritosDaNecessidade) : pedido;
+    // O pedido que só ficou genérico porque saiu o que as listas não leem ("Консультация по логистике" vira
+    // "Консультация") não é a genérica que alguém escreveu: diante de oferta com especialidade entendida
+    // ("Consultoria tributária"), o que saiu pode ser outra especialidade, e o par casava serviços diferentes que a
+    // main barrava (116bb56 da #127).
+    const virouGenerico = !ehGenerico(pedido) && ehGenerico(lido);
+    return oferecidos.some(oferecido => umServicoAtende(oferecido, lido)
+      && !(virouGenerico && oferecido.especialidades.some(especialidade => especialidade.conhecidos.size > 0)));
+  });
+}
+
 /**
  * Serviço de assessoria? É o que atende a opção fixa "Consultoria" de "O que
  * preciso": quem marcou essa opção DECLAROU precisar de aconselhamento
@@ -1882,7 +2298,7 @@ export function ehServicoDeAssessoria(rotulo: string, categoria?: string | null)
   const servicos = servicosDoRotulo(rotulo);
   if (servicos.length === 0) {
     // Serviço reconhecido só pela categoria ou pelo vocabulário sem espaço (zh/ja): decide o que se sabe dele.
-    const familia = servicoPorSubstring(rotulo);
+    const familia = familiaSemEspaco(rotulo);
     if (familia) return FAMILIAS_DE_ASSESSORIA.has(familia);
     return tokensDoTermo(categoria ?? "").some(palavra => FAMILIAS_DE_ASSESSORIA.has(familiaDaPalavra(palavra)));
   }
@@ -2012,8 +2428,12 @@ const VERBOS_DE_PEDIDO_NA_IA = new Set([
 const ehMarcaDePedido = (palavra: string) => MARCADORES_FRACOS.has(palavra) || VERBOS_DE_NECESSIDADE.has(palavra) || VERBOS_DE_PEDIDO_NA_IA.has(palavra);
 /** Pronome relativo: abre outra oração, que já não é o pedido ("advogado QUE nos ajude", "lawyer WHO speaks"). */
 const ABRE_ORACAO = new Set(["que", "who", "which", "that", "qui", "quien", "quienes"]);
+/** "Nous cherchons UN comptable": em francês "comptable" é também o contador, e depois de artigo ou possessivo é o substantivo (9e027bf). */
+const COMPTABLE = new Set(["comptable", "comptables"]);
+const DETERMINANTES_DO_FRANCES = new Set(["un", "une", "le", "la", "les", "des", "du", D_APOSTROFO, "l", "au", "aux", "notre", "votre", "nos", "vos", "leur", "leurs"]);
 const nomeiaServicoEm = (item: readonly string[], k: number) =>
-  ehSubstantivoDeServico(item[k]) || areaDoDireito(item as string[], k) !== null || (ADJETIVOS_DE_SERVICO.has(item[k]) && k > 0 && CABECAS_NEUTRAS.has(item[k - 1]));
+  ehSubstantivoDeServico(item[k]) || areaDoDireito(item as string[], k) !== null
+  || (ADJETIVOS_DE_SERVICO.has(item[k]) && k > 0 && (CABECAS_NEUTRAS.has(item[k - 1]) || (COMPTABLE.has(item[k]) && DETERMINANTES_DO_FRANCES.has(item[k - 1]))));
 /** Antes do substantivo, só entra no pedido o que qualifica serviço de fato: "TAX lawyer", "LEGAL support", "escritório contábil". */
 const qualificaAntes = (palavra: string) =>
   lemaCurado(palavra) !== undefined || ADJETIVOS_DE_SERVICO.has(palavra) || SUBSTANTIVOS_DE_SERVICO.has(palavra) || IDIOMA_DA_PALAVRA.has(palavra) || CORPORATIVO.has(palavra) || CABECAS_NEUTRAS.has(palavra);

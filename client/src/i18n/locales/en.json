@@ -1537,7 +1537,8 @@
     "versaoLabel": "version",
     "aceitaEm": "accepted on",
     "revogadaEmData": "· revoked on {{data}}",
-    "termoMudouAviso": "· the agreement changed after that"
+    "termoMudouAviso": "· the agreement changed after that",
+    "seloMesmoServico": "Same service"
   },
   "networkPanel": {
     "eyebrow": "YOUR PRIVATE NETWORK",
