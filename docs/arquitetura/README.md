@@ -115,7 +115,9 @@ gravada antes da regra (sem apagá-la: a dispensa da dona sobrevive); nos dois p
 por LLM de `routers/matching.ts`, o modelo classifica o item, cita o trecho literal do
 título, das tags ou da descrição da oportunidade que declara a necessidade e
 `server/portao-da-demanda-expressa.ts` confere a citação nesse texto (no máximo uma
-palavra ausente) antes de exibir — e usa o classificador como piso: perfil que só tem
+palavra ausente; em chinês e japonês, que não separam palavras, o trecho precisa estar
+literalmente na fonte, sem tolerância e com ao menos quatro caracteres — o nome curto
+numa frase latina, como "filial de 東京", só precisa estar na fonte) antes de exibir — e usa o classificador como piso: perfil que só tem
 serviço e nada em "preciso" exige citação seja qual for o tipo que o modelo escreveu.
 Prompt é pedido, a conferência é a garantia.
 
@@ -128,7 +130,8 @@ tradução...) e especialidade (lemas curados: tributário = tributarista = fisc
 ICMS) iguais dão 100 no motor privado e satisfazem o de perfis — também entre consultoria e
 assessoria e no apoio que nomeia a profissão ("Assessoria jurídica tributária" diante de
 "Advocacia tributária"), e quando os dois lados nomeiam a família e nada mais
-("Contabilidade" diante de "Contador"); a necessidade que nomeia só a família ("Advogado"
+("Contabilidade" e "Serviços contábeis" diante de "Contador"; na tela do Smart Match esse 100
+tem o selo "Mesmo serviço", e não "Tag exata"); a necessidade que nomeia só a família ("Advogado"
 diante de "Advocacia tributária") vale 60. **Palavra igual não é serviço
 igual, e na dúvida não casa:** o motor só afirma equivalência do que entende. Palavra
 fora das listas precisa aparecer igual dos dois lados, e a oferta não pode ter palavra
@@ -159,6 +162,29 @@ Limites aceitos e decisões pendentes (revisão adversarial de 13/09/2026):
 - em chinês e japonês o serviço é lido pelo fim do termo, onde as duas línguas põem a
   cabeça ("会计软件" é software; "律师事务所" é advocacia), e a especialidade só onde há lema
   curado ("税务");
+- nos idiomas novos, a exceção do que as listas não leem tem duas travas (revisão de 15/09 na
+  #127): o pedido precisa pedir o serviço ("Bureaux pour avocats", "Juristische Person",
+  "Conseil d'administration" citam a família sem pedir), e o pedido que só fica genérico
+  porque saiu a palavra desconhecida não casa com oferta de especialidade entendida —
+  "Консультация по логистике" é 0 diante de "Налоговый консалтинг" (na main valia 60 pela
+  categoria), para "Consultoria tributária" não casar com consultoria de outra coisa. Num
+  rótulo bilíngue o idioma se decide por trecho ("/", parênteses, travessão) e por palavra:
+  a parte em pt, en ou es segue estrita;
+- na oferta, o público que leva a 100 diante da necessidade que só nomeia o serviço é o
+  destinatário (pequenas empresas, MEI, PMEs, startups, pessoa física); setor, finalidade e
+  grupo depois de "para" ("para restaurantes", "para exportação", "para fundadoras") ficam
+  em 60, como a mesma especialidade escrita com "em" — lista de destinatários a confirmar
+  com o Roberto;
+- "Boutique", "cabinet" e "expert" só são o escritório com o serviço logo no complemento
+  ("Boutique de advocacia tributária"); "Boutique de joias de design" é a loja, e "Cabinet
+  d'expertise comptable" sem categoria é "outros", como na main;
+- consultor jurídico não atende a necessidade "Advogado" também em árabe ("مستشار قانوني" ×
+  "محامي"), como "Consultoria jurídica" em português;
+- "estratégica" ao lado de especialidade reconhecida sai da oferta, mas sozinha é o assunto do
+  pedido: "Consultoria tributária estratégica" × "Consultoria estratégica" fica em 0, como na
+  main;
+- casa, house, sala, loja, store, flat, vaga e cobertura não são imóvel (#124, d7fac93):
+  "Casa de praia" ou "Service flat" com categoria de serviço caem no portão, como na main;
 - no motor privado, "Consultoria" digitada não é atendida por advocacia nem por
   contabilidade; no de perfis, a opção fixa "Consultoria" é atendida pela família da
   cabeça (advocacia, contabilidade, auditoria, mentoria, coaching);

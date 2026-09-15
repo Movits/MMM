@@ -214,16 +214,18 @@ dona: `scoreMatch` aplica, nesta ordem, concorrentes → 0, slug exato → 100, 
 objeto do termo → 100, mesmo núcleo → 100, o mesmo serviço escrito de outro jeito → 100
 (só para serviço: a mesma especialidade na mesma família, entre consultoria e assessoria, no
 apoio que nomeia a profissão, ou os dois lados nomeando a família e nada mais, como
-"Contabilidade" × "Contador", `mesmaFamiliaEEspecialidade`),
+"Contabilidade" × "Contador" e "Serviços contábeis" × "Contador", `mesmaFamiliaEEspecialidade`),
 necessidade que nomeia só a família do serviço → 60 (`necessidadeGenericaNomeiaOServico`),
-mesma categoria → 60 (não vale para serviço); o critério semântico
+mesma categoria → 60 (para serviço, só no par que a regra não lê num idioma novo,
+`regraNaoLeOPar`); o critério semântico
 vale 45, abaixo do limiar 50, logo está desligado por construção e o texto não sai
 para embeddings. `server/matching.ts` cruza perfis de usuárias em 6 dimensões
 ponderadas, com LLM só no insight. `routers/profileMatches.ts` expõe esses matches no
 Dashboard com trava de consentimento dos dois lados. **Regra da demanda expressa
 (12/09/2026), nos três motores e nos prompts:** item de "o que tenho" classificado como
 SERVIÇO (`shared/tipo-da-oferta.ts`) só casa com necessidade DECLARADA em "o que
-preciso" — no motor privado a categoria em comum não vale para serviço; no de perfis o
+preciso" — no motor privado a categoria em comum não vale para serviço (salvo a exceção
+dos idiomas novos, abaixo); no de perfis o
 par sustentado só por serviço sem demanda expressa dá zero, não é gravado e a leitura da
 lista esconde a linha antiga (sem apagá-la, para a dispensa da dona sobreviver); nos dois
 prompts de `routers/matching.ts` o modelo classifica o item,
@@ -238,7 +240,11 @@ curtas, o par que só não casa por palavra que elas não leem NÃO é bloqueado
 determinísticos — vale a categoria em comum, como antes da regra, e nunca 0 por falta de regra
 (`regraNaoLeOPar`); onde há regra no idioma (lema curado, marcador de pedido, a leitura do
 chinês e do japonês pelo fim do termo), o motor decide como em português, e o que ele entende
-continua barrado. pt, en e es seguem estritos. Produtos,
+continua barrado. pt, en e es seguem estritos, também dentro de rótulo bilíngue (o idioma se
+decide por trecho e por palavra). Na revisão de 15/09 a exceção ganhou duas travas: o pedido
+num idioma novo precisa pedir o serviço ("Bureaux pour avocats", "Juristische Person" não
+pedem), e o pedido que só fica genérico porque saiu o que as listas não leem não casa com oferta
+de especialidade entendida ("Consultoria tributária" × "Консультация по логистике" = 0). Produtos,
 ativos, investimento, conexões, tecnologia e imóveis não mudam.
 
 **`server/_core/` é a infraestrutura herdada do Manus** (o projeto nasceu na
