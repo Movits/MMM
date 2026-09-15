@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Dashboard from "./Dashboard";
 
@@ -24,10 +25,13 @@ import Dashboard from "./Dashboard";
 
 const NOME_SECRETO = "Zoroastra Quindim";
 
-type Resposta = { data?: unknown; isLoading?: boolean; isError?: boolean; error?: unknown };
+type Resposta = { data?: unknown; isLoading?: boolean; isError?: boolean; error?: unknown; refetch?: () => unknown };
 
 const duble = vi.hoisted(() => {
   const respostas: Record<string, Resposta> = {};
+  // As opções que a tela passa a cada useMutation, para o teste chamar o
+  // onError de verdade sem precisar de rede.
+  const mutacoes: Record<string, { onError?: (erro: Error) => void } | undefined> = {};
   const ignorar = (prop: string | symbol) => typeof prop === "symbol" || prop === "then" || prop === "$$typeof";
   const procedimento = (caminho: string) => ({
     useQuery: (_input: unknown, opcoes?: { select?: (dados: never) => unknown }) => {
@@ -36,7 +40,10 @@ const duble = vi.hoisted(() => {
       if (opcoes?.select && resultado.data !== undefined) resultado.data = opcoes.select(resultado.data as never);
       return resultado;
     },
-    useMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(async () => undefined), isPending: false, isError: false, error: null, data: undefined }),
+    useMutation: (opcoes?: { onError?: (erro: Error) => void }) => {
+      mutacoes[caminho] = opcoes;
+      return { mutate: vi.fn(), mutateAsync: vi.fn(async () => undefined), isPending: false, isError: false, error: null, data: undefined };
+    },
   });
   const utils = new Proxy({}, {
     get: (_, r) => ignorar(r) ? undefined : new Proxy({}, {
@@ -50,7 +57,7 @@ const duble = vi.hoisted(() => {
       return new Proxy({}, { get: (_, proc) => ignorar(proc) ? undefined : procedimento(`${String(router)}.${String(proc)}`) });
     },
   });
-  return { respostas, trpc };
+  return { respostas, mutacoes, trpc };
 });
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() } }));
@@ -242,5 +249,173 @@ describe("cartão de match — o passo do distribuidor", () => {
     expect(screen.queryByRole("button", { name: "Aceitar e revelar" })).not.toBeInTheDocument();
     expect(document.body.innerHTML).not.toContain("Zoroastra");
     expect(screen.getAllByText("Membro da rede").length).toBe(2);
+  });
+});
+
+// ── Quem pediu vê o aceite sem F5 ───────────────────────────────────────────
+// connections.respond avisa a solicitante com um `interest_received`, e o sino
+// (que relê os avisos a cada 30 s) divide o cache com o Dashboard. Aviso de
+// interesse NOVO relê as duas listas que desenham o nome; a primeira leitura e
+// aviso de outro tipo não relêem nada.
+describe("quem pediu vê o aceite sem F5", () => {
+  const aviso = (id: number, type: string) => ({
+    id, type, title: "Aviso", body: null, actionUrl: "/dashboard", isRead: true, createdAt: new Date(),
+  });
+
+  it("aviso de interesse novo relê conexões e matches; a primeira leitura e aviso de outro tipo, não", () => {
+    const releConexoes = vi.fn();
+    const releMatches = vi.fn();
+    duble.respostas["connections.list"] = { data: [], refetch: releConexoes };
+    duble.respostas["matches.list"] = {
+      data: [cartao({ connectionId: 7, connectionStatus: "pending", souDestinataria: false })],
+      refetch: releMatches,
+    };
+    duble.respostas["notifications.list"] = { data: [aviso(3, "interest_received")] };
+    const { rerender } = render(<Dashboard />);
+    // O aviso 3 já existia quando a página abriu: nada a reler.
+    expect(releConexoes).not.toHaveBeenCalled();
+    expect(releMatches).not.toHaveBeenCalled();
+
+    duble.respostas["notifications.list"] = { data: [aviso(4, "gold_granted"), aviso(3, "interest_received")] };
+    rerender(<Dashboard />);
+    expect(releConexoes).not.toHaveBeenCalled();
+    expect(releMatches).not.toHaveBeenCalled();
+
+    // O aceite chega pelo sino.
+    duble.respostas["notifications.list"] = {
+      data: [aviso(5, "interest_received"), aviso(4, "gold_granted"), aviso(3, "interest_received")],
+    };
+    rerender(<Dashboard />);
+    expect(releConexoes).toHaveBeenCalledTimes(1);
+    expect(releMatches).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── Aba Conexões depois do aceite ───────────────────────────────────────────
+// Validação da #108 pelo Roberto (item 4): conexão aceita cujo perfil não tem
+// apelido aparecia como "Membro da rede". Depois do aceite o servidor já libera
+// o nome da conta (`userName`, atrás do mesmo CASE WHEN de getConnectionsForUser);
+// antes dele, a tela não desenha nome nenhum, nem que o servidor mande.
+describe("aba Conexões — o nome depois do aceite", () => {
+  const conexao = (extra: Record<string, unknown>) => ({
+    id: 9, status: "accepted", souDestinataria: false, outraParteId: 5, primarySpecialty: "finance", city: "Porto",
+    message: null, displayName: null, avatarUrl: null, userName: null, userCompany: null, ...extra,
+  });
+
+  it("aceita sem apelido mostra o nome da conta, com a inicial, e nunca 'Membro da rede'", async () => {
+    duble.respostas["matches.list"] = { data: [] };
+    duble.respostas["connections.list"] = {
+      data: [
+        conexao({ id: 9, userName: NOME_SECRETO }),
+        // Sem apelido e sem nome de conta: o mesmo rótulo do cartão revelado.
+        conexao({ id: 10, userName: null }),
+      ],
+    };
+    render(<Dashboard />);
+    fireEvent.click(screen.getByRole("button", { name: "Conexões (2)" }));
+
+    expect(await screen.findByText(NOME_SECRETO, {}, ESPERA)).toBeInTheDocument();
+    expect(screen.getByText("Z")).toBeInTheDocument();
+    expect(screen.getByText("Usuário")).toBeInTheDocument();
+    expect(screen.queryByText("Membro da rede")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Identidade oculta")).not.toBeInTheDocument();
+  });
+
+  it("com apelido, o apelido vem antes do nome da conta", async () => {
+    duble.respostas["matches.list"] = { data: [] };
+    duble.respostas["connections.list"] = { data: [conexao({ displayName: NOME_SECRETO, userName: "Nome Civil Qualquer" })] };
+    render(<Dashboard />);
+    fireEvent.click(screen.getByRole("button", { name: "Conexões (1)" }));
+
+    expect(await screen.findByText(NOME_SECRETO, {}, ESPERA)).toBeInTheDocument();
+    expect(document.body.innerHTML).not.toContain("Nome Civil Qualquer");
+  });
+
+  it("antes do aceite, nome nenhum, nem que o servidor mande apelido e nome da conta", async () => {
+    duble.respostas["matches.list"] = { data: [] };
+    duble.respostas["connections.list"] = {
+      data: [conexao({ status: "pending", souDestinataria: true, outraParteId: null, displayName: NOME_SECRETO, userName: NOME_SECRETO })],
+    };
+    render(<Dashboard />);
+    fireEvent.click(screen.getByRole("button", { name: "Conexões (1)" }));
+
+    expect(await screen.findByRole("button", { name: "Aceitar e revelar" }, ESPERA)).toBeInTheDocument();
+    expect(document.body.innerHTML).not.toContain("Zoroastra");
+    expect(screen.getByText("Membro da rede")).toBeInTheDocument();
+  });
+});
+
+// ── O mesmo nome no cartão e na aba ─────────────────────────────────────────
+// matches.list só manda o apelido; connections.list manda também o nome da conta.
+// Perfil sem apelido fazia a mesma pessoa aparecer como "Usuário" no cartão e com
+// o nome da conta na aba Conexões, a um clique de "Ver conexão". O cartão passa a
+// usar o nome da conexão de mesmo id, e só quando ele mesmo está revelado.
+describe("cartão revelado e aba Conexões — a mesma pessoa, o mesmo nome", () => {
+  const conexao = (extra: Record<string, unknown>) => ({
+    id: 9, status: "accepted", souDestinataria: false, outraParteId: 5, primarySpecialty: "finance", city: "Porto",
+    message: null, displayName: null, avatarUrl: null, userName: NOME_SECRETO, userCompany: null, ...extra,
+  });
+
+  it("perfil sem apelido: o cartão e a aba mostram o nome da conta", async () => {
+    duble.respostas["matches.list"] = {
+      data: [cartao({ connectionId: 9, connectionStatus: "accepted", souDestinataria: false, displayName: null })],
+    };
+    duble.respostas["connections.list"] = { data: [conexao({})] };
+    render(<Dashboard />);
+
+    expect(screen.getByRole("heading", { name: NOME_SECRETO })).toBeInTheDocument();
+    expect(screen.queryByText("Usuário")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver conexão" }));
+    // A badge só existe na aba Conexões: prova que a troca de aba aconteceu.
+    expect(await screen.findByText("✓ Conectado", {}, ESPERA)).toBeInTheDocument();
+    expect(screen.getByText(NOME_SECRETO)).toBeInTheDocument();
+    expect(screen.queryByText("Usuário")).not.toBeInTheDocument();
+  });
+
+  it("cartão ainda não revelado não pega o nome da conexão, nem que a lista de conexões já diga aceita", () => {
+    // As duas listas são relidas em momentos diferentes: a de conexões já chegou com o aceite.
+    duble.respostas["matches.list"] = {
+      data: [cartao({ connectionId: 9, connectionStatus: "pending", souDestinataria: false, displayName: null })],
+    };
+    duble.respostas["connections.list"] = { data: [conexao({})] };
+    render(<Dashboard />);
+
+    expect(document.body.innerHTML).not.toContain("Zoroastra");
+    expect(screen.getByRole("heading", { name: "Membro da rede" })).toBeInTheDocument();
+  });
+
+  it("conexão de outro id, ou ainda não aceita, não empresta o nome: o cartão revelado sem apelido fica com 'Usuário'", () => {
+    duble.respostas["matches.list"] = {
+      data: [
+        cartao({ matchId: 1, connectionId: 9, connectionStatus: "accepted", souDestinataria: false, displayName: null }),
+        cartao({ matchId: 2, connectionId: 11, connectionStatus: "accepted", souDestinataria: false, displayName: null }),
+      ],
+    };
+    duble.respostas["connections.list"] = {
+      data: [conexao({ id: 10 }), conexao({ id: 11, status: "pending", outraParteId: null })],
+    };
+    render(<Dashboard />);
+
+    expect(screen.getAllByRole("heading", { name: "Usuário" })).toHaveLength(2);
+    expect(document.body.innerHTML).not.toContain("Zoroastra");
+  });
+});
+
+// ── Aceite barrado no servidor ──────────────────────────────────────────────
+// connections.respond recusa o aceite quando uma das partes saiu do Smart Match.
+// A mensagem do servidor precisa chegar à tela: antes não havia onError e o
+// clique em "Aceitar e revelar" não dava sinal nenhum.
+describe("aceite barrado no servidor", () => {
+  it("o erro do respond aparece como aviso vermelho, com a mensagem do servidor", () => {
+    vi.mocked(toast.error).mockClear();
+    vi.mocked(toast.success).mockClear();
+    render(<Dashboard />);
+    const opcoes = duble.mutacoes["connections.respond"];
+    expect(opcoes?.onError).toBeTypeOf("function");
+
+    opcoes!.onError!(new Error("Este pedido não está mais disponível."));
+    expect(vi.mocked(toast.error)).toHaveBeenCalledWith("Este pedido não está mais disponível.");
+    expect(vi.mocked(toast.success)).not.toHaveBeenCalled();
   });
 });

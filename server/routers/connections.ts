@@ -77,6 +77,27 @@ async function avisarQuemDistribui(solicitanteId: number) {
   } catch (_) { /* o pedido já está gravado; o sino é acessório */ }
 }
 
+/**
+ * O aceite avisa QUEM PEDIU. Quem aceita vê o nome na hora, porque a própria tela
+ * relê as listas; a solicitante não recebia nada e só descobria no F5 ou quando a
+ * aba voltava ao foco. O aviso sai só DEPOIS de o status virar `accepted` (quem
+ * chama confere `revelou`), então nada vaza antes do aceite, e o corpo não traz
+ * nome: o nome continua na aba Conexões, atrás do mesmo portão. A recusa segue sem
+ * aviso. O tipo `interest_received` é o que o Dashboard observa para reler as
+ * listas sem F5. Falha no aviso não desfaz o aceite, que já está gravado.
+ */
+async function avisarQuemPediu(solicitanteId: number) {
+  try {
+    const { createNotification } = await import("../db");
+    await createNotification({
+      userId: solicitanteId, type: "interest_received",
+      title: "Seu interesse foi aceito",
+      body: "A outra pessoa aceitou o seu pedido de interesse do Smart Match. Os nomes já aparecem na aba Conexões.",
+      actionUrl: "/dashboard",
+    });
+  } catch (_) { /* o aceite já está gravado; o sino é acessório */ }
+}
+
 export const connectionsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     const { getConnectionsForUser } = await import("../db");
@@ -111,7 +132,12 @@ export const connectionsRouter = router({
       if (!comTermo.has(alvo)) throw new TRPCError({ code: "NOT_FOUND", message: "Match não encontrado" });
 
       const resultado = await sendConnectionRequest(ctx.user.id, alvo);
-      if (resultado.revelou) await registrarRevelacao(resultado.connectionId, ctx.user.id, alvo, "interesse_mutuo");
+      if (resultado.revelou) {
+        await registrarRevelacao(resultado.connectionId, ctx.user.id, alvo, "interesse_mutuo");
+        // O pedido era do alvo e já estava encaminhado: este clique vale como o
+        // aceite, e quem tinha pedido precisa saber, como no `respond`.
+        await avisarQuemPediu(alvo);
+      }
       // Pedido novo: fica em análise até o distribuidor conferir e encaminhar.
       // A destinatária não é avisada aqui — ela só fica sabendo se for encaminhado.
       if (resultado.emAnalise) await avisarQuemDistribui(ctx.user.id);
@@ -128,10 +154,40 @@ export const connectionsRouter = router({
       accept: z.boolean(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { respondToConnection } = await import("../db");
+      const { respondToConnection, lerPedidoDeMatch, idsDeContasAtivas } = await import("../db");
+      if (input.accept) {
+        // As travas do `distribuicao.decidir`, lidas de novo no aceite: depois do
+        // encaminhamento, quem pediu pode ter revogado o termo (consent.revoke só
+        // grava `revokedAt` e não mexe no pedido) ou ter tido a conta desativada,
+        // e quem aceita pode ter revogado o dela. A linha `pending` continua na aba
+        // Conexões, porque connections.list não olha o termo. Sem esta trava, o
+        // aceite revelava o nome de quem já tinha tirado o consentimento e ainda a
+        // avisava. Só roda para a destinatária de um pedido `pending`: id alheio ou
+        // linha em outro estado seguem para o banco e recebem o mesmo "nada mudou"
+        // de sempre, sem oráculo. A recusa não revela nada e segue livre.
+        const pedido = await lerPedidoDeMatch(input.connectionId);
+        if (pedido && pedido.recipientId === ctx.user.id && pedido.status === "pending") {
+          const { usersComConsentimento } = await import("./consent");
+          const comTermo = await usersComConsentimento([pedido.requesterId, ctx.user.id], "termo_smart_match");
+          if (!comTermo.has(ctx.user.id)) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Autorize o termo do Smart Match para aceitar e revelar os nomes." });
+          }
+          // A conta de quem aceita está ativa: sdk.ts recusa a sessão de conta desativada.
+          const ativas = await idsDeContasAtivas([pedido.requesterId]);
+          if (!comTermo.has(pedido.requesterId) || !ativas.has(pedido.requesterId)) {
+            // Erro, e não o `success` de sempre: a tela diria "Conexão aceita" sem
+            // nada ter sido aceito. O pedido pendente é anônimo, então a mensagem
+            // não diz a quem aceita quem saiu.
+            throw new TRPCError({ code: "NOT_FOUND", message: "Este pedido não está mais disponível." });
+          }
+        }
+      }
       const resultado = await respondToConnection(input.connectionId, ctx.user.id, input.accept);
       if (resultado.revelou && resultado.contraparte !== null) {
         await registrarRevelacao(input.connectionId, ctx.user.id, resultado.contraparte, "aceite");
+        // A contraparte do aceite é quem pediu: sem o aviso, ela seguia vendo o
+        // cartão anônimo até o F5.
+        await avisarQuemPediu(resultado.contraparte);
       }
       return { success: true };
     }),

@@ -257,8 +257,11 @@ type MatchData = {
   displayName: string | null;
 };
 
-function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, index }: {
-  match: MatchData; onInterest: (matchId: number) => void;
+function MatchCard({ match, nomeDaConexao, onInterest, onDismiss, onResponder, onVerConexoes, index }: {
+  match: MatchData;
+  // O nome que a aba Conexões mostra para a conexão deste cartão (null antes do aceite).
+  nomeDaConexao: string | null;
+  onInterest: (matchId: number) => void;
   onDismiss: (mid: number) => void;
   onResponder: (connectionId: number, accept: boolean) => void;
   onVerConexoes: () => void; index: number;
@@ -299,7 +302,11 @@ function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, i
   // dos dois lados, e a aprovação já revela os dois nomes).
   const emAnalise = match.connectionStatus === "in_review";
   const naoEncaminhada = match.connectionStatus === "not_forwarded";
-  const nome = revelada ? (match.displayName || t("dashboard.userFallback")) : null;
+  // matches.list só manda o apelido (users.name fica fora dessa consulta de
+  // propósito). Sem apelido, o cartão dizia "Usuário" e a aba Conexões, a um
+  // clique em "Ver conexão", mostrava o nome da conta: a mesma pessoa com dois
+  // nomes. O nome da conexão de mesmo id resolve, e só entra com o cartão revelado.
+  const nome = revelada ? (match.displayName || nomeDaConexao || t("dashboard.userFallback")) : null;
   // Dispensar só faz sentido quando não há conversa em curso: some nos estados
   // em que a outra parte está esperando algo, para ninguém sumir com um cartão
   // do qual ainda depende.
@@ -868,6 +875,10 @@ export default function Dashboard() {
     // `matchesQuery` também: o nome do cartão vem do servidor, e sem este refetch
     // a pessoa aceita e o cartão continua anônimo até apertar F5.
     onSuccess: (_, vars) => { toast.success(vars.accept ? t("dashboard.connectionAccepted") : t("dashboard.connectionDeclined")); connectionsQuery.refetch(); matchesQuery.refetch(); },
+    // O aceite pode ser barrado no servidor: quem pediu saiu do Smart Match (termo
+    // revogado ou conta desativada) ou quem aceita revogou o próprio termo. Sem
+    // isto o clique não dava sinal nenhum na tela, só no console.
+    onError: (err) => toast.error(err.message),
   });
   const regenerateMutation = trpc.matches.regenerate.useMutation({
     onSuccess: (data) => { toast.success(data.count > 0 ? t("dashboard.newMatches", { count: data.count }) : t("dashboard.analysisDone")); matchesQuery.refetch(); },
@@ -879,6 +890,27 @@ export default function Dashboard() {
   useEffect(() => {
     if (!loading && isAuthenticated && profileQuery.data === null) navigate("/onboarding");
   }, [loading, isAuthenticated, profileQuery.data, navigate]);
+
+  // Quem pediu fica sabendo do aceite pelo sino: connections.respond (e o
+  // interesse mútuo em connections.send) manda um `interest_received` para a
+  // solicitante. O NotificationBell desta barra já relê os avisos a cada 30 s, e
+  // esta leitura divide o cache com ele (mesma consulta, sem polling próprio).
+  // Quando chega um aviso de interesse mais novo que o último visto, as duas
+  // listas que desenham o nome são relidas. Sem isto, o cartão de quem pediu
+  // seguia anônimo até o F5 ou até a aba voltar ao foco.
+  const avisosQuery = trpc.notifications.list.useQuery(undefined, { enabled: isAuthenticated, staleTime: 30_000 });
+  const ultimoAvisoDeInteresse = useRef<number | null>(null);
+  useEffect(() => {
+    if (!avisosQuery.data) return;
+    const maisNovo = avisosQuery.data.reduce((maior, aviso) => aviso.type === "interest_received" && aviso.id > maior ? aviso.id : maior, 0);
+    const anterior = ultimoAvisoDeInteresse.current;
+    ultimoAvisoDeInteresse.current = Math.max(anterior ?? 0, maisNovo);
+    // Na primeira leitura não há o que reler: as listas acabaram de carregar.
+    if (anterior !== null && maisNovo > anterior) {
+      connectionsQuery.refetch();
+      matchesQuery.refetch();
+    }
+  }, [avisosQuery.data]);
 
   const switchTab = (tab: typeof activeTab) => {
     if (tab === activeTab) return;
@@ -917,6 +949,20 @@ export default function Dashboard() {
   const profileData = profileQuery.data;
   const profile = profileData?.profile;
   const pendingConnections = connections.filter((c) => c.status === "pending" && c.souDestinataria);
+  // O nome de uma conexão só existe depois do aceite, e nessa hora o servidor já
+  // libera o apelido do perfil e o nome da conta (getConnectionsForUser). Sem o
+  // nome da conta, conexão aceita de perfil sem apelido aparecia como "Membro da
+  // rede", como se continuasse anônima. Antes do aceite a tela não desenha nome
+  // nenhum, mesmo que o servidor mande.
+  const nomeDaConexao = (conn: (typeof connections)[number]) =>
+    conn.status === "accepted" ? (conn.displayName || conn.userName || t("dashboard.userFallback")) : null;
+  // O cartão de match revelado usa o nome da conexão de mesmo id, para a mesma
+  // pessoa não aparecer com um nome no cartão e outro na aba. Os portões seguem os
+  // dois: nomeDaConexao (só aceita) e o do próprio cartão (só revelado).
+  const nomeDaConexaoDoCartao = (connectionId: number | null) => {
+    const conn = connectionId === null ? undefined : connections.find((c) => c.id === connectionId);
+    return conn ? nomeDaConexao(conn) : null;
+  };
 
   return (
     <div className="min-h-screen bg-transparent text-white">
@@ -1074,6 +1120,7 @@ export default function Dashboard() {
                   <div className="grid md:grid-cols-2 gap-4">
                     {matches.map((match, i) => (
                       <MatchCard key={match.matchId} match={match} index={i}
+                        nomeDaConexao={nomeDaConexaoDoCartao(match.connectionId)}
                         onInterest={(matchId) => interestMutation.mutate({ matchId })}
                         onResponder={(connectionId, accept) => respondMutation.mutate({ connectionId, accept })}
                         onVerConexoes={() => switchTab("connections")}
@@ -1112,12 +1159,11 @@ export default function Dashboard() {
                   className="bg-[#1b1714] border border-white/8 rounded-2xl p-5 flex items-center gap-4 hover:border-white/15 transition-colors duration-200">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center text-[#151312] font-black flex-shrink-0"
                     style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }}>
-                    {conn.displayName
-                      ? conn.displayName[0].toUpperCase()
-                      : <User className="w-5 h-5 opacity-60" strokeWidth={2.5} aria-label={t("dashboard.anonAvatarAlt")} />}
+                    {nomeDaConexao(conn)?.[0].toUpperCase()
+                      ?? <User className="w-5 h-5 opacity-60" strokeWidth={2.5} aria-label={t("dashboard.anonAvatarAlt")} />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold">{conn.displayName || t("dashboard.anonTitle")}</div>
+                    <div className="font-bold">{nomeDaConexao(conn) ?? t("dashboard.anonTitle")}</div>
                     <div className="text-sm text-white/40">{optionLabel(t, conn.primarySpecialty)} · {conn.city}</div>
                     {conn.message && <div className="text-xs text-white/25 mt-1 truncate">"{conn.message}"</div>}
                     {conn.status === "pending" && conn.souDestinataria && (
