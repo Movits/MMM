@@ -656,13 +656,21 @@ export default function Home() {
                     sr-only troca cada separador por vírgula e lê só os trechos.
 
                     No desktop o selo mede a frase inteira (w-max) e cabe em UMA
-                    linha: 530 px em pt-BR, o mais largo dos 10 idiomas (484 de
-                    texto + 32 do px-4 + 14 do ponto e do gap). A coluna de texto
-                    tem 548 px a partir de 1280, então cabe em todos eles — quem
-                    for traduzir o selo tem esses 548 px de orçamento. Entre 1024
-                    e 1279 o utilitário `container` troca de max-width e a coluna
-                    cai para 460: aí o selo TRANSBORDA 70 px, mais do que os 56 px
-                    de `gap-14`. Não bate em nada hoje porque a coluna da direita
+                    linha. A largura muda com a fonte do sistema, porque o selo
+                    herda a pilha ui-sans-serif/system-ui do Tailwind, não a Inter.
+                    No Chrome do Windows (Segoe UI) o selo inteiro mede 484 px em
+                    pt-BR e 482 em alemão, os dois mais largos dos 10 idiomas
+                    (436 de texto e marcadores + 48 do px-4, do ponto, do gap e
+                    da borda); no Chromium em que o ccddabe mediu, o pt-BR deu
+                    530. A coluna de texto tem 548 px a partir de 1280, então cabe
+                    nos dois — quem for traduzir o selo tem esses 548 px de
+                    orçamento, e precisa deixar folga para fonte mais larga que a
+                    Segoe UI. Entre 1024 e 1279 o utilitário `container` troca de
+                    max-width e a coluna cai para 460 (um pouco menos logo acima
+                    de 1024, onde a barra de rolagem come parte da janela): aí o
+                    selo TRANSBORDA, 24 px na Segoe UI, ainda dentro dos 56 px de
+                    `gap-14`, e 70 px no Chromium do ccddabe, que passam do gap.
+                    Não bate em nada hoje porque a coluna da direita
                     não é renderizada (MOSTRAR_CARTAO_DO_HERO = false, lá em cima);
                     o globo que aparece ali é o FundoDoPlaneta, fixo atrás da
                     página inteira, não aquele cartão. Quem religar o cartão troca
