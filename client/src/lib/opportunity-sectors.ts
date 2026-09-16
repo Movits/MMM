@@ -1,35 +1,28 @@
-// Setores de oportunidade: a etiqueta é traduzida, mas a CHAVE gravada no
-// banco é sempre a mesma, qualquer que seja o idioma da tela — é o que o
-// filtro por setor (server/db.ts, eq(opportunities.sector, ...)) precisa para
-// achar oportunidades criadas em qualquer idioma. Antes desta correção,
-// NewOpportunity.tsx gravava o RÓTULO traduzido (regressão da PR #55: cada
-// idioma gravava um texto diferente para o mesmo setor). Registros antigos
-// continuam com o rótulo salvo — opportunitySectorLabel devolve esse valor
-// como está quando ele não bate com nenhuma chave conhecida.
-export const OPPORTUNITY_SECTOR_KEYS = [
-  "tecnologia", "saude", "educacao", "financas", "agronegocio", "energia",
-  "varejo", "imobiliario", "industria", "servicos", "moda", "alimentacao",
-  "turismo", "logistica", "juridico", "commodities", "exportacao",
-  "importacao", "infraestrutura", "farmaceutico", "consultoria", "marketing",
-  "belezaCosmeticos",
-] as const;
+// A lista de setores de oportunidade virou a fonte ÚNICA do app, em
+// shared/setores.ts: cadastro, "Setores de interesse" e "Nova Oportunidade"
+// oferecem exatamente o mesmo conjunto (reteste v4, item 7). Este arquivo
+// continua existindo só como o nome que Dashboard, Opportunities e
+// OpportunityDetail já importam.
+//
+// O que NÃO mudou: a oportunidade grava a CHAVE (`tecnologia`), nunca o rótulo
+// traduzido — é o que o filtro por setor (server/db.ts, eq(opportunities.sector,
+// ...)) precisa para achar oportunidade criada em qualquer idioma. Registro
+// antigo, gravado com o rótulo, continua voltando como está.
+import {
+  CHAVES_DE_SETOR,
+  rotuloDoSetor,
+  type ChaveDeSetor,
+  type TradutorDeSetor,
+} from "@shared/setores";
 
-export type OpportunitySectorKey = typeof OPPORTUNITY_SECTOR_KEYS[number];
+export const OPPORTUNITY_SECTOR_KEYS = CHAVES_DE_SETOR;
 
-function capitalizada(chave: string): string {
-  return chave.charAt(0).toUpperCase() + chave.slice(1);
-}
-
-function ehChaveConhecida(valor: string): valor is OpportunitySectorKey {
-  return (OPPORTUNITY_SECTOR_KEYS as readonly string[]).includes(valor);
-}
+export type OpportunitySectorKey = ChaveDeSetor;
 
 /** Rótulo traduzido de uma chave de setor; registro antigo (rótulo gravado direto) volta como está. */
 export function opportunitySectorLabel(
-  t: (chave: string, opcoes?: { defaultValue: string }) => string,
+  t: TradutorDeSetor,
   valor: string | null | undefined,
 ): string {
-  if (!valor) return "";
-  if (!ehChaveConhecida(valor)) return valor;
-  return t(`newOpportunity.sector${capitalizada(valor)}`, { defaultValue: valor });
+  return rotuloDoSetor(t, valor);
 }

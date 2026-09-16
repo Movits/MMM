@@ -90,8 +90,10 @@ const usuarias = [
 ];
 
 // Chaves que o dublê usa: JSON.stringify descarta `search: undefined`.
-const CHAVE_PRATA = JSON.stringify({ role: "silver" });
-const CHAVE_PRATA_BIA = JSON.stringify({ role: "silver", search: "bia" });
+// A Gestão Ouro lista Bronze E Prata: o Ouro é adesão à categoria premium, não
+// degrau depois da Prata, e o cadastro novo nasce Bronze (Governança, 14/09).
+const CHAVE_PRATA = JSON.stringify({ roles: ["bronze", "silver"] });
+const CHAVE_PRATA_BIA = JSON.stringify({ roles: ["bronze", "silver"], search: "bia" });
 const CHAVE_TODAS = JSON.stringify({});
 
 function abrirAba(nome: RegExp) {
@@ -134,7 +136,7 @@ describe("PresidentPanel — Gestão Ouro busca no servidor", () => {
     esperar(1);
     // Mutante "sem atraso": aqui haveria "a", "an" e "ana"; mutante "sem
     // cancelar o timer anterior": "a" teria saído aos 300 ms.
-    expect(chamadasComTermo().map(c => c.input)).toEqual([{ role: "silver", search: "ana" }]);
+    expect(chamadasComTermo().map(c => c.input)).toEqual([{ roles: ["bronze", "silver"], search: "ana" }]);
   });
 
   it("quando o total passa da página, a tela avisa 'Mostrando N de total'", () => {
@@ -159,7 +161,7 @@ describe("PresidentPanel — Gestão Ouro busca no servidor", () => {
     esperar(300);
     // A chave nova ainda não respondeu. Mutante "sem placeholderData": a lista
     // zeraria e o texto de vazio apareceria aqui.
-    expect(chamadasComTermo().at(-1)?.input).toEqual({ role: "silver", search: "bia" });
+    expect(chamadasComTermo().at(-1)?.input).toEqual({ roles: ["bronze", "silver"], search: "bia" });
     expect(screen.getByText("Ana Lima")).toBeInTheDocument();
     expect(screen.getByText("Bia Souza")).toBeInTheDocument();
     expect(screen.queryByText("Nenhum membro encontrado.")).not.toBeInTheDocument();

@@ -35,6 +35,12 @@ describe("A13 — o detector acha contato de verdade", () => {
     ["celular hifenizado sem DDD", "zap 99999-8888"],
     ["celular cru com DDD", "me acha no 11987654321"],
     ["fixo cru com DDD", "recado no 1134567890"],
+    // Quem digita no celular repete espaço sem querer, e `.trim()` não colapsa
+    // espaço interno: com um separador só, este telefone saía inteiro do texto
+    // que a plataforma mostra para outra pessoa.
+    ["DDD com espaço duplo", "fale comigo 11  99999  8888"],
+    ["parênteses com espaço duplo", "liga no (11)  99999-8888"],
+    ["DDI com espaço duplo", "chama no +55  11  99999-8888"],
   ];
   for (const [nome, texto] of casos) {
     it(nome, () => {
@@ -119,6 +125,14 @@ describe("A13 — números legítimos de negócio NÃO são bloqueados", () => {
 });
 
 describe("A13 — a máscara do registro não espalha o dado", () => {
+  it("telefone com espaço duplo sai mascarado por inteiro, não pela metade", () => {
+    const mascarado = mascararContatosEmTexto("Precisamos revisar tributos. Fale comigo 11  99999  8888 ou ana@exemplo.com");
+    expect(mascarado).not.toContain("99999");
+    expect(mascarado).not.toContain("8888");
+    expect(mascarado).not.toContain("ana@exemplo.com");
+    expect(mascarado).toContain("revisar tributos");
+  });
+
   it("esconde o miolo e preserva só as pontas", () => {
     const mascarado = mascararTrecho("ana.silva@empresa.com.br");
     expect(mascarado.startsWith("an")).toBe(true);
@@ -185,7 +199,7 @@ describe("A13 — chat do Deal Room recusa contato e registra", () => {
   it("mensagem com telefone é recusada, nada é gravado, e a tentativa vai para a auditoria", async () => {
     const caller = dealRoomRouter.createCaller(ctx(1));
     await expect(caller.sendMessage({ roomId: 7, content: "fecha comigo direto: (11) 99999-8888" }))
-      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+      .rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("Pelas regras da WRW, dados de contato") });
     expect(inserido).not.toHaveBeenCalled();
     // o registro diz QUEM tentou e PARA ONDE o contato iria (sala 7)
     expect(createAuditLog).toHaveBeenCalledWith(expect.objectContaining({

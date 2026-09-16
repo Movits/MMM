@@ -206,36 +206,42 @@ export default function AdminPanel() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
-      <header className="bg-[#1B1714] border-b border-[#C98F70]/30 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Shield className="w-7 h-7 text-[#C98F70]" />
-            <div>
+      <header className="bg-[#1B1714] border-b border-[#C98F70]/30 sticky top-16 z-30">
+        {/* Em 375 px esta linha não caberia nunca: logo + subtítulo + nome +
+            selo ADMIN + "Dashboard" + "Sair" numa única fila. Como os itens de
+            flex encolhem abaixo do conteúdo, o texto vazava da própria caixa: o
+            selo ADMIN saía DESENHADO EM CIMA do botão "Dashboard" e o "Sair"
+            terminava fora da tela. Agora a fila quebra (flex-wrap), o nome
+            corta com truncate e os botões não encolhem. */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Shield className="w-7 h-7 flex-shrink-0 text-[#C98F70]" />
+            <div className="min-w-0">
               <button
                 onClick={() => navigate("/dashboard")}
                 style={playfairStyle}
                 className="text-xl font-bold text-white hover:text-[#C98F70] transition-colors"
               >
-                MMM
+                WRW
               </button>
-              <p className="text-xs text-gray-400">Painel Administrativo Seguro</p>
+              <p className="text-xs text-gray-400 truncate">Painel Administrativo Seguro</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-300">{user.name}</span>
-              <span className="px-2 py-0.5 text-xs bg-red-900/50 text-red-300 border border-red-700 rounded">ADMIN</span>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="w-2 h-2 flex-shrink-0 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="truncate text-sm text-gray-300">{user.name}</span>
+              <span className="flex-shrink-0 px-2 py-0.5 text-xs bg-red-900/50 text-red-300 border border-red-700 rounded">ADMIN</span>
             </div>
             <button
               onClick={() => navigate("/dashboard")}
-              className="px-4 py-2 text-sm border border-[#C98F70]/50 text-[#C98F70] rounded-lg hover:bg-[#C98F70]/10 transition-colors"
+              className="flex-shrink-0 px-4 py-2 text-sm border border-[#C98F70]/50 text-[#C98F70] rounded-lg hover:bg-[#C98F70]/10 transition-colors"
             >
               Dashboard
             </button>
             <button
               onClick={() => { logout(); navigate("/"); }}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-red-900/30 text-red-400 border border-red-700/50 rounded-lg hover:bg-red-900/50 transition-colors"
+              className="flex flex-shrink-0 items-center gap-2 px-4 py-2 text-sm bg-red-900/30 text-red-400 border border-red-700/50 rounded-lg hover:bg-red-900/50 transition-colors"
             >
               <LogOut className="w-4 h-4" />
               Sair
@@ -361,12 +367,19 @@ export default function AdminPanel() {
                       {
                         role: "Ouro",
                         badge: "bg-amber-900/40 text-amber-300 border-amber-600",
-                        desc: "Reconhecimento institucional concedido por mérito. Acesso a oportunidades estratégicas restritas e missões internacionais."
+                        desc: "Categoria premium mediante mensalidade. Acesso em primeira mão a oportunidades selecionadas e a encontros estratégicos nacionais e internacionais."
                       },
+                      // Bronze e Prata medem a qualificação do perfil, não são planos
+                      // (Governança, 14/09/2026). Os acessos das duas são os mesmos.
                       {
                         role: "Prata",
                         badge: "bg-slate-700/50 text-slate-300 border-slate-500",
-                        desc: "Membro participante do ecossistema. Cadastra oportunidades, demonstra interesse e utiliza a IA de compliance."
+                        desc: "Perfil qualificado: Quem Sou, O Que Tenho e O Que Preciso completos. Sem mensalidade. Cadastra oportunidades, demonstra interesse e utiliza a IA de compliance."
+                      },
+                      {
+                        role: "Bronze",
+                        badge: "bg-orange-900/40 text-orange-400 border-orange-700",
+                        desc: "Perfil em qualificação: todo cadastro começa aqui e passa a Prata automaticamente quando o perfil fica completo. Sem mensalidade, com os mesmos acessos da Prata."
                       },
                     ].map((item, idx) => (
                       <div key={idx} className="flex flex-col gap-1 py-3 border-b border-[#C98F70]/10 last:border-0">
@@ -378,7 +391,7 @@ export default function AdminPanel() {
                     ))}
                   </div>
                   <p className="mt-4 text-xs text-[#C98F70]/60 italic">
-                    O Status Ouro não pode ser solicitado, comprado ou obtido por assinatura. É um reconhecimento institucional concedido exclusivamente pelos membros Ouro da plataforma.
+                    O Status Ouro é a categoria premium da rede, mediante mensalidade. Não há preço nem cobrança integrados à plataforma: por enquanto, ele é concedido manualmente pelos membros Ouro.
                   </p>
                 </div>
 
@@ -461,8 +474,13 @@ export default function AdminPanel() {
             {sessionsQuery.isLoading ? (
               <div className="text-center py-12 text-gray-400">Carregando sessões...</div>
             ) : (
-              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-hidden">
-                <table className="w-full">
+              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-x-auto">
+                {/* Em 375 px estas tabelas (7, 5 e 6 colunas) não cabem. O
+                    container era `overflow-hidden`: a tabela ficava cortada e as
+                    últimas colunas, inclusive "Ações", eram inalcançáveis.
+                    `overflow-x-auto` deixa a tabela rolar DENTRO do cartão, sem
+                    arrastar a página para o lado. */}
+                <table className="w-full min-w-[640px]">
                   <thead>
                     <tr className="border-b border-[#C98F70]/20">
                       <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">ID Sessão</th>
@@ -571,8 +589,13 @@ export default function AdminPanel() {
             {usersQuery.isLoading ? (
               <div className="text-center py-12 text-gray-400">Carregando usuários...</div>
             ) : (
-              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-hidden">
-                <table className="w-full">
+              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-x-auto">
+                {/* Em 375 px estas tabelas (7, 5 e 6 colunas) não cabem. O
+                    container era `overflow-hidden`: a tabela ficava cortada e as
+                    últimas colunas, inclusive "Ações", eram inalcançáveis.
+                    `overflow-x-auto` deixa a tabela rolar DENTRO do cartão, sem
+                    arrastar a página para o lado. */}
+                <table className="w-full min-w-[640px]">
                   <thead>
                     <tr className="border-b border-[#C98F70]/20">
                       <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Usuário</th>
@@ -598,7 +621,7 @@ export default function AdminPanel() {
                               onChange={(e) => {
                                 const newRole = e.target.value as "bronze" | "silver" | "gold" | "admin" | "president";
                                 if (newRole === "gold" && u.role !== "gold") {
-                                  if (!confirm(`Conceder Status Ouro a ${u.name || u.email}?\n\nEste é um reconhecimento institucional. A decisão será registrada no log de auditoria.`)) return;
+                                  if (!confirm(`Conceder Status Ouro a ${u.name || u.email}?\n\nOuro é a categoria premium da rede. A decisão será registrada no log de auditoria.`)) return;
                                 }
                                 if (u.role === "gold" && newRole !== "gold") {
                                   if (!confirm(`Revogar Status Ouro de ${u.name || u.email}?\n\nEsta ação será registrada no log de auditoria.`)) return;
@@ -607,9 +630,9 @@ export default function AdminPanel() {
                               }}
                               className={`text-xs px-2 py-1 rounded border bg-[#1B1714] cursor-pointer ${getRoleBadge(u.role)}`}
                             >
-                              <option className="bg-white text-[#322C26]" value="bronze">Bronze (recém-chegado)</option>
-                              <option className="bg-white text-[#322C26]" value="silver">Prata (membro)</option>
-                              <option className="bg-white text-[#322C26]" value="gold">Ouro (reconhecimento institucional)</option>
+                              <option className="bg-white text-[#322C26]" value="bronze">Bronze (perfil em qualificação)</option>
+                              <option className="bg-white text-[#322C26]" value="silver">Prata (perfil qualificado)</option>
+                              <option className="bg-white text-[#322C26]" value="gold">Ouro (categoria premium)</option>
                               <option className="bg-white text-[#322C26]" value="admin">Admin (suporte técnico)</option>
                               <option className="bg-white text-[#322C26]" value="president">Ouro (governança)</option>
                             </select>
@@ -718,8 +741,13 @@ export default function AdminPanel() {
             {auditQuery.isLoading ? (
               <div className="text-center py-12 text-gray-400">Carregando logs...</div>
             ) : (
-              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-hidden">
-                <table className="w-full">
+              <div className="bg-[#1B1714] border border-[#C98F70]/20 rounded-xl overflow-x-auto">
+                {/* Em 375 px estas tabelas (7, 5 e 6 colunas) não cabem. O
+                    container era `overflow-hidden`: a tabela ficava cortada e as
+                    últimas colunas, inclusive "Ações", eram inalcançáveis.
+                    `overflow-x-auto` deixa a tabela rolar DENTRO do cartão, sem
+                    arrastar a página para o lado. */}
+                <table className="w-full min-w-[640px]">
                   <thead>
                     <tr className="border-b border-[#C98F70]/20">
                       <th className="text-left px-6 py-4 text-xs font-semibold text-[#C98F70] uppercase tracking-wider">Ação</th>
@@ -896,7 +924,7 @@ export default function AdminPanel() {
                               {opp.type}
                             </span>
                             <span className={`text-xs px-2 py-0.5 rounded ${cc.bg} ${cc.text} font-medium`}>
-                              FTS {Math.round(opp.frauenTrustScore ?? 0)} · {cc.label}
+                              Nota {Math.round(opp.frauenTrustScore ?? 0)} · {cc.label}
                             </span>
                             {opp.isConfidential && (
                               <span className="text-xs px-2 py-0.5 rounded bg-amber-900/30 text-amber-400">★ Confidencial</span>

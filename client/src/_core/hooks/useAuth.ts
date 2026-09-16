@@ -9,6 +9,33 @@ type UseAuthOptions = {
   redirectPath?: string;
 };
 
+/**
+ * Prefixo das chaves do rascunho do cadastro em localStorage: pages/Onboarding.tsx
+ * grava uma por usuária (`<prefixo><id>`). Vive aqui, e não na página, porque
+ * o Onboarding é carregado com `lazy` e o logout precisa do prefixo sem puxar
+ * a página inteira para o bundle principal.
+ */
+export const PREFIXO_DO_RASCUNHO_DO_CADASTRO = "mmm.onboarding.rascunho.";
+
+/**
+ * Apaga todo rascunho do cadastro deste navegador. Sair da conta é o momento:
+ * em computador compartilhado, o rascunho de uma conta não pode ficar à
+ * espera de quem entrar depois (mesma razão da nota V-03 abaixo). Sem
+ * armazenamento (modo privado, SSR), nada a apagar.
+ */
+export function apagarRascunhosDoCadastro() {
+  try {
+    const chaves: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const chave = window.localStorage.key(i);
+      if (chave?.startsWith(PREFIXO_DO_RASCUNHO_DO_CADASTRO)) chaves.push(chave);
+    }
+    for (const chave of chaves) window.localStorage.removeItem(chave);
+  } catch {
+    // Sem localStorage, ou bloqueado: não há rascunho a apagar.
+  }
+}
+
 export function useAuth(options?: UseAuthOptions) {
   const { redirectOnUnauthenticated = false, redirectPath = getLoginUrl() } =
     options ?? {};
@@ -37,6 +64,9 @@ export function useAuth(options?: UseAuthOptions) {
       }
       throw error;
     } finally {
+      // No `finally`, como o cache: a sessão do navegador acaba mesmo quando o
+      // servidor não respondeu, e o rascunho do cadastro vai junto.
+      apagarRascunhosDoCadastro();
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
     }

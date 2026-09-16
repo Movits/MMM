@@ -7,11 +7,14 @@ detalhe de uso; esta página é só o mapa.
 
 **Nunca rode script contra o banco de produção (Aiven) sem autorização explícita
 do Roberto.** Poucos têm modo de ensaio: `migrar.mjs` e `publicar-documento.mjs`
-aceitam `--simular`, e `nivelar-banco.mjs` só altera com `--aplicar`. Os outros
-gravam na chamada simples: `migrar-rotulos-para-chaves.mjs` faz UPDATE em todos
-os perfis, `semear-rede-de-teste.mjs` insere contatos (e `--limpar` apaga),
+aceitam `--simular`, e `nivelar-banco.mjs` e `importar-participantes.mjs` só
+alteram com `--aplicar`. Os outros gravam na chamada simples:
+`migrar-rotulos-para-chaves.mjs` faz UPDATE em todos os perfis,
+`semear-rede-de-teste.mjs` insere contatos (e `--limpar` apaga),
 `definir-senha-local.mjs` grava a senha (recusa banco que não seja local),
 `corrigir-colunas-json.mjs` altera colunas. Leia o cabeçalho antes de rodar.
+`importar-participantes.mjs` é a carga da base de participantes — cria contas
+em lote, sem volta por aqui (desfazer é pela exclusão de conta, uma a uma).
 Três rotinas tocam a produção por desenho: `migrar.mjs` no boot do servidor,
 `checar-producao.mjs` depois de todo deploy (passo obrigatório do CLAUDE.md; cria
 e apaga duas contas QA e roda só com a `DATABASE_URL` de um `.env.producao`, via
@@ -28,9 +31,12 @@ e apaga duas contas QA e roda só com a `DATABASE_URL` de um `.env.producao`, vi
 | `definir-senha-local.mjs` | Grava a senha de uma conta com o mesmo bcrypt do registro; recusa qualquer host que não seja local. | Conta de teste inacessível em desenvolvimento, onde não há Resend para recuperar senha. |
 | `demonstrar-etapa-11.ts` | Demonstração ao vivo da autorização do Cruzamento Inteligente: chama as mesmas funções do servidor e mostra o que respondem; `--exercitar` revoga e reaceita de verdade e devolve o estado ao final. | Para provar a etapa 11 a alguém, contra banco de desenvolvimento (`npx tsx`). |
 | `exame/` | Biblioteca do exame de produção, não comando: `relatorio.mjs` (linhas OK/FALHA/PULADO, veredito, código de saída e ritmo das requisições) e `limpeza.mjs` (plano de limpeza declarado como dados, um par tabela/coluna por vez). Módulos puros, sem banco nem `process.env`; `server/exame-de-producao.test.ts` confere o plano contra `drizzle/schema.ts`. | Nunca direto; `checar-producao.mjs` importa deles. |
+| `importacao/` | Biblioteca da carga de participantes, não comando: `planilha.mjs` lê e valida o CSV (separador, colunas, vocabulário do cruzamento, completude) e devolve os dados prontos para inserir. | Nunca direto; `importar-participantes.mjs` importa dela. |
+| `importar-participantes.mjs` | Carga da base de participantes: lê a planilha (`--modelo` imprime um exemplo), valida linha por linha, confere quem já existe pelo e-mail e cria o resto sem senha — cada uma define a dela em "Esqueci minha senha". Idempotente pelo e-mail; nunca manda e-mail. Sem `--aplicar` só relata. `--log=arquivo.json` grava os ids criados, para desfazer pela exclusão de conta. | Carga inicial ou de novas participantes, contra `--env .env.producao` ou a `DATABASE_URL` do ambiente. |
 | `migrar-rotulos-para-chaves.mjs` | Migra as listas de `user_profiles` do rótulo pt-BR para a chave canônica e recalcula o `profileCompleteness`; seguro repetir. | Uma vez, em banco com perfis gravados antes de 31/08/2026 (o front já grava chaves). |
 | `migrar.mjs` | Aplica as migrações pendentes de `drizzle/` e anota em `_migracoes`: banco vazio recebe tudo, banco antigo em dia adota o baseline, banco desviado é recusado com a lista dos desvios. `--simular` só relata. | É o `pnpm db:migrate`; depois de `pnpm db:generate`. Em produção roda sozinho no boot. |
 | `nivelar-banco.mjs` | Põe um banco da era anterior às migrações em dia com o baseline: cria tabela, coluna, índice e restrição que faltam e alarga enum; nunca apaga nada. Sem `--aplicar` só relata. | Quando `migrar.mjs` recusar o banco por desvio. O CI exige "Nada a nivelar" num banco recém-criado. |
 | `publicar-documento.mjs` | Publica uma versão nova de documento (termo, acordo, contrato) e a torna vigente; conta quem perde o consentimento e pede confirmação. `--simular` só mostra; `--texto-provisorio` publica o rascunho embutido. | Quando o jurídico entregar redação nova. Fora do banco local exige `--confirmo-producao`. |
+| `reavaliar-prata-antiga.ts` | Reavaliação única da Prata que o cadastro gravava para todas antes da governança de 14/09: aplica a régua de `shared/qualificacao-do-perfil.ts` às contas Prata sem origem registrada (sem Ouro concedido nem mudança de nível auditada) e rebaixa a Bronze quem não atende, com auditoria; sem `--executar --confirmar-banco=...` só relata. | Uma vez, depois do deploy da governança, e só com decisão do Roberto (`npx tsx`). |
 | `recuperar-enriquecimento.ts` | Reaplica ao contato as respostas do chat de enriquecimento (possui, procura, como se conheceram, tipo de relacionamento) que um defeito antigo confirmava e descartava; sem `--aplicar` só relata. | Uma vez, em banco com sugestões `applied` anteriores ao conserto (`npx tsx`). |
 | `semear-rede-de-teste.mjs` | Cria contatos fictícios na rede particular de UMA usuária para dar o que cruzar ao Smart Match; `--limpar` desfaz. Ninguém além da dona enxerga. | Testar o cruzamento em desenvolvimento. |

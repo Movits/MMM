@@ -50,6 +50,28 @@ export async function registrarRevelacao(
 }
 
 /**
+ * O aviso do interesse mútuo, com as frases pedidas pela cliente (grupo, 14/09/2026:
+ * "match" passou a ser "conexão" em toda a plataforma). Um texto só para os três
+ * caminhos que revelam os nomes: o aceite da destinatária, o segundo clique em
+ * "Demonstrar Interesse" sobre pedido já encaminhado e a aprovação, pelo
+ * distribuidor, de um pedido que já era recíproco. Sem nome no corpo: quem é a
+ * outra pessoa, a aba Conexões mostra. Falha no sino não desfaz a conexão.
+ */
+export const AVISO_DE_NOVA_CONEXAO = {
+  title: "Nova conexão!",
+  body: "Vocês criaram uma conexão! Os nomes já aparecem na aba Conexões.",
+} as const;
+
+export async function avisarNovaConexao(userIds: number[]) {
+  try {
+    const { createNotification } = await import("../db");
+    for (const userId of userIds) {
+      await createNotification({ userId, type: "interest_received", ...AVISO_DE_NOVA_CONEXAO, actionUrl: "/dashboard" });
+    }
+  } catch (_) { /* a conexão já está gravada; o sino é acessório */ }
+}
+
+/**
  * O pedido novo nasce esperando o distribuidor. Aviso no sino de quem distribui
  * (menos as duas partes do pedido); sem distribuidor que possa decidir, a
  * presidência é avisada de que há pedido esperando. O
@@ -107,16 +129,29 @@ export const connectionsRouter = router({
           userId: ctx.user.id, action: "MATCH_HANDLE_INVALID", resource: "connections.send",
           resourceId: String(input.matchId), status: "blocked", riskLevel: "high",
         });
-        throw new TRPCError({ code: "NOT_FOUND", message: "Match não encontrado" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "Conexão sugerida não encontrada" });
       }
       // Etapa 11 de novo, aqui: uma lista velha aberta no navegador não pode
       // furar a revogação do termo feita depois que ela carregou.
       const { usersComConsentimento } = await import("./consent");
       const comTermo = await usersComConsentimento([alvo], "termo_smart_match");
-      if (!comTermo.has(alvo)) throw new TRPCError({ code: "NOT_FOUND", message: "Match não encontrado" });
+      if (!comTermo.has(alvo)) throw new TRPCError({ code: "NOT_FOUND", message: "Conexão sugerida não encontrada" });
+      // E a CONTA do alvo tem de estar ativa, como no `respond`. Este clique
+      // também é um aceite quando o alvo já tinha pedido e o pedido foi
+      // encaminhado: sem esta linha, o caminho do "Demonstrar interesse"
+      // revelava os dois nomes de uma conta desativada, enquanto o botão
+      // "Aceitar e revelar" recusava — a mesma conexão com duas portas de
+      // travas diferentes (achado da revisão de privacidade de 16/09).
+      const { idsDeContasAtivas } = await import("../db");
+      const ativas = await idsDeContasAtivas([alvo]);
+      if (!ativas.has(alvo)) throw new TRPCError({ code: "NOT_FOUND", message: "Conexão sugerida não encontrada" });
 
       const resultado = await sendConnectionRequest(ctx.user.id, alvo);
-      if (resultado.revelou) await registrarRevelacao(resultado.connectionId, ctx.user.id, alvo, "interesse_mutuo");
+      if (resultado.revelou) {
+        await registrarRevelacao(resultado.connectionId, ctx.user.id, alvo, "interesse_mutuo");
+        // Quem clicou vê o resultado na tela; o sino avisa a outra parte.
+        await avisarNovaConexao([alvo]);
+      }
       // Pedido novo: fica em análise até o distribuidor conferir e encaminhar.
       // A destinatária não é avisada aqui — ela só fica sabendo se for encaminhado.
       // Sem await, de propósito: o aviso lê quem distribui e grava uma linha por
@@ -138,10 +173,42 @@ export const connectionsRouter = router({
       accept: z.boolean(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { respondToConnection } = await import("../db");
+      const { respondToConnection, lerPedidoParaAceite, idsDeContasAtivas } = await import("../db");
+      if (input.accept) {
+        // As travas do `distribuicao.decidir`, lidas de novo no aceite (revisão
+        // do Nicolas na #136): depois de o pedido ser encaminhado, quem pediu
+        // pode ter revogado o termo do Smart Match — `consent.revoke` só grava
+        // `revokedAt` e não mexe no pedido — ou ter tido a conta desativada; e
+        // quem aceita pode ter revogado o dela. A linha `pending` continua
+        // aparecendo na aba Conexões, porque `connections.list` não olha o termo.
+        // Sem esta trava, o aceite revelava os dois nomes de quem já tinha
+        // tirado o consentimento, e ainda avisava a pessoa.
+        //
+        // Só roda para a destinatária de um pedido `pending`: id alheio ou linha
+        // em outro estado seguem para o banco e recebem o mesmo "nada mudou" de
+        // sempre, sem virar oráculo. A recusa não revela nada e segue livre.
+        const pedido = await lerPedidoParaAceite(input.connectionId);
+        if (pedido && pedido.recipientId === ctx.user.id && pedido.status === "pending") {
+          const { usersComConsentimento } = await import("./consent");
+          const comTermo = await usersComConsentimento([pedido.requesterId, ctx.user.id], "termo_smart_match");
+          if (!comTermo.has(ctx.user.id)) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Autorize o termo do Smart Match para aceitar e revelar os nomes." });
+          }
+          // A conta de quem aceita está ativa: o sdk recusa sessão de conta desativada.
+          const ativas = await idsDeContasAtivas([pedido.requesterId]);
+          if (!comTermo.has(pedido.requesterId) || !ativas.has(pedido.requesterId)) {
+            // Erro, e não o `success` de sempre: a tela diria "Conexão aceita"
+            // sem nada ter sido aceito. O pedido pendente é anônimo, então a
+            // mensagem não conta a quem aceita quem saiu.
+            throw new TRPCError({ code: "NOT_FOUND", message: "Este pedido não está mais disponível." });
+          }
+        }
+      }
       const resultado = await respondToConnection(input.connectionId, ctx.user.id, input.accept);
       if (resultado.revelou && resultado.contraparte !== null) {
         await registrarRevelacao(input.connectionId, ctx.user.id, resultado.contraparte, "aceite");
+        // Quem aceitou vê o resultado na tela; o sino avisa a solicitante.
+        await avisarNovaConexao([resultado.contraparte]);
       }
       return { success: true };
     }),

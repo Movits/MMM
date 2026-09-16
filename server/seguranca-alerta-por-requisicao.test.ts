@@ -18,6 +18,23 @@
  * C) Não havia dedupe: a mesma condição virava linha nova a cada requisição.
  * D) O bloqueio automático era reavaliado em TODA requisição autenticada, num
  *    SELECT que entre dois eventos críticos só podia devolver o mesmo de antes.
+ *
+ * ---
+ *
+ * Revisão do Nicolas em 14/09/2026, com a PR #102 já em produção, achou mais
+ * três — todas no mesmo caminho, todas testadas aqui:
+ *
+ * E) A dedupe de C não era ATÔMICA: um SELECT e um INSERT, com uma ida e volta
+ *    ao banco entre eles. Requisições simultâneas da mesma conta liam "não
+ *    existe" antes de qualquer uma gravar, e a mesma condição virava várias
+ *    linhas — linha crítica repetida empurra a conta para o bloqueio automático.
+ * F) `multiple_sessions` alimentava a contagem do bloqueio automático. Ele nasce
+ *    CRÍTICO a partir de 20 sessões simultâneas, e 20 sessões é a Rede aberta
+ *    com muitas fotos: uma conta Prata ou Ouro se autobloqueava sozinha.
+ * G) O UPDATE que desativa a conta não tinha condição de estado. Ele "dava
+ *    certo" sempre, então cada novo evento crítico dentro da janela regravava o
+ *    mesmo `account_locked`, com aviso no sino e linha de auditoria, numa conta
+ *    que já estava bloqueada.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getTableName } from "drizzle-orm";
@@ -29,8 +46,15 @@ const estado = {
   totalDeSessoes: 0,
   jaExisteEventoIgual: false,
   inseridos: [] as { tabela: string; valores: Linha }[],
+  atualizacoes: [] as { tabela: string; valores: Linha; condicao: unknown }[],
   consultas: [] as string[],
   condicaoDasSessoes: null as unknown,
+  condicaoDosCriticos: null as unknown,
+  /** Linhas devolvidas para a contagem de eventos críticos do bloqueio automático. */
+  eventosCriticosNaJanela: [] as Linha[],
+  /** Quantas linhas o UPDATE de `users` alcança: 0 = a conta já estava bloqueada. */
+  linhasNoUpdateDeUsuarias: 1,
+  usuaria: { isActive: true, role: "silver" } as Linha,
 };
 
 /** Nomes de coluna citados numa condição do Drizzle, em qualquer profundidade. */
@@ -43,6 +67,35 @@ function colunasCitadas(no: unknown, achadas = new Set<string>()): Set<string> {
   return achadas;
 }
 
+/**
+ * Valores parametrizados de um comando (ou condição) do Drizzle, na ordem em que
+ * aparecem. Num literal `sql` o valor fica cru entre os pedaços de texto; num
+ * operador (`eq`, `notInArray`) ele vem embrulhado num `Param`. O que é
+ * instância de classe do Drizzle sem valor dentro — `StringChunk`, coluna,
+ * tabela, `Name` — não é valor e fica de fora.
+ */
+function valoresDe(no: unknown, achados: unknown[] = []): unknown[] {
+  const pedacos = (no as { queryChunks?: unknown[] } | null)?.queryChunks;
+  if (!Array.isArray(pedacos)) return achados;
+  for (const p of pedacos) juntarValor(p, achados);
+  return achados;
+}
+
+function juntarValor(pedaco: unknown, achados: unknown[]) {
+  if (Array.isArray(pedaco)) {
+    for (const item of pedaco) juntarValor(item, achados);
+    return;
+  }
+  if (pedaco !== null && typeof pedaco === "object" && !(pedaco instanceof Date)) {
+    const obj = pedaco as Record<string, unknown>;
+    if (obj.queryChunks) return void valoresDe(pedaco, achados);
+    if ("encoder" in obj && "value" in obj) return void achados.push(obj.value); // Param
+    if (Object.getPrototypeOf(pedaco) === Object.prototype) return void achados.push(pedaco);
+    return; // StringChunk, coluna, tabela ou identificador
+  }
+  achados.push(pedaco);
+}
+
 vi.mock("./db", () => ({
   exigirDb: async () => ({
     select: (campos?: Record<string, unknown>) => ({
@@ -53,14 +106,15 @@ vi.mock("./db", () => ({
           where: (condicao: unknown) => {
             estado.consultas.push(`${nome}:${ehContagem ? "contagem" : "linhas"}`);
             if (nome === "sessions" && !ehContagem) estado.condicaoDasSessoes = condicao;
+            if (nome === "security_events" && !ehContagem) estado.condicaoDosCriticos = condicao;
             const resolver = (r: (linhas: Linha[]) => unknown) => {
               if (ehContagem) return r([{ n: estado.totalDeSessoes }]);
-              if (nome === "security_events") return r(estado.jaExisteEventoIgual ? [{ id: 1 }] : []);
+              if (nome === "security_events") return r(estado.eventosCriticosNaJanela);
               return r([]);
             };
             return {
               orderBy: () => ({ limit: async (n: number) => estado.sessoes.slice(0, n) }),
-              limit: async () => (nome === "security_events" && estado.jaExisteEventoIgual ? [{ id: 1 }] : []),
+              limit: async () => (nome === "users" ? [estado.usuaria] : []),
               then: resolver,
             };
           },
@@ -72,11 +126,54 @@ vi.mock("./db", () => ({
         estado.inseridos.push({ tabela: getTableName(tabela as never), valores });
       },
     }),
-    update: () => ({ set: () => ({ where: async () => undefined }) }),
+    update: (tabela: unknown) => ({
+      set: (valores: Linha) => ({
+        where: async (condicao: unknown) => {
+          const nome = getTableName(tabela as never);
+          estado.atualizacoes.push({ tabela: nome, valores, condicao });
+          return [{ affectedRows: nome === "users" ? estado.linhasNoUpdateDeUsuarias : 1 }];
+        },
+      }),
+    }),
+    /**
+     * O `insert ... select ... where not exists` da dedupe, e é de propósito que
+     * este corpo não tenha nenhum `await`: decidir e gravar acontecem no MESMO
+     * passo, que é justamente o que um comando único garante ao banco e o par
+     * SELECT+INSERT não garantia.
+     *
+     * Os oito valores chegam na ordem em que o comando os escreve: userId,
+     * eventType, severity, ipAddress e details da linha nova; userId, eventType
+     * e o início da janela da subconsulta.
+     */
+    execute: async (comando: unknown) => {
+      const valores = valoresDe(comando);
+      if (valores.length !== 8) {
+        throw new Error(`comando inesperado em execute: ${valores.length} valores, esperava 8`);
+      }
+      const [userId, eventType, severity, ipAddress, details] = valores;
+      const jaTem =
+        estado.jaExisteEventoIgual ||
+        estado.inseridos.some(
+          l => l.tabela === "security_events" && l.valores.userId === userId && l.valores.eventType === eventType,
+        );
+      if (jaTem) return [{ affectedRows: 0 }];
+      estado.inseridos.push({
+        tabela: "security_events",
+        valores: {
+          userId,
+          eventType,
+          severity,
+          ipAddress,
+          details: typeof details === "string" ? JSON.parse(details) : details,
+          resolved: false,
+        },
+      });
+      return [{ affectedRows: 1 }];
+    },
   }),
 }));
 
-const { detectSessionAnomaly, createSecurityEvent } = await import("./security");
+const { detectSessionAnomaly, createSecurityEvent, lockUserAccount } = await import("./security");
 
 const IP = "200.100.50.1";
 
@@ -101,9 +198,23 @@ beforeEach(() => {
   estado.totalDeSessoes = 0;
   estado.jaExisteEventoIgual = false;
   estado.inseridos = [];
+  estado.atualizacoes = [];
   estado.consultas = [];
   estado.condicaoDasSessoes = null;
+  estado.condicaoDosCriticos = null;
+  estado.eventosCriticosNaJanela = [];
+  estado.linhasNoUpdateDeUsuarias = 1;
+  estado.usuaria = { isActive: true, role: "silver" };
 });
+
+const JANELA = 30 * 60 * 1000;
+/** Uma janela cheia: um a menos que isso não bloqueia ninguém (o limite é 20). */
+function janelaCheiaDeCriticos() {
+  return Array.from({ length: 25 }, (_, i) => ({ id: i + 1 }));
+}
+function contasDesativadas() {
+  return estado.atualizacoes.filter(a => a.tabela === "users" && a.valores.isActive === false);
+}
 
 // ═══ A) sessão vencida não pode contar ═══════════════════════════════════════
 describe("A) a busca de sessões simultâneas exige sessão NÃO VENCIDA", () => {
@@ -216,5 +327,104 @@ describe("D) o bloqueio automático sai do caminho de toda requisição", () => 
       fonte.includes("checkAutoLockThreshold"),
       "voltou a ser chamada em getUserFromRequest: é um SELECT por requisição autenticada",
     ).toBe(false);
+  });
+});
+
+// ═══ E) a dedupe é atômica ═══════════════════════════════════════════════════
+describe("E) alertas simultâneos iguais não viram linhas repetidas", () => {
+  it("cinco pedidos ao mesmo tempo gravam UMA linha", async () => {
+    await Promise.all(
+      Array.from({ length: 5 }, () =>
+        createSecurityEvent(1, "multiple_sessions", "warning", IP, { activeSessions: 12 }, { naoRepetirPorMs: JANELA }),
+      ),
+    );
+
+    expect(
+      eventosGravados(),
+      "checar e gravar em dois comandos deixa a janela aberta: as cinco requisições leem 'não existe' antes de qualquer uma gravar",
+    ).toHaveLength(1);
+  });
+
+  it("a janela recém-fechada por outra requisição barra a linha nova", async () => {
+    estado.jaExisteEventoIgual = true;
+    await createSecurityEvent(1, "suspicious_ip", "warning", IP, {}, { naoRepetirPorMs: JANELA });
+    expect(eventosGravados()).toHaveLength(0);
+  });
+});
+
+// ═══ F) múltiplas sessões não bloqueiam a conta ══════════════════════════════
+describe("F) multiple_sessions sai da contagem do bloqueio automático", () => {
+  it("alerta de sessões simultâneas não desativa a conta, e continua registrado", async () => {
+    estado.eventosCriticosNaJanela = janelaCheiaDeCriticos();
+
+    await createSecurityEvent(1, "multiple_sessions", "critical", IP, { activeSessions: 21 }, { naoRepetirPorMs: JANELA });
+
+    expect(
+      contasDesativadas(),
+      "20 sessões simultâneas é a Rede aberta com muitas fotos, não invasão: a conta Prata se autobloqueava sozinha",
+    ).toHaveLength(0);
+    expect(
+      eventosGravados().filter(e => e.eventType === "multiple_sessions"),
+      "tirar do bloqueio não é parar de registrar: o evento continua no painel",
+    ).toHaveLength(1);
+  });
+
+  it("a contagem exclui multiple_sessions no próprio WHERE", async () => {
+    await createSecurityEvent(1, "brute_force_attempt", "critical", IP, {});
+
+    expect(
+      valoresDe(estado.condicaoDosCriticos),
+      "senão as linhas de multiple_sessions somam com a tentativa de força bruta e fecham a conta",
+    ).toContain("multiple_sessions");
+  });
+
+  it("ameaça de verdade continua bloqueando", async () => {
+    estado.eventosCriticosNaJanela = janelaCheiaDeCriticos();
+    await createSecurityEvent(1, "brute_force_attempt", "critical", IP, {});
+    expect(contasDesativadas(), "força bruta acima do limite tem de bloquear").toHaveLength(1);
+  });
+});
+
+// ═══ G) só desativa quem está ativa ═════════════════════════════════════════
+describe("G) o UPDATE que bloqueia leva a condição no WHERE", () => {
+  it("o bloqueio automático só alcança conta ativa", async () => {
+    estado.eventosCriticosNaJanela = janelaCheiaDeCriticos();
+
+    await createSecurityEvent(1, "brute_force_attempt", "critical", IP, {});
+
+    const bloqueio = contasDesativadas()[0];
+    expect(bloqueio, "a conta tinha de ter sido bloqueada").toBeTruthy();
+    expect(
+      colunasCitadas(bloqueio.condicao).has("isActive"),
+      "UPDATE sem condição de estado 'dá certo' sempre: o account_locked se repete a cada crítico novo",
+    ).toBe(true);
+  });
+
+  it("zero linhas alcançadas é 'já estava bloqueada': não repete evento nem auditoria", async () => {
+    estado.eventosCriticosNaJanela = janelaCheiaDeCriticos();
+    estado.linhasNoUpdateDeUsuarias = 0; // outra requisição bloqueou primeiro
+
+    await createSecurityEvent(1, "brute_force_attempt", "critical", IP, {});
+
+    expect(
+      eventosGravados().filter(e => e.eventType === "account_locked"),
+      "conta já bloqueada não ganha account_locked novo (nem aviso no sino)",
+    ).toHaveLength(0);
+    expect(
+      estado.inseridos.filter(l => l.tabela === "audit_logs" && l.valores.action === "AUTO_LOCK_ACCOUNT"),
+      "nem linha de auditoria de bloqueio automático",
+    ).toHaveLength(0);
+  });
+
+  it("o bloqueio manual diz se a conta mudou de estado", async () => {
+    estado.linhasNoUpdateDeUsuarias = 0;
+
+    const bloqueou = await lockUserAccount(7, 1, "teste");
+
+    expect(bloqueou, "lockUserAccount precisa distinguir bloquear de já estar bloqueada").toBe(false);
+    expect(
+      eventosGravados().filter(e => e.eventType === "account_locked"),
+      "o painel administrativo regravava account_locked a cada clique",
+    ).toHaveLength(0);
   });
 });

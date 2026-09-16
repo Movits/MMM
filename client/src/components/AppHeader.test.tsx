@@ -23,7 +23,7 @@ class ResizeObserverFalso { observe() {} unobserve() {} disconnect() {} }
 const PORTUGUES = [
   "Oportunidades", "Verificação", "Minha Rede", "Linha do Tempo", "Reuniões", "Memória IA", "Conexões Inteligentes",
   "Propostas e negócios", "Identidade e selo", "Sua base particular", "Onde e como conheceu", "Gravações e transcrições",
-  "Pergunte ao seu", "Sugestões entre os seus",
+  "Pergunte ao seu", "Sugestões entre os seus", "Meu Network Inteligente", "oportunidades da sua rede",
 ];
 
 beforeEach(() => {
@@ -40,13 +40,13 @@ afterEach(async () => {
 });
 
 describe("AppHeader — o menu global fala o idioma da usuária", () => {
-  it("getMenuItems em inglês: 7 itens, nenhum rótulo ou descrição em português", () => {
+  it("getMenuItems em inglês: 8 itens, nenhum rótulo ou descrição em português", () => {
     const itens = getMenuItems(i18n.getFixedT("en"));
     expect(itens.map(i => i.href)).toEqual([
-      "/opportunities", "/verification", "/network", "/contexts", "/meetings", "/memory", "/intelligent-matches",
+      "/meu-network-inteligente", "/opportunities", "/verification", "/network", "/contexts", "/meetings", "/memory", "/intelligent-matches",
     ]);
     expect(itens.map(i => i.label)).toEqual([
-      "Opportunities", "Verification", "My Network", "Timeline", "Meetings", "AI Memory", "Smart Connections",
+      "My Smart Network", "Opportunities", "Verification", "My Network", "Timeline", "Meetings", "AI Memory", "Smart Connections",
     ]);
     for (const item of itens) {
       for (const pt of PORTUGUES) {

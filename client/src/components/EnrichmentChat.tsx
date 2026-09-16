@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,12 +24,15 @@ type Message = {
 };
 
 // ─── Labels amigáveis por field_type ─────────────────────────────────────────
-const FIELD_LABELS: Record<string, string> = {
-  phone: "📞 Telefone", whatsapp: "💬 WhatsApp", email: "📧 E-mail",
-  company: "🏢 Empresa", job_title: "💼 Cargo", city: "📍 Cidade",
-  country: "🌍 País", linkedin_url: "🔗 LinkedIn", instagram_handle: "📸 Instagram",
-  asset_tag: "✨ Ativo", need_tag: "🎯 Necessidade", context_link: "📅 Contexto",
-  relationship_type: "🤝 Relacionamento", notes: "📝 Notas",
+// Os rótulos já existiam traduzidos nos dez idiomas (`network.campo*IA`, feitos
+// para ESTE cartão) e não eram usados: o mapa repetia tudo em português fixo, e
+// era isso que a usuária lia em qualquer idioma. Agora ele guarda a CHAVE.
+const FIELD_LABEL_KEYS: Record<string, string> = {
+  phone: "network.campoTelefoneIA", whatsapp: "network.campoWhatsappIA", email: "network.campoEmailIA",
+  company: "network.campoEmpresaIA", job_title: "network.campoCargoIA", city: "network.campoCidadeIA",
+  country: "network.campoPaisIA", linkedin_url: "network.campoLinkedinIA", instagram_handle: "network.campoInstagramIA",
+  asset_tag: "network.campoAtivoIA", need_tag: "network.campoNecessidadeIA", context_link: "network.campoContextoIA",
+  relationship_type: "network.campoRelacionamentoIA", notes: "network.campoNotasIA",
 };
 
 // ─── Card de sugestão ─────────────────────────────────────────────────────────
@@ -43,17 +47,19 @@ function SuggestionCard({ suggestion, busy, onConfirm, onIgnore }: {
   onConfirm: (id: string, editedValue?: string) => void;
   onIgnore: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(suggestion.suggestedValue);
 
-  const label = FIELD_LABELS[suggestion.fieldType] ?? suggestion.fieldType;
+  const chaveDoRotulo = FIELD_LABEL_KEYS[suggestion.fieldType];
+  const label = chaveDoRotulo ? t(chaveDoRotulo) : suggestion.fieldType;
   const pct = Math.round(suggestion.confidence * 100);
 
   return (
     <div className="mt-2 p-3 rounded-xl bg-[#211e1b] border border-amber-500/20 text-sm">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-amber-400 font-medium">{label}</span>
-        <span className="text-xs text-white/30">{pct}% confiança</span>
+        <span className="text-xs text-white/30">{t("enrichment.confidence", { pct })}</span>
       </div>
       {editing ? (
         <div className="space-y-2">
@@ -61,7 +67,7 @@ function SuggestionCard({ suggestion, busy, onConfirm, onIgnore }: {
             className="bg-white/5 border-white/10 text-white text-sm h-8" />
           <Button size="sm" disabled={busy} onClick={() => onConfirm(suggestion.id, editValue)}
             className="w-full bg-amber-500 hover:bg-amber-400 text-[#151312] font-bold h-8 text-xs">
-            Salvar edição
+            {t("enrichment.saveEdit")}
           </Button>
         </div>
       ) : (
@@ -70,15 +76,15 @@ function SuggestionCard({ suggestion, busy, onConfirm, onIgnore }: {
           <div className="flex gap-2">
             <button disabled={busy} onClick={() => onConfirm(suggestion.id)}
               className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-medium hover:bg-green-500/25 transition-colors disabled:opacity-50">
-              <Check size={12} /> Confirmar
+              <Check size={12} /> {t("networkInteligente.suggestions.confirm")}
             </button>
             <button disabled={busy} onClick={() => setEditing(true)}
               className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 text-xs font-medium hover:bg-blue-500/25 transition-colors disabled:opacity-50">
-              <Edit2 size={12} /> Editar
+              <Edit2 size={12} /> {t("network.editar")}
             </button>
             <button disabled={busy} onClick={() => onIgnore(suggestion.id)}
               className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-white/5 border border-white/15 text-white/40 text-xs font-medium hover:bg-white/10 transition-colors disabled:opacity-50">
-              <X size={12} /> Ignorar
+              <X size={12} /> {t("networkInteligente.suggestions.ignore")}
             </button>
           </div>
         </>
@@ -94,6 +100,7 @@ function MessageBubble({ msg, busy, onConfirm, onIgnore }: {
   onConfirm: (id: string, editedValue?: string) => void;
   onIgnore: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const isAI = msg.role === "assistant";
   // Só o que ainda espera decisão vira cartão; o decidido some da tela.
   const pendentes = msg.suggestions?.filter(s => s.status === "pending") ?? [];
@@ -103,7 +110,7 @@ function MessageBubble({ msg, busy, onConfirm, onIgnore }: {
         {isAI && (
           <div className="flex items-center gap-1.5 mb-1">
             <img src="/brand/selo.png" alt="" className="w-5 h-5 rounded-full" />
-            <span className="text-xs text-white/30">Assistente MMM</span>
+            <span className="text-xs text-white/30">{t("enrichment.assistantName")}</span>
           </div>
         )}
         <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed ${
@@ -127,12 +134,13 @@ function MessageBubble({ msg, busy, onConfirm, onIgnore }: {
 
 // ─── Indicador "pensando" ─────────────────────────────────────────────────────
 function ThinkingIndicator() {
+  const { t } = useTranslation();
   return (
     <div className="flex justify-start mb-3">
       <div className="max-w-[80%]">
         <div className="flex items-center gap-1.5 mb-1">
           <img src="/brand/selo.png" alt="" className="w-5 h-5 rounded-full" />
-          <span className="text-xs text-white/30">Assistente MMM</span>
+          <span className="text-xs text-white/30">{t("enrichment.assistantName")}</span>
         </div>
         <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-white/8 flex items-center gap-1">
           {[0, 1, 2].map(i => (
@@ -174,35 +182,34 @@ function OfertaDeContexto({ oferta, onCriado, onFechar }: {
   onCriado: () => void;
   onFechar: () => void;
 }) {
+  const { t } = useTranslation();
   const criarMut = trpc.enrichment.createSuggestedContext.useMutation({
     onSuccess: r => {
-      toast.success(r.resultado === "criado"
-        ? `Contexto "${r.nome}" criado e vinculado ao contato.`
-        : `O contexto "${r.nome}" já existia: o contato foi vinculado a ele.`);
+      toast.success(t(r.resultado === "criado" ? "enrichment.contextCreated" : "enrichment.contextExisted", { nome: r.nome }));
       onCriado();
     },
     onError: e => {
       // Já aceita em outra aba, desfeita, ou o contato saiu: não há o que insistir.
       if (e.data?.code === "NOT_FOUND") {
-        toast.info("Esse contexto não pode mais ser criado por aqui.");
+        toast.info(t("enrichment.contextGone"));
         onFechar();
         return;
       }
-      toast.error("Não consegui criar o contexto. Tente de novo.");
+      toast.error(t("enrichment.contextCreateError"));
     },
   });
 
   return (
     <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-3">
-      <p className="text-sm text-white/85 mb-2">Criar o contexto “{oferta.nome}”?</p>
+      <p className="text-sm text-white/85 mb-2">{t("enrichment.contextOfferQuestion", { nome: oferta.nome })}</p>
       <div className="flex gap-2">
         <Button size="sm" onClick={() => criarMut.mutate({ suggestionId: oferta.suggestionId })} disabled={criarMut.isPending}
           className="h-7 px-3 text-xs bg-amber-500 hover:bg-amber-400 text-[#151312]">
-          {criarMut.isPending ? "Criando..." : "Criar"}
+          {criarMut.isPending ? t("enrichment.creating") : t("enrichment.create")}
         </Button>
         <Button size="sm" variant="ghost" onClick={onFechar} disabled={criarMut.isPending}
           className="h-7 px-3 text-xs text-white/50 hover:text-white/80">
-          Agora não
+          {t("enrichment.notNow")}
         </Button>
       </div>
     </div>
@@ -211,6 +218,7 @@ function OfertaDeContexto({ oferta, onCriado, onFechar }: {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export function EnrichmentChat({ contactId, contactName }: { contactId: number; contactName: string }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -275,7 +283,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
       setMessages(hidratarMensagens(rows));
       setAwaitingConfirmation(temCartaoPendente(rows));
     } catch {
-      toast.error("Não consegui recarregar a conversa. Feche e abra o contato de novo.");
+      toast.error(t("enrichment.reloadError"));
     }
   };
 
@@ -306,9 +314,9 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
     },
     onError: (e) => {
       if (e.message === "SESSION_ALREADY_ACTIVE") {
-        toast.info("Sessão de enriquecimento já está ativa.");
+        toast.info(t("enrichment.sessionAlreadyActive"));
       } else {
-        toast.error("Erro ao iniciar enriquecimento: " + e.message);
+        toast.error(t("enrichment.startError", { motivo: e.message }));
       }
     },
   });
@@ -346,14 +354,14 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
       // O servidor recusou porque há cartão esperando decisão (esta tela ou
       // outra aba perdeu o cartão): traz a conversa de volta com ele.
       if (e.message === "SUGGESTION_PENDING") {
-        toast.info("Há uma sugestão esperando sua decisão. Confirme ou ignore para continuar.");
+        toast.info(t("enrichment.suggestionPending"));
         void recarregarConversa();
         return;
       }
       setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: "Não consegui processar sua resposta agora. Tente novamente.",
+        content: t("enrichment.processError"),
       }]);
     },
   });
@@ -361,7 +369,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
   const confirmMut = trpc.enrichment.confirmSuggestion.useMutation({
     onSuccess: (data, { suggestionId }) => {
       marcarSugestao(suggestionId, "applied");
-      toast.success("Informação salva no perfil!");
+      toast.success(t("enrichment.savedToProfile"));
       // "Como se conheceram" que não casou com contexto nenhum: o servidor não
       // criou nada, só devolveu o nome para perguntar.
       if ("contextoParaCriar" in data && data.contextoParaCriar) {
@@ -372,7 +380,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
       setAwaitingConfirmation(data.pendentesRestantes > 0);
       if (data.sessionComplete) {
         setIsComplete(true);
-        setCompletionSummary("Cadastro enriquecido com sucesso!");
+        setCompletionSummary(t("enrichment.enrichedSuccess"));
         void utils.enrichment.getActiveSession.invalidate({ contactId });
       } else if (data.nextQuestion && data.nextMessageId) {
         setMessages(prev => prev.some(msg => msg.id === data.nextMessageId)
@@ -385,7 +393,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
       // A sugestão já foi decidida (outra aba, ou tela desatualizada): não há
       // o que insistir — a conversa do servidor é a que vale.
       if (e.data?.code === "NOT_FOUND") {
-        toast.info("Essa sugestão já tinha sido decidida. Atualizei a conversa.");
+        toast.info(t("enrichment.alreadyDecided"));
         void recarregarConversa();
         return;
       }
@@ -395,7 +403,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
       // A frase do servidor só serve se for uma frase: a validação do zod também
       // é BAD_REQUEST, mas vem como JSON em inglês.
       const explicacao = e.data?.code === "BAD_REQUEST" && !e.message.trim().startsWith("[") ? e.message : null;
-      toast.error(explicacao ?? "Erro ao salvar informação.");
+      toast.error(explicacao ?? t("enrichment.saveError"));
     },
   });
 
@@ -405,7 +413,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
       setAwaitingConfirmation(data.pendentesRestantes > 0);
       if (data.sessionComplete) {
         setIsComplete(true);
-        setCompletionSummary("Cadastro enriquecido com sucesso!");
+        setCompletionSummary(t("enrichment.enrichedSuccess"));
         void utils.enrichment.getActiveSession.invalidate({ contactId });
       } else if (data.nextQuestion && data.nextMessageId) {
         setMessages(prev => prev.some(msg => msg.id === data.nextMessageId)
@@ -416,18 +424,18 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
     },
     onError: (e, { suggestionId }) => {
       if (e.data?.code === "NOT_FOUND") {
-        toast.info("Essa sugestão já tinha sido decidida. Atualizei a conversa.");
+        toast.info(t("enrichment.alreadyDecided"));
         void recarregarConversa();
         return;
       }
       handledSuggestionIds.current.delete(suggestionId);
       setAwaitingConfirmation(true);
-      toast.error("Erro ao ignorar informação.");
+      toast.error(t("enrichment.ignoreError"));
     },
   });
 
   const completeMut = trpc.enrichment.completeSession.useMutation({
-    onSuccess: () => { setIsComplete(true); toast.success("Enriquecimento concluído!"); },
+    onSuccess: () => { setIsComplete(true); toast.success(t("enrichment.completed")); },
   });
 
   const handleSend = () => {
@@ -462,7 +470,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
         <button onClick={handleStart} disabled={startMut.isPending}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm font-medium hover:bg-amber-500/15 transition-colors">
           <Sparkles size={14} />
-          {startMut.isPending ? "Iniciando..." : "✨ Enriquecer cadastro com IA"}
+          {startMut.isPending ? t("enrichment.starting") : t("enrichment.startButton")}
         </button>
       </div>
     );
@@ -476,7 +484,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
         <div className="flex items-center gap-2">
           <Sparkles size={13} className="text-amber-400" />
           <span className="text-xs font-medium text-amber-400">
-            {isComplete ? "Enriquecimento concluído" : "Chat de Enriquecimento"}
+            {isComplete ? t("enrichment.headerDone") : t("enrichment.headerActive")}
           </span>
           {!isComplete && (
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
@@ -490,7 +498,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
           {/* Área de mensagens */}
           <div ref={scrollRef} className="px-4 py-2 max-h-64 overflow-y-auto">
             {messages.length === 0 && (
-              <p className="text-xs text-white/30 text-center py-4">Iniciando conversa...</p>
+              <p className="text-xs text-white/30 text-center py-4">{t("enrichment.startingConversation")}</p>
             )}
             {messages.map(msg => (
               <MessageBubble key={msg.id} msg={msg}
@@ -515,13 +523,13 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
             {/* Resumo de conclusão */}
             {isComplete && completionSummary && (
               <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-sm text-green-300 mb-3">
-                <p className="font-medium mb-1">✨ Cadastro enriquecido!</p>
+                <p className="font-medium mb-1">{t("enrichment.enrichedTitle")}</p>
                 <p className="text-xs text-green-300/70">{completionSummary}</p>
               </div>
             )}
             {isComplete && !completionSummary && (
               <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white/50 mb-3 flex items-center gap-2">
-                <Clock size={13} /> Sessão concluída.
+                <Clock size={13} /> {t("enrichment.sessionDone")}
               </div>
             )}
           </div>
@@ -533,7 +541,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                placeholder="Responda aqui..."
+                placeholder={t("enrichment.inputPlaceholder")}
                 disabled={sendMut.isPending}
                 className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/25 text-sm h-9 focus:border-amber-500/50"
               />
@@ -545,7 +553,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
           )}
 
           {!isComplete && awaitingConfirmation && (
-            <p className="px-4 pb-3 text-xs text-amber-300/75">Confirme ou ignore a informação acima para continuar.</p>
+            <p className="px-4 pb-3 text-xs text-amber-300/75">{t("enrichment.confirmOrIgnore")}</p>
           )}
 
           {/* Botão concluir */}
@@ -553,7 +561,7 @@ export function EnrichmentChat({ contactId, contactName }: { contactId: number; 
             <div className="px-4 pb-3">
               <button onClick={() => completeMut.mutate({ sessionId })}
                 className="text-xs text-white/30 hover:text-white/50 transition-colors">
-                Concluir enriquecimento →
+                {t("enrichment.finish")}
               </button>
             </div>
           )}

@@ -54,6 +54,7 @@ import {
   platformNotifications, presidentValidations, privateContacts, savedOpportunities,
   securityEvents, sessions, sivcChecks, sivcConsents, sivcDocuments, sivcVerifications,
   strategicGroups, trustedDevices, userProfiles, users,
+  networkSugestoes, conexoesParticipantes, consumoDeMinutos, assinaturasDeMinutos,
 } from "../drizzle/schema";
 
 /**
@@ -145,10 +146,19 @@ export const PLANO_DE_EXCLUSAO: PassoDeExclusao[] = [
   { tabela: contextParticipants, coluna: contextParticipants.ownerId, origem: "openId" },
   { tabela: contactContexts, coluna: contactContexts.ownerId, origem: "openId" },
   { tabela: contexts, coluna: contexts.ownerId, origem: "openId" },
+  // Meu Network Inteligente: pendências da IA (com trechos das reuniões), o
+  // lado da conta nas conexões registradas e o contador de minutos. O
+  // cabeçalho da conexão (conexoes_registradas) não tem coluna de usuária:
+  // fica só com IDs anônimos e rótulos, sem ninguém a quem apontar.
+  { tabela: networkSugestoes, coluna: networkSugestoes.ownerId, origem: "openId" },
+  { tabela: conexoesParticipantes, coluna: conexoesParticipantes.ownerId, origem: "openId" },
+  { tabela: consumoDeMinutos, coluna: consumoDeMinutos.ownerId, origem: "openId" },
   { tabela: privateContacts, coluna: privateContacts.ownerId, origem: "openId" },
 
   // ── módulo institucional: chave id ────────────────────────────────────────
   { tabela: consents, coluna: consents.userId, origem: "id" },
+  { tabela: conexoesParticipantes, coluna: conexoesParticipantes.userId, origem: "id" },
+  { tabela: assinaturasDeMinutos, coluna: assinaturasDeMinutos.userId, origem: "id" },
   { tabela: sivcDocuments, coluna: sivcDocuments.userId, origem: "id" },
   { tabela: sivcConsents, coluna: sivcConsents.userId, origem: "id" },
   { tabela: sivcVerifications, coluna: sivcVerifications.userId, origem: "id" },
@@ -343,7 +353,8 @@ export async function tirarDosGruposAlheios(
  * `apagarArquivo` é injetável pelo mesmo motivo, e também porque em
  * desenvolvimento não há `STORAGE_*`: sem bucket configurado, a exclusão do
  * banco não pode parar. Falha de arquivo nunca aborta o resto — ela volta no
- * relatório, em `arquivosComFalha`.
+ * relatório, em `arquivosComFalha`, e o chamador é obrigado a contá-la para a
+ * dona (ver o bloco sobre o bucket, dentro da função).
  */
 export async function excluirConta(
   db: Db,
@@ -357,10 +368,18 @@ export async function excluirConta(
   const chaves = await lerChavesDaConta(db, conta);
   const arquivos = await chavesDeArquivosDaConta(db, chaves);
 
-  // Os objetos saem ANTES das linhas: se a linha saísse primeiro e o bucket
-  // falhasse, o arquivo ficaria sem nenhum ponteiro que diga de quem é — e a
-  // conta já não existe para pedir de novo. Nesta ordem, uma falha aqui deixa a
-  // conta de pé e a dona tenta outra vez.
+  // Os objetos saem ANTES das linhas, porque é aqui que a linha ainda diz onde o
+  // arquivo está: apagada a linha, não há mais ponteiro para o objeto.
+  //
+  // E O QUE ACONTECE QUANDO O BUCKET RECUSA (achado do Nicolas, 14/09): a
+  // exclusão CONTINUA. O comentário antigo prometia que a falha "deixa a conta
+  // de pé e a dona tenta outra vez", e o código nunca fez isso — nem deve: a
+  // dona PEDIU a exclusão, e parar no meio deixaria perfil, contatos, reuniões e
+  // mensagens no banco por causa de um objeto que o B2 não apagou. O que muda é
+  // que a falha não some: cada chave que ficou vai para `arquivosComFalha`, sai
+  // no log (aqui) e na auditoria (server/routers/conta.ts, que grava o
+  // procedimento com status "failure"), e a tela mostra aviso em vez de
+  // "excluídos" (client/src/components/ExcluirMinhaConta.tsx).
   const arquivosComFalha: string[] = [];
   let arquivosApagados = 0;
   for (const chave of arquivos) {
@@ -371,6 +390,15 @@ export async function excluirConta(
       arquivosComFalha.push(chave);
       console.error(`[ExclusãoDeConta] o bucket recusou apagar um objeto (userId ${conta.id}):`, erro instanceof Error ? erro.message : erro);
     }
+  }
+  if (arquivosComFalha.length) {
+    // Uma linha com a LISTA das chaves, e não só a contagem: daqui a pouco as
+    // linhas que citavam esses objetos não existem mais, e este log é o único
+    // lugar em que ainda está escrito o que precisa de remoção manual no bucket.
+    console.error(
+      `[ExclusãoDeConta] ${arquivosComFalha.length} objeto(s) ficaram no bucket e a conta foi apagada assim mesmo (userId ${conta.id}). ` +
+      `Precisam de remoção manual: ${arquivosComFalha.join(", ")}`,
+    );
   }
 
   const passos: { nome: string; linhas: number }[] = [];

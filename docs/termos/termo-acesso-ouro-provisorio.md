@@ -5,13 +5,15 @@ será substituído pela redação jurídica final. Enquanto ele não existia, o 
 Ouro era liberado por omissão: qualquer contato que você marcasse como
 compartilhado aparecia para as membras Ouro sem que você tivesse autorizado nada.
 
-Publicar com:
+<!-- NOTA INTERNA — não vai para o texto que a dona aceita.
 
-```bash
-node scripts/publicar-documento.mjs termo_acesso_ouro docs/termos/termo-acesso-ouro-provisorio.md --confirmo-producao
-```
+     Publicar com:
+       node scripts/publicar-documento.mjs termo_acesso_ouro docs/termos/termo-acesso-ouro-provisorio.md --confirmo-producao
 
----
+     O script publica só o corpo do termo: este bloco de comentário, e tudo a
+     partir da linha marcadora de notas internas lá embaixo, ficam de fora
+     (recortarCorpoDoTermo, em scripts/publicar-documento.mjs).
+-->
 
 ## O que você está autorizando
 
@@ -53,7 +55,7 @@ Este texto é provisório e está em revisão jurídica. Quando a versão final 
 publicada, você será avisada e precisará aceitá-la novamente. A data, o endereço
 de rede e o texto exato desta autorização ficam registrados.
 
----
+<!-- NOTAS INTERNAS -->
 
 ## O que ainda falta (para a versão 2, com o jurídico)
 

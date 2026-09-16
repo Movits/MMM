@@ -5,56 +5,137 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { BrainCircuit, CheckCircle } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
+import { LIMITE_DA_BIO_GRAVADA } from "@shared/apresentacao";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
-import { exigeCnpj, formatCnpj, isValidCnpj } from "@shared/business-registration";
+import { exigeCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
+import { interesseEhDoSetor, setoresTraduzidos, type TradutorDeSetor } from "@shared/setores";
+import {
+  CHAVE_OUTRA_NECESSIDADE,
+  CHAVE_QUERO_MENTORAR,
+  LIMITE_OUTRA_NECESSIDADE,
+  OPCOES_O_QUE_BUSCA,
+  outraNecessidadeValida,
+} from "@shared/o-que-busca";
+import { AssistenteDeTexto } from "@/components/AssistenteDeTexto";
+import { EtapaTermoGeralDeUso } from "@/components/TermoGeralDeUso";
+import { rotuloDaBusca } from "@/lib/interesses";
+import { EditorDoQuePreciso } from "@/components/OQuePreciso";
+import { categoriasPendentes, demandasParaGravar, type DemandaDetalhada } from "@shared/o-que-preciso";
+import { PREFIXO_DO_RASCUNHO_DO_CADASTRO } from "@/_core/hooks/useAuth";
+
+// Tetos do servidor (routers/profile.ts) para os campos livres: o ditado pode
+// passar deles, e sem contador o erro só aparecia no último passo.
+const LIMITE_META = 2000;
+
+/**
+ * Última etapa: o Termo Geral de Uso (components/TermoGeralDeUso.tsx). É a
+ * ÚNICA etapa de termos do cadastro: substituiu a antiga "Termos e Condições"
+ * (contrato de comissão), porque o termo do Dr. Ronei já cobre intermediação e
+ * remuneração nas cláusulas 12 a 15 (Rosber, 14/09 21:34).
+ *
+ * São 8 etapas desde 15/09: a etapa "Quem sou" existia só para a Rede
+ * Institucional, e o Rosber a suprimiu no vídeo de 14/09 (21:15).
+ */
+const ETAPA_TERMO_GERAL = 8;
+const TIPO_TERMO_GERAL = "termo_geral_de_uso" as const;
 
 
 // ─── Tags "O que tenho" ───────────────────────────────────────────────────────
+// `id` é o que vai GRAVADO (e o que já está no banco); `chave` é só o rótulo da
+// tela. Os rótulos eram texto fixo em português aqui e no Perfil — a mesma
+// lista, duplicada —, então o passo 6 do cadastro saía em português nos dez
+// idiomas. As chaves ficam em `oQueTenho.*` para as duas telas lerem o mesmo
+// rótulo, como já acontece com "O que preciso" (shared/o-que-preciso.ts).
 const WHAT_I_HAVE_OPTIONS = [
-  { id: "industria", label: "Indústria", icon: "🏭" },
-  { id: "fazenda", label: "Fazenda / Agro", icon: "🌾" },
-  { id: "laboratorio", label: "Laboratório", icon: "🔬" },
-  { id: "tecnologia", label: "Tecnologia", icon: "💻" },
-  { id: "investidores", label: "Rede de Investidores", icon: "💰" },
-  { id: "acesso_governamental", label: "Acesso Governamental", icon: "🏛️" },
-  { id: "commodities", label: "Matérias-primas (commodities)", icon: "📦" },
-  { id: "licencas", label: "Licenças & Certificações", icon: "📋" },
-  { id: "imoveis", label: "Imóveis", icon: "🏢" },
-  { id: "logistica", label: "Logística", icon: "🚚" },
-  { id: "canais_comerciais", label: "Canais Comerciais", icon: "🤝" },
+  { id: "industria", chave: "oQueTenho.industria", icon: "🏭" },
+  { id: "fazenda", chave: "oQueTenho.fazenda", icon: "🌾" },
+  { id: "laboratorio", chave: "oQueTenho.laboratorio", icon: "🔬" },
+  { id: "tecnologia", chave: "oQueTenho.tecnologia", icon: "💻" },
+  { id: "investidores", chave: "oQueTenho.investidores", icon: "💰" },
+  { id: "acesso_governamental", chave: "oQueTenho.acesso_governamental", icon: "🏛️" },
+  { id: "commodities", chave: "oQueTenho.commodities", icon: "📦" },
+  { id: "licencas", chave: "oQueTenho.licencas", icon: "📋" },
+  { id: "imoveis", chave: "oQueTenho.imoveis", icon: "🏢" },
+  { id: "logistica", chave: "oQueTenho.logistica", icon: "🚚" },
+  { id: "canais_comerciais", chave: "oQueTenho.canais_comerciais", icon: "🤝" },
 ];
 
-// ─── Tags "O que preciso" ─────────────────────────────────────────────────────
-const WHAT_I_NEED_OPTIONS = [
-  { id: "fornecedores", label: "Fornecedores", icon: "🏪" },
-  { id: "investidores", label: "Investidores", icon: "💸" },
-  { id: "compradores", label: "Compradores", icon: "🛒" },
-  { id: "distribuidores", label: "Distribuidores", icon: "📤" },
-  { id: "parceiros", label: "Parceiros Estratégicos", icon: "🤝" },
-  { id: "tecnologia", label: "Tecnologia", icon: "⚙️" },
-  { id: "financiamento", label: "Financiamento", icon: "🏦" },
-  { id: "licencas", label: "Licenças & Aprovações", icon: "✅" },
-  { id: "consultoria", label: "Consultoria", icon: "💡" },
-];
+/**
+ * "Outros" em "O que tenho" (Rosber, 14/09 21:17: "a gente precisa inserir nesse
+ * 'o que tenho' um botão 'outros', para a pessoa poder digitar"). Mesmo padrão
+ * do "Outra necessidade" de "O que você busca": marcar abre um campo de texto
+ * obrigatório, e o que a pessoa digitar vira UM ITEM de `whatIHave` — os motores
+ * leem os itens como texto, então o ativo escrito à mão chega a eles como os
+ * outros. A chave "outros" é só a porta do campo e NUNCA é gravada: ela não é
+ * um ativo, e gravá-la faria o motor cruzar a palavra "outros".
+ */
+const CHAVE_OUTRO_ATIVO = "outros";
+const MINIMO_DO_OUTRO_ATIVO = 3;
+const LIMITE_DO_OUTRO_ATIVO = 200;
 
-const INTEREST_SECTORS = [
-  "Tecnologia", "Saúde", "Educação", "Finanças", "Agronegócio",
-  "Energia", "Varejo", "Imobiliário", "Indústria", "Serviços",
-  "Moda", "Alimentação", "Turismo", "Logística", "Jurídico",
-  "Beleza & Cosméticos", "Exportação", "Importação", "Infraestrutura",
-  "Commodities", "Farmacêutico", "Consultoria", "Marketing",
-];
+function outroAtivoValido(marcados: readonly string[], texto: string): boolean {
+  if (!marcados.includes(CHAVE_OUTRO_ATIVO)) return true;
+  const aparado = texto.trim();
+  return aparado.length >= MINIMO_DO_OUTRO_ATIVO && aparado.length <= LIMITE_DO_OUTRO_ATIVO;
+}
+
+/** Os ativos que vão ao servidor: os marcados, sem a porta "outros", mais o texto livre. */
+function ativosParaGravar(marcados: readonly string[], texto: string): string[] {
+  const ativos = marcados.filter(id => id !== CHAVE_OUTRO_ATIVO);
+  const aparado = texto.trim();
+  if (marcados.includes(CHAVE_OUTRO_ATIVO) && aparado) ativos.push(aparado);
+  return ativos;
+}
+
+// ─── Porte preferido da empresa ───────────────────────────────────────────────
+// Rosber, 14/09 21:13: "ele dá a opção de qualquer tamanho, mas não deixa eu
+// selecionar dois tamanhos específicos. Eu quero fazer só com média e pequena".
+// A coluna `preferredCompanySize` é um varchar(50) que já guardava UM valor
+// ("medium", "any"), então a lista é gravada no mesmo campo, separada por
+// vírgula e na ordem canônica abaixo ("small,medium" cabe de sobra). Nenhum
+// porte marcado é o "qualquer tamanho" de sempre, e continua sendo gravado como
+// "any": é o vocabulário que o dado já tem.
+const PORTES_DA_EMPRESA = ["micro", "small", "medium", "large"] as const;
+const PORTE_QUALQUER = "any";
+
+/** Leitura: aceita o formato antigo (um porte só, ou "any") e o novo (lista). */
+function lerPortes(gravado: string | null | undefined): string[] {
+  if (!gravado) return [];
+  const escolhidos = gravado.split(",").map(p => p.trim()).filter(p => p && p !== PORTE_QUALQUER);
+  return PORTES_DA_EMPRESA.filter(porte => escolhidos.includes(porte));
+}
+
+/** Escrita: a lista na ordem canônica, ou "any" quando nada foi marcado. */
+function portesParaGravar(escolhidos: readonly string[]): string {
+  const lista = PORTES_DA_EMPRESA.filter(porte => escolhidos.includes(porte));
+  return lista.length > 0 ? lista.join(",") : PORTE_QUALQUER;
+}
+
+// ─── "O que preciso" ──────────────────────────────────────────────────────────
+// As 17 categorias e a segunda camada de detalhamento (Rosber, 14/09 21:24) vivem
+// em shared/o-que-preciso.ts e components/OQuePreciso.tsx, que o Perfil reusa.
+// "Consultoria" saiu: genérica demais; "Especialistas / Serviços" no lugar.
 
 interface FormData {
-  displayName: string; age: number | null; city: string; country: string; bio: string;
+  // Campos SUPRIMIDOS do cadastro, com a mesma regra da idade (Rosber, 14/09
+  // 20:31) — a coluna e o dado antigo continuam no banco, o servidor segue
+  // aceitando cada um deles, e a tela só deixou de pedir:
+  //   - idade (20:31);
+  //   - estilo de trabalho, valores principais e idiomas (21:08: "não está
+  //     dentro do escopo do projeto");
+  //   - aberto a remoto e disponível para viagens (21:10: "está mais voltado
+  //     para busca de empregos");
+  //   - rede institucional, e com ela a etapa "Quem sou", que só tinha esse
+  //     campo (21:15).
+  displayName: string; city: string; country: string; bio: string;
   primarySpecialty: string; primarySpecialties: string[]; customSpecialty: string; secondarySpecialties: string[]; experienceYears: number | null;
-  educationLevel: string; currentRole: string; currentCompany: string;
-  seekingTypes: string[]; shortTermGoal: string; longTermGoal: string;
-  sector: string; businessInterests: string[]; preferredCompanySize: string;
-  openToRemote: boolean; availableForTravel: boolean;
+  educationLevel: string;
+  seekingTypes: string[]; seekingOtherNeed: string; shortTermGoal: string; longTermGoal: string;
+  sector: string; businessInterests: string[];
+  /** Vários portes ao mesmo tempo; vazio é "qualquer tamanho" (ver PORTES_DA_EMPRESA). */
+  preferredCompanySizes: string[];
   incomeRange: string; investmentCapacity: string; lookingForInvestment: boolean;
-  workStyle: string; values: string[]; languages: string[];
   gender: "" | "male" | "female" | "prefer_not_to_say";
   personType: "" | "individual" | "legal_entity" | "mei" | "nonprofit";
   companySize: "" | "mei" | "micro" | "small" | "medium" | "large";
@@ -63,39 +144,147 @@ interface FormData {
   currentResources: string;
   // Novos campos v2
   company: string; jobTitle: string; activityArea: string;
-  institutionalNetwork: string; interestSectors: string[];
-  whatIHave: string[]; whatINeed: string[];
-  // Contrato e termos
-  agreedToTerms: boolean;
+  interestSectors: string[];
+  /** As opções marcadas em "O que tenho"; "outros" é a porta do texto abaixo. */
+  whatIHave: string[];
+  /** O ativo escrito à mão em "Outros" (ver CHAVE_OUTRO_ATIVO). */
+  whatIHaveOther: string;
+  whatINeed: string[];
+  /** As demandas detalhadas de "O que preciso", cada uma separada (whatINeedDetails). */
+  whatINeedDetails: DemandaDetalhada[];
+  // Termo Geral de Uso (única etapa de termos do cadastro): o id da VERSÃO que
+  // estava na tela quando a caixa foi marcada, não um booleano. Se o
+  // consent.status trocar a versão exibida (refetch ao voltar à etapa, ao
+  // reconectar), a caixa aparece desmarcada e o envio trava: o aceite nunca vai
+  // para uma versão que a pessoa não marcou.
+  termoGeralAceitoId: string | null;
 }
 
 const INITIAL: FormData = {
-  displayName: "", age: null, city: "", country: "BR", bio: "",
+  displayName: "", city: "", country: "BR", bio: "",
   primarySpecialty: "", primarySpecialties: [], customSpecialty: "", secondarySpecialties: [], experienceYears: null,
-  educationLevel: "", currentRole: "", currentCompany: "",
-  seekingTypes: [], shortTermGoal: "", longTermGoal: "",
-  sector: "", businessInterests: [], preferredCompanySize: "",
-  openToRemote: false, availableForTravel: false,
-  incomeRange: "", investmentCapacity: "none", lookingForInvestment: false,
-  workStyle: "", values: [], languages: [],
+  educationLevel: "",
+  seekingTypes: [], seekingOtherNeed: "", shortTermGoal: "", longTermGoal: "",
+  sector: "", businessInterests: [], preferredCompanySizes: [],
+  // Capacidade de investimento começa VAZIA ("Selecione..."): abrir em "none"
+  // gravava "Sem capital disponível" em quem só passou pelo campo (reteste v4,
+  // item 5). Segue opcional para avançar, e só vai no envio quando escolhida.
+  incomeRange: "", investmentCapacity: "", lookingForInvestment: false,
   gender: "",
   personType: "", companySize: "", companyCnpj: "",
   customSector: "",
   currentResources: "",
   // Novos campos v2
   company: "", jobTitle: "", activityArea: "",
-  institutionalNetwork: "", interestSectors: [],
-  whatIHave: [], whatINeed: [],
-  agreedToTerms: false,
+  interestSectors: [],
+  whatIHave: [], whatIHaveOther: "", whatINeed: [], whatINeedDetails: [],
+  termoGeralAceitoId: null,
 };
 
+// ─── Rascunho do cadastro ─────────────────────────────────────────────────────
+// Sem versão publicada do Termo Geral o botão final trava (ver ETAPA_TERMO_GERAL)
+// e fechar a aba perdia as 8 etapas preenchidas (lista do Nicolas na PR #135,
+// janela C). O formulário fica em localStorage, numa chave por usuária, a cada
+// mudança; volta ao abrir de novo e é apagado ao concluir com sucesso. Sem
+// usuária conhecida nada é gravado: uma chave sem dona mostraria o cadastro de
+// uma conta para outra no mesmo navegador. A caixa do Termo Geral fica de fora:
+// o aceite é ato da sessão que conclui (e a versão exibida pode ter mudado).
+//
+// Privacidade (mesma razão da nota V-03 em _core/hooks/useAuth.ts, que tirou
+// dado de usuária do localStorage): faixa de renda, capacidade de investimento
+// e Número de Cadastro Empresarial NÃO entram no rascunho, a pessoa redigita;
+// o rascunho leva `salvoEm` e vale 7 dias (sem data, ou vencido, é ignorado);
+// sair da conta apaga todos os rascunhos (apagarRascunhosDoCadastro, no logout).
+const CAMPOS_FORA_DO_RASCUNHO: ReadonlySet<keyof FormData> = new Set<keyof FormData>([
+  "termoGeralAceitoId", "incomeRange", "investmentCapacity", "companyCnpj",
+]);
+const VALIDADE_DO_RASCUNHO_MS = 7 * 24 * 60 * 60 * 1000;
+
+function chaveDoRascunhoDa(idDaUsuaria: number | string): string {
+  return PREFIXO_DO_RASCUNHO_DO_CADASTRO + String(idDaUsuaria);
+}
+
+/** Quando o rascunho foi gravado. Fica FORA de `lerRascunho`, que só devolve campos do formulário. */
+function salvoEmDoRascunho(chave: string): number {
+  try {
+    const bruto = window.localStorage.getItem(chave);
+    const dados: unknown = bruto ? JSON.parse(bruto) : null;
+    const salvoEm = (dados as { salvoEm?: unknown } | null)?.salvoEm;
+    return typeof salvoEm === "number" && Number.isFinite(salvoEm) ? salvoEm : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Lê o rascunho gravado; só entram os campos com a forma que o formulário
+ *  espera, para um rascunho de versão antiga (ou adulterado) não quebrar a tela. */
+function lerRascunho(chave: string): Partial<FormData> | null {
+  try {
+    const bruto = window.localStorage.getItem(chave);
+    if (!bruto) return null;
+    const dados: unknown = JSON.parse(bruto);
+    if (!dados || typeof dados !== "object" || Array.isArray(dados)) return null;
+    const { salvoEm } = dados as { salvoEm?: unknown };
+    if (typeof salvoEm !== "number" || Date.now() - salvoEm > VALIDADE_DO_RASCUNHO_MS) return null;
+    const rascunho: Partial<FormData> = {};
+    for (const campo of Object.keys(INITIAL) as (keyof FormData)[]) {
+      if (CAMPOS_FORA_DO_RASCUNHO.has(campo)) continue;
+      const valor = (dados as Record<string, unknown>)[campo];
+      const padrao = INITIAL[campo];
+      const compativel = Array.isArray(padrao) ? Array.isArray(valor)
+        : padrao === null ? valor === null || typeof valor === "number"
+        : typeof valor === typeof padrao;
+      if (compativel) (rascunho as Record<string, unknown>)[campo] = valor;
+    }
+    return rascunho;
+  } catch {
+    return null;
+  }
+}
+
+function gravarRascunho(chave: string, form: FormData) {
+  try {
+    const rascunho: Record<string, unknown> = { salvoEm: Date.now() };
+    for (const [campo, valor] of Object.entries(form)) {
+      if (!CAMPOS_FORA_DO_RASCUNHO.has(campo as keyof FormData)) rascunho[campo] = valor;
+    }
+    window.localStorage.setItem(chave, JSON.stringify(rascunho));
+  } catch {
+    // Sem armazenamento (modo privado, cota cheia): o cadastro segue sem rascunho.
+  }
+}
+
+function apagarRascunho(chave: string) {
+  try {
+    window.localStorage.removeItem(chave);
+  } catch {
+    // Idem: nada a fazer sem armazenamento.
+  }
+}
+
 // ─── Componentes reutilizáveis ────────────────────────────────────────────────
+// CAIXA ALTA, onde vale (revisão de 15/09): o Rosber mandou em caixa alta os
+// títulos das categorias das DUAS listas de seleção — "O que tenho" (TagButton
+// abaixo) e "O que preciso" (components/OQuePreciso.tsx) —, e é só ali que ela
+// fica, nas mesmas duas listas no cadastro e no Perfil. Na rodada anterior a
+// caixa alta havia escorrido para os demais cartões (especialidade, tipo de
+// pessoa, o que busca, renda, porte) e para o Perfil, e ficava inconsistente
+// dentro da própria tela; estes voltaram à caixa normal.
+//
+// Onde ela existe, é por CSS (`uppercase`) e nunca reescrevendo o texto dos 10
+// JSONs: árabe, chinês e japonês não têm caixa, `text-transform` simplesmente
+// não os toca, e um rótulo gravado em maiúsculas estragaria os idiomas latinos
+// sem fazer nada por esses três.
 function CardOption({ selected, onClick, icon, label, desc }: {
   selected: boolean; onClick: () => void; icon: string; label: string; desc?: string;
 }) {
+  // `h-full` no cartão e `break-words` no rótulo: rótulo comprido
+  // ("Microempreendedor Individual (MEI)") quebra DENTRO do cartão em vez de
+  // transbordar para o vizinho, e a fileira fica com a mesma altura mesmo com
+  // um cartão de duas linhas (reteste v4, item 10).
   return (
     <button type="button" onClick={onClick}
-      className={`group relative p-4 rounded-xl border text-left transition-all duration-200 active:scale-95 ${selected
+      className={`group relative h-full p-4 rounded-xl border text-left transition-all duration-200 active:scale-95 ${selected
         ? "bg-[#c98f70]/15 border-[#c98f70] shadow-lg shadow-[#c98f70]/10"
         : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/30"}`}>
       {selected && (
@@ -106,7 +295,7 @@ function CardOption({ selected, onClick, icon, label, desc }: {
         </div>
       )}
       <div className="text-2xl mb-2">{icon}</div>
-      <div className={`font-semibold text-sm ${selected ? "text-[#c98f70]" : "text-white"}`}>{label}</div>
+      <div className={`font-semibold text-sm break-words ${selected ? "text-[#c98f70]" : "text-white"}`}>{label}</div>
       {desc && <div className="text-xs text-white/40 mt-0.5">{desc}</div>}
     </button>
   );
@@ -134,14 +323,16 @@ function TagButton({ icon, label, selected, onClick }: {
           : "bg-white/3 border-white/10 text-white/50 hover:border-white/25 hover:text-white/75 hover:bg-white/6"
       }`}>
       <span className="text-base leading-none">{icon}</span>
-      <span>{label}</span>
+      <span className="uppercase">{label}</span>
       {selected && <CheckCircle size={13} className="text-[#c98f70] ml-auto" />}
     </button>
   );
 }
 
 function TextInput({ label, value, onChange, placeholder, type = "text", hint, min, max, list, required }: {
-  label: string; value: string | number; onChange: (v: string) => void;
+  // `compondo`: o IME (japonês, chinês) ainda está montando o texto; quem
+  // transforma o valor deve esperar o fim da composição, que chama de novo.
+  label: string; value: string | number; onChange: (v: string, compondo?: boolean) => void;
   placeholder?: string; type?: string; hint?: string; min?: number; max?: number; list?: string; required?: boolean;
 }) {
   return (
@@ -149,22 +340,42 @@ function TextInput({ label, value, onChange, placeholder, type = "text", hint, m
       <label className="block text-sm font-medium text-white/70 mb-2">{label}{required && <span className="text-[#c98f70]"> *</span>}</label>
       <input type={type} value={value ?? ""} min={min} max={max} list={list}
         inputMode={type === "number" ? "numeric" : undefined}
-        onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        onChange={e => onChange(e.target.value, (e.nativeEvent as InputEvent).isComposing === true)}
+        onCompositionEnd={e => onChange(e.currentTarget.value, false)} placeholder={placeholder}
         className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#c98f70]/60 focus:bg-white/8 transition-all duration-200 text-sm"/>
       {hint && <p className="text-xs text-white/30 mt-1">{hint}</p>}
     </div>
   );
 }
 
-function TextareaInput({ label, value, onChange, placeholder, hint }: {
+function TextareaInput({ label, value, onChange, placeholder, hint, required, limite, assistente }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; hint?: string;
+  required?: boolean;
+  /** Teto do servidor: mostra o contador e avisa quando o texto (digitado ou ditado) passa dele. */
+  limite?: number;
+  /** "Gravar áudio" e "Revisar texto" embaixo do campo. */
+  assistente?: boolean;
 }) {
+  const { t } = useTranslation();
+  const passou = limite !== undefined && value.length > limite;
   return (
     <div>
-      <label className="block text-sm font-medium text-white/70 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-white/70 mb-2">{label}{required && <span className="text-[#c98f70]"> *</span>}</label>
       <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={3}
-        className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#c98f70]/60 focus:bg-white/8 transition-all duration-200 text-sm resize-none"/>
-      {hint && <p className="text-xs text-white/30 mt-1">{hint}</p>}
+        aria-invalid={passou || undefined}
+        className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:bg-white/8 transition-all duration-200 text-sm resize-none ${passou ? "border-red-400/60 focus:border-red-400/80" : "border-white/15 focus:border-[#c98f70]/60"}`}/>
+      {assistente && <AssistenteDeTexto valor={value} onChange={onChange}/>}
+      {(hint || limite !== undefined) && (
+        <div className="flex items-start justify-between gap-3 mt-1">
+          {hint ? <p className="text-xs text-white/30">{hint}</p> : <span/>}
+          {limite !== undefined && (
+            <span className={`text-[11px] tabular-nums shrink-0 ${passou ? "text-red-400" : "text-white/25"}`}>
+              {t("assistenteTexto.contador", { atual: value.length, maximo: limite })}
+            </span>
+          )}
+        </div>
+      )}
+      {passou && <p className="text-xs text-red-400/80 mt-1">{t("assistenteTexto.textoLongo", { maximo: limite })}</p>}
     </div>
   );
 }
@@ -186,6 +397,28 @@ function SelectInput({ label, value, onChange, options, placeholder }: {
 }
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
+/**
+ * As listas do perfil chegam do banco como array ou como JSON em texto (a
+ * coluna é `json` e o driver às vezes entrega a string). Só entram chaves: item
+ * escrito à mão não volta para as caixinhas, que são de vocabulário fechado.
+ */
+/**
+ * O rótulo de setor gravado no perfil, se ele ainda existir na lista de hoje.
+ * `setoresTraduzidos` é a fonte única (shared/setores.ts), a mesma que desenha o
+ * seletor da etapa 4.
+ */
+function setorConhecido(t: TradutorDeSetor, gravado: unknown): string | null {
+  if (typeof gravado !== "string" || !gravado.trim()) return null;
+  const alvo = gravado.trim().toLowerCase();
+  const achado = setoresTraduzidos(t).find(setor => setor.rotulo.trim().toLowerCase() === alvo);
+  return achado ? achado.rotulo : null;
+}
+
+function listaDeChaves(valor: unknown): string[] {
+  const bruto = typeof valor === "string" ? (() => { try { return JSON.parse(valor); } catch { return []; } })() : valor;
+  return Array.isArray(bruto) ? bruto.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
+}
+
 export default function Onboarding() {
   const { t, i18n } = useTranslation();
   const [, navigate] = useLocation();
@@ -196,22 +429,98 @@ export default function Onboarding() {
   const [cityOptions, setCityOptions] = useState<string[]>([]);
   const municipiosRef = useRef<string[] | null>(null);
   const prefilled = useRef(false);
+  // Chave do rascunho em localStorage: existe só depois de saber quem é a
+  // usuária e de restaurar o que ela já tinha (ver "Rascunho do cadastro").
+  const [chaveDoRascunho, setChaveDoRascunho] = useState<string | null>(null);
 
   // Pre-preenche com o que ja existe: o nome dado no cadastro (users.name) e,
   // num re-onboarding, o perfil salvo. Antes o formulario abria vazio e pedia
-  // o nome de novo.
+  // o nome de novo. O rascunho da usuária entra ANTES: campo que ela já
+  // preencheu vence o perfil salvo.
+  // A bio da carga vai até LIMITE_DA_BIO_GRAVADA (scripts/importacao/planilha.mjs)
+  // e entra INTEIRA no campo: mostrar só o começo fazia concluir o cadastro (ou
+  // qualquer edição) destruir o resto, em silêncio e sem volta (validação de
+  // 16/09 na #135, item 10).
   const profileQuery = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   useEffect(() => {
     if (prefilled.current || !profileQuery.data) return;
-    const { user, profile } = profileQuery.data as { user?: { name?: string | null } | null; profile?: Partial<FormData> & { displayName?: string | null; city?: string | null; country?: string | null } | null };
+    const { user, profile } = profileQuery.data as { user?: { id?: number; name?: string | null } | null; profile?: Partial<FormData> & {
+      displayName?: string | null; city?: string | null; country?: string | null; bio?: string | null; preferredCompanySize?: string | null;
+      company?: string | null; jobTitle?: string | null; sector?: string | null; currentResources?: string | null;
+      whatIHave?: unknown; whatINeed?: unknown; sectors?: unknown;
+    } | null };
     prefilled.current = true;
-    setForm(prev => ({
-      ...prev,
-      displayName: prev.displayName || profile?.displayName || user?.name || "",
-      city: prev.city || profile?.city || "",
-      country: profile?.country || prev.country,
-    }));
+    const chave = user?.id != null ? chaveDoRascunhoDa(user.id) : null;
+    const rascunho = chave ? lerRascunho(chave) : null;
+    // Chave e formulário mudam juntos (mesmo lote): o efeito que grava só roda
+    // com o formulário já restaurado, nunca com o vazio do primeiro render.
+    setChaveDoRascunho(chave);
+    // O que aparece na apresentação fica decidido aqui, fora do atualizador: lá
+    // dentro a segunda passagem do StrictMode recebe o estado já preenchido.
+    const bioSalva = profile?.bio ?? "";
+    const bioDoRascunho = (rascunho as { bio?: string } | null)?.bio ?? "";
+    // O rascunho nasce sozinho: abrir a tela uma vez já grava o que ela
+    // pré-preencheu. Se depois a pessoa editar a apresentação no Perfil, o
+    // rascunho velho voltaria por cima do texto novo sem ninguém tocar no campo.
+    // Ele só vale enquanto for mais NOVO do que o perfil salvo.
+    const salvoEm = chave ? salvoEmDoRascunho(chave) : 0;
+    const perfilSalvoEm = new Date((profile as { updatedAt?: string | number | Date } | null)?.updatedAt ?? 0).getTime();
+    const rascunhoEhMaisNovo = salvoEm >= (Number.isFinite(perfilSalvoEm) ? perfilSalvoEm : 0);
+    // A apresentação entra INTEIRA no campo, mesmo acima do teto do cadastro:
+    // a carga da planilha grava até LIMITE_DA_BIO_GRAVADA, e mostrar só o
+    // começo fazia qualquer edição destruir, em silêncio, o resto que a pessoa
+    // nunca viu (validação de 16/09 na #135, item 10).
+    const bioMostrada = (rascunhoEhMaisNovo && bioDoRascunho) || bioSalva;
+    setForm(prev => {
+      const base = rascunho ? { ...prev, ...rascunho } : prev;
+      return {
+        ...base,
+        displayName: base.displayName || profile?.displayName || user?.name || "",
+        city: base.city || profile?.city || "",
+        country: rascunho?.country || profile?.country || base.country,
+        // A bio já salva (contas da carga de scripts/importar-participantes.mjs)
+        // não vinha para o formulário e saía vazia ao concluir, apagando-a no
+        // servidor (lista do Nicolas na PR #135, item 10). Vem inteira, e o que
+        // a pessoa já DIGITOU vence — `prev`, não `base`: `base` já traz o
+        // rascunho, e o rascunho velho voltaria por cima do texto novo.
+        bio: prev.bio || bioMostrada,
+        // O porte já gravado volta marcado, venha no formato antigo (um porte só)
+        // ou no novo (lista separada por vírgula) — ver lerPortes.
+        preferredCompanySizes: base.preferredCompanySizes.length > 0
+          ? base.preferredCompanySizes
+          : lerPortes(profile?.preferredCompanySize),
+        // O RESTO do que a carga de participantes já gravou
+        // (scripts/importar-participantes.mjs): empresa, cargo, setor, o que
+        // possui, o que procura e o texto livre. Sem isto, a participante
+        // importada — que entra com `onboardingCompleted = 0` e por isso é
+        // mandada ao cadastro — via um formulário vazio e tinha de digitar de
+        // novo o que a planilha já trouxe, ou concluía apagando tudo. Com isto,
+        // o cadastro dela vira conferir e aceitar.
+        company: base.company || profile?.company || "",
+        jobTitle: base.jobTitle || profile?.jobTitle || "",
+        // O setor só volta se for UM DOS RÓTULOS da lista. A carga de
+        // participantes grava o que veio na coluna da planilha ("Tecnologia",
+        // "Saúde e bem-estar"), e a lista de hoje tem outros rótulos
+        // ("Tecnologia & Software", "Saúde"): pré-preencher com o que não casa
+        // deixa o seletor VAZIO na tela com o "Continuar" liberado, e a revisão
+        // mostrando um setor que ninguém escolheu. Sem casar, ela escolhe.
+        sector: base.sector || (setorConhecido(t, profile?.sector) ?? ""),
+        currentResources: base.currentResources || profile?.currentResources || "",
+        whatIHave: base.whatIHave.length > 0 ? base.whatIHave : listaDeChaves(profile?.whatIHave),
+        whatINeed: base.whatINeed.length > 0 ? base.whatINeed : listaDeChaves(profile?.whatINeed),
+        // `sectors` do perfil NÃO entra em `interestSectors`: a carga grava ali o
+        // RÓTULO do setor que veio na planilha ("Agronegócio"), e esta lista é de
+        // chaves. Pré-preencher com rótulo devolveria o rótulo ao servidor na
+        // conclusão, que é justamente o defeito que a entrega consertou em
+        // businessInterests. O campo não aparece no cadastro; quem edita é o Perfil.
+      };
+    });
   }, [profileQuery.data]);
+
+  // Grava o rascunho a cada mudança (objeto pequeno; síncrono).
+  useEffect(() => {
+    if (chaveDoRascunho) gravarRascunho(chaveDoRascunho, form);
+  }, [form, chaveDoRascunho]);
 
   // Sugestoes de cidade (IBGE) so quando o pais e o Brasil: filtra em memoria
   // a partir de 2 letras, ignorando acento, e mostra no maximo 50 opcoes para
@@ -244,30 +553,36 @@ export default function Onboarding() {
     { key: "gastronomy", icon: "🍽️" }, { key: "startups", icon: "🚀" },
   ].map(o => ({ ...o, label: t("onboarding.specialties." + o.key) }));
 
-  // Lista enxugada a partir do QA de 30/08: "Advisor" e "Mentora" eram o
-  // mesmo papel, "Socia estrategica" e "Parceira comercial" se sobrepunham, e
-  // "Ser mentora" e oferta, nao busca -- virou a pergunta propria logo abaixo.
-  const SEEKING_TYPES = [
-    { key: "strategic_partner", icon: "🤝" },
-    { key: "investor", icon: "💰" },
-    { key: "mentor", icon: "🎓" },
-    { key: "team", icon: "👥" },
-    { key: "job", icon: "💼" },
-  ].map(o => ({ ...o, label: t("onboarding.seeking." + o.key), desc: t("onboarding.seeking." + o.key + "_desc") }));
+  // "O que você busca?": as 12 opções do Lucas (grupo, 14/09 20:58), na ordem
+  // dele e com "Outra necessidade" por último — não em ordem alfabética. As
+  // chaves, os emojis e o legado (investor, team, job...) vivem em
+  // shared/o-que-busca.ts. "Quero também mentorar" é oferta, não busca, e
+  // continua como o botão próprio logo abaixo.
+  const SEEKING_TYPES = OPCOES_O_QUE_BUSCA.map(o => ({
+    key: o.chave, icon: o.emoji,
+    label: t(`oQueBusca.opcoes.${o.chave}.titulo`),
+    desc: t(`oQueBusca.opcoes.${o.chave}.descricao`),
+  }));
 
-  const SECTORS = [
-    "agribusiness", "construction", "education", "energy", "entertainment",
-    "financial", "government", "industry", "logistics", "health",
-    "technology", "telecom", "tourism", "retail", "other",
-  ].map(key => ({ key, label: t("onboarding.sectors." + key) }));
+  // Setores: fonte ÚNICA em shared/setores.ts, a mesma do Perfil ("Setores de
+  // interesse") e de "Nova Oportunidade" — antes eram três listas diferentes e
+  // quem se cadastrava em "Tecnologia & Software" não achava o próprio setor na
+  // lista de interesses (reteste v4, item 7). O cadastro continua gravando o
+  // RÓTULO traduzido, não a chave: é o que server/matching.ts normaliza em
+  // `chaveDoSetor`, e os rótulos dos setores que já existiam aqui não mudaram.
+  const SECTORS = setoresTraduzidos(t).map(s => ({ key: s.chave, label: s.rotulo }));
+  // "Outro" não é setor: é a saída para texto livre, e por isso fica fora da
+  // fonte única e sempre no fim da lista.
   const OTHER_SECTOR_LABEL = t("onboarding.sectors.other");
 
+  // "Qualquer tamanho" continua na tela, agora como o cartão que LIMPA a
+  // seleção: marcado quando nenhum porte específico está, e clicá-lo desmarca
+  // todos. É o mesmo significado de sempre, sem virar um porte da lista.
   const COMPANY_SIZES = [
     { value: "micro", label: t("onboarding.companySize.micro"), icon: "🌱" },
     { value: "small", label: t("onboarding.companySize.small"), icon: "🏠" },
     { value: "medium", label: t("onboarding.companySize.medium"), icon: "🏢" },
     { value: "large", label: t("onboarding.companySize.large"), icon: "🏙️" },
-    { value: "any", label: t("onboarding.companySize.any"), icon: "🌍" },
   ];
 
   const INCOME_RANGES = [
@@ -286,23 +601,9 @@ export default function Onboarding() {
     { value: "200k_plus", label: t("onboarding.investment.200k_plus") },
   ];
 
-  const WORK_STYLES = [
-    { value: "remote", label: t("onboarding.workStyle.remote"), icon: "🏠" },
-    { value: "hybrid", label: t("onboarding.workStyle.hybrid"), icon: "🔄" },
-    { value: "onsite", label: t("onboarding.workStyle.onsite"), icon: "🏢" },
-    { value: "flexible", label: t("onboarding.workStyle.flexible"), icon: "🌊" },
-  ];
-
-  const VALUES_OPTIONS = [
-    "innovation", "social_impact", "autonomy", "fast_growth", "stability",
-    "purpose", "collaboration", "results", "diversity", "transparency",
-    "sustainability", "technical_excellence",
-  ].map(key => ({ key, label: t("onboarding.values." + key) }));
-
-  const LANGUAGES_LIST_I18N = [
-    "portuguese", "english", "spanish", "french", "german",
-    "mandarin", "japanese", "arabic", "italian",
-  ].map(key => ({ key, label: t("onboarding.languages." + key) }));
+  // Estilo de trabalho, valores principais e idiomas saíram do cadastro (Rosber,
+  // 14/09 21:08). Os rótulos seguem nos 10 JSONs porque o Dashboard traduz por
+  // eles o que já está gravado (onboarding.workStyle/values/languages).
 
   const EDUCATION_LEVELS = [
     { value: "high_school", label: t("onboarding.education.high_school") },
@@ -334,61 +635,72 @@ export default function Onboarding() {
     { value: "XX", label: t("onboarding.countries.other") },
   ];
 
+  // "Seus valores" saiu da lista junto com o campo (21:08): a etapa de revisão
+  // não pode prometer uma análise do que o cadastro não pergunta mais.
   const AI_ANALYSIS_ITEMS = [
     t("onboarding.aiAnalysis.specialty"), t("onboarding.aiAnalysis.goals"),
     t("onboarding.aiAnalysis.income"), t("onboarding.aiAnalysis.location"),
-    t("onboarding.aiAnalysis.values"), t("onboarding.aiAnalysis.sectors"),
+    t("onboarding.aiAnalysis.sectors"),
   ];
 
-  // 8 etapas: Vida & Valores foi integrada a “O que você busca”.
+  // 8 etapas: "Vida & Valores" foi integrada a "O que você busca", "Quem sou"
+  // saiu com a Rede Institucional (21:15), e o Termo Geral de Uso (última)
+  // substituiu a antiga "Termos e Condições".
   const STEPS = [
     { id: 1, title: t("onboarding.steps.s1_title"), subtitle: t("onboarding.steps.s1_sub"), icon: "👤" },
     { id: 2, title: t("onboarding.steps.s2_title"), subtitle: t("onboarding.steps.s2_sub"), icon: "⚡" },
     { id: 3, title: t("onboarding.steps.s3_title"), subtitle: t("onboarding.steps.s3_sub"), icon: "🎯" },
     { id: 4, title: t("onboarding.steps.s4_title"), subtitle: t("onboarding.steps.s4_sub"), icon: "🌐" },
-    { id: 5, title: t("onboarding.steps.s7_title"), subtitle: t("onboarding.steps.s7_sub"), icon: "🏢" },
-    { id: 6, title: t("onboarding.steps.s8_title"), subtitle: t("onboarding.steps.s8_sub"), icon: "✦" },
-    { id: 7, title: t("onboarding.steps.s9_title"), subtitle: t("onboarding.steps.s9_sub"), icon: "◈" },
-    { id: 8, title: t("onboarding.steps.s6_title"), subtitle: t("onboarding.steps.s6_sub"), icon: "🚀" },
-    { id: 9, title: t("onboarding.steps.s10_title"), subtitle: t("onboarding.steps.s10_sub"), icon: "📋" },
+    { id: 5, title: t("onboarding.steps.s8_title"), subtitle: t("onboarding.steps.s8_sub"), icon: "✦" },
+    { id: 6, title: t("onboarding.steps.s9_title"), subtitle: t("onboarding.steps.s9_sub"), icon: "◈" },
+    { id: 7, title: t("onboarding.steps.s6_title"), subtitle: t("onboarding.steps.s6_sub"), icon: "🚀" },
+    // Termo Geral de Uso do Dr. Ronei: "última etapa do processo de
+    // cadastramento", e a única de termos. A etapa "Termos e Condições" (contrato
+    // de comissão) saiu do cadastro; o tipo `contrato_comissao` e os aceites já
+    // gravados continuam no servidor.
+    { id: ETAPA_TERMO_GERAL, title: t("termoGeral.etapaTitulo"), subtitle: t("termoGeral.etapaSubtitulo"), icon: "📜" },
   ];
 
-  // O aceite dos Termos precisa deixar RASTRO no servidor. A caixinha marcada
-  // só no navegador não prova nada: numa discussão sobre comissão, o que vale é
-  // saber quem aceitou, quando, de qual endereço e QUAL texto estava no ar.
-  // Reusamos a trilha que já existe (consents + document_versions), a mesma do
-  // termo do Smart Match, que grava IP, user-agent e o hash do texto vigente.
-  const registrarAceiteDosTermos = trpc.consent.accept.useMutation();
+  // Termo Geral de Uso: o texto é o da versão PUBLICADA, lido quando a pessoa
+  // chega à última etapa. Sem versão publicada, `document` vem null (e
+  // `accepted: true`, a regra dos outros termos) — aqui isso NÃO libera: a
+  // etapa mostra que o termo não está disponível e o botão final fica travado.
+  const termoGeralQuery = trpc.consent.status.useQuery(
+    { type: TIPO_TERMO_GERAL },
+    { enabled: step === ETAPA_TERMO_GERAL, refetchOnWindowFocus: false },
+  );
+  const documentoTermoGeral = termoGeralQuery.data?.document ?? null;
+  const aceitouTermoGeral = documentoTermoGeral !== null && form.termoGeralAceitoId === documentoTermoGeral.id;
+  const aceitarTermoGeral = trpc.consent.accept.useMutation();
 
+  const utils = trpc.useUtils();
   const concluir = () => {
+    // Cadastro gravado: o rascunho não tem mais razão de existir.
+    if (chaveDoRascunho) apagarRascunho(chaveDoRascunho);
+    // O servidor acabou de gravar onboardingCompleted = true, mas o auth.me em
+    // cache ainda diz false: sem isto o ProtectedRoute do /dashboard mandaria a
+    // pessoa de volta a /onboarding (cadastro incompleto vai para lá).
+    utils.auth.me.setData(undefined, atual => (atual ? { ...atual, onboardingCompleted: true } : atual));
+    void utils.auth.me.invalidate();
     toast.success(t("onboarding.successMsg"));
     navigate("/dashboard");
   };
 
+  // O aceite que deixa rastro no servidor (IP, user-agent, hash do texto) é o do
+  // Termo Geral, registrado em handleSubmit ANTES de salvar o perfil. O cadastro
+  // não registra mais o contrato_comissao: a etapa dele saiu (Rosber, 14/09 21:34).
   const saveOnboarding = trpc.profile.completeOnboarding.useMutation({
-    onSuccess: () => {
-      // Enquanto o contrato_comissao não tiver versão publicada, o servidor
-      // responde NOT_FOUND: não há texto vigente para consentir. Isso NÃO pode
-      // travar o cadastro de quem acabou de preencher tudo — o perfil já foi
-      // salvo. Segue para o Dashboard nos dois casos; a falha vai para o
-      // console e o cartão do termo provisório cuida da publicação.
-      registrarAceiteDosTermos.mutate(
-        { type: "contrato_comissao" },
-        {
-          onSuccess: concluir,
-          onError: (erro: { message: string }) => {
-            console.error("[Onboarding] Não foi possível registrar o aceite dos Termos:", erro.message);
-            concluir();
-          },
-        },
-      );
-    },
+    onSuccess: concluir,
     onError: (err: { message: string }) => {
       toast.error(t("onboarding.errorMsg") + " " + (err.message || ""));
     },
   });
 
   const set = (key: keyof FormData, value: unknown) => setForm(prev => ({ ...prev, [key]: value }));
+
+  // O que "O que tenho" vale de fato: as opções marcadas (sem a porta "outros")
+  // mais o ativo escrito à mão. É o que a contagem mostra e o que vai gravado.
+  const ativosDoQueTenho = ativosParaGravar(form.whatIHave, form.whatIHaveOther);
 
   const toggleArray = (key: keyof FormData, value: string) => {
     const arr = (form[key] as string[]) || [];
@@ -419,53 +731,105 @@ export default function Onboarding() {
   };
 
   const canProceed = () => {
-    if (step === 1) return form.displayName.trim().length >= 2 && form.city.trim().length >= 2;
+    // O teto do passo é o que a plataforma GRAVA: a bio da carga passa do teto
+    // do cadastro e travava o "Continuar" da etapa 1 — a conta não concluía.
+    if (step === 1) return form.displayName.trim().length >= 2 && form.city.trim().length >= 2 && form.bio.length <= LIMITE_DA_BIO_GRAVADA;
     if (step === 2) {
       const temEspecialidade = form.primarySpecialties.length > 0 || form.customSpecialty.trim().length > 0;
-      // Quem se declara MEI, pessoa juridica ou sem fins lucrativos tem CNPJ por definicao (A7).
-      const cnpjOk = !exigeCnpj(form.personType) || isValidCnpj(form.companyCnpj);
-      return temEspecialidade && cnpjOk;
+      // Quem se declara MEI, pessoa juridica ou sem fins lucrativos tem cadastro empresarial por definicao (A7).
+      const cadastroOk = !exigeCadastroEmpresarial(form.personType) || normalizarCadastroEmpresarial(form.companyCnpj).length > 0;
+      return temEspecialidade && cadastroOk;
     }
-    if (step === 3) return form.seekingTypes.length > 0 && form.incomeRange.length > 0 && form.workStyle.length > 0;
+    if (step === 3) {
+      const textosCabem = form.shortTermGoal.length <= LIMITE_META && form.longTermGoal.length <= LIMITE_META
+        && form.currentResources.length <= LIMITE_META;
+      // Estilo de trabalho era exigido aqui e saiu do cadastro (21:08).
+      return form.seekingTypes.length > 0 && form.incomeRange.length > 0
+        && outraNecessidadeValida(form.seekingTypes, form.seekingOtherNeed) && textosCabem;
+    }
     if (step === 4) return form.sector.length > 0;
-    if (step === 9) return form.agreedToTerms;
+    // "O que tenho": marcar nada continua valendo, mas "Outros" marcado exige o texto.
+    if (step === 5) return outroAtivoValido(form.whatIHave, form.whatIHaveOther);
+    // "O que preciso": marcar nada continua valendo, mas categoria marcada precisa
+    // de ao menos uma demanda detalhada e válida — a seleção sozinha não gera conexão.
+    if (step === 6) return categoriasPendentes(form.whatINeed, form.whatINeedDetails).length === 0;
+    if (step === ETAPA_TERMO_GERAL) return aceitouTermoGeral;
     // Etapas profissionais e de ativos são opcionais — sempre pode avançar
     return true;
   };
 
+  // Ordem: primeiro o aceite do Termo Geral (com a versão que a tela mostrou),
+  // depois o perfil. Ao contrário, o perfil ficaria salvo e o cadastro marcado
+  // como concluído sem o termo — e o servidor também recusa concluir sem ele.
   const handleSubmit = () => {
+    if (!canProceed() || !documentoTermoGeral) return;
+    aceitarTermoGeral.mutate(
+      { type: TIPO_TERMO_GERAL, documentVersionId: documentoTermoGeral.id },
+      {
+        onSuccess: salvarPerfil,
+        onError: (erro: { data?: { code?: string } | null }) => {
+          if (erro.data?.code === "CONFLICT") {
+            // Publicaram versão nova enquanto ela lia: o aceite não cobre o
+            // texto novo. Recarrega, desmarca e pede para ler de novo.
+            set("termoGeralAceitoId", null);
+            void termoGeralQuery.refetch();
+            toast.error(t("termoGeral.versaoMudou"));
+            return;
+          }
+          toast.error(t("termoGeral.erroAceite"));
+        },
+      },
+    );
+  };
+
+  const salvarPerfil = () => {
     const selectedSpecialties = normalizePrimarySpecialties(form.primarySpecialties, form.customSpecialty);
     saveOnboarding.mutate({
-      displayName: form.displayName, age: form.age ?? undefined, city: form.city, country: form.country, bio: form.bio,
+      displayName: form.displayName, city: form.city, country: form.country,
+      // Em branco, o campo não vai: `bio: ""` apagava a bio importada, e o
+      // servidor (upsertUserProfile → UPDATE do Drizzle) não toca na coluna
+      // quando o valor está ausente.
+      // Campo intocado cujo conteúdo é o texto CORTADO do que já está salvo: não vai.
+      // Ausente, o servidor não mexe na coluna e a bio longa da carga sobrevive.
+      // O campo mostra a apresentação inteira, então o que volta é o que está
+      // gravado (ou o que a pessoa escreveu). Sem corte, não há o que perder.
+      bio: form.bio.trim() || undefined,
       primarySpecialty: selectedSpecialties[0], secondarySpecialties: selectedSpecialties.slice(1),
       experienceYears: form.experienceYears ?? undefined,
       educationLevel: form.educationLevel as "high_school" | "bachelor" | "master" | "phd" | "other" | undefined,
-      currentRole: form.currentRole, currentCompany: form.currentCompany,
       // seekingTypes nunca era enviado: o campo alimenta a dimensao "objetivos",
       // que vale 30% do score de match, e ficava vazio para todo mundo.
       seekingTypes: form.seekingTypes,
+      // Necessidade declarada de "Outra necessidade"; sem a opção, o servidor grava null.
+      seekingOtherNeed: form.seekingTypes.includes(CHAVE_OUTRA_NECESSIDADE) ? form.seekingOtherNeed.trim() : undefined,
+      shortTermGoal: form.shortTermGoal.trim() || undefined,
+      longTermGoal: form.longTermGoal.trim() || undefined,
       sector: form.sector === OTHER_SECTOR_LABEL && form.customSector.trim() ? form.customSector.trim() : form.sector,
       businessInterests: form.businessInterests,
-      preferredCompanySize: form.preferredCompanySize as "startup" | "small" | "medium" | "large" | "any" | undefined,
-      openToRemote: form.openToRemote, availableForTravel: form.availableForTravel,
+      // Vários portes num campo só, ou "any" sem nenhum (ver portesParaGravar).
+      preferredCompanySize: portesParaGravar(form.preferredCompanySizes),
       incomeRange: form.incomeRange as "under_3k" | "3k_7k" | "7k_15k" | "15k_30k" | "30k_plus",
-      investmentCapacity: form.investmentCapacity as "none" | "under_10k" | "10k_50k" | "50k_200k" | "200k_plus" | undefined,
+      // Sem escolha o campo não vai: o zod do servidor é optional() e recusaria "".
+      investmentCapacity: (form.investmentCapacity || undefined) as "none" | "under_10k" | "10k_50k" | "50k_200k" | "200k_plus" | undefined,
       lookingForInvestment: form.lookingForInvestment,
       gender: form.gender || undefined,
       personType: form.personType || undefined,
       companySize: form.personType === "mei" ? "mei" : form.companySize || undefined,
-      companyCnpj: form.personType !== "individual" ? form.companyCnpj || undefined : undefined,
+      companyCnpj: form.personType !== "individual" ? normalizarCadastroEmpresarial(form.companyCnpj) || undefined : undefined,
       currentResources: form.currentResources || undefined,
-      workStyle: form.workStyle as "remote" | "hybrid" | "onsite" | "flexible" | undefined,
-      values: form.values, languages: form.languages,
+      // workStyle, values, languages, openToRemote, availableForTravel e
+      // institutionalNetwork saíram do cadastro (21:08, 21:10 e 21:15): o campo
+      // não vai no envio, e o que já está gravado no banco fica onde está — o
+      // servidor não escreve coluna que não recebeu.
       // Novos campos v2
       company: form.company || undefined,
       jobTitle: form.jobTitle || undefined,
       activityArea: form.activityArea || undefined,
-      institutionalNetwork: form.institutionalNetwork || undefined,
       interestSectors: form.interestSectors.length > 0 ? form.interestSectors : undefined,
-      whatIHave: form.whatIHave.length > 0 ? form.whatIHave : undefined,
+      whatIHave: ativosDoQueTenho.length > 0 ? ativosDoQueTenho : undefined,
       whatINeed: form.whatINeed.length > 0 ? form.whatINeed : undefined,
+      // Cada demanda separada, sem as em branco; o servidor valida de novo.
+      whatINeedDetails: form.whatINeed.length > 0 ? demandasParaGravar(form.whatINeed, form.whatINeedDetails) : undefined,
     });
   };
 
@@ -535,17 +899,13 @@ export default function Onboarding() {
             {step === 1 && (
               <div className="flex flex-col gap-5">
                 {(() => {
-                  const labels = [t("onboarding.fields.displayName"), t("onboarding.fields.city"), t("profile.gender.label"), t("onboarding.fields.age"), t("onboarding.fields.bio")];
+                  // "Sua idade" saiu (Rosber, 14/09 20:31). O servidor ainda aceita
+                  // `age` opcional, e o dado de quem já informou continua no banco.
                   return <>
                     <div>
-                      {/* Sem limite máximo de idade: usuárias podem ter qualquer idade acima de 16 (validação de testes) */}
-                      <TextInput label={t("onboarding.fields.age")} value={form.age ?? ""} type="number" min={16}
-                        onChange={v => set("age", v ? parseInt(v) : null)}
-                        placeholder={t("onboarding.fields.agePlaceholder")} hint={t("onboarding.fields.ageHint")}/>
-                    </div>
-                    <div>
                       <TextareaInput label={t("onboarding.fields.bio")} value={form.bio} onChange={v => set("bio", v)}
-                        placeholder={t("onboarding.fields.bioPlaceholder")} hint={t("onboarding.fields.bioHint")}/>
+                        placeholder={t("onboarding.fields.bioPlaceholder")} hint={t("onboarding.fields.bioHint")}
+                        limite={LIMITE_DA_BIO_GRAVADA} assistente/>
                     </div>
                     <div>
                       <div className="grid grid-cols-2 gap-4">
@@ -610,7 +970,11 @@ export default function Onboarding() {
                 <div className="rounded-2xl border border-[#c98f70]/25 bg-[#c98f70]/5 p-5 space-y-4">
                   <div>
                     <h2 className="text-white font-semibold text-base">{t("profile.business.personType")}</h2>
-                    <p className="text-xs text-white/45 mt-1">{t("profile.business.cnpjHint")}</p>
+                    {/* O texto de apoio fica SÓ aqui: repetido como dica do campo de
+                        Número de Cadastro Empresarial, aparecia duas vezes no mesmo
+                        bloco (reteste v4, item 10). Como subtítulo ele é visível antes
+                        de escolher o tipo, que é quando ajuda. */}
+                    <p className="text-xs text-white/45 mt-1">{t("profile.business.registrationNumberHint")}</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {sortOptionsAlphabetically([
@@ -627,7 +991,7 @@ export default function Onboarding() {
                         }} icon={option.icon} label={option.label}/>
                     ))}
                   </div>
-                  {exigeCnpj(form.personType) && (
+                  {exigeCadastroEmpresarial(form.personType) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                       <SelectInput label={t("profile.business.companySize")} value={form.companySize}
                         onChange={value => set("companySize", value as FormData["companySize"])}
@@ -639,16 +1003,18 @@ export default function Onboarding() {
                               { value: "medium", label: t("profile.business.sizeMedium") },
                               { value: "large", label: t("profile.business.sizeLarge") },
                             ], i18n.language)} placeholder={t("onboarding.fields.selectPlaceholder")}/>
-                      <TextInput label={t("profile.business.cnpj")} required value={form.companyCnpj}
-                        onChange={value => set("companyCnpj", formatCnpj(value))}
-                        placeholder={t("profile.business.cnpjPlaceholder")} hint={t("profile.business.cnpjHint")}/>
+                      <TextInput label={t("profile.business.registrationNumber")} required value={form.companyCnpj}
+                        onChange={(value, compondo) => set("companyCnpj", compondo ? value : normalizarCadastroEmpresarial(value))}
+                        placeholder={t("profile.business.registrationNumberPlaceholder")}/>
                     </div>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <TextInput label={t("onboarding.fields.currentRole")} value={form.currentRole} onChange={v => set("currentRole", v)}
+                  {/* Cargo e empresa gravam em jobTitle/company, os mesmos campos da
+                      tela de Perfil (consolidação das colunas duplicadas). */}
+                  <TextInput label={t("onboarding.fields.currentRole")} value={form.jobTitle} onChange={v => set("jobTitle", v)}
                     placeholder={t("onboarding.fields.currentRolePlaceholder")}/>
-                  <TextInput label={t("onboarding.fields.currentCompany")} value={form.currentCompany} onChange={v => set("currentCompany", v)}
+                  <TextInput label={t("onboarding.fields.currentCompany")} value={form.company} onChange={v => set("company", v)}
                     placeholder={t("onboarding.fields.currentCompanyPlaceholder")}/>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -669,29 +1035,41 @@ export default function Onboarding() {
                     {t("onboarding.fields.seekingTypes")} <span className="text-white/30 font-normal">{t("onboarding.fields.selectAll")}</span>
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {sortOptionsAlphabetically(SEEKING_TYPES, i18n.language).map(s => (
+                    {SEEKING_TYPES.map(s => (
                       <CardOption key={s.key} selected={form.seekingTypes.includes(s.key)}
                         onClick={() => toggleArray("seekingTypes", s.key)} icon={s.icon} label={s.label} desc={s.desc}/>
                     ))}
                   </div>
-                  <button type="button" onClick={() => toggleArray("seekingTypes", "be_mentor")}
-                    className={"mt-3 w-full p-4 rounded-xl border text-left transition-all duration-200 " + (form.seekingTypes.includes("be_mentor") ? "bg-[#c98f70]/15 border-[#c98f70]" : "bg-white/5 border-white/10")}>
+                  {form.seekingTypes.includes(CHAVE_OUTRA_NECESSIDADE) && (
+                    <div className="mt-3">
+                      <TextareaInput label={t("oQueBusca.outraNecessidadeRotulo")} required
+                        value={form.seekingOtherNeed} onChange={v => set("seekingOtherNeed", v)}
+                        placeholder={t("oQueBusca.outraNecessidadePlaceholder")}
+                        hint={form.seekingOtherNeed.trim().length < 3 ? t("oQueBusca.outraNecessidadeObrigatoria") : undefined}
+                        limite={LIMITE_OUTRA_NECESSIDADE} assistente/>
+                    </div>
+                  )}
+                  <button type="button" onClick={() => toggleArray("seekingTypes", CHAVE_QUERO_MENTORAR)}
+                    className={"mt-3 w-full p-4 rounded-xl border text-left transition-all duration-200 " + (form.seekingTypes.includes(CHAVE_QUERO_MENTORAR) ? "bg-[#c98f70]/15 border-[#c98f70]" : "bg-white/5 border-white/10")}>
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">🤲</span>
                       <div>
-                        <div className={"font-semibold text-sm " + (form.seekingTypes.includes("be_mentor") ? "text-[#c98f70]" : "text-white")}>{t("onboarding.seeking.be_mentor")}</div>
+                        <div className={"font-semibold text-sm " + (form.seekingTypes.includes(CHAVE_QUERO_MENTORAR) ? "text-[#c98f70]" : "text-white")}>{t("onboarding.seeking.be_mentor")}</div>
                         <div className="text-xs text-white/40">{t("onboarding.seeking.be_mentor_desc")}</div>
                       </div>
                     </div>
                   </button>
                 </div>
-                {/* Metas de curto/longo prazo ficam ocultas por enquanto: não
-                    existem colunas para elas e o texto digitado era descartado
-                    em silêncio. Voltam quando o schema ganhar os campos
-                    (tarefa de consolidação do cadastro). */}
+                <TextareaInput label={t("onboarding.fields.shortTermGoal")} value={form.shortTermGoal} onChange={v => set("shortTermGoal", v)}
+                  placeholder={t("onboarding.fields.shortTermGoalPlaceholder")} hint={t("onboarding.fields.shortTermGoalHint")}
+                  limite={LIMITE_META} assistente/>
+                <TextareaInput label={t("onboarding.fields.longTermGoal")} value={form.longTermGoal} onChange={v => set("longTermGoal", v)}
+                  placeholder={t("onboarding.fields.longTermGoalPlaceholder")} hint={t("onboarding.fields.longTermGoalHint")}
+                  limite={LIMITE_META} assistente/>
                 <div>
                   <TextareaInput label={t("onboarding.fields.currentResources")} value={form.currentResources} onChange={v => set("currentResources", v)}
-                    placeholder={t("onboarding.fields.currentResourcesPlaceholder")} hint={t("onboarding.fields.currentResourcesHint")}/>
+                    placeholder={t("onboarding.fields.currentResourcesPlaceholder")} hint={t("onboarding.fields.currentResourcesHint")}
+                    limite={LIMITE_META} assistente/>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 flex flex-col gap-6">
                   <div>
@@ -721,36 +1099,8 @@ export default function Onboarding() {
                       </div>
                     </div>
                   </button>
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-3">{t("onboarding.fields.workStyle")}</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {sortOptionsAlphabetically(WORK_STYLES, i18n.language).map(w => (
-                        <CardOption key={w.value} selected={form.workStyle === w.value}
-                          onClick={() => set("workStyle", w.value)} icon={w.icon} label={w.label}/>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-3">{t("onboarding.fields.values")} <span className="text-white/30 font-normal">{t("onboarding.fields.upTo4")}</span></label>
-                    <div className="flex flex-wrap gap-2">
-                      {sortOptionsAlphabetically(VALUES_OPTIONS, i18n.language).map(v => (
-                        <TagOption key={v.key} selected={form.values.includes(v.key)}
-                          onClick={() => {
-                            if (form.values.includes(v.key)) toggleArray("values", v.key);
-                            else if (form.values.length < 4) toggleArray("values", v.key);
-                            else toast.error(t("onboarding.maxValues"));
-                          }} label={v.label}/>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-3">{t("onboarding.fields.languages")}</label>
-                    <div className="flex flex-wrap gap-2">
-                      {sortOptionsAlphabetically(LANGUAGES_LIST_I18N, i18n.language).map(l => (
-                        <TagOption key={l.key} selected={form.languages.includes(l.key)} onClick={() => toggleArray("languages", l.key)} label={l.label}/>
-                      ))}
-                    </div>
-                  </div>
+                  {/* Estilo de trabalho preferido, valores principais e idiomas
+                      ficavam aqui e saíram do cadastro (Rosber, 14/09 21:08). */}
                 </div>
               </div>
             )}
@@ -761,7 +1111,7 @@ export default function Onboarding() {
                 <div>
                   {/* Opção "outro" sempre no final, não alfabética: consistência com demais dropdowns (validação de testes) */}
                   <SelectInput label={t("onboarding.fields.sector")} value={form.sector} onChange={v => set("sector", v)}
-                    options={[...sortOptionsAlphabetically(SECTORS.filter(s => s.key !== "other").map(s => ({ value: s.label, label: s.label })), i18n.language), { value: OTHER_SECTOR_LABEL, label: t("onboarding.sectors.other") }]} placeholder={t("onboarding.fields.selectPlaceholder")}/>
+                    options={[...sortOptionsAlphabetically(SECTORS.map(s => ({ value: s.label, label: s.label })), i18n.language), { value: OTHER_SECTOR_LABEL, label: t("onboarding.sectors.other") }]} placeholder={t("onboarding.fields.selectPlaceholder")}/>
                   {form.sector === OTHER_SECTOR_LABEL && (
                     <div className="mt-3">
                       <TextInput label={t("onboarding.fields.customSector")} value={form.customSector}
@@ -772,60 +1122,67 @@ export default function Onboarding() {
                 </div>
                 <div >
                   <label className="block text-sm font-medium text-white/70 mb-3">
-                    {t("onboarding.fields.businessInterests")} <span className="text-white/30 font-normal">{t("onboarding.fields.upTo4")}</span>
+                    {/* O teto de 4 saiu (Rosber, 14/09 21:09: "retirar essa
+                        limitação de até quatro, Setores de interesse"). */}
+                    {t("onboarding.fields.businessInterests")} <span className="text-white/30 font-normal">{t("onboarding.misc.selectAllApply")}</span>
                   </label>
+                  {/* Mesma lista do campo "Setor" acima, inclusive o setor da
+                      própria usuária: ela era descartada por `s.label !== form.sector`
+                      e quem é de tecnologia não conseguia declarar interesse no
+                      próprio setor (reteste v4, item 7) — que é justamente onde
+                      mais se procura parceria.
+                      Grava a CHAVE ("construcao"), não o rótulo traduzido: o valor
+                      precisa ser o mesmo em qualquer idioma, senão duas usuárias
+                      com o mesmo interesse em línguas diferentes nunca se cruzam.
+                      A tela mostra o rótulo, e `interesseEhDoSetor` mantém marcado
+                      o que foi gravado com o rótulo antes desta correção. */}
                   <div className="flex flex-wrap gap-2">
-                    {sortOptionsAlphabetically(SECTORS.filter(s => s.label !== form.sector && s.key !== "other"), i18n.language).map(s => (
-                      <TagOption key={s.key} selected={form.businessInterests.includes(s.key)}
-                        onClick={() => { if (form.businessInterests.includes(s.key) || form.businessInterests.length < 4) toggleArray("businessInterests", s.key); }}
-                        label={s.label}/>
-                    ))}
+                    {sortOptionsAlphabetically(SECTORS, i18n.language).map(s => {
+                      const setor = { chave: s.key, rotulo: s.label };
+                      const marcado = form.businessInterests.some(gravado => interesseEhDoSetor(gravado, setor));
+                      return (
+                        <TagOption key={s.key} selected={marcado} label={s.label}
+                          onClick={() => set("businessInterests", marcado
+                            ? form.businessInterests.filter(gravado => !interesseEhDoSetor(gravado, setor))
+                            : [...form.businessInterests, s.key])}/>
+                      );
+                    })}
                   </div>
                 </div>
                 <div >
-                  <label className="block text-sm font-medium text-white/70 mb-3">{t("onboarding.fields.preferredCompanySize")}</label>
+                  <label className="block text-sm font-medium text-white/70 mb-3">
+                    {t("onboarding.fields.preferredCompanySize")} <span className="text-white/30 font-normal">{t("onboarding.misc.selectAllApply")}</span>
+                  </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {COMPANY_SIZES.map(c => (
-                      <CardOption key={c.value} selected={form.preferredCompanySize === c.value}
-                        onClick={() => set("preferredCompanySize", c.value)} icon={c.icon} label={c.label}/>
+                      <CardOption key={c.value} selected={form.preferredCompanySizes.includes(c.value)}
+                        onClick={() => toggleArray("preferredCompanySizes", c.value)} icon={c.icon} label={c.label}/>
                     ))}
+                    {/* "Qualquer tamanho": marcado quando nenhum porte específico
+                        está, e clicar nele limpa a seleção. */}
+                    <CardOption selected={form.preferredCompanySizes.length === 0}
+                      onClick={() => set("preferredCompanySizes", [])}
+                      icon="🌍" label={t("onboarding.companySize.any")}/>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <button type="button" onClick={() => set("openToRemote", !form.openToRemote)}
-                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.openToRemote ? "bg-[#c98f70]/15 border-[#c98f70] text-[#c98f70]" : "bg-white/5 border-white/10 text-white/60"}`}>
-                    <div className="text-2xl mb-2">🌐</div>
-                    <div className="font-semibold text-sm">{t("onboarding.fields.openToRemote")}</div>
-                    <div className="text-xs opacity-60 mt-0.5">{t("onboarding.fields.openToRemoteDesc")}</div>
-                  </button>
-                  <button type="button" onClick={() => set("availableForTravel", !form.availableForTravel)}
-                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.availableForTravel ? "bg-[#c98f70]/15 border-[#c98f70] text-[#c98f70]" : "bg-white/5 border-white/10 text-white/60"}`}>
-                    <div className="text-2xl mb-2">✈️</div>
-                    <div className="font-semibold text-sm">{t("onboarding.fields.availableForTravel")}</div>
-                    <div className="text-xs opacity-60 mt-0.5">{t("onboarding.fields.availableForTravelDesc")}</div>
-                  </button>
-                </div>
+                {/* "Aberto a remoto" e "Disponível para viagens" ficavam aqui e
+                    saíram do cadastro (Rosber, 14/09 21:10: "está mais voltado
+                    para busca de empregos"). */}
               </div>
             )}
 
-            {/* STEP 5 — Rede institucional (os demais campos repetiam os steps 2 e 4) */}
+            {/* A etapa "Quem sou" existia só para a Rede Institucional e saiu
+                inteira com o campo (Rosber, 14/09 21:15). O que estava gravado
+                em institutionalNetwork continua no banco e no Perfil. */}
+
+            {/* STEP 5 — O QUE TENHO */}
             {step === 5 && (
-              <div className="flex flex-col gap-5">
-                <p className="text-white/40 text-sm -mt-4 mb-2">
-                  {t("onboarding.misc.step6_hint")} <span className="text-white/25">{t("onboarding.misc.optional")}</span>
-                </p>
-                <TextInput label={t("onboarding.misc.institutionalNetwork")} value={form.institutionalNetwork} onChange={v => set("institutionalNetwork", v)}
-                  placeholder={t("onboarding.misc.institutionalNetworkPlaceholder")}/>
-              </div>
-            )}
-
-            {step === 6 && (
               <div className="space-y-5">
                 <p className="text-white/40 text-sm -mt-4 mb-2">
                   {t("onboarding.misc.step7_hint")} <span className="text-white/25">{t("onboarding.misc.optional")}</span>
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {sortOptionsAlphabetically(WHAT_I_HAVE_OPTIONS, i18n.language).map(opt => (
+                  {sortOptionsAlphabetically(WHAT_I_HAVE_OPTIONS.map(o => ({ ...o, label: t(o.chave) })), i18n.language).map(opt => (
                     <TagButton
                       key={opt.id}
                       icon={opt.icon}
@@ -834,46 +1191,47 @@ export default function Onboarding() {
                       onClick={() => toggleArray("whatIHave", opt.id)}
                     />
                   ))}
+                  {/* "Outros" fica sempre no fim, fora da ordem alfabética: é a
+                      porta do texto livre, não mais um ativo da lista. */}
+                  <TagButton icon="✍️" label={t("onboarding.misc.outrosAtivo")}
+                    selected={form.whatIHave.includes(CHAVE_OUTRO_ATIVO)}
+                    onClick={() => toggleArray("whatIHave", CHAVE_OUTRO_ATIVO)}/>
                 </div>
-                {form.whatIHave.length > 0 && (
+                {form.whatIHave.includes(CHAVE_OUTRO_ATIVO) && (
+                  <TextareaInput label={t("onboarding.misc.outrosAtivoRotulo")} required
+                    value={form.whatIHaveOther} onChange={v => set("whatIHaveOther", v)}
+                    placeholder={t("onboarding.misc.outrosAtivoPlaceholder")}
+                    hint={form.whatIHaveOther.trim().length < MINIMO_DO_OUTRO_ATIVO ? t("onboarding.misc.outrosAtivoObrigatorio") : undefined}
+                    limite={LIMITE_DO_OUTRO_ATIVO} assistente/>
+                )}
+                {ativosDoQueTenho.length > 0 && (
                   <div className="mt-4 p-3 rounded-xl bg-[#c98f70]/8 border border-[#c98f70]/20">
                     <p className="text-xs text-[#c98f70]/70 font-medium">
-                      ✦ {form.whatIHave.length} {form.whatIHave.length === 1 ? t("onboarding.misc.assetSelected") : t("onboarding.misc.assetsSelected")}
+                      ✦ {ativosDoQueTenho.length} {ativosDoQueTenho.length === 1 ? t("onboarding.misc.assetSelected") : t("onboarding.misc.assetsSelected")}
                     </p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* STEP 7 — O QUE PRECISO */}
-            {step === 7 && (
+            {/* STEP 6 — O QUE PRECISO */}
+            {step === 6 && (
               <div className="space-y-5">
-                <p className="text-white/40 text-sm -mt-4 mb-2">
-                  {t("onboarding.misc.step8_hint")} <span className="text-white/25">{t("onboarding.misc.optional")}</span>
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {sortOptionsAlphabetically(WHAT_I_NEED_OPTIONS, i18n.language).map(opt => (
-                    <TagButton
-                      key={opt.id}
-                      icon={opt.icon}
-                      label={opt.label}
-                      selected={form.whatINeed.includes(opt.id)}
-                      onClick={() => toggleArray("whatINeed", opt.id)}
-                    />
-                  ))}
+                {/* Texto explicativo e frase discreta do Rosber (14/09 21:24; "conexões", não "Match", 21:34). */}
+                <div className="-mt-4 mb-2">
+                  <p className="text-white/40 text-sm">{t("oQuePreciso.textoExplicativo")}</p>
+                  <p className="text-white/25 text-xs mt-1">{t("oQuePreciso.fraseDiscreta")}</p>
                 </div>
-                {form.whatINeed.length > 0 && (
-                  <div className="mt-4 p-3 rounded-xl bg-blue-500/8 border border-blue-500/20">
-                    <p className="text-xs text-blue-400/70 font-medium">
-                      ◈ {form.whatINeed.length} {form.whatINeed.length === 1 ? t("onboarding.misc.demandSelected") : t("onboarding.misc.demandsSelected")}
-                    </p>
-                  </div>
-                )}
+                {/* Cartões na ordem da mensagem (não alfabética), contador e segunda camada no componente. */}
+                <EditorDoQuePreciso
+                  valor={{ categorias: form.whatINeed, demandas: form.whatINeedDetails }}
+                  onChange={({ categorias, demandas }) => setForm(prev => ({ ...prev, whatINeed: categorias, whatINeedDetails: demandas }))}
+                />
               </div>
             )}
 
-            {/* STEP 8 — Revisão final */}
-            {step === 8 && (
+            {/* STEP 7 — Revisão final */}
+            {step === 7 && (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   {[
@@ -881,8 +1239,8 @@ export default function Onboarding() {
                     { label: t("onboarding.review.location"), value: `${form.city}, ${form.country}`, icon: "📍" },
                     ...(form.gender ? [{ label: t("profile.gender.label"), value: t(`profile.gender.${form.gender === "prefer_not_to_say" ? "preferNotToSay" : form.gender}`), icon: "⚥" }] : []),
                     { label: t("onboarding.review.specialty"), value: normalizePrimarySpecialties(form.primarySpecialties, form.customSpecialty).map(k => t("onboarding.specialties." + k, { defaultValue: k })).join(", "), icon: "⚡" },
-                    { label: t("onboarding.misc.company"), value: form.company || form.currentCompany || "-", icon: "🏢" },
-                    { label: t("onboarding.review.seeking"), value: form.seekingTypes.slice(0, 2).map(k => t("onboarding.seeking." + k, { defaultValue: k })).join(", ") + (form.seekingTypes.length > 2 ? "..." : ""), icon: "🎯" },
+                    { label: t("onboarding.misc.company"), value: form.company || "-", icon: "🏢" },
+                    { label: t("onboarding.review.seeking"), value: form.seekingTypes.slice(0, 2).map(k => rotuloDaBusca(t, k) ?? k).join(", ") + (form.seekingTypes.length > 2 ? "..." : ""), icon: "🎯" },
                     ...(form.currentResources ? [{ label: t("onboarding.fields.currentResources"), value: form.currentResources, icon: "✦" }] : []),
                     { label: t("onboarding.review.sector"), value: form.sector, icon: "🌐" },
                     ...(form.personType ? [{ label: t("profile.business.personType"), value: t(`profile.business.${form.personType === "legal_entity" ? "legalEntity" : form.personType}`), icon: "🏢" }] : []),
@@ -897,13 +1255,14 @@ export default function Onboarding() {
                   ))}
                 </div>
 
-                {/* Resumo O que tenho / O que preciso */}
-                {(form.whatIHave.length > 0 || form.whatINeed.length > 0) && (
+                {/* Resumo O que tenho / O que preciso. O "outros" marcado não
+                    conta como ativo; o texto que a pessoa escreveu conta. */}
+                {(ativosDoQueTenho.length > 0 || form.whatINeed.length > 0) && (
                   <div className="grid grid-cols-2 gap-3">
-                    {form.whatIHave.length > 0 && (
+                    {ativosDoQueTenho.length > 0 && (
                       <div className="p-3 rounded-xl bg-[#c98f70]/8 border border-[#c98f70]/20">
                         <p className="text-xs text-[#c98f70]/70 font-medium mb-1">✦ {t("onboarding.steps.s8_title")}</p>
-                        <p className="text-xs text-white/50">{form.whatIHave.length} {form.whatIHave.length === 1 ? t("onboarding.misc.asset") : t("onboarding.misc.assets")} {form.whatIHave.length === 1 ? t("onboarding.misc.selected") : t("onboarding.misc.selectedPlural")}</p>
+                        <p className="text-xs text-white/50">{ativosDoQueTenho.length} {ativosDoQueTenho.length === 1 ? t("onboarding.misc.asset") : t("onboarding.misc.assets")} {ativosDoQueTenho.length === 1 ? t("onboarding.misc.selected") : t("onboarding.misc.selectedPlural")}</p>
                       </div>
                     )}
                     {form.whatINeed.length > 0 && (
@@ -930,45 +1289,16 @@ export default function Onboarding() {
               </div>
             )}
 
-            {step === 9 && (
-              <div className="space-y-6">
-                <div className="rounded-2xl border border-[#c98f70]/25 bg-[#c98f70]/5 p-6 space-y-4 max-h-[600px] overflow-y-auto">
-                  <h2 className="text-white font-semibold text-lg mb-4">{t("onboarding.terms.title")}</h2>
-
-                  <div className="space-y-4 text-sm text-white/70 leading-relaxed">
-                    <div>
-                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause1_title")}</h3>
-                      <p>{t("onboarding.terms.clause1_text")}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause2_title")}</h3>
-                      <p>{t("onboarding.terms.clause2_text")}</p>
-                      <ul className="list-disc list-inside space-y-1 mt-2 text-xs">
-                        <li>{t("onboarding.terms.clause2_item1")}</li>
-                        <li>{t("onboarding.terms.clause2_item2")}</li>
-                        <li>{t("onboarding.terms.clause2_item3")}</li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h3 className="font-bold text-white mb-2">{t("onboarding.terms.clause3_title")}</h3>
-                      <p>{t("onboarding.terms.clause3_text")}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200" style={{borderColor: form.agreedToTerms ? "#c98f70" : "rgba(255,255,255,0.1)", backgroundColor: form.agreedToTerms ? "rgba(201,143,112,0.1)" : "rgba(255,255,255,0.02)"}}>
-                    <input type="checkbox" checked={form.agreedToTerms} onChange={e => set("agreedToTerms", e.target.checked)} className="w-5 h-5 mt-0.5 cursor-pointer accent-[#c98f70]"/>
-                    <span className="text-sm text-white font-medium">{t("onboarding.terms.accept")}</span>
-                  </label>
-
-                  {!form.agreedToTerms && (
-                    <p className="text-xs text-red-400/70 text-center">{t("onboarding.terms.required")}</p>
-                  )}
-                </div>
-              </div>
+            {/* ETAPA 9 — Termo Geral de Uso (última e única etapa de termos) */}
+            {step === ETAPA_TERMO_GERAL && (
+              <EtapaTermoGeralDeUso
+                carregando={termoGeralQuery.isLoading}
+                erro={termoGeralQuery.isError}
+                documento={documentoTermoGeral}
+                aceito={aceitouTermoGeral}
+                onAceitoChange={aceito => set("termoGeralAceitoId", aceito && documentoTermoGeral ? documentoTermoGeral.id : null)}
+                onTentarDeNovo={() => { void termoGeralQuery.refetch(); }}
+              />
             )}
 
             {/* Navigation */}
@@ -977,7 +1307,9 @@ export default function Onboarding() {
                 className="flex items-center gap-2 text-white/50 hover:text-white text-sm transition-colors duration-200">
                 ← {step > 1 ? t("onboarding.nav.back") : t("onboarding.nav.home")}
               </button>
-              <div className="flex items-center gap-2">
+              {/* Com 9 etapas as bolinhas empurravam o botão para fora da tela no
+                  celular; lá o topo já mostra "etapa / total". */}
+              <div className="hidden sm:flex items-center gap-2">
                 {STEPS.map((_, i) => (
                   <div key={i} className={`rounded-full transition-all duration-300 ${i + 1 === step ? "w-6 h-2 bg-[#c98f70]" : i + 1 < step ? "w-2 h-2 bg-[#c98f70]/60" : "w-2 h-2 bg-white/15"}`}/>
                 ))}
@@ -988,9 +1320,10 @@ export default function Onboarding() {
                   {t("onboarding.nav.continue")} →
                 </button>
               ) : (
-                <button type="button" onClick={handleSubmit} disabled={saveOnboarding.isPending}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-lg shadow-[#c98f70]/20 disabled:opacity-60">
-                  {saveOnboarding.isPending
+                <button type="button" onClick={handleSubmit}
+                  disabled={saveOnboarding.isPending || aceitarTermoGeral.isPending || !canProceed()}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] transition-all duration-200 active:scale-95 shadow-lg shadow-[#c98f70]/20 disabled:opacity-60 disabled:cursor-not-allowed">
+                  {saveOnboarding.isPending || aceitarTermoGeral.isPending
                     ? <><span className="animate-spin">⏳</span> {t("onboarding.nav.analyzing")}</>
                     : <>🚀 {t("onboarding.nav.findMatches")}</>}
                 </button>

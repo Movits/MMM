@@ -1,19 +1,27 @@
 # Termos de Uso e Acordo de Comissionamento (versão provisória)
 
-Texto provisório publicado para que o aceite no fim do cadastro tenha o que
-registrar. Ele repete, em português, as cláusulas que a tela mostra nos 10
-idiomas (`onboarding.terms.*`), e vale até a redação jurídica da Cris chegar.
+<!-- NOTA INTERNA — não vai para o texto que a dona aceita.
 
-Publicar com:
+     O script publica só o corpo do termo: este bloco de comentário, e tudo a
+     partir da linha marcadora de notas internas lá embaixo, ficam de fora
+     (recortarCorpoDoTermo, em scripts/publicar-documento.mjs).
 
-```bash
-node scripts/publicar-documento.mjs contrato_comissao docs/termos/contrato-comissao-provisorio.md --env .env.producao
-```
+     Texto provisório publicado para que o aceite no fim do cadastro tenha o que
+     registrar. Ele repetia, em português, as cláusulas que a tela mostrava nos 10
+     idiomas (onboarding.terms.*), e vale até a redação jurídica da Cris chegar.
 
-Quando a versão final sair, publique-a do mesmo jeito: a versão 2 vira a
-vigente, e todas as membras precisam aceitar de novo.
+     DESDE 14/09/2026 O CADASTRO NÃO MOSTRA NEM REGISTRA MAIS ESTE CONTRATO
+     (Rosber, 21:34): a etapa "Termos e Condições" foi substituída pelo Termo Geral
+     de Uso (termo_geral_de_uso, docs/termos/termo-geral-de-uso.md), que trata de
+     intermediação e remuneração nas cláusulas 12 a 15. O tipo contrato_comissao
+     e os aceites já gravados continuam no banco.
 
----
+     Publicar com:
+       node scripts/publicar-documento.mjs contrato_comissao docs/termos/contrato-comissao-provisorio.md --env .env.producao
+
+     Quando a versão final sair, publique-a do mesmo jeito: a versão 2 vira a
+     vigente, e todas as membras precisam aceitar de novo.
+-->
 
 ## 1. Objeto
 
@@ -46,6 +54,8 @@ MMM, nas seguintes condições:
 Este texto é provisório e está em revisão jurídica. Quando a versão final for
 publicada, você será avisada e precisará aceitá-la novamente. A data e o texto
 exato deste aceite ficam registrados.
+
+<!-- NOTAS INTERNAS -->
 
 ---
 

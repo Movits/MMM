@@ -146,6 +146,8 @@ vi.mock("./_core/llm", () => ({
     return invokeLLM(...(args as []));
   },
 }));
+// Os bytes daqui são texto, não áudio: a medição da duração é dublada.
+vi.mock("./duracao-do-audio", () => ({ medirDuracaoDoAudio: () => 30 }));
 
 const servico = await import("./meeting-service");
 const { GeminiCotaEsgotadaError } = await import("./gemini");
@@ -176,8 +178,8 @@ const primeira = (filtro: (o: Operacao) => boolean) => estado.operacoes.findInde
 const ultima = (filtro: (o: Operacao) => boolean) => estado.operacoes.reduce((achada, o, i) => (filtro(o) ? i : achada), -1);
 const linhasInseridas = (tabela: unknown) => de("insert", tabela).flatMap(o => o.linhas ?? []);
 const falhasGravadas = () => de("update", schema.meetings).filter(o => o.valores?.status === "failed");
-const TABELAS_DERIVADAS = ["meeting_contact_suggestions", "meeting_entities", "meeting_transcripts", "meeting_transcript_translations"];
-const derivadas = () => [schema.meetingContactSuggestions, schema.meetingEntities, schema.meetingTranscripts, schema.meetingTranscriptTranslations];
+const TABELAS_DERIVADAS = ["meeting_contact_suggestions", "network_sugestoes", "meeting_entities", "meeting_transcripts", "meeting_transcript_translations"];
+const derivadas = () => [schema.meetingContactSuggestions, schema.networkSugestoes, schema.meetingEntities, schema.meetingTranscripts, schema.meetingTranscriptTranslations];
 
 async function reprocessar() {
   const { trabalho } = await servico.iniciarReprocessamento(DONA, REUNIAO);
@@ -208,7 +210,8 @@ beforeEach(() => {
   storagePut.mockClear();
   storageDelete.mockClear();
   transcribeWithGemini.mockReset();
-  transcribeWithGemini.mockResolvedValue({ text: "Transcrição nova.", segments: [], language: "pt" });
+  // O nome da sugestão precisa estar na fala (nomeSustentadoPelaTranscricao).
+  transcribeWithGemini.mockResolvedValue({ text: "Transcrição nova da conversa com a Ana Souza.", segments: [], language: "pt" });
   invokeLLM.mockReset();
   invokeLLM.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({
     entities: [{ type: "person", value: "Ana", normalizedValue: null, confidence: 0.8 }],
@@ -355,7 +358,7 @@ describe("reprocessar — com o áudio guardado", () => {
     expect(de("delete").map(soPredicado)).toEqual(TABELAS_DERIVADAS.map(daReuniaoDaDona));
   });
 
-  it("promove a 'ready' só com a ficha da tomada; a transcrição nova leva a duração da gravação", async () => {
+  it("promove a 'ready' só com a ficha da tomada; a transcrição nova leva a duração MEDIDA nos bytes, não a guardada na gravação", async () => {
     await reprocessar();
     const [tomada, pronta] = de("update", schema.meetings);
     expect(pronta.valores).toMatchObject({ status: "ready", processingError: null });
@@ -365,7 +368,7 @@ describe("reprocessar — com o áudio guardado", () => {
     });
     expect(estado.reuniao).toMatchObject({ status: "ready", processingError: null });
     const [transcricao] = linhasInseridas(schema.meetingTranscripts);
-    expect(transcricao).toMatchObject({ meetingId: REUNIAO, ownerId: DONA, transcript: "Transcrição nova.", durationSeconds: 95 });
+    expect(transcricao).toMatchObject({ meetingId: REUNIAO, ownerId: DONA, transcript: "Transcrição nova da conversa com a Ana Souza.", durationSeconds: 30 });
     expect(linhasInseridas(schema.meetingContactSuggestions).map(sugestao => sugestao.fullName)).toEqual(["Ana Souza"]);
     expect(falhasGravadas()).toEqual([]);
   });

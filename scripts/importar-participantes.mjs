@@ -17,10 +17,19 @@
 // deveria descobrir um erro de coluna depois de criar mil contas.
 //
 // O que cada conta recebe, igual ao cadastro pela tela (server/auth.ts,
-// `registerUser`): `openId` "email_" + 16 bytes aleatórios, papel prata,
+// `registerUser`): `openId` "email_" + 16 bytes aleatórios, papel BRONZE,
 // `loginMethod` "email", ativa, e-mail não verificado e onboarding pendente.
 // A ÚNICA diferença: `passwordHash` fica nulo, porque senha não entra por
 // planilha. Cada participante define a dela em "Esqueci minha senha".
+//
+// Bronze, e não Prata, pela governança de 14/09: a Prata vem da QUALIDADE do
+// perfil (shared/qualificacao-do-perfil.ts), nunca da planilha. A planilha não
+// traz o que a régua lê do jeito que a tela grava (a bio costuma vir vazia), e
+// este script roda em `node` puro, sem importar o TypeScript de shared/; julgar
+// aqui seria copiar a régua e deixá-la divergir. A promoção acontece no mesmo
+// ponto de quem se cadastra pela tela: `reavaliarNivelPeloPerfil`
+// (server/nivel-do-perfil.ts), chamado ao concluir o onboarding — que a conta
+// importada ainda precisa fazer — e a cada Perfil salvo.
 //
 // Idempotente pelo e-mail: rodar duas vezes com a mesma planilha não duplica
 // ninguém, e o relatório diz quantas já existiam. Linha que já existe NÃO é
@@ -36,7 +45,7 @@
 import mysql from "mysql2/promise";
 import crypto from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
-import { prepararImportacao, resumo } from "./importacao/planilha.mjs";
+import { prepararImportacao, resumo, destinoDasOutrasLinhas } from "./importacao/planilha.mjs";
 
 // As aspas NÃO são enfeite: os campos de possui/procura levam ';' dentro, que é
 // o mesmo separador das colunas. Sem elas, o próprio script lê este exemplo
@@ -104,6 +113,9 @@ if (leitura.recusadas.length) {
   console.log(`\nLINHAS RECUSADAS (${leitura.recusadas.length}) — corrija a planilha e rode de novo:`);
   for (const r of leitura.recusadas.slice(0, 40)) console.log(`  linha ${r.numero}: ${r.erros.join("; ")}`);
   if (leitura.recusadas.length > 40) console.log(`  ... e mais ${leitura.recusadas.length - 40}`);
+  // Quem sabe se alguém entrou é aqui, não o parser: no ensaio nada foi gravado,
+  // e a recusa não pode terminar dizendo que "as outras entraram normalmente".
+  console.log(`  ${destinoDasOutrasLinhas(aplicar)}`);
 }
 if (leitura.avisos.length) {
   console.log(`\nAVISOS (${leitura.avisos.length}) — a conta entra, mas leia:`);
@@ -166,7 +178,7 @@ try {
       await conexao.beginTransaction();
       const [res] = await conexao.execute(
         "INSERT INTO `users` (`openId`, `name`, `email`, `passwordHash`, `emailVerified`, `loginMethod`, `role`, `country`, `company`, `position`, `isActive`, `isVerified`, `onboardingCompleted`, `lastSignedIn`) " +
-        "VALUES (?, ?, ?, NULL, 0, 'email', 'silver', ?, ?, ?, 1, 0, 0, NOW())",
+        "VALUES (?, ?, ?, NULL, 0, 'email', 'bronze', ?, ?, ?, 1, 0, 0, NOW())",
         [openId, p.nome, p.email, p.pais, p.empresa, p.cargo],
       );
       const id = Number(res.insertId);

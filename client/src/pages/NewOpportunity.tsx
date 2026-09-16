@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { AssistenteDeTexto } from "@/components/AssistenteDeTexto";
 import { toast } from "sonner";
 import { FTSBadge } from "./Opportunities";
 import { sortOptionsAlphabetically } from "@shared/option-sorting";
@@ -18,14 +19,19 @@ import {
   HelpCircle, AlertOctagon, Loader2, ChevronRight
 } from "lucide-react";
 
+/** O mesmo teto de `opportunities.create` (description: z.string().max(5000)). */
+const LIMITE_DA_DESCRICAO = 5000;
+
 export default function NewOpportunity() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
 
-  // A chave é fixa (independe do idioma da tela); só o rótulo exibido muda —
-  // é o que faz o filtro por setor (server/db.ts) achar oportunidades criadas
-  // em qualquer idioma. Ver client/src/lib/opportunity-sectors.ts.
+  // Setores: fonte ÚNICA em shared/setores.ts, a mesma do cadastro e dos
+  // "Setores de interesse" do Perfil (reteste v4, item 7). A chave é fixa
+  // (independe do idioma da tela); só o rótulo exibido muda — é o que faz o
+  // filtro por setor (server/db.ts) achar oportunidades criadas em qualquer
+  // idioma. Ver client/src/lib/opportunity-sectors.ts.
   const SECTORS = OPPORTUNITY_SECTOR_KEYS.map(key => ({ key, label: opportunitySectorLabel(t, key) }));
 
   const COUNTRIES = [
@@ -168,6 +174,14 @@ export default function NewOpportunity() {
   const handleSubmit = () => {
     if (!title.trim() || title.length < 10) return toast.error(t("newOpportunity.toastTitleTooShort"));
     if (!description.trim() || description.length < 30) return toast.error(t("newOpportunity.toastDescriptionTooShort"));
+    // O maxLength do Textarea só barra digitação e colagem: o ditado e a revisão
+    // aceita (AssistenteDeTexto) põem o valor por código e passam do limite. Sem
+    // esta trava o servidor recusa (z.string().max) e o toast mostrava o JSON do zod.
+    // Mede o texto aparado, que é o que sobe e o que o servidor confere.
+    const tamanhoDaDescricao = description.trim().length;
+    if (tamanhoDaDescricao > LIMITE_DA_DESCRICAO) {
+      return toast.error(t("newOpportunity.toastDescriptionTooLong", { atual: tamanhoDaDescricao }));
+    }
     if (!type) return toast.error(t("newOpportunity.toastSelectType"));
 
     createMutation.mutate({
@@ -188,7 +202,7 @@ export default function NewOpportunity() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
-      <div className="border-b border-white/10 bg-[#151312]/95 backdrop-blur-xl sticky top-0 z-40">
+      <div className="border-b border-white/10 bg-[#151312]/95 backdrop-blur-xl sticky top-16 z-30">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/opportunities")} className="text-white/50 hover:text-white transition-colors">
@@ -249,11 +263,13 @@ export default function NewOpportunity() {
                 placeholder={t("newOpportunity.descriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                maxLength={5000}
+                maxLength={LIMITE_DA_DESCRICAO}
                 rows={8}
                 className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50 resize-none"
               />
-              <p className="text-white/25 text-xs mt-1 text-right">{description.length}/5000</p>
+              {/* Gravar áudio e Revisar texto: só mudam o campo; publicar continua sendo o botão da página. */}
+              <AssistenteDeTexto valor={description} onChange={setDescription} />
+              <p className={`text-xs mt-1 text-right ${description.length > LIMITE_DA_DESCRICAO ? "text-red-400" : "text-white/25"}`}>{description.length}/{LIMITE_DA_DESCRICAO}</p>
             </div>
 
             {/* ── ANÁLISE PRÉVIA IA (Item 4.1) ── */}

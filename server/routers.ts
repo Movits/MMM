@@ -23,6 +23,8 @@ import { meetingsRouter } from "./routers/meetings";
 import { memoryRouter } from "./routers/memory";
 import { intelligentMatchesRouter } from "./routers/matches";
 import { distribuicaoRouter } from "./routers/distribuicao";
+import { networkInteligenteRouter } from "./routers/networkInteligente";
+import { assistenteTextoRouter } from "./routers/assistenteTexto";
 
 // ============================================================
 // ROUTER PRINCIPAL — cada área vive em server/routers/<área>.ts
@@ -52,6 +54,9 @@ export const appRouter = router({
   memory: memoryRouter,
   intelligentMatches: intelligentMatchesRouter,
   distribuicao: distribuicaoRouter,
+  networkInteligente: networkInteligenteRouter,
+  // "Gravar áudio" e "Revisar texto" dos campos livres (cadastro, Perfil, oportunidade).
+  assistenteTexto: assistenteTextoRouter,
 });
 
 export type AppRouter = typeof appRouter;

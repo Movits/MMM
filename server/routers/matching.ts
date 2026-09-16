@@ -1,13 +1,13 @@
-import { z } from "zod";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
 import { exigirDb, createNotification } from "../db";
-import { opportunities, userProfiles, users } from "../../drizzle/schema";
+import { opportunities, platformNotifications, userProfiles, users } from "../../drizzle/schema";
 import { usersComConsentimento } from "./consent";
+import { insightParaExibir } from "../vocabulario-da-conexao";
 import {
   DESCRICAO_NA_RECOMENDACAO, PROPRIEDADES_DO_PORTAO, REGRA_DA_DEMANDA_EXPRESSA,
-  cortarEmPalavra, passaNoPortao, textoEscritoPelaPessoa,
+  cortarEmPalavra, descreverDemandasParaIA, necessidadesEscritasDoPerfil, passaNoPortao, rotularBuscas, textoEscritoPelaPessoa,
 } from "../portao-da-demanda-expressa";
 
 // ============================================================
@@ -46,8 +46,14 @@ export const matchingRouter = router({
       profile.primarySpecialty ? `Especialidade: ${profile.primarySpecialty}` : "",
       profile.sector ? `Setor: ${profile.sector}` : "",
       profile.whatIHave ? `O que tenho: ${JSON.stringify(profile.whatIHave)}` : "",
-      profile.whatINeed ? `O que preciso: ${JSON.stringify(profile.whatINeed)}` : "",
-      profile.seekingTypes ? `Buscando: ${JSON.stringify(profile.seekingTypes)}` : "",
+      // "O que preciso" leva também o texto de "Outra necessidade": é necessidade declarada (14/09).
+      necessidadesEscritasDoPerfil(profile).length ? `O que preciso: ${JSON.stringify(necessidadesEscritasDoPerfil(profile))}` : "",
+      // A segunda camada de "O que preciso" (14/09): cada demanda com a categoria e os qualificadores
+      // rotulados. A descrição já foi em "O que preciso" (a de Compradores não: é o que ela vende); setor,
+      // país e região só qualificam (regra 5).
+      descreverDemandasParaIA(profile) ? `Demandas detalhadas:\n${descreverDemandasParaIA(profile)}` : "",
+      // As buscas vão pelo rótulo, com "Serviço Especializado" marcada como genérica (a regra 5 do prompt).
+      rotularBuscas(profile.seekingTypes) ? `Buscando: ${rotularBuscas(profile.seekingTypes)}` : "",
       profile.interestSectors ? `Setores de interesse: ${JSON.stringify(profile.interestSectors)}` : "",
       profile.country ? `País: ${profile.country}` : "",
     ].filter(Boolean).join("\n");
@@ -67,8 +73,8 @@ export const matchingRouter = router({
     const textoDaOportunidade = activeOpps.map((opp, i) => textoEscritoPelaPessoa(opp.title, opp.tags, descricaoCortada[i]));
     const oppsContext = contextoPorOportunidade.join("\n");
     const perfilNoPortao = {
-      whatIHave: profile.whatIHave, whatINeed: profile.whatINeed,
-      seekingTypes: profile.seekingTypes, lookingForInvestment: profile.lookingForInvestment,
+      whatIHave: profile.whatIHave, whatINeed: profile.whatINeed, whatINeedDetails: profile.whatINeedDetails,
+      seekingTypes: profile.seekingTypes, seekingOtherNeed: profile.seekingOtherNeed, lookingForInvestment: profile.lookingForInvestment,
       activityArea: profile.activityArea, primarySpecialty: profile.primarySpecialty,
     };
 
@@ -81,7 +87,7 @@ export const matchingRouter = router({
           // precisar" dele. A regra da demanda expressa é o contrário disso, e
           // vale só para serviço — os outros tipos seguem com sinônimos e
           // setores relacionados.
-          content: `Você é o motor de matchmaking semântico da plataforma MMM. Analise o perfil da usuária e as oportunidades disponíveis. Retorne um JSON com os índices das oportunidades mais compatíveis e o score de compatibilidade (0-100) para cada uma. Para produtos, ativos, investimento, conexões, tecnologia e imóveis, considere sinônimos, setores relacionados e a sinergia entre "O que tenho" e "O que preciso". Retorne apenas as oportunidades com score >= 40. Máximo de 10 resultados.
+          content: `Você é o motor semântico de recomendação da plataforma WRW (Women Rocking the World). Analise o perfil da usuária e as oportunidades disponíveis. Retorne um JSON com os índices das oportunidades mais compatíveis e o score de compatibilidade (0-100) para cada uma. Para produtos, ativos, investimento, conexões, tecnologia e imóveis, considere sinônimos, setores relacionados e a sinergia entre "O que tenho" e "O que preciso". Retorne apenas as oportunidades com score >= 40. Máximo de 10 resultados. A usuária lê o "reason": nele (e só nele) nunca use a palavra "match"; se precisar nomear a sugestão, diga "conexão sugerida"; "compatibilidade" continua "compatibilidade". Isso não muda "tipoDaOferta": "conexao" continua sendo só o item que oferece contatos/networking.
 
 ${REGRA_DA_DEMANDA_EXPRESSA}`,
         },
@@ -140,14 +146,16 @@ ${REGRA_DA_DEMANDA_EXPRESSA}`,
       .map((m) => ({
         ...activeOpps[m.index],
         compatibilityScore: m.score,
-        compatibilityReason: m.reason,
+        // O prompt pede "conexão sugerida"; o que ainda disser "match" não vai à tela.
+        compatibilityReason: insightParaExibir(m.reason) ?? "",
       }));
   }),
-
-  // Disparar alertas para nova oportunidade publicada com alta compatibilidade (>= 80%)
-  checkAndNotifyHighCompatibility: protectedProcedure
-    .input(z.object({ opportunityId: z.number() }))
-    .mutation(async ({ input }) => notifyHighCompatibilityForOpportunity(input.opportunityId)),
+  // `checkAndNotifyHighCompatibility` saiu daqui (15/09): era um protectedProcedure
+  // sem checagem nenhuma de quem pedia, e qualquer conta logada, até Bronze, podia
+  // chamá-lo em laço para a oportunidade de outra pessoa. Cada chamada lia 200
+  // perfis, mandava todos ao LLM e repetia as notificações. Nenhuma tela o chamava:
+  // o único gatilho legítimo é a aprovação da moderação (president.validateOpportunity),
+  // que chama a função abaixo direto no servidor.
 });
 
 // Fora do router para a aprovação da moderação também disparar os alertas: a
@@ -166,8 +174,12 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
           role: users.role,
           whatIHave: userProfiles.whatIHave,
           whatINeed: userProfiles.whatINeed,
+          // A descrição das demandas detalhadas vai em "preciso" e ao portão, como "Outra necessidade".
+          whatINeedDetails: userProfiles.whatINeedDetails,
           sector: userProfiles.sector,
           seekingTypes: userProfiles.seekingTypes,
+          // O texto de "Outra necessidade" é necessidade declarada: vai ao prompt em "preciso" e ao portão.
+          seekingOtherNeed: userProfiles.seekingOtherNeed,
           interestSectors: userProfiles.interestSectors,
           activityArea: userProfiles.activityArea,
           // Lidos só pelo portão (base expressa fora do serviço, e o piso quando
@@ -190,9 +202,28 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
       // e manda tudo ao LLM — isso é cruzamento, e dado de quem não aceitou o
       // termo não entra nem no prompt.
       const comTermo = await usersComConsentimento(elegiveis.map(perfil => perfil.userId), "termo_smart_match");
-      const profiles = elegiveis.filter(perfil => comTermo.has(perfil.userId));
+      const autorizadas = elegiveis.filter(perfil => comTermo.has(perfil.userId));
       // Ninguém autorizado = ninguém para alertar. Chamar o LLM com a lista
       // vazia seria um no-op garantido queimando uma chamada da cota do dia.
+      if (!autorizadas.length) return { notified: 0 };
+
+      // Um alerta por (usuária, oportunidade). A moderação pode aprovar a mesma
+      // oportunidade de novo (voltou a "pending" e foi reaprovada, ou a
+      // presidência clicou duas vezes), e cada aprovação repetia o aviso para as
+      // mesmas pessoas. Quem já tem o aviso desta oportunidade sai ANTES do LLM:
+      // não recebe outro e não gasta cota. O vínculo é o actionUrl, o mesmo que
+      // exclusao-de-conta.ts usa para apagar os avisos de oportunidade removida.
+      const actionUrl = `/opportunities/${opp.id}`;
+      const jaAvisadas = await db
+        .select({ userId: platformNotifications.userId })
+        .from(platformNotifications)
+        .where(and(
+          eq(platformNotifications.type, "new_match"),
+          eq(platformNotifications.actionUrl, actionUrl),
+          inArray(platformNotifications.userId, autorizadas.map(perfil => perfil.userId)),
+        ));
+      const idsJaAvisadas = new Set(jaAvisadas.map(linha => linha.userId));
+      const profiles = autorizadas.filter(perfil => !idsJaAvisadas.has(perfil.userId));
       if (!profiles.length) return { notified: 0 };
 
       // A descrição vai INTEIRA (é uma oportunidade só): com o portão, a
@@ -205,7 +236,7 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
       // com quem OFERECE esse algo. Antes só "preciso" ia ao alerta, então quem
       // poderia suprir a oportunidade nunca era avisada — metade do cruzamento.
       const profilesContext = profiles.map((p, i) =>
-        `[${i}] userId:${p.userId} setor:${p.sector || "N/A"} tenho:${JSON.stringify(p.whatIHave || [])} preciso:${JSON.stringify(p.whatINeed || [])} interesse:${JSON.stringify(p.interestSectors || [])}`
+        `[${i}] userId:${p.userId} setor:${p.sector || "N/A"} tenho:${JSON.stringify(p.whatIHave || [])} preciso:${JSON.stringify(necessidadesEscritasDoPerfil(p))} busca:${JSON.stringify(rotularBuscas(p.seekingTypes))} interesse:${JSON.stringify(p.interestSectors || [])}`
       ).join("\n");
 
       const aiResp = await invokeLLM({
@@ -214,7 +245,7 @@ export async function notifyHighCompatibilityForOpportunity(opportunityId: numbe
             role: "system",
             // A mesma regra da recomendação: o "tenho" de um perfil que é
             // serviço só rende alerta se a oportunidade DECLARA precisar dele.
-            content: `Você é o motor de alertas do MMM. Analise uma oportunidade e os perfis de usuárias para identificar quem tem alta compatibilidade (>= 80%). Retorne apenas os índices dos perfis compatíveis com score >= 80.
+            content: `Você é o motor de alertas da WRW (Women Rocking the World). Analise uma oportunidade e os perfis de usuárias para identificar quem tem alta compatibilidade (>= 80%). Retorne apenas os índices dos perfis compatíveis com score >= 80.
 
 ${REGRA_DA_DEMANDA_EXPRESSA}`,
           },
@@ -265,7 +296,7 @@ ${REGRA_DA_DEMANDA_EXPRESSA}`,
           type: "new_match",
           title: `⚡ Nova oportunidade ${alert.score}% compatível com você!`,
           body: `"${opp.title}" foi publicada e tem alta compatibilidade com seu perfil. Confira agora!`,
-          actionUrl: `/opportunities/${opp.id}`,
+          actionUrl,
           isRead: false,
         });
         notified++;

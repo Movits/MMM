@@ -7,7 +7,9 @@ import { trpc } from "@/lib/trpc";
 import { LANGUAGES } from "@/i18n";
 import { AppHeader } from "@/components/AppHeader";
 import { ErroDeConsulta } from "@/components/ErroDeConsulta";
+import { PessoaSugeridaNaReuniao } from "@/components/PessoaSugeridaNaReuniao";
 import { segmentarTranscricao, TIPOS_DE_ENTIDADE, type TipoEntidade } from "@/lib/transcricao-destacada";
+import { lerDuracaoNoNavegador } from "@/lib/duracao-no-navegador";
 import { CODIGO_ERRO_INTERROMPIDO, LIMITE_PROCESSAMENTO_MS, MENSAGEM_AUDIO_GUARDADO_AUSENTE } from "@shared/const";
 
 const MAX_DURATION = 10 * 60;
@@ -71,17 +73,6 @@ function readAsDataUrl(t: TranslateFn, file: Blob) {
   });
 }
 
-function inferAudioDuration(file: File) {
-  return new Promise<number>((resolve) => {
-    const audio = document.createElement("audio");
-    const url = URL.createObjectURL(file);
-    const finish = (duration: number) => { URL.revokeObjectURL(url); resolve(Number.isFinite(duration) && duration > 0 ? Math.ceil(duration) : 60); };
-    audio.onloadedmetadata = () => finish(audio.duration);
-    audio.onerror = () => finish(60);
-    audio.src = url;
-  });
-}
-
 function recordedMimeType(value: string) {
   if (value.includes("ogg")) return "audio/ogg" as const;
   if (value.includes("wav")) return "audio/wav" as const;
@@ -90,7 +81,7 @@ function recordedMimeType(value: string) {
 }
 
 export default function Meetings() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   // Enquanto alguma reunião processa (o reprocessamento roda em segundo plano),
@@ -202,7 +193,10 @@ export default function Meetings() {
     if (!mimeType) return toast.error(t("meetings.unsupportedFormat"));
     if (file.size > 10 * 1024 * 1024) return toast.error(t("meetings.fileTooLarge"));
     try {
-      const [audioBase64, durationSeconds] = await Promise.all([readAsDataUrl(t, file), inferAudioDuration(file)]);
+      const [audioBase64, durationSeconds] = await Promise.all([readAsDataUrl(t, file), lerDuracaoNoNavegador(file)]);
+      // Sem duração legível, recusa: assumir um valor (eram 60 s) deixava um
+      // áudio de 25 minutos passar por esta conferência. O servidor mede de novo.
+      if (durationSeconds === null) return toast.error(t("meetings.audioDurationUnreadable"));
       if (durationSeconds > MAX_DURATION) return toast.error(t("meetings.audioTooLong"));
       const created = await createMeeting.mutateAsync({ title: title.trim(), consentGranted: true, language: "pt" });
       setMeetingId(created.id);
@@ -249,30 +243,39 @@ export default function Meetings() {
     setRecording(false);
   }
 
-  if (screen === "new") {
-    return <MeetingRecorder
+  // O cabeçalho (menu global, sino, idioma) sai de UM lugar só, acima dos três
+  // ramos da tela. Ele estava montado DENTRO do ramo da lista, e "nova reunião"
+  // e o detalhe ficavam sem menu nenhum: a rota /meetings é isenta do cabeçalho
+  // global justamente porque a página monta o seu (App.tsx, `cabecalhoProprio`),
+  // então ali não sobrava nada — de dentro da gravação só se navegava voltando.
+  // É o pedido do Rosber de 14/09 ("o menu sempre visível"), que na entrega de
+  // 15/09 tinha ficado valendo só para a lista.
+  // Guarda: client/src/App.cabecalho-de-todas-as-telas.test.ts, que agora lê os
+  // ramos de cada página isenta, e client/src/pages/Meetings.cabecalho.test.tsx.
+  const conteudo = screen === "new" ? (
+    <MeetingRecorder
       title={title} setTitle={setTitle} consent={consent} setConsent={setConsent}
       recording={recording} elapsed={elapsed} processing={starting || finalizing || submitRecording.isPending}
       microphoneIssue={microphoneIssue} audioInput={audioInput} capturedAudio={capturedAudio}
       onProcessCaptured={processCapturedAudio} onDiscardCaptured={discardCapturedAudio}
       onStart={startRecording} onStop={stopRecording} onUpload={uploadAudio} onBack={() => { if (!recording) setScreen("list"); }}
-    />;
-  }
-  if (screen === "detail" && meetingId) {
-    return <MeetingDetail meetingId={meetingId} onBack={() => setScreen("list")} />;
-  }
-
-  return <><AppHeader title={t("meetings.pageTitle")} backTo="/dashboard"/>
-  <main className="min-h-screen text-white px-4 py-8 md:px-8 bg-transparent">
-    <div className="max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-        <div><p className="text-amber-300 text-sm font-semibold tracking-wide">{t("meetings.privateSecureBadge")}</p><h1 className="text-3xl md:text-4xl font-bold mt-1">{t("meetings.heroTitle")}</h1><p className="text-white/55 mt-2 max-w-2xl">{t("meetings.heroSubtitle")}</p></div>
-        <button onClick={() => setScreen("new")} className="inline-flex justify-center items-center gap-2 rounded-xl bg-[#c98f70] text-[#1a120c] font-bold px-5 py-3 hover:bg-[#efcba8]"><Plus size={18}/> {t("meetings.newMeetingButton")}</button>
+    />
+  ) : screen === "detail" && meetingId ? (
+    <MeetingDetail meetingId={meetingId} onBack={() => setScreen("list")} />
+  ) : (
+    <main className="min-h-screen text-white px-4 py-8 md:px-8 bg-transparent">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+          <div><p className="text-amber-300 text-sm font-semibold tracking-wide">{t("meetings.privateSecureBadge")}</p><h1 className="text-3xl md:text-4xl font-bold mt-1">{t("meetings.heroTitle")}</h1><p className="text-white/55 mt-2 max-w-2xl">{t("meetings.heroSubtitle")}</p></div>
+          <button onClick={() => setScreen("new")} className="inline-flex justify-center items-center gap-2 rounded-xl bg-[#c98f70] text-[#1a120c] font-bold px-5 py-3 hover:bg-[#efcba8]"><Plus size={18}/> {t("meetings.newMeetingButton")}</button>
+        </div>
+        <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100/80 mb-7"><CircleAlert size={17} className="inline mr-2"/>{t("meetings.consentNotice")}</div>
+        {isLoading ? <div className="py-20 text-center text-white/45"><Loader2 className="animate-spin inline mr-2"/>{t("meetings.loadingList")}</div> : isError && !meetings ? <ErroDeConsulta erro={error} aoTentarDeNovo={() => refetch()} /> : !meetings?.length ? <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center"><Mic className="mx-auto text-amber-300 mb-4" size={34}/><h2 className="font-semibold text-xl">{t("meetings.emptyTitle")}</h2><p className="text-white/45 mt-2">{t("meetings.emptySubtitle")}</p></div> : <div className="grid gap-3">{meetings.map(meeting => <button key={meeting.id} onClick={() => { setMeetingId(meeting.id); setScreen("detail"); }} className="text-left rounded-2xl border border-white/10 bg-white/[0.035] hover:bg-white/[0.07] p-5 transition-colors"><div className="flex items-center justify-between gap-4"><div><h2 className="font-semibold">{meeting.title}</h2><p className="text-xs text-white/45 mt-1">{new Date(meeting.createdAt).toLocaleString(i18n.language)}</p></div><span className={`border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(t, meeting.status)}</span></div></button>)}</div>}
       </div>
-      <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100/80 mb-7"><CircleAlert size={17} className="inline mr-2"/>{t("meetings.consentNotice")}</div>
-      {isLoading ? <div className="py-20 text-center text-white/45"><Loader2 className="animate-spin inline mr-2"/>{t("meetings.loadingList")}</div> : isError && !meetings ? <ErroDeConsulta erro={error} aoTentarDeNovo={() => refetch()} /> : !meetings?.length ? <div className="rounded-3xl border border-dashed border-white/15 px-6 py-20 text-center"><Mic className="mx-auto text-amber-300 mb-4" size={34}/><h2 className="font-semibold text-xl">{t("meetings.emptyTitle")}</h2><p className="text-white/45 mt-2">{t("meetings.emptySubtitle")}</p></div> : <div className="grid gap-3">{meetings.map(meeting => <button key={meeting.id} onClick={() => { setMeetingId(meeting.id); setScreen("detail"); }} className="text-left rounded-2xl border border-white/10 bg-white/[0.035] hover:bg-white/[0.07] p-5 transition-colors"><div className="flex items-center justify-between gap-4"><div><h2 className="font-semibold">{meeting.title}</h2><p className="text-xs text-white/45 mt-1">{new Date(meeting.createdAt).toLocaleString("pt-BR")}</p></div><span className={`border rounded-full px-3 py-1 text-xs font-semibold ${statusClass(meeting.status)}`}>{statusLabel(t, meeting.status)}</span></div></button>)}</div>}
-    </div>
-  </main></>;
+    </main>
+  );
+
+  return <><AppHeader title={t("meetings.pageTitle")} backTo="/dashboard"/>{conteudo}</>;
 }
 
 function MeetingRecorder(props: { title: string; setTitle: (value: string) => void; consent: boolean; setConsent: (value: boolean) => void; recording: boolean; elapsed: number; processing: boolean; microphoneIssue: string | null; audioInput: React.RefObject<HTMLInputElement | null>; capturedAudio: { url: string; durationSeconds: number } | null; onProcessCaptured: () => void; onDiscardCaptured: () => void; onStart: () => void; onStop: () => void; onUpload: (file: File) => void; onBack: () => void }) {
@@ -317,7 +320,14 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
   // engano é fácil. O mutate só sai do botão do modal.
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const decideEntity = trpc.meetings.decideEntity.useMutation({ onSuccess: () => utils.meetings.get.invalidate({ meetingId }) });
-  const decideContact = trpc.meetings.decideContactSuggestion.useMutation({ onSuccess: () => utils.meetings.get.invalidate({ meetingId }) });
+  // Meu Network Inteligente: o que a IA propôs de O Que Tenho / O Que Preciso
+  // para cada pessoa da reunião, ainda pendente de confirmação.
+  const pendenciasDaReuniao = trpc.networkInteligente.pendencias.useQuery({ meetingId }, { refetchOnWindowFocus: false });
+  // Recusada (CONFLICT: já decidida em outra aba), a tela relê o estado real da sugestão.
+  const decideContact = trpc.meetings.decideContactSuggestion.useMutation({
+    onError: erro => toast.error(erro.message),
+    onSettled: () => { void utils.meetings.get.invalidate({ meetingId }); void pendenciasDaReuniao.refetch(); },
+  });
   // A resposta da tradução é aplicada no callback do próprio mutate (lá embaixo),
   // que só dispara para o ÚLTIMO pedido: a tradução de uma transcrição trocada
   // por um reprocessamento, chegando atrasada, não sobrescreve a da nova.
@@ -352,6 +362,10 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
     if (statusAnterior.current === "processing" && status === "ready") {
       toast.success(t("meetings.processedSuccess"));
       setTab("summary");
+      // As pendências de Tenho/Preciso foram lidas antes do fim, com as pessoas
+      // da tentativa anterior (ou nenhuma), e a consulta não se relê sozinha. O
+      // reset tira o dado velho da tela (vira "carregando", não FALTANDO) e relê.
+      void utils.networkInteligente.pendencias.reset({ meetingId });
     } else if (statusAnterior.current === "processing" && status === "failed") {
       toast.error(t("meetings.processError"));
     }
@@ -433,7 +447,7 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
     </div>}
     {emProcessamento && <div role="status" className="mb-6 rounded-xl border border-amber-300/25 bg-amber-300/10 p-4 text-amber-100"><Loader2 className="inline animate-spin mr-2" size={16}/>{t("meetings.transcribingStatus")}</div>}
     <div className="flex gap-2 border-b border-white/10 mb-6">{([ ["summary", t("meetings.summaryTab"), FileText], ["transcript", t("meetings.transcriptTab"), Clock3], ["contacts", t("meetings.contactsTab", { count: suggestions.length }), Users] ] as const).map(([id,label,Icon]) => <button key={id} onClick={() => setTab(id)} className={`inline-flex items-center gap-2 px-4 py-3 text-sm border-b-2 ${tab === id ? "border-amber-300 text-amber-300" : "border-transparent text-white/50"}`}><Icon size={16}/>{label}</button>)}</div>
-    {tab === "summary" && <div className="grid md:grid-cols-2 gap-4"><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">{t("meetings.entitiesHeading")}</h2><div className="flex flex-wrap gap-2 mt-4">{entities.length ? entities.map(entity => { const tipo = TIPOS_DE_ENTIDADE[entity.entityType as TipoEntidade]; return <span key={entity.id} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${tipo ? tipo.classes : "border border-white/10 bg-white/5 text-white/75"}`}>{tipo && <span className="text-[10px] font-semibold uppercase tracking-wider opacity-75">{tipo.rotulo}</span>}<span>{entity.value}</span></span>; }) : <p className="text-sm text-white/45">{t("meetings.noEntities")}</p>}</div></section><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">{t("meetings.recordingHeading")}</h2>
+    {tab === "summary" && <div className="grid md:grid-cols-2 gap-4"><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">{t("meetings.entitiesHeading")}</h2><div className="flex flex-wrap gap-2 mt-4">{entities.length ? entities.map(entity => { const tipo = TIPOS_DE_ENTIDADE[entity.entityType as TipoEntidade]; return <span key={entity.id} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${tipo ? tipo.classes : "border border-white/10 bg-white/5 text-white/75"}`}>{tipo && <span className="text-[10px] font-semibold uppercase tracking-wider opacity-75">{t(tipo.chave)}</span>}<span>{entity.value}</span></span>; }) : <p className="text-sm text-white/45">{t("meetings.noEntities")}</p>}</div></section><section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-semibold">{t("meetings.recordingHeading")}</h2>
       {recording ? <>
         {/* Sem onError o player falha MUDO: sessão vencida, limite de
             requisições ou storage fora do ar desenham os controles e
@@ -469,17 +483,23 @@ function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () =>
         {translateTranscript.isPending ? <div className="text-white/55"><Loader2 className="inline animate-spin mr-2" size={16}/>{t("meetings.translatingStatus")}</div> : <>
           {tiposPresentes.length > 0 && <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="text-xs text-white/40">{t("meetings.highlightsLabel")}</span>
-            {tiposPresentes.map(tipo => <span key={tipo} className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${TIPOS_DE_ENTIDADE[tipo].classes}`}>{TIPOS_DE_ENTIDADE[tipo].rotulo}</span>)}
+            {tiposPresentes.map(tipo => <span key={tipo} className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${TIPOS_DE_ENTIDADE[tipo].classes}`}>{t(TIPOS_DE_ENTIDADE[tipo].chave)}</span>)}
           </div>}
           {segmentos
             ? <p className="whitespace-pre-wrap leading-7 text-white/75">{segmentos.map((s, i) => s.tipo
-                ? <mark key={i} title={TIPOS_DE_ENTIDADE[s.tipo].rotulo} className={`rounded-md px-1 py-0.5 font-medium ${TIPOS_DE_ENTIDADE[s.tipo].classes}`}>{s.texto}</mark>
+                ? <mark key={i} title={t(TIPOS_DE_ENTIDADE[s.tipo].chave)} className={`rounded-md px-1 py-0.5 font-medium ${TIPOS_DE_ENTIDADE[s.tipo].classes}`}>{s.texto}</mark>
                 : <span key={i}>{s.texto}</span>)}</p>
             : <p className="whitespace-pre-wrap leading-7 text-white/75">{displayTranscript || transcript.transcript}</p>}
         </>}
       </> : <p className="text-white/45">{t("meetings.transcriptUnavailable")}</p>}
     </section>}
-    {tab === "contacts" && <div className="space-y-3">{suggestions.length ? suggestions.map(suggestion => <section key={suggestion.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="flex flex-col md:flex-row gap-4 justify-between"><div><h2 className="font-semibold">{suggestion.fullName}</h2><p className="text-sm text-white/55">{[suggestion.jobTitle, suggestion.company].filter(Boolean).join(" · ") || t("meetings.partialDataDetected")}</p>{suggestion.email && <p className="text-xs text-white/40 mt-1">{suggestion.email}</p>}</div>{suggestion.status === "pending" && emProcessamento ? <span className="text-sm text-amber-200/70">{t("meetings.decisionsPaused")}</span> : suggestion.status === "pending" ? <div className="flex flex-wrap gap-2"><button onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "create" })} className="rounded-lg bg-amber-400 text-[#1a120c] px-3 py-2 text-sm font-bold"><Check size={15} className="inline mr-1"/>{t("meetings.createContactButton")}</button><button onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "ignore" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65"><X size={15} className="inline mr-1"/>{t("meetings.ignoreButton")}</button></div> : <span className="text-sm text-white/45">{suggestion.status === "created" ? t("meetings.contactCreatedStatus") : t("meetings.ignoredStatus")}</span>}</div></section>) : <div className="rounded-2xl border border-dashed border-white/15 py-14 text-center text-white/45">{t("meetings.noContactSuggestions")}</div>}</div>}
+    {tab === "contacts" && <div className="space-y-3">
+      {/* Pendências ainda não lidas: carregando, ou erro com tentar de novo —
+          nunca "FALTANDO" nos cartões, que afirmaria que a IA não achou nada. */}
+      {suggestions.length > 0 && !pendenciasDaReuniao.data && (pendenciasDaReuniao.isError
+        ? <ErroDeConsulta erro={pendenciasDaReuniao.error} aoTentarDeNovo={() => void pendenciasDaReuniao.refetch()} />
+        : <p className="text-sm text-white/45"><Loader2 className="inline animate-spin mr-2" size={14}/>{t("networkPanel.loading")}</p>)}
+      {suggestions.length ? suggestions.map(suggestion => <section key={suggestion.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><div className="flex flex-col md:flex-row gap-4 justify-between"><PessoaSugeridaNaReuniao sugestao={suggestion} pendencias={pendenciasDaReuniao.data} />{suggestion.status === "pending" && emProcessamento ? <span className="text-sm text-amber-200/70">{t("meetings.decisionsPaused")}</span> : suggestion.status === "pending" ? <div className="flex flex-wrap gap-2"><button disabled={decideContact.isPending} onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "create" })} className="rounded-lg bg-amber-400 text-[#1a120c] px-3 py-2 text-sm font-bold disabled:opacity-50"><Check size={15} className="inline mr-1"/>{t("meetings.createContactButton")}</button><button disabled={decideContact.isPending} onClick={() => decideContact.mutate({ suggestionId: suggestion.id, action: "ignore" })} className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/65 disabled:opacity-50"><X size={15} className="inline mr-1"/>{t("meetings.ignoreButton")}</button></div> : <span className="text-sm text-white/45">{suggestion.status === "created" ? t("meetings.contactCreatedStatus") : t("meetings.ignoredStatus")}</span>}</div></section>) : <div className="rounded-2xl border border-dashed border-white/15 py-14 text-center text-white/45">{t("meetings.noContactSuggestions")}</div>}</div>}
 
     {/* Confirmação de exclusão — molde de Network.tsx; o texto nomeia tudo que some. */}
     {confirmarExclusao && (

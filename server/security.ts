@@ -9,7 +9,7 @@
  */
 
 import crypto from "crypto";
-import { eq, and, desc, gt, gte, sql, count } from "drizzle-orm";
+import { eq, and, desc, gt, gte, notInArray, sql, count } from "drizzle-orm";
 import { exigirDb } from "./db";
 import { requireSecret } from "./_core/env";
 import {
@@ -254,25 +254,82 @@ export async function createAuditLog(params: {
  */
 const JANELA_DE_REPETICAO_MS = 30 * 60 * 1000;
 
-async function jaAlertouNaJanela(
+/** Tipo de evento como o banco o conhece, sem repetir a união de dez literais. */
+type TipoDeEventoDeSeguranca = (typeof securityEvents.$inferInsert)["eventType"];
+
+/**
+ * Eventos críticos que NÃO alimentam o bloqueio automático.
+ *
+ * `multiple_sessions` nasce crítico a partir de 20 sessões simultâneas, e 20
+ * sessões é a Rede aberta com muitas fotos, não invasão: contando-o, uma conta
+ * Prata ou Ouro se autobloqueava sozinha (revisão do Nicolas, 14/09/2026). O
+ * evento continua sendo registrado e aparece no painel de segurança; ele só não
+ * conta mais para fechar a conta.
+ *
+ * `account_locked` fica de fora para o bloqueio não se realimentar: ele é
+ * gravado como crítico pela própria função de bloqueio.
+ */
+const TIPOS_FORA_DO_BLOQUEIO_AUTOMATICO: TipoDeEventoDeSeguranca[] = [
+  "multiple_sessions",
+  "account_locked",
+];
+
+/**
+ * Quantas linhas o comando alcançou. O mysql2 devolve o cabeçalho do resultado
+ * na primeira posição e liga CLIENT_FOUND_ROWS, então num UPDATE `affectedRows`
+ * conta a linha que o WHERE ENCONTROU, e não a que mudou de valor — é o que uma
+ * trava otimista quer. Sem cabeçalho reconhecível, zero: quem não consegue
+ * provar que escreveu não age como se tivesse escrito.
+ */
+function linhasAlcancadas(resultado: unknown) {
+  const cabecalho = Array.isArray(resultado) ? resultado[0] : resultado;
+  return (cabecalho as { affectedRows?: number } | null | undefined)?.affectedRows ?? 0;
+}
+
+/**
+ * Grava o evento SE não houver igual na janela, num comando só, e devolve se a
+ * linha nasceu.
+ *
+ * Antes eram dois comandos — um SELECT e, se ele não achasse nada, um INSERT —
+ * com uma ida e volta ao banco entre eles. Duas requisições simultâneas da mesma
+ * conta liam "não existe" antes de qualquer uma gravar, e a mesma condição
+ * virava várias linhas; linha crítica repetida empurra a conta na direção do
+ * bloqueio automático, que conta eventos críticos. O
+ * `insert ... select ... where not exists` decide e grava no MESMO comando, então
+ * não sobra janela entre a leitura e a escrita.
+ *
+ * O fecho definitivo seria um índice único de (conta, tipo, janela) com
+ * `insert ignore`, mas ele pede migração e este conserto não cria nenhuma
+ * (revisão do Nicolas, 14/09/2026): fica anotado como o próximo passo.
+ */
+async function gravarEventoSeNaoHouverIgualNaJanela(
   userId: number,
-  eventType: string,
+  eventType: TipoDeEventoDeSeguranca,
+  severity: "info" | "warning" | "critical",
+  ipAddress: string | null,
+  details: Record<string, unknown> | null,
   janelaMs: number
 ): Promise<boolean> {
   const db = await exigirDb();
   const desde = new Date(Date.now() - janelaMs);
-  const anterior = await db
-    .select({ id: securityEvents.id })
-    .from(securityEvents)
-    .where(
-      and(
-        eq(securityEvents.userId, userId),
-        eq(securityEvents.eventType, eventType as "suspicious_ip"),
-        gte(securityEvents.createdAt, desde)
-      )
-    )
-    .limit(1);
-  return anterior.length > 0;
+  const detalhes = details === null ? null : JSON.stringify(details);
+
+  const resultado = await db.execute(sql`
+    insert into ${securityEvents}
+      (${sql.identifier("userId")}, ${sql.identifier("eventType")}, ${sql.identifier("severity")},
+       ${sql.identifier("ipAddress")}, ${sql.identifier("details")}, ${sql.identifier("resolved")})
+    select ${userId}, ${eventType}, ${severity}, ${ipAddress}, ${detalhes}, false
+      from dual
+     where not exists (
+       select 1
+         from ${securityEvents} as anterior
+        where anterior.${sql.identifier("userId")} = ${userId}
+          and anterior.${sql.identifier("eventType")} = ${eventType}
+          and anterior.${sql.identifier("createdAt")} >= ${desde}
+     )
+  `);
+
+  return linhasAlcancadas(resultado) > 0;
 }
 
 export async function createSecurityEvent(
@@ -288,18 +345,29 @@ export async function createSecurityEvent(
   // Repetição do MESMO alerta, para a MESMA conta, dentro da janela: não grava.
   // Só quem pede (`naoRepetirPorMs`) é dedupado — evento de tentativa de força
   // bruta e bloqueio de conta continuam sendo gravados sempre, um por um.
+  //
+  // Quem pede dedupe grava pelo comando único acima: checar numa consulta e
+  // gravar noutra deixava requisições simultâneas passarem as duas.
   if (userId && opcoes?.naoRepetirPorMs) {
-    if (await jaAlertouNaJanela(userId, eventType, opcoes.naoRepetirPorMs)) return;
+    const gravou = await gravarEventoSeNaoHouverIgualNaJanela(
+      userId,
+      eventType,
+      severity,
+      ipAddress ?? null,
+      details ?? null,
+      opcoes.naoRepetirPorMs
+    );
+    if (!gravou) return;
+  } else {
+    await db.insert(securityEvents).values({
+      userId,
+      eventType,
+      severity,
+      ipAddress: ipAddress ?? null,
+      details: details ?? null,
+      resolved: false,
+    });
   }
-
-  await db.insert(securityEvents).values({
-    userId,
-    eventType,
-    severity,
-    ipAddress: ipAddress ?? null,
-    details: details ?? null,
-    resolved: false,
-  });
 
   // Notificações de segurança crítica só para eventos realmente graves
   // (não para múltiplas sessões, que é comum em testes e uso normal)
@@ -323,9 +391,9 @@ export async function createSecurityEvent(
   // "a conta já está bloqueada" também não dependia dele: `getUserFromRequest`
   // recusa `isActive === false` antes, com a mensagem de conta desativada.
   //
-  // `account_locked` fica de fora para o bloqueio não se realimentar: ele é
-  // gravado como crítico pela própria função de bloqueio.
-  if (userId && severity === "critical" && eventType !== "account_locked") {
+  // Os tipos de `TIPOS_FORA_DO_BLOQUEIO_AUTOMATICO` não disparam a checagem:
+  // não contam para o limite, então nem a consulta precisam custar.
+  if (userId && severity === "critical" && !TIPOS_FORA_DO_BLOQUEIO_AUTOMATICO.includes(eventType)) {
     await checkAutoLockThreshold(userId, ipAddress).catch(() => false);
   }
 }
@@ -733,19 +801,26 @@ export async function revokeAllUserSessions(userId: number): Promise<void> {
 /**
  * Bloqueia uma conta de usuário e revoga todas as suas sessões.
  * Registra o evento de segurança correspondente.
+ *
+ * Devolve `true` quando a conta MUDOU de estado e `false` quando ela já estava
+ * bloqueada. A condição vai no WHERE, e não num SELECT antes: sem ela o UPDATE
+ * alcançava a linha toda vez, e dois cliques no painel (ou dois moderadores ao
+ * mesmo tempo) regravavam `account_locked` e a auditoria numa conta que já
+ * estava fechada.
  */
 export async function lockUserAccount(
   targetUserId: number,
   adminId: number,
   reason: string
-): Promise<void> {
+): Promise<boolean> {
   const db = await exigirDb();
 
-  // Desativar conta
-  await db
+  // Desativar conta — só se ainda estiver ativa
+  const bloqueio = await db
     .update(users)
     .set({ isActive: false })
-    .where(eq(users.id, targetUserId));
+    .where(and(eq(users.id, targetUserId), eq(users.isActive, true)));
+  if (linhasAlcancadas(bloqueio) === 0) return false;
 
   // Revogar todas as sessões
   await revokeAllUserSessions(targetUserId);
@@ -769,6 +844,8 @@ export async function lockUserAccount(
     undefined,
     { reason, lockedBy: adminId }
   );
+
+  return true;
 }
 
 // ============================================================
@@ -833,6 +910,10 @@ export async function checkAutoLockThreshold(userId: number, ipAddress?: string)
       and(
         eq(securityEvents.userId, userId),
         eq(securityEvents.severity, "critical"),
+        // A exclusão é da CONTAGEM, no próprio WHERE: sem ela, linhas de
+        // `multiple_sessions` somam com uma tentativa de força bruta e fecham
+        // a conta de quem só abriu a Rede em muitas abas.
+        notInArray(securityEvents.eventType, TIPOS_FORA_DO_BLOQUEIO_AUTOMATICO),
         gte(securityEvents.createdAt, windowStart)
       )
     );
@@ -848,8 +929,20 @@ export async function checkAutoLockThreshold(userId: number, ipAddress?: string)
     return false;
   }
 
-  // Bloquear automaticamente
-  await db.update(users).set({ isActive: false }).where(eq(users.id, userId));
+  // Bloquear automaticamente — SÓ quem ainda está ativa.
+  //
+  // Sem `isActive` no WHERE o UPDATE "dava certo" toda vez, e o bloqueio se
+  // repetia: cada novo evento crítico dentro da janela regravava o mesmo
+  // `account_locked`, com aviso no sino e linha de auditoria, numa conta que já
+  // estava bloqueada. O SELECT logo acima não resolve sozinho — entre ele e o
+  // UPDATE cabe outra requisição. Zero linhas alcançadas = já estava bloqueada:
+  // a conta está no estado desejado, e nada mais precisa ser escrito.
+  const bloqueio = await db
+    .update(users)
+    .set({ isActive: false })
+    .where(and(eq(users.id, userId), eq(users.isActive, true)));
+  if (linhasAlcancadas(bloqueio) === 0) return true;
+
   await revokeAllUserSessions(userId);
 
   // Registrar evento e log

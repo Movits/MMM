@@ -1,4 +1,6 @@
-# MMM — Mulheres que Movem o Mundo
+# WRW — Women Rocking the World
+
+> O repositório, o serviço no Render e o bucket continuam com o nome técnico MMM (Mulheres que Movem o Mundo, nome anterior da marca). A marca passou a WRW em 15/09/2026.
 
 Uma empresária entra na plataforma e cadastra a base de contatos que ela já tem na
 agenda. Para cada contato, anota duas coisas: **o que aquela pessoa tem** para
@@ -55,9 +57,17 @@ Todo o texto do repositório — documentação, commits, PRs, comentários — 
    empresas e assuntos, sugerindo contatos novos a partir do que foi dito.
 4. **Receber matches.** Três motores convivem: contato × contato dentro da rede da
    mesma dona, perfil × perfil entre usuárias (só quando **as duas** autorizaram o
-   cruzamento) e recomendação de oportunidades. O cruzamento nunca é por palavra
-   parecida: "exportar vinho" casa com "importar vinho", mas "exportar" nunca casa
-   com "exportar".
+   cruzamento) e recomendação de oportunidades. A regra da direção — "exportar
+   vinho" casa com "importar vinho", e duas pontas que querem exportar são
+   concorrentes — é do **motor de contatos** (`server/match-service.ts`), que zera
+   o par antes de qualquer outro critério. O **motor de perfis**
+   (`server/matching.ts`) ainda não a aplica: ali "exportar" × "exportar" conta
+   como necessidade atendida, e a nota é uma soma de seis dimensões —
+   complementaridade 30, setor 20, investimento 20, especialidade 15, valores 10 e
+   localização 5 — em que a complementaridade, a de maior peso, é justamente a que
+   sobe com esse par; com corte em 40, a nota passa sem nenhum termo cruzado. A
+   diferença é conhecida, não é descuido de leitura: está descrita em "Regras que
+   não são estilo", no [CLAUDE.md](./CLAUDE.md).
 5. **Publicar uma oportunidade.** Uma membra Ouro ou a presidência valida antes de
    ir ao ar, e uma análise automática sugere que documentação aquele negócio pede.
 6. **Negociar.** Quem se interessa abre uma **Sala de Negociação**, que só destrava
@@ -76,7 +86,12 @@ A privacidade é aplicada **na consulta**, nunca escondendo coisas no front-end:
 
 - o nível público lê só id, país e cidade, e devolve identificador opaco;
 - o acervo Ouro exige, ao mesmo tempo, contato marcado como compartilhável, termo
-  vigente aceito pela dona, papel Ouro no procedimento e registro de auditoria.
+  vigente aceito pela dona, papel Ouro no procedimento e registro de auditoria —
+  com uma ressalva que vale conhecer antes de confiar na lista: **enquanto não há
+  versão vigente do termo publicada**, o consentimento não trava nada
+  (`hasValidConsent` responde "sim" para todas), e é a única porta do sistema que
+  libera sem consentimento. As outras três exigências continuam de pé; publicar o
+  termo é o que liga a primeira.
 
 Esconder no React não conta. Se a consulta seleciona a coluna, o dado vazou.
 
@@ -88,9 +103,26 @@ Requisitos: Node 20+, `pnpm` e um MySQL acessível. **No Windows, use o Git Bash
 ```bash
 pnpm install
 cp .env.example .env            # preencha as variáveis
-node scripts/criar-banco.mjs    # banco novo do zero, pelas migrações
+DATABASE_URL='mysql://...' node scripts/criar-banco.mjs   # banco do zero, pelas migrações
 pnpm dev                        # http://localhost:3000
 ```
+
+**Os scripts `.mjs` de banco não leem o `.env`** — por isso a variável vai na
+linha de comando acima. `criar-banco.mjs`, `migrar.mjs` (`pnpm db:migrate`) e
+`nivelar-banco.mjs` leem `process.env.DATABASE_URL` e param se ela não estiver no
+ambiente: preencher o arquivo não basta. As mensagens são diferentes, e é por elas
+que se reconhece qual script parou — `criar-banco.mjs` imprime "DATABASE_URL não
+definida." com um exemplo de linha de comando; `migrar.mjs` e `nivelar-banco.mjs`
+imprimem "Defina DATABASE_URL.". Para exportar o `.env` inteiro de uma vez no Git
+Bash, `set -a; . ./.env; set +a` — com o cuidado de que ali o arquivo vira script
+do shell, então valor com espaço, `{` ou `#` precisa estar entre aspas.
+
+Quem carrega o arquivo sozinho é o servidor (`pnpm dev`, `pnpm start`), a suíte de
+testes, o `checar-producao.mjs` (que o recebe em `--env`) e — a exceção entre os
+comandos de banco — o `pnpm db:generate`: o `drizzle.config.ts` só lê
+`process.env.DATABASE_URL`, mas a CLI do drizzle-kit carrega o `.env` do diretório
+atual antes de abrir a configuração, então ali o arquivo basta. Sem a variável em
+lugar nenhum, o que aparece é "DATABASE_URL is required to run drizzle commands".
 
 `JWT_SECRET` é obrigatória — o servidor se recusa a subir sem ela, em vez de cair
 para um padrão inseguro. Sem `DATABASE_URL` o servidor **sobe**, e todo acesso a

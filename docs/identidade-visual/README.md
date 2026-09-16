@@ -1,5 +1,9 @@
 # Identidade visual do MMM
 
+**Desde 15/09/2026 a marca é WRW — Women Rocking the World**: os originais em uso
+estão em [`wrw/`](wrw/README.md). Os arquivos abaixo são a identidade anterior
+(MMM / WMW), guardados como histórico e sem uso no app ou na vitrine.
+
 Logos oficiais enviados pela Dra. Glenda no grupo "Projetos IA" em 03/09/2026, 20:09,
 com o pedido "essa é a nossa identidade visual; sugiro que já façam a inserção".
 Guardados aqui para o time aplicar no app e na vitrine; a inserção em si é tarefa do

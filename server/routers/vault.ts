@@ -9,6 +9,7 @@ import {
   markNotificationRead,
   saveToVault,
 } from "../security";
+import { LIMITE_DA_BIO_GRAVADA } from "../../shared/apresentacao";
 
 // ============================================================
 // COFRE DIGITAL (LEGACY — mantido para compatibilidade)
@@ -22,7 +23,9 @@ export const vaultRouter = router({
 
   updateVault: protectedProcedure
     .input(z.object({
-      bio: z.string().max(1000).optional(),
+      // O mesmo teto de profile.update: esta rota também edita o que JÁ ESTÁ
+      // gravado, e a carga da planilha grava mais do que o cadastro mostra.
+      bio: z.string().max(LIMITE_DA_BIO_GRAVADA).optional(),
       linkedin: z.string().optional(),
       website: z.string().optional(),
       company: z.string().max(200).optional(),

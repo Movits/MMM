@@ -96,9 +96,13 @@ semântica é permitida), mas precisa existir.
 
 | oferta | outro lado | resultado |
 |---|---|---|
-| serviços jurídicos tributários | procura "assessoria tributária para revisar a carga fiscal" | **match nos motores por IA** (`routers/matching.ts`), com a citação conferida; nos motores determinísticos (perfis e privado) só casa se a necessidade NOMEIA o serviço — mesmo slug/objeto/núcleo, a opção fixa "Consultoria" ou a necessidade genérica "Consultoria" diante de "Consultoria jurídica" |
-| serviços jurídicos tributários | indústria farmacêutica que procura "distribuidor para a África" | **sem match** em todos — toda indústria tem impostos, mas ninguém declarou precisar |
-| consultoria em internacionalização | empresa com operações internacionais que procura "investidor para a fábrica" | **sem match** em todos — operar fora não é procurar consultoria |
+| serviços jurídicos tributários | procura "assessoria tributária para revisão da carga fiscal da empresa" | **match em todos** (desde 14/09): assessoria numa área da profissão é atendida por ela (`AREAS_DAS_PROFISSOES`); 100 no motor privado |
+| serviços jurídicos tributários | indústria farmacêutica que procura "distribuidor para expansão na África" | **sem match** em todos — toda indústria tem impostos, mas ninguém declarou precisar; na IA, citar o distribuidor ou "indústria farmacêutica" é barrado |
+| consultoria em internacionalização | empresa com operações internacionais que procura "investidor para ampliação da fábrica" | **sem match** em todos — operar fora não é procurar consultoria; na IA, citar a descrição da empresa ou o investidor é barrado |
+| consultoria em internacionalização | procura "apoio para estruturar a entrada da minha empresa no Paraguai" | **match em todos** (desde 14/09): a necessidade declara o assunto (vocabulário curado); 60 no motor privado |
+| advocacia tributária | procura "revisar nossos tributos e identificar créditos fiscais" | **match em todos** (desde 14/09), pelo assunto; 60 no motor privado |
+| consultoria para registro de medicamentos | procura "suporte para obter autorização regulatória para comercializar nosso medicamento" | **match em todos** (desde 14/09), pelo assunto; 60 no motor privado |
+| consultoria jurídica | procura "consultoria em marketing" | **sem match** em todos — a palavra é a mesma, o serviço não; na IA, a frase citada precisa pedir um serviço que o perfil oferece |
 
 Não contam como necessidade: setor ou atividade econômica, porte, localização, cargo,
 problemas típicos do segmento, obrigações legais, serviços "que seriam úteis",
@@ -114,9 +118,194 @@ gravada antes da regra (sem apagá-la: a dispensa da dona sobrevive); nos dois p
 por LLM de `routers/matching.ts`, o modelo classifica o item, cita o trecho literal do
 título, das tags ou da descrição da oportunidade que declara a necessidade e
 `server/portao-da-demanda-expressa.ts` confere a citação nesse texto (no máximo uma
-palavra ausente) antes de exibir — e usa o classificador como piso: perfil que só tem
+palavra ausente; em chinês e japonês, que não separam palavras, o trecho precisa estar
+literalmente na fonte, sem tolerância e com ao menos quatro caracteres, e só passa quando nomeia
+um serviço que o perfil oferece, porque o resto do portão não lê essa escrita — o nome curto numa
+frase latina, como "filial de 東京", só precisa estar na fonte) antes de exibir — e usa o classificador como piso: perfil que só tem
 serviço e nada em "preciso" exige citação seja qual for o tipo que o modelo escreveu.
 Prompt é pedido, a conferência é a garantia.
+
+Dois cuidados vieram da revisão da regra em produção (13/09 e 14/09/2026: a #124 e a
+correção por cima dela), e três revisões adversariais levaram à forma ESTRITA. A
+categoria digitada continua decidindo o tipo quando o texto não decide — decisão do time
+em 14/09; a categoria ser texto livre virou cartão próprio. **A mesma coisa escrita de
+outro jeito é a mesma necessidade:** família (o lema: advocacia, consultoria, assessoria,
+tradução...) e especialidade (lemas curados: tributário = tributarista = fiscal = tax =
+ICMS) iguais dão 100 no motor privado e satisfazem o de perfis — também entre consultoria e
+assessoria e no apoio que nomeia a profissão ("Assessoria jurídica tributária" diante de
+"Advocacia tributária"), e quando os dois lados nomeiam a família e nada mais
+("Contabilidade" e "Serviços contábeis" diante de "Contador"; na tela do Smart Match esse 100
+tem o selo "Mesmo serviço", e não "Tag exata"); a necessidade que nomeia só a
+família ("Advogado" diante de "Advocacia tributária") vale 60. **Palavra igual não é serviço
+igual, e na dúvida não casa:** o motor só afirma equivalência do que entende. Palavra
+fora das listas precisa aparecer igual dos dois lados, e a oferta não pode ter palavra
+desconhecida a mais: "Consultoria em segurança do trabalho" não atende "Consultoria
+trabalhista", "Consultoria em seguros empresariais" não atende "Consultoria
+empresarial". Na IA, o portão só barra a citação que nomeia um serviço entendido e
+claramente diferente do que o perfil oferece ("consultoria em marketing" para
+"Consultoria jurídica"); o que o texto não entende fica com o modelo
+(`citacaoAmarradaAoPerfil`).
+
+**Equivalência semântica sem IA nos motores determinísticos (14/09/2026, spec da Glenda).**
+Duas pontes, ambas curadas e com teste negativo por entrada
+(`server/demanda-expressa-exemplos-da-spec.test.ts`):
+- *assessoria ou consultoria sobre área da profissão* (`AREAS_DAS_PROFISSOES` em
+  `shared/tipo-da-oferta.ts`): "Assessoria tributária" é atendida pela advocacia e pela
+  contabilidade que cobrem a área; áreas ambíguas (empresarial, imobiliária, ambiental, civil,
+  financeira) ficam de fora, e quem nomeia outra profissão ("Contador tributário") segue sem casar;
+- *assunto do serviço* (`necessidadeDeclaraOAssuntoDoServico`): tributário, internacionalização
+  (internacionalizar, exportar, entrada ou expansão com destino em outro país — o Brasil e os
+  estados não contam) e regulatório sanitário (agência sanitária, ou ato regulatório junto de
+  medicamento, cosmético, saneante...). A necessidade tem de pedir ajuda ou uma ação (apoio,
+  suporte, revisar, recuperar, obter, estruturar, entrar...), não pode nomear outro serviço, e o
+  serviço oferecido tem de nomear o mesmo assunto numa família que o presta. "Exportar café",
+  "Distribuidor para expansão na África", "Créditos tributários" e "Empresa brasileira com
+  operações internacionais" não passam. Depois da ação, o resto do pedido também não pode pedir a
+  contraparte ou o capital, lidos pela palavra que os rege ("ENTRADA DE investidor internacional",
+  "OBTER capital para registro de medicamentos", "expandir VIA distribuidores"), nem registrar marca
+  ou patente ("Registrar marca de cosméticos no INPI"); a contraparte como público do serviço
+  ("planejamento tributário PARA investidores") e o crédito do fisco ("créditos DE ICMS") seguem
+  passando. No portão da IA, a mesma leitura barra a citação antes do atalho do assunto. Vale 60 no motor privado, com o selo de significados
+  parecidos; é base expressa no de perfis.
+
+Na IA, o portão passou a barrar também a citação que pede CONTRAPARTE (distribuidor, comprador,
+fornecedor, investidor; capital, produto, imóvel), a que só DESCREVE quem escreveu ("Indústria
+farmacêutica") e a que pede um assunto do vocabulário que nenhum serviço do perfil presta. Não se
+usa IA para confirmar equivalência nos motores determinísticos: o custo seria uma chamada por par
+em cada recálculo, e a camada de IA que já existe (os prompts com citação conferida) é exatamente
+"a IA confirma citando o trecho declarado, o código confere".
+
+"O que você busca?" (12 opções desde 14/09, `shared/o-que-busca.ts`): nenhuma opção libera
+serviço sozinha; "Serviço Especializado" é genérica e não é necessidade de serviço específico; o
+texto de "Outra necessidade" é necessidade declarada e vale como *o que preciso* nos três motores.
+
+Três lacunas medidas depois da #127 foram fechadas em 14/09/2026, com uma decisão de
+produto junto:
+- **Logística é serviço** (decisão do Nicolas, 14/09): logística, transporte, frete e
+  armazenagem passam pelo portão, inclusive a opção fixa "Logística" de *o que tenho*,
+  que segue atendendo quem declarou "Distribuidores" ou "Fornecedores". O bem físico
+  continua sendo o bem: "Galpão logístico" e "Armazém" são imóvel, "Frota" é ativo,
+  "Armazenamento" (dado, energia) é ativo. Consequência na rede de teste: "Armazenagem
+  refrigerada" deixa de casar pela categoria com quem procura "Galpão alfandegado".
+- **O classificador passa a ler** saúde (médico, clínica, fisioterapia, psicologia,
+  enfermagem, odontologia, nutricionista, veterinária), "Tributarista", "Planejamento
+  tributário", "Recuperação de créditos tributários", perícia, BPO, "Desenvolvimento de
+  software", branding, "Social media", "Comércio exterior" e "Projeto arquitetônico" — que
+  caíam em "outros" e casavam em 60 pela categoria digitada. Os adjetivos ("Equipamento
+  médico", "Material odontológico") não arrastam produto para serviço. Os que não têm
+  palavra de serviço (planejamento, desenvolvimento, projeto técnico, comércio exterior)
+  são reconhecidos para serem barrados, mas não ganham família: casam só por slug, objeto
+  ou núcleo.
+- **No motor de perfis, a especialidade e a área de atuação contam como oferta** quando
+  *o que tenho* está vazio — a mesma leitura que o portão da IA já fazia. A tela de
+  cadastro não tem opção de serviço em *o que tenho*, então a advogada põe o serviço na
+  especialidade, e o par passava pelas seis dimensões ("Advocacia tributária" na
+  especialidade × farmacêutica que procura distribuidores dava 57 e era gravado).
+- **Na IA, oportunidade que oferece serviço exige declaração que possa ser ele**, não só
+  "alguma declaração" (`perfilDeclarouPrecisarDoServico`): contraparte comercial
+  (distribuidores, compradores, fornecedores, investidores, parceiros), capital, produto,
+  imóvel e outro serviço nomeado barram; o que o texto não entende fica com o modelo.
+
+Limites aceitos e decisões pendentes (revisão adversarial de 13/09/2026):
+- a categoria é texto livre e decide o tipo quando o texto não decide: "Cafeteira
+  industrial" [Consultoria] vira serviço e cai no portão (decisão do time em 14/09; a
+  causa raiz virou cartão próprio);
+- a especialidade escrita de outro jeito é lida em pt, en e es; nos outros 7 idiomas as
+  listas reconhecem a família do serviço (#124) e a especialidade só onde há lema curado (a
+  tributária em fr, ru, ar, zh e ja). O par que nesses idiomas só não casa por palavra que
+  as listas não leem não é bloqueado nos motores determinísticos: vale a categoria em
+  comum, como antes da regra, e nunca 0 por falta de regra (`regraNaoLeOPar`, e6ddfa4 da
+  #127, portada na #135). Em pt, en e es nada muda: os exemplos da spec, o vocabulário
+  curado de assunto e as opções genéricas seguem estritos. No par que a exceção cobre, o
+  assunto curado não decide antes dela: "Conseil en fiscalité internationale" × "Conseil en
+  fiscalité des entreprises" vale 60 pela categoria em comum [Finances] e 0 sem ela, e no motor
+  de perfis não conta como necessidade atendida (o mesmo par em português segue barrado);
+  "les" e "une" são espanhol e não marcam o francês;
+- "Consultoria jurídica" oferecida não atende a necessidade "Advogado" nos motores
+  determinísticos ("Legal advisory" × "Lawyer" deixou de dar 100); na IA, fica com o
+  modelo. O inverso, "Assessoria jurídica" pedida diante de "Advocacia" oferecida, atende
+  com a nota da família;
+- advocacia empresarial, societária e de contratos são áreas distintas para a regra
+  ("Advocacia corporativa" é societária; fora da advocacia, corporativo é empresarial) —
+  decisão pendente do time;
+- em chinês e japonês o serviço é lido pelo fim do termo, onde as duas línguas põem a
+  cabeça ("会计软件" é software; "律师事务所" é advocacia), e a especialidade só onde há lema
+  curado ("税务"): "律师" × "Advogado" e "税务咨询" × "Consultoria tributária" valem 100,
+  "税务咨询" × "咨询" vale 60 (9e027bf e e6ddfa4 da #127, portadas); a cidade depois do serviço,
+  entre parênteses, depois de " - " ou separada por espaço ("律师事务所（北京）", "会计服务 - 深圳"),
+  não muda a leitura;
+- nos idiomas novos, a exceção do que as listas não leem tem duas travas (116bb56 da #127):
+  o pedido precisa pedir o serviço ("Bureaux pour avocats", "Juristische Person",
+  "Conseil d'administration" citam a família sem pedir), e o pedido que só fica genérico
+  porque saiu a palavra desconhecida não casa com oferta de especialidade entendida —
+  "Консультация по логистике" é 0 diante de "Consultoria tributária". Num rótulo bilíngue o
+  idioma se decide por trecho ("/", parênteses, travessão) e por palavra: a parte em pt, en
+  ou es segue estrita;
+- na oferta, o público que leva a 100 diante da necessidade que só nomeia o serviço é o
+  destinatário (pequenas empresas, MEI, PMEs, startups, pessoa física: `DESTINATARIOS_COMUNS`);
+  setor, finalidade e grupo depois de "para" ("para restaurantes", "para exportação", "para
+  fundadoras") ficam em 60, como a mesma especialidade escrita com "em" — lista de destinatários
+  a confirmar com o Roberto (revisão de 15/09 na #127);
+- "avocat" só é o advogado com qualificador jurídico ("Avocat fiscaliste", "Avocat d'affaires",
+  "Cabinet d'avocats"); sem ele é o abacate, e a categoria decide ("Avocats Hass export
+  international" [Fruits] casa pela categoria). "Conseil" e "conseiller" de órgão ("Conseil
+  d'administration", "Conseiller municipal") não são a consultoria;
+- boutique, casa, ateliê, studio, instituto e hub são a casa de quem presta só com o genitivo e o
+  substantivo de serviço logo depois ("Boutique de advocacia tributária" × "Advogado tributarista"
+  = 100, "Casa de consultoria" [Consultoria] × "Consultoria" = 100); "Boutique de joias de design"
+  e "Casa de câmbio" seguem casando pela categoria, e "Hub" não decide a classificação pelo texto
+  ("Hub logístico" e "Hub de logística" em [Imóveis] são o galpão). Cabeça fora dessa lista com o serviço
+  depois do genitivo ("Escola de design" [Design]) segue sem leitura do serviço e é barrada diante
+  do próprio profissional: ler qualquer cabeça faria "Peças de manutenção" procurada casar com
+  "Manutenção de peças". A cabeça neutra colada depois do serviço também é quem presta ("Tax law
+  firm" × "Tax lawyer" = 100);
+- o adjetivo de serviço depois de cabeça desconhecida é lido ("Gestão contábil" [Contabilidade] ×
+  "Contador" = 60), salvo quando a cabeça é o conceito que ele qualifica: "Pessoa jurídica",
+  "Estrutura jurídica" e "Documento contábil" oferecidos com categoria de serviço são barrados;
+- "estratégica" ao lado de especialidade reconhecida sai da oferta ("Advocacia tributária
+  estratégica" × "Advogado tributarista" = 100); sozinha é o assunto, e "Consultoria tributária
+  estratégica" × "Consultoria estratégica" = 0;
+- o complemento da cabeça neutra é lido como a classificação o lê ("Empresa de gestão contábil"
+  é contabilidade, e vale a nota da família diante de "Contador"); "Perícia contábil" é a
+  família perícia, e não atende "Contador";
+- casa, house, sala, loja, store, flat, vaga e cobertura não são imóvel na OFERTA (#124, 9615971 e
+  d7fac93): "Vaga de emprego", "Casa de câmbio" e "Consulting house" com categoria de serviço
+  caem no portão, como na main. Faltar palavra em imóvel só mantém o que havia; sobrar palavra
+  tira o item do portão. No PEDIDO a conta é a oposta, e o portão da IA tem leitura própria da
+  cabeça (`necessidadePedeImovel`): casa, loja e flat pedidos, sala comercial e vaga de garagem
+  são imóvel e não sustentam serviço ("loja de rua no centro" citada, a demanda "Sala comercial
+  de 40 m²"); "Casa de consultoria", "Casa de software", "Loja virtual", "Sala de reunião" e
+  "Vaga de emprego" não;
+- nos idiomas novos as listas leem a forma usual do profissional (femininos alemães em -in,
+  "Kanzlei", "juriste", "traductrice", acusativo e genitivo russos, o artigo árabe colado,
+  "مستشار", "लेखा") e os marcadores de pedido de de, fr, ru, hi e ar ("Steuerberaterin GESUCHT",
+  "लेखाकार चाहिए" valem 100). A exceção do que as listas não leem, a leitura do chinês e do
+  japonês pelo fim do termo, a conferência da citação sem espaço e o selo "Mesmo serviço"
+  (76cd7da a 0d6643d da #127) foram portados para a #135 em 15/09. Diferenças que ficam de
+  propósito: na necessidade que nomeia só a família diante da oferta sem especialidade, a #127
+  lê a necessidade ao pé da letra e aqui valem 100 o adjetivo sozinho ("Contabilidade" ×
+  "Contábil", "Law firm" × "Jurídico") e o lugar ("Contador em Campinas/SP"), que lá valem 60
+  — o qualificador de quem presta ("Contador sênior", "urgente", "de confiança", "com CRC",
+  "Advogado especializado", "Consultoria especializada") fica em 60 nos dois; o assunto curado da spec
+  decide antes da categoria em pt, en e es, mas não no par que a exceção dos idiomas novos
+  cobre. Na citação em chinês ou japonês o portão fecha por padrão (só passa o trecho que nomeia
+  um serviço do perfil), enquanto na #127 a citação que o texto não lê fica com o modelo; e o
+  "d'" do francês é lido sem tirar o "D" de "R&D" e "I+D" do serviço;
+- no motor privado, "Consultoria" digitada não é atendida por advocacia nem por
+  contabilidade; no de perfis, a opção fixa "Consultoria" é atendida pela família da
+  cabeça (advocacia, contabilidade, auditoria, mentoria, coaching);
+- a regra estrita troca match falso por falso negativo: o mesmo serviço escrito com
+  palavra que as listas não conhecem e só um lado usa ("Contador para projeto aprovado na
+  Lei Rouanet"; "Consultoria em exportação" × "Consultoria em comércio exterior" saiu deste
+  limite com o vocabulário curado de internacionalização, e vale 60)
+  não casa nos motores determinísticos, como antes da correção;
+- na IA, citação de finalidade sem especialidade reconhecida ("Buscamos consultoria para
+  aumentar vendas no Instagram"), especialidade que as listas não leem ("advogado de
+  LGPD"), negação ("já temos consultoria jurídica") e autodescrição ("somos um escritório
+  de advocacia") ficam com o modelo; só o assunto desconhecido de consultoria ou
+  assessoria ("consultoria em e-commerce") barra diante de especialidade reconhecida, e a
+  descrição estruturada com dois-pontos ("Precisamos de consultoria: marketing digital")
+  ainda escapa.
 
 ### 3. Nada que a IA extrair entra sozinho
 

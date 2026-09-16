@@ -83,7 +83,7 @@ export const userProfiles = mysqlTable("user_profiles", {
   company: varchar("company", { length: 200 }),           // Empresa
   personType: mysqlEnum("personType", ["individual", "legal_entity", "mei", "nonprofit"]),
   companySize: mysqlEnum("companySize", ["mei", "micro", "small", "medium", "large"]),
-  companyCnpj: varchar("companyCnpj", { length: 18 }),
+  companyCnpj: varchar("companyCnpj", { length: 255 }),
   jobTitle: varchar("jobTitle", { length: 200 }),          // Cargo
   activityArea: varchar("activityArea", { length: 200 }),  // Área de Atuação
   interestSectors: jsonCompat("interestSectors"),                // string[] — Setores de Interesse
@@ -91,14 +91,26 @@ export const userProfiles = mysqlTable("user_profiles", {
   currentResources: text("currentResources"),              // Texto livre: o que a usuária tem hoje
   whatIHave: jsonCompat("whatIHave"),    // string[] — ativos/recursos disponíveis
   whatINeed: jsonCompat("whatINeed"),    // string[] — demandas/necessidades
+  // DemandaDetalhada[] (shared/o-que-preciso.ts): a segunda camada de "O que
+  // preciso" (Rosber, 14/09). Cada demanda separada, com categoria, dados
+  // estruturados e a descrição — a necessidade DECLARADA que chega aos motores.
+  whatINeedDetails: jsonCompat("whatINeedDetails"),
 
   // --- Campos do sistema de matching (MMM original) ---
   primarySpecialty: varchar("primarySpecialty", { length: 100 }),
   secondarySpecialties: jsonCompat("secondarySpecialties"),
+  // LEGADO: duplicam jobTitle/company. Ninguém mais grava aqui; a leitura só as
+  // usa quando jobTitle/company estão vazios (server/perfil-consolidado.ts).
+  // Saem na etapa 2 da consolidação, depois de copiadas.
   currentRole: varchar("currentRole", { length: 200 }),
   currentCompany: varchar("currentCompany", { length: 200 }),
   sector: varchar("sector", { length: 100 }),
   seekingTypes: jsonCompat("seekingTypes"),
+  // Texto obrigatório de "Outra necessidade" em "O que você busca?"
+  // (shared/o-que-busca.ts): necessidade DECLARADA pela própria pessoa.
+  seekingOtherNeed: text("seekingOtherNeed"),
+  shortTermGoal: text("shortTermGoal"),   // Objetivo de curto prazo (próximos 12 meses)
+  longTermGoal: text("longTermGoal"),     // Objetivo de longo prazo (3–5 anos)
   businessInterests: jsonCompat("businessInterests"),
   preferredCompanySize: varchar("preferredCompanySize", { length: 50 }),
   openToRemote: boolean("openToRemote").default(false),
@@ -625,9 +637,28 @@ export const privateContacts = mysqlTable("private_contacts", {
   // chamadores escondia tudo.
   enrichmentStatus: varchar("enrichment_status", { length: 20 }),
 
+  // Meu Network Inteligente (spec da Glenda de 14/09, itens 6, 13 e 14).
+  // ID ANÔNIMO do contato no formato do pedido (NW-7F29A4): aleatório,
+  // guardado e estável — nunca derivado do id sequencial nem do segredo do
+  // servidor, que ao girar trocaria todos os IDs já registrados em conexões.
+  // Nulo nos contatos antigos até a primeira leitura do painel preencher
+  // (server/network-codigo-anonimo.ts). NULLs não colidem no índice único.
+  codigoAnonimo: varchar("codigo_anonimo", { length: 16 }),
+  // "Disponibilizar este contato para oportunidades da rede": SIM/NÃO, padrão
+  // NÃO. Com SIM, o cruzamento com a rede global lê SÓ o ID anônimo e o que o
+  // contato tem e precisa (server/network-rede-global.ts).
+  disponivelRedeGlobal: boolean("disponivel_rede_global").default(false).notNull(),
+  disponibilidadeAlteradaEm: bigint("disponibilidade_alterada_em", { mode: "number" }),
+  // QUEM SOU pode distinguir pessoa física de jurídica (item 6); nulo = não informado.
+  tipoPessoa: varchar("tipo_pessoa", { length: 10, enum: ["fisica", "juridica"] }),
+
   createdAt:    bigint("createdAt", { mode: "number" }).notNull(),
   updatedAt:    bigint("updatedAt", { mode: "number" }).notNull(),
 }, (table) => ({
+  codigoAnonimoUnique: uniqueIndex("pc_codigo_anonimo_unique").on(table.codigoAnonimo),
+  // A leitura da rede global atravessa donas por esta coluna, como a vitrine
+  // pelo nível: sem índice, cada cruzamento varreria a tabela inteira.
+  disponivelIdx:   index("pc_disponivel_rede_global_idx").on(table.disponivelRedeGlobal),
   ownerIdx:        index("pc_owner_idx").on(table.ownerId),
   ownerNameIdx:    index("pc_owner_name_idx").on(table.ownerId, table.fullName),
   ownerCompanyIdx: index("pc_owner_company_idx").on(table.ownerId, table.company),
@@ -1132,6 +1163,147 @@ export const aiMatchSuggestions = mysqlTable("ai_match_suggestions", {
   contactBIdx: index("ai_match_contact_b_idx").on(table.contactBId),
 }));
 
+// ============================================================
+// MEU NETWORK INTELIGENTE — spec da Glenda de 14/09 (prompt 7)
+// ============================================================
+
+// Pendências da IA sobre um contato: QUEM SOU (nome, telefone, e-mail, pessoa
+// física/jurídica), O QUE TENHO e O QUE PRECISO propostos a partir de uma
+// reunião, de um áudio curto (voz) ou de um texto livre. Nada entra sozinho
+// (CLAUDE.md): cada linha nasce 'pendente', com origem, confiança e o TRECHO
+// literal da fonte que a sustenta, e só vira dado quando a dona confirma.
+// `contact_id` é nulo enquanto a pessoa ainda é só uma sugestão da reunião
+// (`meeting_suggestion_id`); criar ou vincular o contato preenche.
+export const networkSugestoes = mysqlTable("network_sugestoes", {
+  id:                  varchar("id", { length: 36 }).primaryKey(),
+  ownerId:             varchar("owner_id", { length: 128 }).notNull(),
+  contactId:           bigint("contact_id", { mode: "number" }),
+  meetingId:           varchar("meeting_id", { length: 36 }),
+  meetingSuggestionId: varchar("meeting_suggestion_id", { length: 36 }),
+  origem:              varchar("origem", { length: 10, enum: ["reuniao", "voz", "texto"] }).notNull(),
+  campo:               varchar("campo", { length: 12, enum: ["nome", "telefone", "email", "tipo_pessoa", "tenho", "preciso"] }).notNull(),
+  valor:               varchar("valor", { length: 320 }).notNull(),
+  categoria:           varchar("categoria", { length: 120 }),
+  trecho:              text("trecho"),
+  confianca:           decimal("confianca", { precision: 4, scale: 3 }).default("0.000").notNull(),
+  status:              varchar("status", { length: 12, enum: ["pendente", "confirmada", "ignorada"] }).default("pendente").notNull(),
+  decididaEm:          bigint("decidida_em", { mode: "number" }),
+  createdAt:           bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt:           bigint("updated_at", { mode: "number" }).notNull(),
+}, (table) => ({
+  ownerContactIdx: index("nw_sug_owner_contact_idx").on(table.ownerId, table.contactId),
+  ownerMeetingIdx: index("nw_sug_owner_meeting_idx").on(table.ownerId, table.meetingId),
+  ownerSugestaoIdx: index("nw_sug_owner_meeting_suggestion_idx").on(table.ownerId, table.meetingSuggestionId),
+}));
+
+// Registro das conexões que podem originar negócio (itens 16 e 17): toda
+// conexão identificada pela plataforma ganha uma linha com ORIGEM, e a linha
+// sobrevive à sugestão que a originou — é rastreabilidade, não tela.
+// Nenhuma coluna pessoal: o motivo fala pelos IDs anônimos e pelos rótulos do
+// que cada lado tem e precisa. Quem participa mora em conexoes_participantes.
+// Comissão: só o STATUS (itens 17 e 18). Sem percentual, valor ou cobrança —
+// isso depende de regra contratual e de integração que não existem.
+export const conexoesRegistradas = mysqlTable("conexoes_registradas", {
+  id:              varchar("id", { length: 36 }).primaryKey(),
+  origem:          varchar("origem", { length: 32, enum: ["PLATFORM_MATCH", "NETWORK_PLATFORM_MATCH", "PRIVATE_NETWORK_MATCH", "NETWORK_NETWORK_MATCH"] }).notNull(),
+  // Uma linha por par por origem: recalcular não duplica o registro.
+  chaveDoPar:      varchar("chave_do_par", { length: 190 }).notNull(),
+  motivo:          text("motivo").notNull(),
+  itens:           jsonCompat("itens").$type<Array<{ tem: string; precisa: string; deCodigo: string | null; paraCodigo: string | null }>>().notNull(),
+  pontuacao:       int("pontuacao").notNull(),
+  status:          varchar("status", { length: 16, enum: ["identificada", "apresentacao", "negociacao", "fechada", "descartada"] }).default("identificada").notNull(),
+  apresentacaoEm:  bigint("apresentacao_em", { mode: "number" }),
+  negociacaoEm:    bigint("negociacao_em", { mode: "number" }),
+  fechamentoEm:    bigint("fechamento_em", { mode: "number" }),
+  descartadaEm:    bigint("descartada_em", { mode: "number" }),
+  statusComissao:  varchar("status_comissao", { length: 16, enum: ["sem_negocio", "a_apurar", "devida", "nao_devida"] }).default("sem_negocio").notNull(),
+  createdAt:       bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt:       bigint("updated_at", { mode: "number" }).notNull(),
+}, (table) => ({
+  chaveUnique: uniqueIndex("conexoes_registradas_chave_unique").on(table.chaveDoPar),
+  origemIdx:   index("conexoes_registradas_origem_idx").on(table.origem, table.createdAt),
+}));
+
+// Os dois lados de cada conexão registrada. Contato: `owner_id` é a dona do
+// network (a responsável; nas origens NETWORK_* também a ORIGINADORA do item
+// 18) e `codigo_anonimo` é o que aparece para quem não é a dona. Membro:
+// `userId`. `contact_id` vira nulo quando o contato é excluído — o ID anônimo
+// fica como registro de que a conexão existiu.
+export const conexoesParticipantes = mysqlTable("conexoes_participantes", {
+  id:                     bigint("id", { mode: "number" }).primaryKey().autoincrement(),
+  conexaoId:              varchar("conexao_id", { length: 36 }).notNull(),
+  lado:                   varchar("lado", { length: 1, enum: ["a", "b"] }).notNull(),
+  tipo:                   varchar("tipo", { length: 12, enum: ["contato", "membro"] }).notNull(),
+  ownerId:                varchar("owner_id", { length: 128 }),
+  userId:                 int("userId"),
+  contactId:              bigint("contact_id", { mode: "number" }),
+  codigoAnonimo:          varchar("codigo_anonimo", { length: 16 }),
+  originador:             boolean("originador").default(false).notNull(),
+  statusComissaoOriginador: varchar("status_comissao_originador", { length: 16, enum: ["sem_negocio", "a_apurar", "devida", "nao_devida"] }),
+  createdAt:              bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt:              bigint("updated_at", { mode: "number" }).notNull(),
+  // O que ESTE lado declarou (network-registro.ts, avancarConexao): descartar
+  // vale só para quem descartou, e o fechamento só vira etapa da conexão quando
+  // todos os lados confirmam. Nenhum lado encerra sozinho a trilha do outro.
+  descartadaEm:           bigint("descartada_em", { mode: "number" }),
+  fechamentoConfirmadoEm: bigint("fechamento_confirmado_em", { mode: "number" }),
+}, (table) => ({
+  conexaoLadoUnique: uniqueIndex("conexoes_participantes_conexao_lado_unique").on(table.conexaoId, table.lado),
+  ownerIdx:          index("conexoes_participantes_owner_idx").on(table.ownerId),
+  userIdx:           index("conexoes_participantes_user_idx").on(table.userId),
+  contatoIdx:        index("conexoes_participantes_contact_idx").on(table.contactId),
+}));
+
+// Minutos de reunião (itens 3, 4 e 25). O gratuito — 10 minutos por reunião —
+// é constante do código (MAX_MEETING_DURATION_SECONDS). Plano pago é LINHA
+// desta tabela, configurada depois pelo administrador: nenhuma linha nasce com
+// o sistema, e nada aqui inventa preço, minutos, nome ou periodicidade.
+export const planosDeMinutos = mysqlTable("planos_de_minutos", {
+  id:                       varchar("id", { length: 36 }).primaryKey(),
+  nome:                     varchar("nome", { length: 80 }),
+  limitePorReuniaoSegundos: int("limite_por_reuniao_segundos"),
+  limiteMensalSegundos:     int("limite_mensal_segundos"),
+  minutosAdicionais:        int("minutos_adicionais"),
+  precoCentavos:            int("preco_centavos"),
+  moeda:                    varchar("moeda", { length: 3 }),
+  periodicidade:            varchar("periodicidade", { length: 20 }),
+  ativo:                    boolean("ativo").default(false).notNull(),
+  createdAt:                bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt:                bigint("updated_at", { mode: "number" }).notNull(),
+});
+
+// A assinatura de uma usuária a um plano. Só uma integração de pagamento
+// (inexistente hoje) pode criar linha 'ativa': não há procedimento que o faça.
+export const assinaturasDeMinutos = mysqlTable("assinaturas_de_minutos", {
+  id:                varchar("id", { length: 36 }).primaryKey(),
+  userId:            int("userId").notNull(),
+  planoId:           varchar("plano_id", { length: 36 }).notNull(),
+  status:            varchar("status", { length: 12, enum: ["pendente", "ativa", "cancelada", "expirada"] }).default("pendente").notNull(),
+  inicioEm:          bigint("inicio_em", { mode: "number" }),
+  fimEm:             bigint("fim_em", { mode: "number" }),
+  provedor:          varchar("provedor", { length: 40 }),
+  referenciaExterna: varchar("referencia_externa", { length: 128 }),
+  createdAt:         bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt:         bigint("updated_at", { mode: "number" }).notNull(),
+}, (table) => ({
+  userStatusIdx: index("assinaturas_de_minutos_user_status_idx").on(table.userId, table.status),
+}));
+
+// O contador de minutos consumidos: uma linha por reunião transcrita (ou por
+// áudio curto de complemento por voz). Mora fora de meeting_transcripts de
+// propósito: excluir a reunião não devolve os minutos já usados no mês.
+export const consumoDeMinutos = mysqlTable("consumo_de_minutos", {
+  id:         varchar("id", { length: 36 }).primaryKey(),
+  ownerId:    varchar("owner_id", { length: 128 }).notNull(),
+  origem:     varchar("origem", { length: 10, enum: ["reuniao", "voz"] }).notNull(),
+  referencia: varchar("referencia", { length: 36 }).notNull(),
+  segundos:   int("segundos").notNull(),
+  createdAt:  bigint("created_at", { mode: "number" }).notNull(),
+}, (table) => ({
+  referenciaUnique: uniqueIndex("consumo_de_minutos_referencia_unique").on(table.ownerId, table.origem, table.referencia),
+  ownerCreatedIdx:  index("consumo_de_minutos_owner_created_idx").on(table.ownerId, table.createdAt),
+}));
+
 // Tipos exportados — Enriquecimento
 export type EnrichmentSession = typeof enrichmentSessions.$inferSelect;
 export type EnrichmentMessage = typeof enrichmentMessages.$inferSelect;
@@ -1172,6 +1344,12 @@ export const documentVersions = mysqlTable("document_versions", {
                  // versão publicada (o texto jurídico é da Cris), a regra da
                  // etapa 11 vale: não há o que consentir e a leitura libera.
                  "termo_acesso_ouro",
+                 // Termo Geral de Uso, Proteção de Dados e Intermediação Digital
+                 // (Dr. Ronei, 14/09/2026): a última etapa do cadastro. Sem
+                 // versão publicada o cadastro NÃO conclui — ao contrário dos
+                 // tipos acima, aqui a ausência de texto barra em vez de liberar
+                 // (server/termo-geral-de-uso.ts).
+                 "termo_geral_de_uso",
                ]).notNull(),
   version:     int("version").notNull(),
   text:        text("text").notNull(),
