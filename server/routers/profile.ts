@@ -23,10 +23,10 @@ import { cortarSemPartirEmoji, LIMITE_DA_BIO_GRAVADA, LIMITE_DA_BIO_NO_CADASTRO 
 // ============================================================
 
 /**
- * A bio gravada quando o texto que chegou é EXATAMENTE o corte que o
- * formulário do cadastro faz nela — o retrato de um envio que devolveu o que
- * a tela mostrou, e não do que a pessoa escreveu. Devolve null em todo o
- * resto (bio ausente, bio que cabe no campo, ou qualquer texto editado), e aí
+ * A apresentação GRAVADA que o cadastro não deve regravar por cima: quando o
+ * texto que chegou é o corte que o formulário fazia (bundle antigo em cache) ou
+ * está VAZIO com apresentação gravada (o bundle publicado da main). Devolve null
+ * em todo o resto — bio ausente, texto editado, conta sem apresentação —, e aí
  * a escrita segue normal.
  *
  * A comparação é por IGUALDADE com `cortarSemPartirEmoji`, a mesma função da
@@ -34,7 +34,7 @@ import { cortarSemPartirEmoji, LIMITE_DA_BIO_GRAVADA, LIMITE_DA_BIO_NO_CADASTRO 
  * — quem apaga o pedaço pendurado no fim do texto cortado está editando, e
  * essa edição tem de valer.
  */
-async function bioCortadaPeloFormulario(userId: number, bioRecebida: string | undefined): Promise<string | null> {
+async function apresentacaoAPreservar(userId: number, bioRecebida: string | undefined): Promise<string | null> {
   if (bioRecebida === undefined) return null;
   // Um corte tem o tamanho do teto, ou um a menos quando o último code point
   // ocupa duas unidades UTF-16 e não coube. Texto de tamanho médio não é
@@ -257,7 +257,7 @@ export const profileRouter = router({
       // histórico da coluna. Só o texto IDÊNTICO ao corte é ignorado:
       // qualquer edição, inclusive apagar o pedaço pendurado no fim do texto
       // cortado, grava normalmente.
-      const bioPreservada = await bioCortadaPeloFormulario(ctx.user.id, input.bio);
+      const bioPreservada = await apresentacaoAPreservar(ctx.user.id, input.bio);
       await upsertUserProfile(ctx.user.id, {
         ...profileData,
         ...(bioPreservada !== null ? { bio: bioPreservada } : {}),

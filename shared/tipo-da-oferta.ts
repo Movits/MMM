@@ -645,7 +645,8 @@ const familiaDaPalavra = (palavra: string) => FAMILIA_DA_PALAVRA.get(palavra) ??
 
 /** Depois de uma destas, o que vem é complemento da cabeça, não a coisa oferecida. */
 const PREPOSICOES = new Set([
-  ...Array.from(GENITIVOS), "para", "em", "no", "na", "nos", "nas", "com", "por", "sobre", "ao", "aos", "a", "as",
+  // "pra" é o "para" falado, e sem ele "Contador pra MEI" lia o destinatário como especialidade.
+  ...Array.from(GENITIVOS), "para", "pra", "em", "no", "na", "nos", "nas", "com", "por", "sobre", "ao", "aos", "a", "as",
   "for", "to", "in", "on", "with", "from", "at", "en", "con", "al", "del", "desde", "hacia",
   // O "para" e o "com" do francês, do alemão e do russo, e o "sobre" do russo: sem eles "Bureaux POUR avocats" e
   // "Software FÜR Buchhaltung" liam o serviço no fim, como se fossem o pedido (116bb56 da #127, trava de `regraNaoLeOPar`).
@@ -1955,11 +1956,25 @@ function atendeEspecialidades(oferecido: ServicoNomeado, pedido: ServicoNomeado)
   //
   // Pedido com ESPECIALIDADE continua sem casar, e é regra da casa, congelada
   // em teste: "Advocacia" não atende "Advogado tributarista" (defeito c da
-  // #101). O limite disso é de LEITURA, e fica registrado: o que vem depois de
-  // "de", "em" ou justaposto ("Contador de MEI", "logística de exportação") é
-  // lido como especialidade, não como público, então esses pares seguem em 0 —
-  // mudar isso é mexer em como a frase é lida, não neste item.
-  if (ehGenerico(oferecido)) return pedido.especialidades.some(pedida => pedida.lemas.size === 0 && pedida.publico.size > 0);
+  // #101).
+  //
+  // O DESTINATÁRIO escrito com outra preposição ("Contador de MEI", "Contador
+  // MEI", "Contador de pequenas empresas") cai em `lemas` e não em `publico`,
+  // porque "de" introduz assunto na leitura da frase. Ele não é especialidade:
+  // é a mesma lista curada de destinatários comuns que o lado da OFERTA já usa
+  // (`soDestinatarioComum`), e nela não entra "tributario" nem "trabalhista".
+  // Sem isto, a mesma necessidade valia 60 ou 0 conforme a preposição escrita —
+  // e o 0 nem gravava o par, contra os 60 que a main dava pela categoria.
+  //
+  // Fica de fora, e é o limite conhecido: a FINALIDADE escrita sem "para"
+  // ("logística de exportação"), que a leitura entrega como especialidade e
+  // nenhuma lista distingue de uma especialidade de verdade.
+  if (ehGenerico(oferecido)) {
+    return pedido.especialidades.some(pedida => {
+      if (pedida.lemas.size === 0) return pedida.publico.size > 0;
+      return pedida.servicos.size === 0 && Array.from(pedida.lemas).every(lema => DESTINATARIOS_COMUNS.has(lema));
+    });
+  }
   return pedido.especialidades.some(pedida => (pedida.lemas.size > 0
     ? oferecido.especialidades.some(oferecida => cobre(oferecida, pedida))
     : oferecido.especialidades.some(oferecida => cobrePublico(oferecida, pedida))));

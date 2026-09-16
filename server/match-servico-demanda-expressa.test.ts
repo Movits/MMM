@@ -705,14 +705,19 @@ describe("Revisão de 15/09 dos consertos da #127 — motor privado", () => {
     ] as Array<[string, string]>) {
       expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
     }
-    // O limite da leitura, registrado de propósito: escrito com "de", "em" ou justaposto, o mesmo público é
-    // lido como ESPECIALIDADE, e o par segue em 0. É regressão contra a main que não se conserta aqui — mexe em
-    // como a frase é lida (`PREPOSICOES_DE_ASSUNTO`), não na regra deste item.
+    // O destinatário não depende da preposição escrita: "de MEI", "pra MEI" e "MEI" justaposto caem em `lemas`,
+    // não em `publico`, e valem a mesma nota da família. Quem separa isso de uma especialidade de verdade é a
+    // lista curada de destinatários comuns — nela não entra "tributario" nem "trabalhista".
     for (const [oferta, necessidade] of [
-      ["Contabilidade", "Contador de MEI"], ["Contabilidade", "Contador MEI"],
+      ["Contabilidade", "Contador de MEI"], ["Contabilidade", "Contador MEI"], ["Contabilidade", "Contador pra MEI"],
+      ["Contabilidade", "Contador de pequenas empresas"], ["Advocacia", "Advogado de startups"],
     ] as Array<[string, string]>) {
-      expect(scoreMatch(item(oferta), item(necessidade)).score, `${oferta} × ${necessidade}`).toBe(0);
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
     }
+    // O limite que fica, registrado de propósito: a FINALIDADE escrita sem "para" ("logística de exportação") a
+    // leitura entrega como especialidade, e nenhuma lista a distingue de uma especialidade de verdade. Continua
+    // em 0, contra os 60 da main — conserto disso é mexer em como a frase é lida, não na regra deste item.
+    expect(scoreMatch(item("Logística"), item("Preciso de logística de exportação para meu café")).score).toBe(0);
     // O que a #124 fixou continua valendo: especialidade pedida não é atendida por quem só tem a família.
     for (const [oferta, necessidade] of [
       ["Advocacia", "Advogado tributarista"], ["Consultoria", "Consultoria trabalhista"],
