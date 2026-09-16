@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { TRPCError } from "@trpc/server";
 
 process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
 
@@ -20,7 +21,7 @@ const llm = vi.hoisted(() => ({
 
 vi.mock("./_core/llm", () => ({ invokeLLM: llm.invokeLLM }));
 
-import { faqRouter } from "./routers/faq";
+import { FAQ_LIMIT, faqRouter } from "./routers/faq";
 
 let ipSeq = 0;
 function contexto() {
@@ -79,5 +80,48 @@ describe("faq.ask: o prompt não nega o que a plataforma já oferece", () => {
     expect(linha).toMatch(/não informe percentual/);
     expect(linha).toMatch(/Não prometa planos pagos nem minutos extras: ainda não existem/);
     expect(linha).not.toMatch(/\d+\s*%/);
+  });
+});
+
+/**
+ * O teto do FAQ (cada pergunta é uma chamada paga ao LLM) contava pelo primeiro
+ * item do X-Forwarded-For: trocar o cabeçalho a cada pergunta o anulava. Agora
+ * conta pelo IP real (CF-Connecting-IP no Render), com 60 por minuto porque a
+ * sala do lançamento divide o mesmo IP.
+ */
+describe("faq.ask: teto por IP real", () => {
+  beforeEach(() => {
+    process.env.RENDER = "true";
+    llm.invokeLLM.mockClear();
+  });
+  afterEach(() => {
+    delete process.env.RENDER;
+  });
+
+  const perguntar = (ipReal: string, i: number) =>
+    faqRouter
+      .createCaller({
+        req: {
+          headers: { "cf-connecting-ip": ipReal, "x-forwarded-for": `203.0.113.${i}, ${ipReal}` },
+          ip: "10.226.0.9",
+          socket: { remoteAddress: "10.226.0.9" },
+        },
+        res: {},
+        user: null,
+      } as never)
+      .ask({ question: "O que é a WRW?" });
+
+  it("60 perguntas do mesmo IP passam; a 61ª leva TOO_MANY_REQUESTS mesmo trocando o X-Forwarded-For", async () => {
+    expect(FAQ_LIMIT).toBe(60);
+    for (let i = 0; i < 60; i++) await perguntar("198.51.100.77", i);
+    expect(llm.invokeLLM).toHaveBeenCalledTimes(60);
+
+    const erro = await perguntar("198.51.100.77", 99).catch((e: unknown) => e);
+    expect(erro).toBeInstanceOf(TRPCError);
+    expect((erro as TRPCError).code).toBe("TOO_MANY_REQUESTS");
+    expect(llm.invokeLLM).toHaveBeenCalledTimes(60);
+
+    // Outra rede segue perguntando.
+    await expect(perguntar("198.51.100.78", 0)).resolves.toEqual({ answer: "resposta" });
   });
 });

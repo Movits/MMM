@@ -42,6 +42,14 @@ export const LIMITE_AUDIO_DITADO_BASE64 = Math.ceil(LIMITE_AUDIO_DITADO_BYTES / 
 // como a do FAQ e a do reprocessamento de reunião: basta à instância única do
 // Render e zera a cada deploy. A vaga é reservada ANTES do await, para uma
 // rajada simultânea não passar inteira.
+//
+// Memória limitada a MAXIMO_DE_CHAVES_POR_TETO chaves. Antes, passando de 5000
+// o Map inteiro era zerado: quem girasse chaves (endereços, e-mails) apagava o
+// contador de todo mundo. Agora sai só a chave usada há mais tempo: cada
+// reserva aceita reinsere a chave no fim, então as primeiras do Map são as
+// mais antigas (as vencidas primeiro).
+export const MAXIMO_DE_CHAVES_POR_TETO = 5000;
+
 export function criarTeto(maximo: number, janelaMs: number, mensagem: string) {
   const pedidos = new Map<string, number[]>();
   return {
@@ -51,9 +59,14 @@ export function criarTeto(maximo: number, janelaMs: number, mensagem: string) {
       if (recentes.length >= maximo) {
         throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: mensagem });
       }
-      if (pedidos.size > 5000) pedidos.clear();
       recentes.push(agora);
+      pedidos.delete(chave);
       pedidos.set(chave, recentes);
+      while (pedidos.size > MAXIMO_DE_CHAVES_POR_TETO) {
+        const maisAntiga = pedidos.keys().next().value;
+        if (maisAntiga === undefined) break;
+        pedidos.delete(maisAntiga);
+      }
     },
     /** Só para os testes: o teto é estado de módulo. */
     esquecer() {

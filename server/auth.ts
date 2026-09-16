@@ -5,6 +5,7 @@ import { exigirDb } from "./db";
 import { users, sessions } from "../drizzle/schema";
 import { checkLoginRateLimit, recordLoginAttempt } from "./security";
 import { requireSecret } from "./_core/env";
+import { filaDoBcrypt } from "./fila-do-bcrypt";
 import crypto from "crypto";
 
 const JWT_SECRET = new TextEncoder().encode(requireSecret("JWT_SECRET"));
@@ -60,7 +61,8 @@ export async function registerUser(params: {
   }
 
   // Hash da senha
-  const passwordHash = await bcrypt.hash(params.password, 12);
+  // Na fila: poucas vagas simultâneas para a CPU não travar numa rajada (fila-do-bcrypt.ts).
+  const passwordHash = await filaDoBcrypt.executar(() => bcrypt.hash(params.password, 12));
   const openId = generateOpenId();
 
   // Criar usuário
@@ -112,15 +114,23 @@ export async function loginUser(params: {
   email: string;
   password: string;
   ip?: string;
+  /**
+   * A chave de rede do bloqueio por e-mail + IP: IPv6 agrupado no /56
+   * (`chaveDeRede`, ip-da-cliente.ts), para quem tem IPv6 não zerar a contagem
+   * trocando de endereço. A sessão continua gravando o IP cru (`ip`), que a
+   * detecção de anomalia compara. Sem ela, vale o IP cru.
+   */
+  chaveDoBloqueio?: string;
   userAgent?: string;
 }) {
   const db = await exigirDb();
 
   const safeIp = params.ip ? params.ip.split(",")[0].trim().substring(0, 45) : "unknown";
+  const chaveDoBloqueio = params.chaveDoBloqueio ? params.chaveDoBloqueio.substring(0, 45) : safeIp;
   const identifier = params.email.toLowerCase().trim();
 
   // ─── Verificar rate limit de login (brute force protection) ───
-  const rateCheck = await checkLoginRateLimit(identifier, safeIp);
+  const rateCheck = await checkLoginRateLimit(identifier, chaveDoBloqueio);
   if (!rateCheck.allowed) {
     const blockedUntil = rateCheck.blockedUntil
       ? ` Tente novamente após ${rateCheck.blockedUntil.toLocaleTimeString("pt-BR")}.`
@@ -136,7 +146,7 @@ export async function loginUser(params: {
 
   if (userRows.length === 0) {
     // Registrar tentativa falha mesmo para e-mails inexistentes (evita timing attack)
-    await recordLoginAttempt(identifier, safeIp, false).catch(() => {});
+    await recordLoginAttempt(identifier, chaveDoBloqueio, false).catch(() => {});
     throw new Error("E-mail ou senha incorretos.");
   }
 
@@ -150,17 +160,19 @@ export async function loginUser(params: {
     throw new Error(MENSAGEM_CONTA_SEM_SENHA);
   }
 
-  const passwordOk = await bcrypt.compare(params.password, user.passwordHash);
+  const passwordHash = user.passwordHash;
+  // Na fila: poucas vagas simultâneas para a CPU não travar numa rajada (fila-do-bcrypt.ts).
+  const passwordOk = await filaDoBcrypt.executar(() => bcrypt.compare(params.password, passwordHash));
   if (!passwordOk) {
     // Registrar tentativa falha no banco
-    await recordLoginAttempt(identifier, safeIp, false).catch(() => {});
+    await recordLoginAttempt(identifier, chaveDoBloqueio, false).catch(() => {});
     const remaining = rateCheck.remainingAttempts - 1;
     const hint = remaining > 0 ? ` (${remaining} tentativa${remaining !== 1 ? "s" : ""} restante${remaining !== 1 ? "s" : ""})` : " Conta será bloqueada na próxima tentativa.";
     throw new Error(`E-mail ou senha incorretos.${hint}`);
   }
 
   // Login bem-sucedido: limpar tentativas anteriores
-  await recordLoginAttempt(identifier, safeIp, true).catch(() => {});
+  await recordLoginAttempt(identifier, chaveDoBloqueio, true).catch(() => {});
 
   // Atualizar lastSignedIn
   await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));

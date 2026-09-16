@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getTableName, type Table } from "drizzle-orm";
 
 // server/auth.ts exige JWT_SECRET já na carga do módulo — vi.hoisted roda antes dos imports.
 vi.hoisted(() => {
@@ -21,12 +22,16 @@ const E_MAIL_CADASTRADO = "existe@exemplo.test";
 vi.mock("./db", () => ({
   exigirDb: async () => ({
     select: () => ({
-      from: () => ({
+      from: (tabela: Table) => ({
         where: () => ({
-          // A busca da usuária termina em `.limit(1)`; a contagem do limite é
-          // aguardada direto, e é ela que este teste controla.
+          // A busca da usuária termina em `.limit(1)`; as contagens são
+          // aguardadas direto. Este teste controla a do IP
+          // (password_reset_requests); a da conta (password_reset_tokens) fica
+          // em zero, senão o limite por conta dispararia antes e o caso
+          // "dentro do limite" deixaria de enviar.
           limit: async () => [{ id: 7, name: "Membra", email: E_MAIL_CADASTRADO }],
-          then: (resolver: (linhas: unknown[]) => unknown) => resolver([{ count: pedidosNaJanela.valor }]),
+          then: (resolver: (linhas: unknown[]) => unknown) =>
+            resolver([{ count: getTableName(tabela) === "password_reset_requests" ? pedidosNaJanela.valor : 0 }]),
         }),
       }),
     }),
@@ -36,6 +41,7 @@ vi.mock("./db", () => ({
 }));
 
 import { appRouter } from "./routers";
+import { tetoDeRecuperacaoPorEmail, tetoDeRecuperacaoPorRede } from "./routers/auth";
 import { PASSWORD_RESET_GENERIC_MESSAGE, PASSWORD_RESET_RATE_LIMIT } from "./password-reset-security";
 import type { TrpcContext } from "./_core/context";
 
@@ -66,6 +72,9 @@ describe("esqueci a senha — o limite por IP deixa registro no log", () => {
     sendEmailMock.mockReset();
     sendEmailMock.mockResolvedValue(true);
     pedidosNaJanela.valor = 0;
+    // Os tetos em memória (mesmo e-mail em todos os casos) são outro assunto.
+    tetoDeRecuperacaoPorRede.esquecer();
+    tetoDeRecuperacaoPorEmail.esquecer();
   });
 
   it("dentro do limite, envia o e-mail e não avisa nada", async () => {
