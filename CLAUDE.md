@@ -128,7 +128,7 @@ scripts (`scripts/*.mjs`, `scripts/exame/*.mjs`, `.claude/hooks/*.mjs`) → `pnp
 `pnpm build`. Rode o mesmo antes da PR.
 
 **Servidor.** Lógica nova em `server/` ganha ou atualiza um `*.test.ts` ao lado
-(fora os dois `*.integracao.test.ts`). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
+(fora os `*.integracao.test.ts`). Padrão: `vi.mock` das dependências; credencial ausente se auto-pula com
 `skipIf`; a suíte NUNCA lê `DATABASE_URL` (`server/test/setup-banco.ts` a troca por
 `DATABASE_URL_TESTES`, um banco descartável; sem ela o `*.integracao.test.ts` se pula),
 porque o `.env` de trabalho já apontou para produção e `pnpm test` chegou a promover
@@ -199,15 +199,32 @@ de menu abrem também para quem tem a flag, mas só essa aba.
 `in_review` (nasceu; espera o distribuidor) → `pending` (encaminhado; espera a
 destinatária) → `accepted` | `declined`; ou `in_review` → `not_forwarded` (não
 encaminhado). `reciprocatedAt` marca que a destinatária também clicou durante a análise
-(uma linha por par; a aprovação já vira `accepted` e revela os dois nomes). A
+(sem linha nova; a aprovação já vira `accepted` e revela os dois nomes). A
 destinatária NÃO vê `in_review` nem `not_forwarded` — o predicado `pedidoVisivelPara`
 em `db.ts` tira a linha do join em `getMatchesForUser` e do WHERE em
 `getConnectionsForUser` (regra de consulta, não de tela). A decisão
 (`distribuicao.decidir`) é um UPDATE com `status = 'in_review'` no WHERE: 0 linhas =
 CONFLICT, sem efeito; `respondToConnection` e o interesse mútuo em
-`sendConnectionRequest` também levam o status no WHERE. Sem distribuidor ativo o
-pedido FICA esperando e a presidência recebe o aviso: mesclar a fila só depois de
-conceder o poder em produção. Detalhes em docs/arquitetura/fluxos.md e privacidade.md.
+`sendConnectionRequest` também levam o status no WHERE. Quem é PARTE de um pedido
+não o vê na fila nem no histórico e não recebe o aviso do sino. **O `connections.id`
+sequencial não sai para quem distribui nem para as partes**: a fila entrega uma alça
+opaca (`server/alca-do-pedido.ts`, AES-GCM presa à conta que leu) e `decidir` age por
+ela; o histórico não traz id; o cartão e a aba Conexões só trazem o id do pedido
+encaminhado que a pessoa responde (`idParaResponder` em `db.ts`). Com o id à mostra, a
+destinatária distribuidora achava pelos buracos da sequência o pedido oculto para ela,
+e um id menor que o do próprio clique contava que a outra pessoa pediu antes. Alça que
+a conta não recebeu dá NOT_FOUND e `MATCH_HANDLE_INVALID`; alça de pedido que já saiu
+da análise (fila velha) dá o mesmo NOT_FOUND, sem trilha. Se a
+outra pessoa clica depois de um `not_forwarded` oculto para ela, nasce o pedido dela.
+O par pode ter duas linhas (esse caso e a corrida de dois cliques, sem índice único): o
+cartão e a aba mostram a mesma, escolhida pelo estado (aceita, depois a encaminhada que
+a pessoa responde, depois a encaminhada que ela espera, depois a mais recente), por
+`linhaVisivelDoPar`. Sem
+distribuidor que possa decidir, o pedido FICA esperando e president/admin ativos
+recebem o aviso (contas Ouro não, como no aviso de oportunidade pendente). A fila está
+na `main` desde a #113: enquanto ninguém tiver o poder concedido em produção, todo
+pedido novo espera. Detalhes em docs/arquitetura/fluxos.md
+e privacidade.md.
 
 **Cadastro não concluído não usa a plataforma.** `profile.completeOnboarding` exige o
 Termo Geral de Uso aceito (`server/termo-geral-de-uso.ts`) e é quem marca

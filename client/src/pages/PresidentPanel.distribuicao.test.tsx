@@ -11,15 +11,22 @@ import PresidentPanel from "./PresidentPanel";
  * Ouro, entra no painel só com essa aba e a tela NÃO consulta
  * `distribuicao.listar`, que é da presidência e devolveria 403; a presidente sem
  * o poder não consulta a fila, pelo motivo simétrico. Sem Ouro e sem o poder:
- * "Acesso Restrito".
+ * "Acesso Restrito". Consulta carregando ou com erro nunca aparece como lista
+ * vazia: uma fila "vazia" por erro faria a distribuidora fechar o painel com
+ * pedidos esperando.
  *
  * O tRPC é um dublê explícito (molde de PresidentPanel.test.tsx): registra as
- * consultas feitas e o que as mutações receberam.
+ * consultas feitas, o que as mutações receberam e permite forçar carregamento
+ * ou erro por consulta.
  */
+
+type EstadoDaConsulta = { isLoading?: boolean; isError?: boolean; error?: { message: string } };
 
 const duble = vi.hoisted(() => ({
   usuaria: { id: 1, role: "president", name: "Presidente", isDistributor: false } as Record<string, unknown>,
   consultas: [] as string[],
+  estados: {} as Record<string, EstadoDaConsulta>,
+  refetches: {} as Record<string, ReturnType<typeof vi.fn>>,
   distribuidores: [] as unknown[],
   membros: { users: [] as unknown[], total: 0 },
   fila: [] as unknown[],
@@ -37,7 +44,19 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 vi.mock("@/lib/trpc", () => {
   const consulta = (nome: string, dados: () => unknown) => ({
-    useQuery: () => { duble.consultas.push(nome); return { data: dados(), isLoading: false, refetch: vi.fn() }; },
+    useQuery: () => {
+      duble.consultas.push(nome);
+      const estado = duble.estados[nome] ?? {};
+      const refetch = (duble.refetches[nome] ??= vi.fn());
+      const semDados = Boolean(estado.isLoading || estado.isError);
+      return {
+        data: semDados ? undefined : dados(),
+        isLoading: Boolean(estado.isLoading),
+        isError: Boolean(estado.isError),
+        error: estado.error ?? null,
+        refetch,
+      };
+    },
   });
   const mutacao = (fn: () => (entrada: unknown) => void) => ({
     useMutation: () => ({ mutate: (entrada: unknown) => fn()(entrada), isPending: false }),
@@ -79,7 +98,7 @@ const perfil = (name: string, extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 const pedido = (extra: Record<string, unknown> = {}) => ({
-  connectionId: 7, createdAt: new Date("2026-09-13T10:00:00Z"), reciprocado: false,
+  alca: "alca-opaca-7", createdAt: new Date("2026-09-13T10:00:00Z"), reciprocado: false,
   solicitante: perfil("Zoroastra Solicitante"), destinataria: perfil("Quintiliana Destinatária"),
   compatibilidade: { overallScore: 82, specialtyScore: 90, objectivesScore: 80, incomeScore: 70, locationScore: 60, valuesScore: 50, aiInsight: "Vinho e capital." },
   bloqueadoPeloPortao: false, termoOk: { solicitante: true, destinataria: true }, ativas: { solicitante: true, destinataria: true },
@@ -96,6 +115,8 @@ function abrir() {
 
 beforeEach(() => {
   duble.consultas = [];
+  duble.estados = {};
+  duble.refetches = {};
   duble.distribuidores = [];
   duble.membros = { users: [], total: 0 };
   duble.fila = [];
@@ -165,6 +186,23 @@ describe("aba Distribuição para Ouro/presidente/admin — Quem distribui", () 
     expect(screen.getByText("Ninguém tem o poder de distribuição no momento.")).toBeInTheDocument();
   });
 
+  it("carregando: mostra o esqueleto, nunca 'Ninguém tem o poder'", () => {
+    duble.estados["distribuicao.listar"] = { isLoading: true };
+    abrir();
+    expect(screen.getByLabelText("Carregando")).toBeInTheDocument();
+    expect(screen.queryByText("Ninguém tem o poder de distribuição no momento.")).not.toBeInTheDocument();
+  });
+
+  it("erro: diz que não carregou e 'Tentar de novo' refaz a consulta — nunca 'Ninguém tem o poder'", () => {
+    duble.estados["distribuicao.listar"] = { isError: true, error: { message: "Banco de dados indisponível." } };
+    abrir();
+    expect(screen.getByText("Não foi possível carregar esta lista.")).toBeInTheDocument();
+    expect(screen.getByText("Banco de dados indisponível.")).toBeInTheDocument();
+    expect(screen.queryByText("Ninguém tem o poder de distribuição no momento.")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+    expect(duble.refetches["distribuicao.listar"]).toHaveBeenCalled();
+  });
+
   it("candidatas vêm de president.listAllUsers e quem já distribui sai da lista", () => {
     duble.distribuidores = [dina];
     duble.membros = { users: [dora, { ...dina, country: null }], total: 2 };
@@ -175,12 +213,14 @@ describe("aba Distribuição para Ouro/presidente/admin — Quem distribui", () 
     expect(screen.getAllByRole("button", { name: /conceder poder/i })).toHaveLength(1);
   });
 
-  it("Conceder poder → confirmar chama conceder({ userId }) com o motivo opcional", () => {
+  it("Conceder poder → confirmar chama conceder({ userId }) com o motivo opcional, limitado aos 500 do servidor", () => {
     duble.membros = { users: [dora], total: 1 };
     abrir();
     fireEvent.click(screen.getByRole("button", { name: /conceder poder/i }));
     expect(screen.getByText("Conceder poder de distribuição")).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText(/Motivo \(opcional/), { target: { value: "  Primeira distribuidora  " } });
+    const campo = screen.getByPlaceholderText(/Motivo \(opcional/);
+    expect(campo).toHaveAttribute("maxLength", "500");
+    fireEvent.change(campo, { target: { value: "  Primeira distribuidora  " } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar concessão" }));
     expect(duble.conceder).toHaveBeenCalledWith({ userId: 7, reason: "Primeira distribuidora" });
   });
@@ -193,19 +233,21 @@ describe("aba Distribuição para Ouro/presidente/admin — Quem distribui", () 
     expect(duble.conceder).toHaveBeenCalledWith({ userId: 7, reason: undefined });
   });
 
-  it("Revogar exige motivo com 10 caracteres; depois chama revogar({ userId, reason })", () => {
+  it("Revogar exige motivo com 10 caracteres (e no máximo 500); depois chama revogar({ userId, reason })", () => {
     duble.distribuidores = [dina];
     abrir();
     fireEvent.click(screen.getByRole("button", { name: "Revogar" }));
     const confirmar = screen.getByRole("button", { name: "Confirmar revogação" });
     expect(confirmar).toBeDisabled();
+    const campo = screen.getByPlaceholderText(/Motivo da revogação/);
+    expect(campo).toHaveAttribute("maxLength", "500");
 
-    fireEvent.change(screen.getByPlaceholderText(/Motivo da revogação/), { target: { value: "curto" } });
+    fireEvent.change(campo, { target: { value: "curto" } });
     expect(confirmar).toBeDisabled();
     fireEvent.click(confirmar);
     expect(duble.revogar).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByPlaceholderText(/Motivo da revogação/), { target: { value: "Saiu da equipe de distribuição" } });
+    fireEvent.change(campo, { target: { value: "Saiu da equipe de distribuição" } });
     expect(confirmar).toBeEnabled();
     fireEvent.click(confirmar);
     expect(duble.revogar).toHaveBeenCalledWith({ userId: 8, reason: "Saiu da equipe de distribuição" });
@@ -223,6 +265,30 @@ describe("aba Distribuição para quem tem o poder — Fila de análise", () => 
     expect(screen.getByText("Nenhuma decisão registrada ainda.")).toBeInTheDocument();
   });
 
+  it("fila carregando: esqueleto, nunca 'Nenhum pedido'", () => {
+    duble.estados["distribuicao.fila"] = { isLoading: true };
+    render(<PresidentPanel />);
+    expect(screen.getByLabelText("Carregando")).toBeInTheDocument();
+    expect(screen.queryByText("Nenhum pedido de interesse esperando análise.")).not.toBeInTheDocument();
+  });
+
+  it("fila com erro (ex.: poder revogado no meio): diz que não carregou, mostra o motivo e 'Tentar de novo' refaz — nunca 'Nenhum pedido'", () => {
+    duble.estados["distribuicao.fila"] = { isError: true, error: { message: "Acesso restrito ao distribuidor do Smart Match." } };
+    render(<PresidentPanel />);
+    expect(screen.getByText("Não foi possível carregar esta lista.")).toBeInTheDocument();
+    expect(screen.getByText("Acesso restrito ao distribuidor do Smart Match.")).toBeInTheDocument();
+    expect(screen.queryByText("Nenhum pedido de interesse esperando análise.")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+    expect(duble.refetches["distribuicao.fila"]).toHaveBeenCalled();
+  });
+
+  it("histórico com erro não aparece como 'Nenhuma decisão registrada'", () => {
+    duble.estados["distribuicao.historico"] = { isError: true, error: { message: "Banco de dados indisponível." } };
+    render(<PresidentPanel />);
+    expect(screen.queryByText("Nenhuma decisão registrada ainda.")).not.toBeInTheDocument();
+    expect(screen.getByText("Não foi possível carregar esta lista.")).toBeInTheDocument();
+  });
+
   it("um pedido mostra as DUAS partes com nome (trava anti-vacuidade), empresa, travas verdes e a nota do Smart Match", () => {
     duble.fila = [pedido()];
     render(<PresidentPanel />);
@@ -238,26 +304,40 @@ describe("aba Distribuição para quem tem o poder — Fila de análise", () => 
     expect(screen.getByRole("button", { name: /^encaminhar$/i })).toBeEnabled();
   });
 
-  it("Encaminhar chama decidir({ connectionId, aprovar: true })", () => {
+  it("Encaminhar chama decidir({ alca, aprovar: true }); o cartão não mostra número de pedido", () => {
     duble.fila = [pedido()];
     render(<PresidentPanel />);
+    // O número sequencial na tela deixava achar pelos buracos o pedido oculto.
+    expect(screen.getByText(/^Pedido feito em /)).toBeInTheDocument();
+    expect(screen.queryByText(/Pedido #/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^encaminhar$/i }));
-    expect(duble.decidir).toHaveBeenCalledWith({ connectionId: 7, aprovar: true });
+    expect(duble.decidir).toHaveBeenCalledWith({ alca: "alca-opaca-7", aprovar: true });
   });
 
-  it("Não encaminhar exige a nota; depois chama decidir({ connectionId, aprovar: false, nota })", () => {
+  it("Não encaminhar exige a nota (até 1000); o diálogo diz que só quem pediu vê; depois chama decidir com a nota", () => {
     duble.fila = [pedido()];
     render(<PresidentPanel />);
     fireEvent.click(screen.getByRole("button", { name: "Não encaminhar" }));
+    expect(screen.getByText(/a outra pessoa não é avisada/)).toBeInTheDocument();
     const confirmar = screen.getByRole("button", { name: "Confirmar: não encaminhar" });
     expect(confirmar).toBeDisabled();
     fireEvent.click(confirmar);
     expect(duble.decidir).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByPlaceholderText(/Por que não encaminhar/), { target: { value: "  Setores sem relação  " } });
+    const campo = screen.getByPlaceholderText(/Por que não encaminhar/);
+    expect(campo).toHaveAttribute("maxLength", "1000");
+    fireEvent.change(campo, { target: { value: "  Setores sem relação  " } });
     expect(confirmar).toBeEnabled();
     fireEvent.click(confirmar);
-    expect(duble.decidir).toHaveBeenCalledWith({ connectionId: 7, aprovar: false, nota: "Setores sem relação" });
+    expect(duble.decidir).toHaveBeenCalledWith({ alca: "alca-opaca-7", aprovar: false, nota: "Setores sem relação" });
+  });
+
+  it("não encaminhar pedido RECÍPROCO: o diálogo diz que as duas pessoas veem e são avisadas", () => {
+    duble.fila = [pedido({ reciprocado: true })];
+    render(<PresidentPanel />);
+    fireEvent.click(screen.getByRole("button", { name: "Não encaminhar" }));
+    expect(screen.getByText(/as duas passam a ver/)).toBeInTheDocument();
+    expect(screen.queryByText(/a outra pessoa não é avisada/)).not.toBeInTheDocument();
   });
 
   it("trava vermelha (portão, termo ou conta inativa) desabilita Encaminhar e explica; Não encaminhar continua possível", () => {
@@ -278,7 +358,7 @@ describe("aba Distribuição para quem tem o poder — Fila de análise", () => 
 
   it("histórico lista as decisões com quem decidiu, o resultado e a nota", () => {
     duble.historico = [{
-      connectionId: 3, decididoEm: new Date("2026-09-12T09:00:00Z"), decididoPor: { id: 2, name: "Distribuidora" },
+      decididoEm: new Date("2026-09-12T09:00:00Z"), decididoPor: { id: 2, name: "Distribuidora" },
       resultado: "not_forwarded", nota: "Setores sem relação", reciprocado: false,
       solicitanteNome: "Ana Histórica", destinatariaNome: "Bia Histórica",
     }];

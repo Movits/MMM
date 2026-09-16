@@ -842,13 +842,41 @@ function ComplianceTab() {
 // ─── Módulo: Distribuição do Smart Match ─────────────────────────────────────
 // O distribuidor é a pessoa real que confere cada pedido de interesse antes de
 // encaminhá-lo à outra pessoa. O poder mora em `users.isDistributor` e acumula
-// com qualquer nível. Nesta etapa a aba traz só "Quem distribui" (conceder e
-// revogar, para Ouro/presidente/admin); a fila de análise chega na etapa
-// seguinte. Quem só distribui (sem Ouro) NÃO consulta `distribuicao.listar`:
-// a procedure é da presidência e devolveria 403.
+// com qualquer nível. A aba tem duas seções, e cada uma só aparece (e só consulta)
+// para quem pode chamar as procedures dela — senão a consulta devolveria 403:
+// - "Fila de análise" (FilaDeAnalise): quem tem o poder — fila, decidir, histórico;
+// - "Quem distribui" (QuemDistribui): Ouro/presidente/admin — conceder e revogar.
 const NOME_DO_NIVEL: Record<string, string> = {
   bronze: "Bronze", silver: "Prata", gold: "Ouro", admin: "Admin", president: "Presidente",
 };
+
+// Consulta que falhou NÃO é lista vazia: uma fila "vazia" por erro faria a
+// distribuidora fechar o painel com pedidos esperando, e nada avança sem alguém
+// decidir. Carregando também não é vazio.
+function CarregandoLista() {
+  return (
+    <div className="space-y-2" aria-label="Carregando">
+      {[0, 1].map(i => <div key={i} className="h-16 rounded-xl bg-white/5 animate-pulse" />)}
+    </div>
+  );
+}
+
+function FalhaNaConsulta({ mensagem, aoTentarDeNovo }: { mensagem?: string; aoTentarDeNovo: () => void }) {
+  return (
+    <div className="p-5 rounded-xl bg-red-400/8 border border-red-400/25 text-sm">
+      <p className="text-red-300 font-semibold mb-1">Não foi possível carregar esta lista.</p>
+      {mensagem && <p className="text-white/50 text-xs mb-3">{mensagem}</p>}
+      <Button
+        size="sm"
+        variant="outline"
+        className="bg-transparent border-red-400/30 text-red-300 hover:bg-red-400/10 text-xs"
+        onClick={aoTentarDeNovo}
+      >
+        Tentar de novo
+      </Button>
+    </div>
+  );
+}
 
 function QuemDistribui() {
   const [search, setSearch] = useState("");
@@ -857,7 +885,8 @@ function QuemDistribui() {
   const [motivo, setMotivo] = useState("");
   const busca = useBuscaComAtraso(search);
 
-  const { data: distribuidores, refetch: refetchDistribuidores } = trpc.distribuicao.listar.useQuery();
+  const listarQuery = trpc.distribuicao.listar.useQuery();
+  const { data: distribuidores, refetch: refetchDistribuidores } = listarQuery;
   // Mesma busca no servidor da aba Ouro; sem filtro de nível, porque o poder
   // acumula com qualquer um. Quem já distribui sai da lista de candidatas.
   const { data: membros } = trpc.president.listAllUsers.useQuery(
@@ -893,7 +922,11 @@ function QuemDistribui() {
       {/* Quem distribui hoje */}
       <div>
         <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Quem distribui hoje</h3>
-        {!distribuidores || distribuidores.length === 0 ? (
+        {listarQuery.isLoading ? (
+          <CarregandoLista />
+        ) : listarQuery.isError ? (
+          <FalhaNaConsulta mensagem={listarQuery.error?.message} aoTentarDeNovo={() => refetchDistribuidores()} />
+        ) : !distribuidores || distribuidores.length === 0 ? (
           <div className="p-6 rounded-xl bg-white/3 border border-white/8 text-center text-white/30 text-sm">
             Ninguém tem o poder de distribuição no momento.
           </div>
@@ -977,6 +1010,7 @@ function QuemDistribui() {
               value={motivo}
               onChange={e => setMotivo(e.target.value)}
               placeholder="Motivo (opcional, fica na auditoria)..."
+              maxLength={500}
               className="bg-white/5 border-white/15 text-white placeholder-white/30 text-sm resize-none"
               rows={2}
             />
@@ -1010,6 +1044,7 @@ function QuemDistribui() {
             value={motivo}
             onChange={e => setMotivo(e.target.value)}
             placeholder="Motivo da revogação (mínimo 10 caracteres)..."
+            maxLength={500}
             className="bg-white/5 border-white/15 text-white placeholder-white/30 text-sm resize-none"
             rows={3}
           />
@@ -1111,15 +1146,20 @@ function PerfilNaFila({ titulo, perfil, termoOk }: { titulo: string; perfil: Per
 }
 
 function FilaDeAnalise() {
-  const [recusaDialog, setRecusaDialog] = useState<{ connectionId: number; quem: string } | null>(null);
+  const [recusaDialog, setRecusaDialog] = useState<{ alca: string; quem: string; reciprocado: boolean } | null>(null);
   const [nota, setNota] = useState("");
-  const { data: fila, refetch: refetchFila } = trpc.distribuicao.fila.useQuery();
-  const { data: historico, refetch: refetchHistorico } = trpc.distribuicao.historico.useQuery({ limit: 30 });
+  const filaQuery = trpc.distribuicao.fila.useQuery();
+  const historicoQuery = trpc.distribuicao.historico.useQuery({ limit: 30 });
+  const { data: fila, refetch: refetchFila } = filaQuery;
+  const { data: historico, refetch: refetchHistorico } = historicoQuery;
 
   const decidirMutation = trpc.distribuicao.decidir.useMutation({
     onSuccess: (r) => {
       toast.success(
-        r.statusFinal === "not_forwarded" ? "Pedido não encaminhado. A outra pessoa não foi avisada."
+        r.statusFinal === "not_forwarded"
+          ? (r.reciprocado
+            ? "Pedido não encaminhado. As duas pessoas tinham demonstrado interesse e as duas foram avisadas."
+            : "Pedido não encaminhado. A outra pessoa não foi avisada.")
           : r.statusFinal === "accepted" ? "Encaminhado. Era recíproco: os nomes já aparecem para as duas partes."
             : "Encaminhado. A outra pessoa recebe o pedido agora.",
       );
@@ -1137,7 +1177,11 @@ function FilaDeAnalise() {
     <>
       <div>
         <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Fila de análise</h3>
-        {pedidos.length === 0 ? (
+        {filaQuery.isLoading ? (
+          <CarregandoLista />
+        ) : filaQuery.isError ? (
+          <FalhaNaConsulta mensagem={filaQuery.error?.message} aoTentarDeNovo={() => refetchFila()} />
+        ) : pedidos.length === 0 ? (
           <div className="p-6 rounded-xl bg-white/3 border border-white/8 text-center text-white/30 text-sm">
             Nenhum pedido de interesse esperando análise.
           </div>
@@ -1147,10 +1191,13 @@ function FilaDeAnalise() {
               const travasOk = p.termoOk.solicitante && p.termoOk.destinataria && p.ativas.solicitante && p.ativas.destinataria && !p.bloqueadoPeloPortao;
               const quem = `${p.solicitante.name || "Sem nome"} → ${p.destinataria.name || "Sem nome"}`;
               return (
-                <div key={p.connectionId} className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5 space-y-4">
+                <div key={p.alca} className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5 space-y-4">
                   <div className="flex items-center justify-between flex-wrap gap-2">
+                    {/* Sem número de pedido: o servidor manda só a alça opaca. O id
+                        sequencial na tela deixava a distribuidora que também recebe
+                        pedidos achar pelos buracos o pedido oculto para ela. */}
                     <p className="text-xs text-white/40">
-                      Pedido #{p.connectionId} · {new Date(p.createdAt).toLocaleString("pt-BR")}
+                      Pedido feito em {new Date(p.createdAt).toLocaleString("pt-BR")}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {p.reciprocado && (
@@ -1201,7 +1248,7 @@ function FilaDeAnalise() {
                       size="sm"
                       className="text-red-400 border-red-400/30 hover:bg-red-400/10 bg-transparent text-xs"
                       disabled={decidirMutation.isPending}
-                      onClick={() => { setRecusaDialog({ connectionId: p.connectionId, quem }); setNota(""); }}
+                      onClick={() => { setRecusaDialog({ alca: p.alca, quem, reciprocado: p.reciprocado }); setNota(""); }}
                     >
                       Não encaminhar
                     </Button>
@@ -1209,7 +1256,7 @@ function FilaDeAnalise() {
                       size="sm"
                       className="bg-amber-400 hover:bg-amber-500 text-[#151312] text-xs font-bold"
                       disabled={decidirMutation.isPending || !travasOk}
-                      onClick={() => decidirMutation.mutate({ connectionId: p.connectionId, aprovar: true })}
+                      onClick={() => decidirMutation.mutate({ alca: p.alca, aprovar: true })}
                     >
                       <Share2 size={12} className="mr-1" /> Encaminhar
                     </Button>
@@ -1223,14 +1270,20 @@ function FilaDeAnalise() {
 
       <div>
         <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Últimas decisões</h3>
-        {!historico || historico.length === 0 ? (
+        {historicoQuery.isLoading ? (
+          <CarregandoLista />
+        ) : historicoQuery.isError ? (
+          <FalhaNaConsulta mensagem={historicoQuery.error?.message} aoTentarDeNovo={() => refetchHistorico()} />
+        ) : !historico || historico.length === 0 ? (
           <div className="p-6 rounded-xl bg-white/3 border border-white/8 text-center text-white/30 text-sm">
             Nenhuma decisão registrada ainda.
           </div>
         ) : (
           <div className="space-y-2">
-            {historico.map(h => (
-              <div key={h.connectionId} className="p-3.5 rounded-xl bg-white/3 border border-white/8 text-xs">
+            {/* A chave é a posição: o histórico não traz o id da conexão, pelo mesmo
+                motivo da fila, e a lista só é lida, nunca reordenada na tela. */}
+            {historico.map((h, i) => (
+              <div key={i} className="p-3.5 rounded-xl bg-white/3 border border-white/8 text-xs">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-white/80">
                     {h.solicitanteNome || "Sem nome"} → {h.destinatariaNome || "Sem nome"}
@@ -1259,13 +1312,17 @@ function FilaDeAnalise() {
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-white/60">
-            <strong className="text-white">{recusaDialog?.quem}</strong>. Quem pediu vê "interesse não encaminhado";
-            a outra pessoa não é avisada. A nota fica só na trilha interna.
+            <strong className="text-white">{recusaDialog?.quem}</strong>.{" "}
+            {recusaDialog?.reciprocado
+              ? "As duas pessoas demonstraram interesse: as duas passam a ver \"interesse não encaminhado\" e as duas são avisadas."
+              : "Quem pediu vê \"interesse não encaminhado\"; a outra pessoa não é avisada."}
+            {" "}A nota fica só na trilha interna.
           </p>
           <Textarea
             value={nota}
             onChange={e => setNota(e.target.value)}
             placeholder="Por que não encaminhar (obrigatório, fica na trilha interna)..."
+            maxLength={1000}
             className="bg-white/5 border-white/15 text-white placeholder-white/30 text-sm resize-none"
             rows={3}
           />
@@ -1274,7 +1331,7 @@ function FilaDeAnalise() {
             <Button
               className="bg-red-500 hover:bg-red-600 text-white font-bold"
               disabled={nota.trim().length === 0 || decidirMutation.isPending}
-              onClick={() => recusaDialog && decidirMutation.mutate({ connectionId: recusaDialog.connectionId, aprovar: false, nota: nota.trim() })}
+              onClick={() => recusaDialog && decidirMutation.mutate({ alca: recusaDialog.alca, aprovar: false, nota: nota.trim() })}
             >
               {decidirMutation.isPending ? "Registrando..." : "Confirmar: não encaminhar"}
             </Button>

@@ -89,13 +89,14 @@ confere o par e só então encaminha. Máquina de estados de `connections.status
 | De | Para | Quem | Trava (WHERE) | Efeitos |
 |---|---|---|---|---|
 | — | `in_review` | solicitante (`connections.send`) | posse do `matchId` + termo do alvo | aviso aos distribuidores ativos (ou à presidência, se não houver nenhum) |
-| `in_review` A→B | `in_review` + `reciprocatedAt` | B clicando em A | `id AND status = 'in_review' AND reciprocatedAt IS NULL` | nenhum; resposta idêntica |
-| `in_review` | `pending` | distribuidor (`distribuicao.decidir`, encaminhar) | `id AND status = 'in_review'` + termo, conta ativa e portão da demanda expressa | `interest_received` a B; `system` a A; `MATCH_REVIEW_APPROVED` |
-| `in_review` + `reciprocatedAt` | `accepted` | distribuidor (encaminhar) | idem | 2× `MATCH_IDENTITY_REVEALED` (`via: distribuidor`); `interest_received` "Nova conexão!" aos dois (`AVISO_DE_NOVA_CONEXAO`) |
-| `in_review` | `not_forwarded` | distribuidor (não encaminhar, com nota) | `id AND status = 'in_review'` | `system` a A, sem o motivo; B não é avisada; `MATCH_REVIEW_REJECTED` |
+| `in_review` A→B | `in_review` + `reciprocatedAt` | B clicando em A, sem pedido dela no par | `id AND status = 'in_review' AND reciprocatedAt IS NULL` | nenhum; resposta idêntica |
+| `in_review` | `pending` | distribuidor (`distribuicao.decidir`, encaminhar) | `id AND status = 'in_review' AND reciprocatedAt IS NULL` + termo, conta ativa e portão da demanda expressa | `interest_received` a B; `system` a A; `MATCH_REVIEW_APPROVED` |
+| `in_review` + `reciprocatedAt` | `accepted` | distribuidor (encaminhar) | `id AND status = 'in_review' AND reciprocatedAt IS NOT NULL` + as mesmas travas | 2× `MATCH_IDENTITY_REVEALED` (`via: distribuidor`); `interest_received` "Nova conexão!" aos dois (`AVISO_DE_NOVA_CONEXAO`) |
+| `in_review` | `not_forwarded` | distribuidor (não encaminhar, com nota) | `id AND status = 'in_review'` | `system` a A (e a B, se ela também clicou), sem o motivo e com o mesmo texto nos dois casos; B que não clicou não é avisada; `MATCH_REVIEW_REJECTED` |
 | `pending` | `accepted` / `declined` | destinatária (`connections.respond`) | `id AND recipientId = ela AND status = 'pending'` | revelação só com 1 linha afetada; no aceite, 2× `MATCH_IDENTITY_REVEALED` (`via: aceite`) e `interest_received` "Nova conexão!" à solicitante; recusa sem aviso |
 | `pending` A→B | `accepted` | B por `send` | `id AND status = 'pending'` | `via: interesse_mutuo`; `interest_received` "Nova conexão!" a A (quem clicou vê na tela) |
-| terminais | — | — | 0 linhas afetadas | `send` responde igual; `decidir` → CONFLICT |
+| `not_forwarded` A→B, sem `reciprocatedAt` | + linha nova B→A `in_review` | B clicando em A | nenhuma linha de B no par | aviso a quem distribui (menos as partes); o par passa a ter duas linhas |
+| terminais | — | — | 0 linhas afetadas | `send` responde igual; `decidir` → o mesmo NOT_FOUND de um id inexistente (CONFLICT só na corrida entre dois distribuidores que leram `in_review`) |
 
 O que cada lado vê é o que a consulta devolve (`pedidoVisivelPara`, em `db.ts`):
 
@@ -107,9 +108,17 @@ O que cada lado vê é o que a consulta devolve (`pedidoVisivelPara`, em `db.ts`
 | `accepted` | nome | nome | histórico |
 | `declined` | "Interesse não aceito" | — | histórico |
 | `not_forwarded` | "Interesse não encaminhado" | **nada** | histórico |
+| `not_forwarded` + `reciprocatedAt` | "Interesse não encaminhado" | "Interesse não encaminhado" | histórico |
 
-Sem distribuidor ativo, o pedido fica esperando (nunca passa sem análise) e a
-presidência recebe o aviso para conceder o poder no Painel Ouro.
+O distribuidor que é parte de um pedido não o vê na fila nem no histórico e não é
+avisado dele. Com duas linhas no par, o cartão e a aba Conexões mostram a mesma entre
+as que cada pessoa pode ver, escolhida pelo estado (`linhaVisivelDoPar`, em `db.ts`):
+a conexão aceita, depois o pedido encaminhado que ela responde, depois o encaminhado
+que ela espera e, no empate, a mais recente.
+
+Sem distribuidor que possa decidir (nenhum ativo, ou só as próprias partes), o pedido
+fica esperando (nunca passa sem análise) e president/admin ativos recebem o aviso
+para conceder o poder no Painel Ouro.
 
 ### O funil do corretor
 

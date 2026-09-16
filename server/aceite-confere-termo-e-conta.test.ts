@@ -31,7 +31,7 @@ const estado = vi.hoisted(() => ({
   chamadas: [] as string[],
   /** Forma de `respondToConnection` em server/db.ts. */
   resposta: { revelou: true, contraparte: 2 },
-  /** A linha de `lerPedidoDeMatch`: pedido da conta 2 para a conta 1, encaminhado. */
+  /** A linha de `lerPedidoParaAceite`: pedido da conta 2 para a conta 1, encaminhado. */
   pedido: { id: 7, requesterId: 2, recipientId: 1, status: "pending" } as
     { id: number; requesterId: number; recipientId: number; status: string } | null,
   comTermo: [1, 2] as number[],
@@ -45,7 +45,7 @@ vi.mock("./db", () => new Proxy({}, {
     return async (...args: unknown[]) => {
       estado.chamadas.push(String(prop));
       if (prop === "respondToConnection") return estado.resposta;
-      if (prop === "lerPedidoDeMatch") return estado.pedido;
+      if (prop === "lerPedidoParaAceite") return estado.pedido;
       if (prop === "idsDeContasAtivas") return new Set((args[0] as number[]).filter(id => estado.ativas.includes(id)));
       if (prop === "resolverAlvoDoMatch") return 2;
       if (prop === "sendConnectionRequest") return { revelou: false, connectionId: 7, emAnalise: true };

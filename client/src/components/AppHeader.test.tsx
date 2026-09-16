@@ -84,3 +84,34 @@ describe("AppHeader — o menu global fala o idioma da usuária", () => {
     expect(screen.getByTitle("我的资料")).toBeInTheDocument();
   });
 });
+
+// O poder de distribuição do Smart Match é da conta, não do nível: quem só distribui
+// (sem Ouro) chega à fila pelo item "Painel Ouro" do menu — é o único caminho de
+// navegação até ela. A régua é `isDistributor === true`, não "truthy".
+describe("AppHeader — o item Painel Ouro também leva quem tem o poder de distribuição", () => {
+  function abrirMenuCom(user: Record<string, unknown>) {
+    vi.mocked(useAuth).mockReturnValue({
+      user, loading: false, error: null, isAuthenticated: true, refresh: vi.fn(), logout: vi.fn(),
+    } as unknown as ReturnType<typeof useAuth>);
+    render(<AppHeader />);
+    fireEvent.keyDown(screen.getByRole("button", { name: /menu/i }), { key: "Enter" });
+  }
+
+  it("Prata COM o poder de distribuição vê 'Painel Ouro'", async () => {
+    abrirMenuCom({ id: 2, name: "Dora", role: "silver", isDistributor: true });
+    expect(await screen.findByText("Navegação")).toBeInTheDocument();
+    expect(screen.getByText("Painel Ouro")).toBeInTheDocument();
+  });
+
+  it("Prata SEM o poder não vê 'Painel Ouro'", async () => {
+    abrirMenuCom({ id: 2, name: "Dora", role: "silver", isDistributor: false });
+    expect(await screen.findByText("Navegação")).toBeInTheDocument();
+    expect(screen.queryByText("Painel Ouro")).not.toBeInTheDocument();
+  });
+
+  it("valor que não é o booleano true (a string 'true') não abre o item", async () => {
+    abrirMenuCom({ id: 2, name: "Dora", role: "silver", isDistributor: "true" });
+    expect(await screen.findByText("Navegação")).toBeInTheDocument();
+    expect(screen.queryByText("Painel Ouro")).not.toBeInTheDocument();
+  });
+});

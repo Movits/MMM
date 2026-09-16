@@ -1,4 +1,4 @@
-import { and, eq, desc, asc, like, or, ne, notInArray, inArray, sql, isNull } from "drizzle-orm";
+import { and, eq, desc, asc, like, or, ne, notInArray, inArray, sql, isNull, isNotNull, type AnyColumn, type SQL } from "drizzle-orm";
 const drizzleOr = or;
 import { drizzle } from "drizzle-orm/mysql2";
 import { alias } from "drizzle-orm/mysql-core";
@@ -424,10 +424,17 @@ export async function listarDistribuidores() {
     .orderBy(asc(users.name));
 }
 
-/** Liga ou desliga o poder de distribuição. Quem chama já conferiu que a conta existe. */
-export async function definirPoderDeDistribuicao(userId: number, temPoder: boolean) {
+/**
+ * Liga ou desliga o poder de distribuição e devolve se MUDOU. O estado anterior vai
+ * no WHERE: de duas concessões simultâneas (duas abas, duplo clique) só a primeira
+ * encontra a linha no estado de antes, e só ela grava auditoria e avisa no sino.
+ * Quem chama já conferiu que a conta existe.
+ */
+export async function definirPoderDeDistribuicao(userId: number, temPoder: boolean): Promise<boolean> {
   const db = await exigirDb();
-  await db.update(users).set({ isDistributor: temPoder }).where(eq(users.id, userId));
+  const [resultado] = await db.update(users).set({ isDistributor: temPoder })
+    .where(and(eq(users.id, userId), eq(users.isDistributor, !temPoder)));
+  return linhasAfetadas(resultado) === 1;
 }
 
 /** Ids de quem pode receber o aviso de "pedido esperando": distribuidores ativos. */
@@ -438,7 +445,12 @@ export async function idsDosDistribuidoresAtivos(): Promise<number[]> {
   return linhas.map(l => l.id);
 }
 
-/** Ids da presidência ativa (president/admin), avisada quando não há distribuidor. */
+/**
+ * Ids da presidência ativa (president/admin), avisada quando não há distribuidor.
+ * Contas Ouro ficam de fora de propósito, como no aviso de oportunidade pendente
+ * (routers/opportunities.ts): Ouro pode conceder o poder, mas o alerta de operação
+ * vai a quem responde pela plataforma.
+ */
 export async function idsDaPresidenciaAtiva(): Promise<number[]> {
   const db = await exigirDb();
   const linhas = await db.select({ id: users.id }).from(users)
@@ -535,8 +547,44 @@ export async function listarPedidosEmAnalise(distribuidorId: number, limit = 50)
     .limit(limit);
 }
 
-/** A linha crua do pedido, para o router conferir as travas antes de decidir. */
-export async function lerPedidoDeMatch(connectionId: number) {
+/**
+ * A linha da conexão pelo id, sem recorte — para a TRAVA DO ACEITE
+ * (`connections.respond`), que precisa ler um pedido `pending` de quem é parte.
+ *
+ * Existe separada de `lerPedidoDeMatch` de propósito, e a confusão entre as
+ * duas seria silenciosa: aquela ali embaixo só devolve pedido `in_review` de
+ * quem NÃO é parte, que é exatamente o oposto do que o aceite precisa. Usar
+ * aquela aqui faria a trava devolver null sempre e parar de travar, sem quebrar
+ * teste nenhum e sem erro em lugar nenhum.
+ *
+ * Ler a linha pelo id não vira oráculo: quem chama só AGE quando a pessoa é a
+ * destinatária de um pedido `pending`; em qualquer outro caso a resposta segue
+ * a de sempre.
+ */
+export async function lerPedidoParaAceite(connectionId: number) {
+  const db = await exigirDb();
+  const [linha] = await db.select({
+    id: connections.id,
+    requesterId: connections.requesterId,
+    recipientId: connections.recipientId,
+    status: connections.status,
+  })
+    .from(connections)
+    .where(eq(connections.id, connectionId))
+    .limit(1);
+  return linha ?? null;
+}
+
+/**
+ * A linha crua do pedido EM ANÁLISE, para o router conferir as travas antes de
+ * decidir. O pedido em que o distribuidor é PARTE não existe para ele (o mesmo
+ * recorte da fila e do histórico), e o que já saiu de `in_review` também não: id
+ * inexistente, pedido de que ele é parte e pedido já decidido dão o mesmo null.
+ * O router só chega aqui com o id tirado de uma alça que a própria fila entregou
+ * a quem decide (server/alca-do-pedido.ts), e a fila nunca traz pedido de que ele
+ * é parte: o recorte pelas partes continua no WHERE como segunda trava.
+ */
+export async function lerPedidoDeMatch(connectionId: number, distribuidorId: number) {
   const db = await exigirDb();
   const [linha] = await db.select({
     id: connections.id,
@@ -546,39 +594,64 @@ export async function lerPedidoDeMatch(connectionId: number) {
     reciprocatedAt: connections.reciprocatedAt,
   })
     .from(connections)
-    .where(eq(connections.id, connectionId))
+    .where(and(
+      eq(connections.id, connectionId),
+      eq(connections.status, "in_review"),
+      ne(connections.requesterId, distribuidorId),
+      ne(connections.recipientId, distribuidorId),
+    ))
     .limit(1);
   return linha ?? null;
 }
 
 /**
- * A decisão do distribuidor num único UPDATE com trava otimista: só sai do
- * `in_review`. Devolve se a linha ainda estava em análise (1) ou se alguém
- * decidiu antes (0) — quem chama só produz efeitos (avisos, revelação,
- * auditoria) com 1.
+ * A decisão do distribuidor com trava otimista: só sai do `in_review`, e cada
+ * UPDATE também leva a reciprocidade no WHERE. O desfecho é o do BANCO no instante
+ * da escrita, não o da leitura do router: se a destinatária clicou entre a leitura
+ * e o UPDATE, encaminhar vira `accepted` (e revela), nunca `pending` com
+ * `reciprocatedAt` preenchido — estado que a máquina não prevê.
+ *
+ * `reciprocatedAt` só vai de nulo a preenchido, e uma vez (sendConnectionRequest
+ * exige IS NULL no WHERE), então três tentativas bastam: recíproco, não recíproco
+ * e, de novo, recíproco para o clique que caiu entre as duas primeiras.
+ *
+ * Devolve o status gravado e se era recíproco, ou null se alguém decidiu antes —
+ * quem chama só produz efeitos (avisos, revelação, auditoria) com a decisão em mãos.
  */
 export async function decidirPedidoDeMatch(
   connectionId: number,
-  decisao: { statusFinal: "pending" | "accepted" | "not_forwarded"; moderatedBy: number; moderationNote: string | null },
-): Promise<boolean> {
+  decisao: { aprovar: boolean; moderatedBy: number; moderationNote: string | null },
+): Promise<{ status: "pending" | "accepted" | "not_forwarded"; reciprocado: boolean } | null> {
   const db = await exigirDb();
-  const [resultado] = await db.update(connections)
-    .set({
-      status: decisao.statusFinal,
-      moderatedBy: decisao.moderatedBy,
-      moderationNote: decisao.moderationNote,
-      moderatedAt: new Date(),
-    })
-    .where(and(eq(connections.id, connectionId), eq(connections.status, "in_review")));
-  return linhasAfetadas(resultado) === 1;
+  const moderatedAt = new Date();
+  const tentar = async (reciprocado: boolean) => {
+    const status = !decisao.aprovar ? "not_forwarded" as const : reciprocado ? "accepted" as const : "pending" as const;
+    const [resultado] = await db.update(connections)
+      .set({ status, moderatedBy: decisao.moderatedBy, moderationNote: decisao.moderationNote, moderatedAt })
+      .where(and(
+        eq(connections.id, connectionId),
+        eq(connections.status, "in_review"),
+        reciprocado ? isNotNull(connections.reciprocatedAt) : isNull(connections.reciprocatedAt),
+      ));
+    return linhasAfetadas(resultado) === 1 ? { status, reciprocado } : null;
+  };
+  return (await tentar(true)) ?? (await tentar(false)) ?? (await tentar(true));
 }
 
-/** As últimas decisões, mais recentes primeiro. `resultado` é o status ATUAL da linha. */
-export async function listarHistoricoDeDistribuicao(limit = 50) {
+/**
+ * As últimas decisões, mais recentes primeiro. `resultado` é o status ATUAL da linha.
+ * Sem os pedidos em que quem consulta é parte (o mesmo recorte da fila): o
+ * histórico traz nomes, o desfecho e a nota interna, e a destinatária de um pedido
+ * não encaminhado nunca pode saber dele.
+ *
+ * Sem `connections.id`, de propósito: a tela não age sobre o histórico, e o id
+ * sequencial à mostra (somado ao da fila) deixava a distribuidora que também recebe
+ * pedidos achar pelos buracos da sequência o pedido oculto para ela.
+ */
+export async function listarHistoricoDeDistribuicao(distribuidorId: number, limit = 50) {
   const db = await exigirDb();
   const distribuidor = alias(users, "distribuidor");
   return db.select({
-    connectionId: connections.id,
     decididoEm: connections.moderatedAt,
     decididoPor: { id: distribuidor.id, name: distribuidor.name },
     resultado: connections.status,
@@ -591,7 +664,11 @@ export async function listarHistoricoDeDistribuicao(limit = 50) {
     .innerJoin(solicitante, eq(solicitante.id, connections.requesterId))
     .innerJoin(destinataria, eq(destinataria.id, connections.recipientId))
     .leftJoin(distribuidor, eq(distribuidor.id, connections.moderatedBy))
-    .where(sql`${connections.moderatedAt} IS NOT NULL`)
+    .where(and(
+      sql`${connections.moderatedAt} IS NOT NULL`,
+      ne(connections.requesterId, distribuidorId),
+      ne(connections.recipientId, distribuidorId),
+    ))
     .orderBy(desc(connections.moderatedAt))
     .limit(limit);
 }
@@ -816,10 +893,14 @@ export async function getMatchesForUser(userId: number, limit = 20) {
     // O estado do interesse vem do SERVIDOR, resolvido aqui. A tela não tem como
     // cruzar match e conexão por conta própria — e é bom que não tenha: para
     // cruzar, precisaria do id da outra usuária, que é justamente o que não pode
-    // atravessar. `connectionId` é id de conexão, não de pessoa.
-    connectionId: connections.id,
+    // atravessar. `connectionId` é id de conexão, não de pessoa, e só sai quando a
+    // tela precisa dele para responder (idParaResponder).
+    connectionId: idParaResponder(userId),
     connectionStatus: connections.status,
-    souDestinataria: sql<boolean>`${connections.recipientId} = ${userId}`,
+    // Em análise ou não encaminhado, ninguém é "destinatária" na projeção: a linha
+    // recíproca (a outra pessoa pediu antes, esta também clicou) sai igual a um
+    // pedido que esta pessoa fez sozinha — sem dizer quem clicou primeiro.
+    souDestinataria: sql<boolean>`${connections.recipientId} = ${userId} AND ${connections.status} NOT IN ('in_review', 'not_forwarded')`,
     // O MESMO predicado do portão de `getConnectionsForUser`: nome só com aceite.
     displayName: sql<string | null>`CASE WHEN ${connections.status} = 'accepted' THEN ${userProfiles.displayName} ELSE NULL END`,
   })
@@ -838,6 +919,11 @@ export async function getMatchesForUser(userId: number, limit = 20) {
       // análise (ou não encaminhada) não entra no join — para ela é como se
       // não houvesse pedido. Regra de consulta, não de tela.
       pedidoVisivelPara(userId),
+      // O par pode ter duas linhas (o pedido não encaminhado de uma pessoa e,
+      // depois, o pedido novo da outra; ou dois cliques que chegaram juntos): o
+      // cartão é UM, com a linha que esta pessoa pode ver escolhida pelo estado
+      // (linhaVisivelDoPar) — a mesma da aba Conexões.
+      eq(connections.id, linhaVisivelDoPar(db, userId, matches.matchedUserId!)),
     ))
     .where(and(eq(matches.userId, userId), eq(matches.userDismissed, false)))
     .orderBy(desc(matches.overallScore))
@@ -909,16 +995,30 @@ export async function resolverAlvoDoMatch(userId: number, matchId: number): Prom
  * O bilhete (`message`) também espera o aceite: o bloqueio A13 barra telefone e
  * e-mail, não nome — "oi, aqui é a Ana da Vinícola X" atravessaria o portão
  * inteiro numa linha de texto livre.
+ *
+ * Uma linha por par, e a mesma do cartão do Smart Match: com duas linhas no par,
+ * a que esta pessoa pode ver, escolhida pelo estado (linhaVisivelDoPar).
+ *
+ * `id` segue a regra do `connectionId` do cartão (idParaResponder): só sai no
+ * pedido que esta pessoa responde; nos outros estados vai null e a tela usa a
+ * posição como chave.
  */
 export async function getConnectionsForUser(userId: number) {
   const db = await exigirDb();
   const outraParte = sql`CASE WHEN ${connections.requesterId} = ${userId} THEN ${connections.recipientId} ELSE ${connections.requesterId} END`;
   const aceita = sql`${connections.status} = 'accepted'`;
+  // Linha recíproca em análise (ou não encaminhada) sai com a data do clique DESTA
+  // pessoa, na projeção e na ordem: igual a um pedido que ela fez sozinha, sem
+  // revelar que a outra pediu antes (nem quando).
+  const dataVisivel = sql<Date>`CASE WHEN ${connections.recipientId} = ${userId} AND ${connections.status} IN ('in_review', 'not_forwarded') THEN ${connections.reciprocatedAt} ELSE ${connections.createdAt} END`.mapWith(connections.createdAt);
+  // A coleta em `linhas` é da entrega (o booleano de `souDestinataria` é
+  // normalizado depois, em comSouDestinatariaBooleana); o `id` restrito é desta
+  // branch, e as duas coisas são independentes.
   const linhas = await db.select({
-    id: connections.id,
+    id: idParaResponder(userId),
     status: connections.status,
-    createdAt: connections.createdAt,
-    souDestinataria: sql<boolean>`${connections.recipientId} = ${userId}`,
+    createdAt: dataVisivel,
+    souDestinataria: sql<boolean>`${connections.recipientId} = ${userId} AND ${connections.status} NOT IN ('in_review', 'not_forwarded')`,
     // Anônimo dos dois lados, sempre: é com isto que se decide aceitar.
     city: userProfiles.city,
     primarySpecialty: userProfiles.primarySpecialty,
@@ -938,8 +1038,11 @@ export async function getConnectionsForUser(userId: number) {
       // O MESMO predicado de getMatchesForUser: em análise ou não encaminhado
       // não existe para a destinatária.
       pedidoVisivelPara(userId),
+      // E a MESMA linha do cartão: com duas linhas no par, uma só, escolhida pelo
+      // estado (linhaVisivelDoPar). Sem isto a aba mostrava as duas.
+      eq(connections.id, linhaVisivelDoPar(db, userId, outraParte)),
     ))
-    .orderBy(desc(connections.createdAt))
+    .orderBy(desc(dataVisivel))
     .limit(50);
   return comSouDestinatariaBooleana(linhas);
 }
@@ -952,8 +1055,60 @@ export async function getConnectionsForUser(userId: number) {
  * Compartilhado por getMatchesForUser e getConnectionsForUser, para não existir
  * "a lista de matches esconde e a de conexões mostra".
  */
-function pedidoVisivelPara(userId: number) {
-  return sql`NOT (${connections.status} IN ('in_review', 'not_forwarded') AND ${connections.recipientId} = ${userId} AND ${connections.reciprocatedAt} IS NULL)`;
+function pedidoVisivelPara(userId: number, tabela: typeof connections | typeof conexaoDoPar = connections) {
+  return sql`NOT (${tabela.status} IN ('in_review', 'not_forwarded') AND ${tabela.recipientId} = ${userId} AND ${tabela.reciprocatedAt} IS NULL)`;
+}
+
+/**
+ * O id da conexão só quando quem consulta responde por ele: pedido encaminhado a
+ * ela (`pending`, ela destinatária). Nos outros estados, null. O id é sequencial:
+ * no clique recíproco a linha é a da OUTRA pessoa, com id menor que o de qualquer
+ * pedido que quem consulta fez antes, e o número sozinho contava que a outra pediu
+ * primeiro — mesmo com o aviso e o status iguais (revisão da #115). No pedido
+ * encaminhado a ela não há o que esconder: ela já sabe que foi pedida. O mesmo em
+ * getMatchesForUser e getConnectionsForUser.
+ */
+function idParaResponder(userId: number) {
+  return sql<number | null>`CASE WHEN ${connections.status} = 'pending' AND ${connections.recipientId} = ${userId} THEN ${connections.id} ELSE NULL END`;
+}
+
+// A mesma tabela com outro nome, para a subconsulta "a linha do par que esta
+// pessoa vê" (linhaVisivelDoPar).
+const conexaoDoPar = alias(connections, "conexao_do_par");
+
+/**
+ * O id da linha do par (userId, outraParte) que `userId` vê, entre as que ela pode
+ * ver, como subconsulta correlacionada. O cartão do Smart Match (getMatchesForUser)
+ * e a aba Conexões (getConnectionsForUser) mostram UMA linha por par, e a mesma,
+ * porque as duas consultas passam por aqui. `outraParte` é coluna ou expressão da
+ * consulta de fora; a correlação é conferida contra o banco em
+ * match-em-analise.integracao.test.ts.
+ *
+ * O par tem duas linhas em dois casos: o previsto (o pedido não encaminhado de uma
+ * pessoa e, depois, o pedido novo da outra) e a corrida (dois cliques que chegam
+ * juntos passam pela leitura de sendConnectionRequest antes de qualquer INSERT; não
+ * há índice único no par, e criá-lo exige migração). Por isso a escolha é pelo
+ * ESTADO, e só no empate pela mais recente: a conexão aceita primeiro, depois o
+ * pedido encaminhado que esta pessoa responde, depois o encaminhado que ela espera.
+ * Com "a mais recente" pura, uma duplicata recusada ou em análise escondia para
+ * sempre a conexão aceita (a revelação ficava de um lado só) ou o pedido que ela
+ * precisava aceitar. No caso previsto a escolha é a mesma de antes.
+ */
+function linhaVisivelDoPar(db: Awaited<ReturnType<typeof exigirDb>>, userId: number, outraParte: AnyColumn | SQL) {
+  return db.select({ id: conexaoDoPar.id })
+    .from(conexaoDoPar)
+    .where(and(
+      or(
+        and(eq(conexaoDoPar.requesterId, userId), eq(conexaoDoPar.recipientId, outraParte)),
+        and(eq(conexaoDoPar.requesterId, outraParte), eq(conexaoDoPar.recipientId, userId)),
+      ),
+      pedidoVisivelPara(userId, conexaoDoPar),
+    ))
+    .orderBy(
+      sql`CASE WHEN ${conexaoDoPar.status} = 'accepted' THEN 0 WHEN ${conexaoDoPar.status} = 'pending' AND ${conexaoDoPar.recipientId} = ${userId} THEN 1 WHEN ${conexaoDoPar.status} = 'pending' THEN 2 ELSE 3 END`,
+      desc(conexaoDoPar.id),
+    )
+    .limit(1);
 }
 
 /**
@@ -980,50 +1135,81 @@ function linhasAfetadas(resultado: unknown) {
  * num oráculo: dava para descobrir que alguém recusou ou bloqueou.
  */
 /**
- * O clique em "Demonstrar Interesse". Quatro desfechos, todos com a MESMA resposta
- * para o navegador (connections.send não distingue):
- * - par novo → nasce `in_review`, esperando o distribuidor (`emAnalise: true`,
- *   para o router avisar quem distribui);
- * - a outra parte já tinha pedido e o pedido está `in_review` → grava só
- *   `reciprocatedAt`: uma linha por par, e a aprovação já revela os dois nomes;
+ * O clique em "Demonstrar Interesse". Os desfechos, todos com a MESMA resposta para
+ * o navegador (connections.send não distingue):
  * - a outra parte já tinha pedido e o pedido está `pending` (encaminhado) →
  *   interesse mútuo, vira `accepted`;
- * - qualquer outra linha existente (recusada, não encaminhada, repetida) → nada.
- * Os UPDATEs levam o status lido no WHERE: duas abas não revelam duas vezes.
+ * - já existe pedido desta pessoa, em qualquer estado → nada, mesmo com a linha da
+ *   outra parte em análise (ela é oculta para quem clica: ver o comentário no
+ *   ramo);
+ * - a outra parte já tinha pedido e o pedido está `in_review` → grava só
+ *   `reciprocatedAt`: a aprovação do distribuidor já revela os dois nomes;
+ * - a outra parte pediu e o distribuidor NÃO encaminhou → para quem clica essa
+ *   linha não existe (pedidoVisivelPara). Devolver "nada" deixaria o cartão igual
+ *   depois do clique — o único clique válido sem efeito visível, que denunciaria
+ *   a recusa. O clique vira o pedido novo desta pessoa, analisado pelos próprios
+ *   méritos; o cartão mostra a linha mais recente visível do par;
+ * - qualquer outra linha da outra parte (aceita, recusada por quem clica, não
+ *   encaminhada com os dois tendo clicado) → nada;
+ * - par novo → nasce `in_review` (`emAnalise: true`, para o router avisar quem
+ *   distribui).
+ * Cada UPDATE leva o estado lido no WHERE. Se a linha mudou entre a leitura e a
+ * escrita (o distribuidor decidiu, a outra aba respondeu), o par é relido e a
+ * decisão refeita, uma vez: duas abas não revelam duas vezes, e o clique que cai
+ * durante a decisão do distribuidor não se perde.
  */
 export async function sendConnectionRequest(requesterId: number, recipientId: number) {
   const db = await exigirDb();
-  const par = await db.select({
-    id: connections.id,
-    requesterId: connections.requesterId,
-    status: connections.status,
-    reciprocatedAt: connections.reciprocatedAt,
-  })
-    .from(connections)
-    .where(or(
-      and(eq(connections.requesterId, requesterId), eq(connections.recipientId, recipientId)),
-      and(eq(connections.requesterId, recipientId), eq(connections.recipientId, requesterId)),
-    ))
-    .limit(2);
+  const neutro = (connectionId: number | null) => ({ revelou: false, connectionId, emAnalise: false });
 
-  const invertida = par.find(l => l.requesterId === recipientId);
-  if (invertida?.status === "pending") {
-    const [resultado] = await db.update(connections)
-      .set({ status: "accepted" })
-      .where(and(eq(connections.id, invertida.id), eq(connections.status, "pending")));
-    return { revelou: linhasAfetadas(resultado) === 1, connectionId: invertida.id, emAnalise: false };
-  }
-  if (invertida?.status === "in_review" && invertida.reciprocatedAt === null) {
-    await db.update(connections)
-      .set({ reciprocatedAt: new Date() })
-      .where(and(eq(connections.id, invertida.id), eq(connections.status, "in_review"), isNull(connections.reciprocatedAt)));
-    return { revelou: false, connectionId: invertida.id, emAnalise: false };
-  }
-  if (par.length > 0) return { revelou: false, connectionId: par[0].id, emAnalise: false };
+  for (let tentativa = 0; tentativa < 2; tentativa++) {
+    const par = await db.select({
+      id: connections.id,
+      requesterId: connections.requesterId,
+      status: connections.status,
+      reciprocatedAt: connections.reciprocatedAt,
+    })
+      .from(connections)
+      .where(or(
+        and(eq(connections.requesterId, requesterId), eq(connections.recipientId, recipientId)),
+        and(eq(connections.requesterId, recipientId), eq(connections.recipientId, requesterId)),
+      ))
+      .orderBy(desc(connections.id))
+      .limit(10);
 
-  const [inserido] = await db.insert(connections).values({ requesterId, recipientId, status: "in_review" });
-  const connectionId = (inserido as { insertId?: number } | undefined)?.insertId ?? null;
-  return { revelou: false, connectionId, emAnalise: true };
+    // A linha mais recente de cada direção.
+    const minha = par.find(l => l.requesterId === requesterId);
+    const invertida = par.find(l => l.requesterId === recipientId);
+
+    if (invertida?.status === "pending") {
+      const [resultado] = await db.update(connections)
+        .set({ status: "accepted" })
+        .where(and(eq(connections.id, invertida.id), eq(connections.status, "pending")));
+      if (linhasAfetadas(resultado) === 1) return { revelou: true, connectionId: invertida.id, emAnalise: false };
+      continue;
+    }
+    // Quem já tem pedido no par não escreve mais nada — e isto vem ANTES do ramo
+    // `in_review`. A linha invertida em análise só convive com um pedido desta
+    // pessoa quando o dela foi `not_forwarded` e a outra clicou depois: essa linha
+    // nova é oculta para quem clica, e gravar `reciprocatedAt` nela a faria
+    // aparecer — a pessoa descobriria, repetindo o clique pela API (na tela o
+    // botão fica desabilitado), que a outra pediu por ela sem encaminhamento.
+    if (minha) return neutro(minha.id);
+    if (invertida?.status === "in_review" && invertida.reciprocatedAt === null) {
+      const [resultado] = await db.update(connections)
+        .set({ reciprocatedAt: new Date() })
+        .where(and(eq(connections.id, invertida.id), eq(connections.status, "in_review"), isNull(connections.reciprocatedAt)));
+      if (linhasAfetadas(resultado) === 1) return neutro(invertida.id);
+      continue;
+    }
+    const recusaOculta = invertida?.status === "not_forwarded" && invertida.reciprocatedAt === null;
+    if (invertida && !recusaOculta) return neutro(invertida.id);
+
+    const [inserido] = await db.insert(connections).values({ requesterId, recipientId, status: "in_review" });
+    const connectionId = (inserido as { insertId?: number } | undefined)?.insertId ?? null;
+    return { revelou: false, connectionId, emAnalise: true };
+  }
+  return neutro(null);
 }
 
 /** Devolve se o aceite realmente aconteceu, para a trilha de auditoria saber. */
