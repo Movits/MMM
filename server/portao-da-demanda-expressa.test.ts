@@ -187,7 +187,11 @@ describe("passaNoPortao — só serviço precisa de citação", () => {
 
   it("com 'O que tenho' vazio, o piso lê a área de atuação e a especialidade (que o prompt também recebe)", () => {
     expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: [], activityArea: "Advocacia tributária", whatINeed: [] })).toBe(true);
-    expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: [], activityArea: "Advocacia tributária", primarySpecialty: "vendas" })).toBe(false);
+    // "vendas" na especialidade é lida como "outros", e "outros" não é tipo reconhecido: o piso continua
+    // exigindo citação, a mesma regra do motor de perfis (validação de 16/09 na #135, item 3).
+    expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: [], activityArea: "Advocacia tributária", primarySpecialty: "vendas" })).toBe(true);
+    // Tipo reconhecido de verdade na área continua soltando a exigência: ela tem outra coisa a oferecer.
+    expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: [], activityArea: "Indústria farmacêutica", primarySpecialty: "legal" })).toBe(false);
     expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: ["fazenda"], activityArea: "Advocacia tributária" })).toBe(false);
   });
 
@@ -500,6 +504,21 @@ describe("Portão da IA — citação montada fora de ordem (item 2 da lista do 
       expect(citacaoConfere("distribuição indústria", fonte), JSON.stringify(separador)).toBe(false);
       expect(citacaoConfere("estratégia de distribuição", fonte), JSON.stringify(separador)).toBe(true); // dentro de uma frase só
     }
+  });
+
+  it("em chinês e japonês a ordem vale igual: o ramo literal não devolve antes da conferência (validação de 16/09)", () => {
+    // O ramo de escrita sem espaço conferia só presença e devolvia antes de `emOrdemNumaFrase`: a citação montada
+    // passava, enquanto o equivalente latino era barrado.
+    const fonteChinesa = "我们不需要税务咨询。我们需要非洲的分销商";
+    expect(citacaoConfere("需要 税务咨询", fonteChinesa)).toBe(false);
+    expect(citacaoConfere("税务咨询 需要", fonteChinesa)).toBe(false);
+    expect(citacaoConfere("分销商 税务咨询", fonteChinesa)).toBe(false);
+    // O trecho que está mesmo na fonte, na ordem, continua valendo.
+    expect(citacaoConfere("税务咨询", fonteChinesa)).toBe(true);
+    expect(citacaoConfere("需要非洲的分销商", fonteChinesa)).toBe(true);
+    const fonteJaponesa = "弁護士は必要ありません。物流の会社を探しています";
+    expect(citacaoConfere("探しています 弁護士", fonteJaponesa)).toBe(false);
+    expect(citacaoConfere("物流の会社を探しています", fonteJaponesa)).toBe(true);
   });
 });
 

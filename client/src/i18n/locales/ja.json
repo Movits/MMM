@@ -1751,7 +1751,8 @@
       "cidade": "都市",
       "atuacao": "あなたの活動分野",
       "apresentacao": "あなたが誰で何をしているかを伝える、{{minimo}}語以上の自己紹介",
-      "apresentacaoContagem": "自己紹介：{{contadas}}/{{minimo}}語の内容のある言葉；異なる2文字で1語と数え、数字や記号は含まれません",
+      "apresentacaoContagem": "自己紹介：{{contadas}}/{{minimo}}語の異なる内容のある言葉；異なる2文字で1語と数え、数字や記号、繰り返しは含まれません",
+      "apresentacaoRepeticao": "自己紹介：内容のある語は {{contadas}} 語ですが、その多くが繰り返しです。別の言葉で書いてください",
       "oQueTenho": "「私が持つもの」に1つ以上の項目",
       "oQuePreciso": "「私が必要なもの」に1つ以上の項目"
     }
@@ -1892,6 +1893,7 @@
       "noConsent": "コネクションを見て記録するには、スマートコネクションを有効にしてください。",
       "internalAlert": "あなた自身のネットワーク内に機会が見つかりました。",
       "memberSide": "プラットフォームのメンバー",
+      "mySide": "あなたの側",
       "contactSide": "別のネットワークの連絡先（{{codigo}}）",
       "itemLine": "持っている：{{tem}} ・ 必要：{{precisa}}",
       "registeredAt": "{{data}} に記録",

@@ -110,7 +110,7 @@ export type QualificacaoDoPerfil = {
    * apresentação; com `contadas >= minimo` e a pendência ainda de pé, o motivo
    * é a repetição dominante (ver `leituraComConteudo`).
    */
-  detalhes: { apresentacao: { contadas: number; minimo: number } };
+  detalhes: { apresentacao: { contadas: number; minimo: number; repetida: boolean } };
 };
 
 // Palavras funcionais de 3+ letras dos idiomas de escrita latina da plataforma.
@@ -306,6 +306,17 @@ export function avaliarQualificacaoDoPerfil(perfil: PerfilParaQualificar | null 
     qualificado: pendencias.length === 0,
     pendencias,
     dimensoes: { quemSou, oQueTenho, oQuePreciso },
-    detalhes: { apresentacao: { contadas: apresentacao.distintas, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO } },
+    detalhes: {
+      apresentacao: {
+        contadas: apresentacao.distintas,
+        minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO,
+        // A recusa por REPETIÇÃO dominante: há palavras de conteúdo bastante, mas
+        // metade ou mais é repetição (ver `leituraComConteudo`). A tela dizia "pelo
+        // menos 6 palavras" para quem escreveu 26, e a pessoa não entendia a recusa
+        // (validação de 16/09 na #135, item 8).
+        repetida: apresentacao.distintas >= MINIMO_DE_PALAVRAS_NA_APRESENTACAO
+          && !leituraComConteudo(apresentacao, MINIMO_DE_PALAVRAS_NA_APRESENTACAO),
+      },
+    },
   };
 }

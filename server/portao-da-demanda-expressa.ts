@@ -35,7 +35,7 @@ import {
 } from "@shared/o-que-preciso";
 import {
   citacaoPedeServicoOferecido, classificarOferta, ehServico, ehServicoDeAssessoria, familiaDoServico, necessidadeNomeiaOServico,
-  necessidadePedeImovel, PALAVRAS_DE_SERVICO, PALAVRAS_VAZIAS_DA_CITACAO, PAPEIS_DE_COMERCIO, servicoDoTermo, TIPOS_DA_OFERTA, trechoNomeiaServicoAtendido, type TipoDaOferta,
+  necessidadeDeclaraOAssuntoDoServico, necessidadePedeImovel, PALAVRAS_DE_SERVICO, regraNaoLeOPar, PALAVRAS_VAZIAS_DA_CITACAO, PAPEIS_DE_COMERCIO, servicoDoTermo, TIPOS_DA_OFERTA, trechoNomeiaServicoAtendido, type TipoDaOferta,
 } from "@shared/tipo-da-oferta";
 
 /** Os nove tipos mais "nenhuma": o match que se apoia no que a pessoa PRECISA, não no que tem. */
@@ -225,7 +225,12 @@ export function citacaoConfere(citacao: unknown, fonte: string): boolean {
       const caracteres = semEspaco.reduce((total, pedaco) => total + Array.from(pedaco).length, 0);
       if (caracteres < MINIMO_DE_CARACTERES_SEM_ESPACO) return false;
       const latinasDaFonte = new Set(pedacosDaFonte);
-      return palavras.every(pedaco => latinasDaFonte.has(pedaco));
+      if (!palavras.every(pedaco => latinasDaFonte.has(pedaco))) return false;
+      // A ordem vale aqui também: este ramo devolvia antes da conferência e
+      // aceitava montagem em chinês e japonês ("需要 税务咨询" sobre uma fonte que
+      // diz o contrário), enquanto o equivalente latino era barrado — validação
+      // de 16/09 na #135.
+      return emOrdemNumaFrase(conteudo, frasesDaFonte(fonte));
     }
   }
   if (palavras.length < 2) return false;
@@ -333,7 +338,19 @@ export function necessidadesEscritasDoPerfil(perfil: PerfilNoPortao): string[] {
  * `activityArea` e `primarySpecialty` no perfil (a rede global não trazia, e a guarda ficava inerte lá).
  */
 function descricaoNomeiaOQueOPerfilOferece(perfil: PerfilNoPortao, descricao: string): boolean {
-  return tudoOQueOPerfilOferece(perfil).some(oferta => necessidadeNomeiaOServico(oferta, null, descricao));
+  return tudoOQueOPerfilOferece(perfil).some(oferta => ofertaAtenderiaOTexto(oferta, descricao));
+}
+
+/**
+ * O mesmo criterio de `satisfaz` (server/matching.ts): o par casa quando a necessidade NOMEIA o servico ou
+ * quando DECLARA O ASSUNTO dele sem nomear. A guarda usava so o primeiro, e bastava trocar a redacao para
+ * escapar dela: "Advocacia tributaria para industrias" era barrado, mas "Planejamento tributario para
+ * investidores estrangeiros" passava e voltava a valer 50 no motor de perfis (validacao de 16/09 na #135).
+ * O `regraNaoLeOPar` acompanha `satisfaz`: par que a regra nao le num idioma novo nao conta de nenhum lado.
+ */
+function ofertaAtenderiaOTexto(oferta: string, texto: string): boolean {
+  if (necessidadeNomeiaOServico(oferta, null, texto)) return true;
+  return necessidadeDeclaraOAssuntoDoServico(oferta, null, texto) && !regraNaoLeOPar(oferta, null, texto);
 }
 
 /** "O que tenho", área de atuação e especialidade, juntos: o que a guarda de concorrência confronta com o texto. */
@@ -461,7 +478,16 @@ export function exigeCitacao(item: ItemComPortao, perfil?: PerfilNoPortao): bool
   if (ofertas.length === 0) return false;
   const servicos = ofertas.filter(oferta => ehServico(oferta));
   if (tipo === null && servicos.length > 0) return true;
-  return servicos.length === ofertas.length && !temNecessidadeDeclarada(perfil);
+  // A mesma regra do motor de perfis (`soOfereceServicoPresumido`): ALGUMA oferta é
+  // serviço e NENHUMA é de outro tipo reconhecido. Era `servicos.length === ofertas.length`,
+  // e bastava um item que o classificador lê como "outros" ("vendas" na especialidade,
+  // "Direito" na área) para soltar a exigência de citação — o mesmo `every` que o motor já
+  // tinha abandonado (validação de 16/09 na #135).
+  const ofereceOutroTipo = ofertas.some(oferta => {
+    const tipo = classificarOferta(oferta);
+    return tipo !== "servico" && tipo !== "outros";
+  });
+  return servicos.length > 0 && !ofereceOutroTipo && !temNecessidadeDeclarada(perfil);
 }
 
 

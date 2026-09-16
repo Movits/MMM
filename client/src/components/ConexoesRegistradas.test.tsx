@@ -38,6 +38,7 @@ vi.mock("@/lib/trpc", () => ({
 const conexao = (extra: Partial<ConexaoNaTela> = {}): ConexaoNaTela => ({
   id: "c-1",
   origem: "PRIVATE_NETWORK_MATCH",
+  motivo: "NW-AAAAAA tem Vinho, que NW-BBBBBB procura.",
   itens: [{ tem: "Vinho", precisa: "Vinho", deCodigo: "NW-AAAAAA", paraCodigo: "NW-BBBBBB" }],
   status: "identificada",
   statusComissao: "sem_negocio",
@@ -109,5 +110,58 @@ describe("Conexão registrada — descartar pede confirmação", () => {
 
     renderizar(conexao({ status: "descartada" }));
     expect(screen.queryByRole("button", { name: "Descartar" })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * PLATFORM_MATCH: os dois lados são membras e nenhum tem código anônimo — o
+ * servidor não manda contactId nem codigoAnonimo para conta alheia, e não deve
+ * mandar mesmo. Sem mais nada na tela, dois pares registrados no mesmo dia
+ * viram dois cartões iguais, e o descarte (que não volta atrás) vira sorteio.
+ * O que identifica o par sem ferir a privacidade: o motivo que o servidor já
+ * calcula sem dado pessoal, a hora do registro e a marca de qual lado é o seu.
+ */
+describe("Conexão entre duas membras — qual cartão é qual", () => {
+  const ladosDeMembras: ConexaoNaTela["lados"] = [
+    { lado: "a", tipo: "membro", contactId: null, codigoAnonimo: null, meu: true, originador: false, statusComissaoOriginador: null },
+    { lado: "b", tipo: "membro", contactId: null, codigoAnonimo: null, meu: false, originador: false, statusComissaoOriginador: null },
+  ];
+  const entreMembras = (extra: Partial<ConexaoNaTela> = {}) =>
+    conexao({ origem: "PLATFORM_MATCH", itens: [], lados: ladosDeMembras, ...extra });
+
+  const motivoDe = (nota: number) =>
+    `Conexão sugerida pelo motor de perfis entre duas membras da plataforma, com o termo do Smart Match aceito pelas duas: compatibilidade de ${nota}%.`;
+
+  it("o lado de quem olha não sai com o mesmo rótulo do lado alheio", () => {
+    renderizar(entreMembras());
+
+    expect(screen.getByText("Seu lado")).toBeInTheDocument();
+    expect(screen.getByText("Membra da plataforma")).toBeInTheDocument();
+  });
+
+  it("dois pares do mesmo dia se separam pelo motivo e pela hora do registro", () => {
+    render(
+      <ul>
+        <ConexaoRegistrada conexao={entreMembras({ id: "c-72", motivo: motivoDe(72), criadaEm: Date.UTC(2026, 8, 14, 12, 10) })} />
+        <ConexaoRegistrada conexao={entreMembras({ id: "c-58", motivo: motivoDe(58), criadaEm: Date.UTC(2026, 8, 14, 18, 40) })} />
+      </ul>,
+    );
+
+    expect(screen.getByText(motivoDe(72))).toBeInTheDocument();
+    expect(screen.getByText(motivoDe(58))).toBeInTheDocument();
+    const registros = screen.getAllByText(/Registrada em/).map(linha => linha.textContent);
+    expect(registros).toHaveLength(2);
+    expect(new Set(registros).size).toBe(2);
+  });
+
+  it("a confirmação diz qual conexão vai ser descartada", () => {
+    renderizar(entreMembras({ id: "c-72", motivo: motivoDe(72) }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Descartar" }));
+
+    const dialogo = screen.getByRole("dialog");
+    expect(within(dialogo).getByText("Entre membras da plataforma")).toBeInTheDocument();
+    expect(within(dialogo).getByText(motivoDe(72))).toBeInTheDocument();
+    expect(duble.mutate).not.toHaveBeenCalled();
   });
 });

@@ -99,12 +99,18 @@ export async function definirDisponibilidade(ownerId: string, contactId: number,
   return { disponivel };
 }
 
-/** A projeção que pode sair do servidor: só o ID anônimo e os itens. */
+/**
+ * A projeção que pode sair do servidor: só o ID anônimo e os itens, e os itens
+ * passam pela máscara. O ID anônimo não protege nada se o telefone da pessoa
+ * estiver escrito DENTRO de "O que tenho" ou "O que preciso" — é a mesma
+ * máscara que `encontrosEntre` aplica antes de gravar motivo e itens.
+ */
 export function projecaoAnonima(contato: ContatoAnonimo): ContatoAnonimo {
+  const semContato = ({ label, category }: ItemDeNegocio) => ({ label: mascararContatosEmTexto(label), category });
   return {
     codigoAnonimo: contato.codigoAnonimo,
-    tenho: contato.tenho.map(({ label, category }) => ({ label, category })),
-    preciso: contato.preciso.map(({ label, category }) => ({ label, category })),
+    tenho: contato.tenho.map(semContato),
+    preciso: contato.preciso.map(semContato),
   };
 }
 

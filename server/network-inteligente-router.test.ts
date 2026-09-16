@@ -270,14 +270,27 @@ describe("a rastreabilidade da plataforma exige administradora", () => {
     expect(createAuditLog).not.toHaveBeenCalled();
   });
 
-  it("presidente lista, sem a chave do par (ids crus), e a leitura fica na auditoria", async () => {
+  /** A lista da staff com um lado de cada dona, para a auditoria ter de quem era o que saiu. */
+  const conexaoDeDuasDonas = () => {
     estado.responder = sql => {
       if (/from `conexoes_registradas`/.test(sql)) {
         // id, origem, motivo, itens, pontuacao, status, apresentacao_em, negociacao_em, fechamento_em, descartada_em, status_comissao, created_at
         return [["c-1", "PRIVATE_NETWORK_MATCH", "NW-AAAAAA tem Vinho, que NW-BBBBBB procura.", "[]", 100, "identificada", null, null, null, null, "sem_negocio", 1000]];
       }
+      if (/from `conexoes_participantes`/.test(sql)) {
+        // id, conexao_id, lado, tipo, owner_id, userId, contact_id, codigo_anonimo, originador, status_comissao_originador, created_at, updated_at, descartada_em, fechamento_confirmado_em
+        return [
+          [1, "c-1", "a", "contato", "dona-1", null, 11, "NW-AAAAAA", true, "sem_negocio", 1000, 1000, null, null],
+          [2, "c-1", "b", "contato", "dona-2", null, 99, "NW-BBBBBB", true, "sem_negocio", 1000, 1000, null, null],
+        ];
+      }
+      if (/from `users`/.test(sql)) return [[31, "dona-1", "Ana"], [32, "dona-2", "Bia"]];
       return undefined;
     };
+  };
+
+  it("presidente lista, sem a chave do par (ids crus), e a leitura fica na auditoria", async () => {
+    conexaoDeDuasDonas();
     const lista = await chamar("president").admin.conexoes({ origem: "PRIVATE_NETWORK_MATCH" });
     expect(lista).toHaveLength(1);
     expect(lista[0]).not.toHaveProperty("chaveDoPar");
@@ -286,8 +299,27 @@ describe("a rastreabilidade da plataforma exige administradora", () => {
     expect(leitura.sql).not.toContain("chave_do_par");
     expect(createAuditLog).toHaveBeenCalledWith(expect.objectContaining({
       userId: 9, action: "NETWORK_CONNECTIONS_READ", resource: "conexoes_registradas",
-      details: { origem: "PRIVATE_NETWORK_MATCH", status: null, conexoes: 1 },
+      details: { origem: "PRIVATE_NETWORK_MATCH", status: null, conexoes: 1, donas: [31, 32] },
     }));
+  });
+
+  /**
+   * Item 12 da revisão da #135: a leitura da staff é decisão de produto, mas a
+   * trilha precisa responder "quem viu as conexões do MEU network?". Com a
+   * contagem sozinha, a dona 31 não consegue saber que a conexão dela saiu
+   * nesta leitura — a resposta depende de a trilha dizer de quem era.
+   */
+  it("a trilha diz de QUEM eram as conexões lidas, sem nada de contato", async () => {
+    conexaoDeDuasDonas();
+    await chamar("admin").admin.conexoes();
+
+    const registro = createAuditLog.mock.calls.at(-1)![0] as { details: { donas: number[]; conexoes: number } };
+    expect(registro.details.donas).toEqual([31, 32]);
+    expect(registro.details.conexoes).toBe(1);
+    const trilha = JSON.stringify(registro.details);
+    expect(trilha).not.toContain("NW-AAAAAA");
+    expect(trilha).not.toContain("dona-1");
+    expect(trilha).not.toContain("Ana");
   });
 
   it("administradora lista; apurar antes do fechamento é conflito", async () => {

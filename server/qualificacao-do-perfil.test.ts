@@ -41,7 +41,7 @@ describe("as três dimensões juntas", () => {
       pendencias: [],
       dimensoes: { quemSou: true, oQueTenho: true, oQuePreciso: true },
       // "que", "para" e "a" não contam: 8 palavras de conteúdo em APRESENTACAO.
-      detalhes: { apresentacao: { contadas: 8, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO } },
+      detalhes: { apresentacao: { contadas: 8, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO, repetida: false } },
     });
   });
 
@@ -96,9 +96,9 @@ describe("qualidade, não quantidade de caracteres (item 9)", () => {
     // contagem, a tela dizia só "pelo menos 6 palavras" a quem escreveu 7.
     const r = avaliarQualificacaoDoPerfil(com({ bio: "Consultora de marketing digital para pequenas empresas" }));
     expect(r.pendencias).toEqual(["apresentacao"]);
-    expect(r.detalhes).toEqual({ apresentacao: { contadas: 5, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO } });
+    expect(r.detalhes).toEqual({ apresentacao: { contadas: 5, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO, repetida: false } });
     // Perfil ausente: zero contadas, e o mínimo continua lá para a tela mostrar "0 de 6".
-    expect(avaliarQualificacaoDoPerfil(null).detalhes).toEqual({ apresentacao: { contadas: 0, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO } });
+    expect(avaliarQualificacaoDoPerfil(null).detalhes).toEqual({ apresentacao: { contadas: 0, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO, repetida: false } });
   });
 
   it("a mesma palavra repetida mil vezes é UMA palavra", () => {
@@ -112,7 +112,8 @@ describe("qualidade, não quantidade de caracteres (item 9)", () => {
     // não pode dizer "6 de 6 palavras" como se faltasse palavra.
     const r = avaliarQualificacaoDoPerfil(com({ bio: repetitiva }));
     expect(r.pendencias).toEqual(["apresentacao"]);
-    expect(r.detalhes.apresentacao).toEqual({ contadas: 6, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO });
+    // `repetida` distingue a recusa por repetição da recusa por falta de palavras: é ela que escolhe o texto na tela.
+    expect(r.detalhes.apresentacao).toEqual({ contadas: 6, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO, repetida: true });
   });
 
   it("uma letra só, longa, não é texto", () => {

@@ -1751,7 +1751,8 @@
       "cidade": "City",
       "atuacao": "Your field of work",
       "apresentacao": "An introduction with at least {{minimo}} words saying who you are and what you do",
-      "apresentacaoContagem": "Introduction: {{contadas}} of {{minimo}} content words; short words like 'of' and 'for' don't count",
+      "apresentacaoContagem": "About you: {{contadas}} of {{minimo}} different content words; short words like 'of' and 'for', and repeated ones, don't count",
+      "apresentacaoRepeticao": "About you: {{contadas}} content words, but most of them repeat — write it with different words",
       "oQueTenho": "At least one item in What I have",
       "oQuePreciso": "At least one item in What I need"
     }
@@ -1892,6 +1893,7 @@
       "noConsent": "To see and record connections, turn on Smart Connections.",
       "internalAlert": "We found an opportunity within your own network.",
       "memberSide": "Platform member",
+      "mySide": "Your side",
       "contactSide": "Contact from another network ({{codigo}})",
       "itemLine": "Has: {{tem}} · Needs: {{precisa}}",
       "registeredAt": "Recorded on {{data}}",

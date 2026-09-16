@@ -1751,7 +1751,8 @@
       "cidade": "Ciudad",
       "atuacao": "Tu área de actuación",
       "apresentacao": "Una presentación con al menos {{minimo}} palabras que digan quién eres y qué haces",
-      "apresentacaoContagem": "Presentación: {{contadas}} de {{minimo}} palabras de contenido; las palabras cortas como 'de' y 'para' no cuentan",
+      "apresentacaoContagem": "Presentación: {{contadas}} de {{minimo}} palabras de contenido distintas; las palabras cortas como 'de' y 'para', y las repetidas, no cuentan",
+      "apresentacaoRepeticao": "Presentación: {{contadas}} palabras de contenido, pero la mayoría se repite — escríbela con palabras distintas",
       "oQueTenho": "Al menos un elemento en Lo que tengo",
       "oQuePreciso": "Al menos un elemento en Lo que necesito"
     }
@@ -1892,6 +1893,7 @@
       "noConsent": "Para ver y registrar conexiones, activa las Conexiones Inteligentes.",
       "internalAlert": "Encontramos una oportunidad dentro de tu propio network.",
       "memberSide": "Miembro de la plataforma",
+      "mySide": "Tu lado",
       "contactSide": "Contacto de otro network ({{codigo}})",
       "itemLine": "Tiene: {{tem}} · Necesita: {{precisa}}",
       "registeredAt": "Registrada el {{data}}",

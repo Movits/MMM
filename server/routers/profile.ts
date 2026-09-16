@@ -21,6 +21,32 @@ import { esquemaDasDemandas, esquemaDoWhatINeed, prepararOQuePreciso } from "../
 // PERFIL DO USUÁRIO
 // ============================================================
 
+/**
+ * O teto da apresentação no formulário do cadastro (o mesmo do
+ * `LIMITE_BIO` em client/src/pages/Onboarding.tsx). A importação da
+ * planilha grava até 2000 caracteres, então existe bio maior do que este
+ * campo consegue mostrar — ver a guarda em `completeOnboarding`.
+ */
+const TETO_DA_BIO_NO_CADASTRO = 1000;
+const MARGEM_DO_CORTE = 16;
+
+/**
+ * A bio gravada quando ela é maior do que o formulário do cadastro mostra E o
+ * texto que chegou é só o começo dela — o retrato de um envio com o texto
+ * cortado. Devolve null quando não é esse caso (bio ausente, bio que cabe no
+ * campo, ou texto reescrito), e aí a escrita segue normal.
+ */
+async function bioMaiorQueOFormulario(userId: number, bioRecebida: string | undefined): Promise<string | null> {
+  // Só o texto que chega colado no teto pode ser um corte do formulário: bio
+  // curta nem chega a consultar o perfil. A margem existe porque o corte da
+  // tela (`cortarSemPartirEmoji`) para alguns caracteres antes para não
+  // partir um emoji ao meio.
+  if (bioRecebida === undefined || bioRecebida.length < TETO_DA_BIO_NO_CADASTRO - MARGEM_DO_CORTE) return null;
+  const perfil = (await getUserProfile(userId)) as { bio?: string | null } | null;
+  const salva = perfil?.bio ?? "";
+  return salva.length > TETO_DA_BIO_NO_CADASTRO && salva.startsWith(bioRecebida) ? salva : null;
+}
+
 // Aceita "meusite.com.br" e completa o protocolo. Antes, z.string().url()
 // puro rejeitava a mutation INTEIRA quando a usuária colava a URL sem
 // https:// — nenhum campo era salvo e o erro saía como zod cru.
@@ -138,7 +164,7 @@ export const profileRouter = router({
  completeOnboarding: protectedProcedure
    .input(z.object({
      displayName: z.string().min(2).max(100),
-     bio: z.string().max(1000).optional(),
+     bio: z.string().max(TETO_DA_BIO_NO_CADASTRO).optional(),
      city: z.string().max(100),
      country: z.string().length(2).default("BR"),
      sectors: z.array(z.string()).min(1).max(5).optional(),
@@ -212,8 +238,19 @@ export const profileRouter = router({
       // é gravado e o cadastro não conclui (server/termo-geral-de-uso.ts).
       await exigirAceiteDoTermoGeral(ctx.user.id);
       const { company, position, jobTitle, currentRole, currentCompany, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed: _whatINeed, whatINeedDetails: _whatINeedDetails, personType, companySize, companyCnpj, seekingOtherNeed, ...profileData } = input;
+      // Concluir o cadastro nunca ENCURTA uma apresentação que já era maior do
+      // que o campo consegue mostrar. O formulário corta a bio no teto para
+      // caber na tela; a trava de não reenviar esse corte é do cliente, e um
+      // bundle antigo em cache durante o deploy volta a mandar o texto cortado
+      // — o upsert gravaria por cima e uma bio importada de 1500 caracteres
+      // perderia 500, em silêncio e sem histórico da coluna. Quando o que
+      // chega é só o COMEÇO do que está gravado, a coluna fica como está.
+      // Texto reescrito grava normalmente, e o Perfil (que mostra a bio
+      // inteira) continua podendo encurtar.
+      const bioPreservada = await bioMaiorQueOFormulario(ctx.user.id, input.bio);
       await upsertUserProfile(ctx.user.id, {
         ...profileData,
+        ...(bioPreservada !== null ? { bio: bioPreservada } : {}),
         // Desmarcar "Outra necessidade" apaga o texto: ele não pode seguir
         // valendo como necessidade declarada. Sem seekingTypes no pedido, não mexe.
         ...(input.seekingTypes !== undefined

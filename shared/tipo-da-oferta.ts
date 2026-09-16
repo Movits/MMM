@@ -1941,6 +1941,17 @@ function cobrePublico(oferecida: EspecialidadeDoServico, pedida: EspecialidadeDo
 
 function atendeEspecialidades(oferecido: ServicoNomeado, pedido: ServicoNomeado): boolean {
   if (ehGenerico(pedido)) return true;
+  // Oferta genérica diante de necessidade com finalidade ou público
+  // ("Logística" × "logística para exportar meu café"): quem oferece a família
+  // atende quem pede aquela família. Sem esta linha o par dava 0 e nem era
+  // gravado, embora na main valesse 60 pela categoria em comum. A NOTA certa
+  // sai em comoAtende, que devolve "familia" quando a oferta é genérica.
+  // Só quando o pedido diz apenas PARA QUEM ou PARA QUÊ ("logística para
+  // exportar meu café", "Contador para MEI"): aí a família inteira atende.
+  // Pedido com especialidade ("Advogado tributarista", "Consultoria
+  // trabalhista") continua sem casar — quem oferece a família não provou a
+  // especialidade, e é essa a regra que a #124 fixou.
+  if (ehGenerico(oferecido)) return pedido.especialidades.some(pedida => pedida.lemas.size === 0 && pedida.publico.size > 0);
   return pedido.especialidades.some(pedida => (pedida.lemas.size > 0
     ? oferecido.especialidades.some(oferecida => cobre(oferecida, pedida))
     : oferecido.especialidades.some(oferecida => cobrePublico(oferecida, pedida))));
@@ -2101,6 +2112,16 @@ function comoAtende(oferta: string, categoriaDaOferta: string | null | undefined
         if (!umServicoAtende(oferecido, alternativa)) continue;
         const soAFamilia = alternativa.especialidades.every(especialidade =>
           especialidade.publico.size === 0 && Array.from(especialidade.lemas).every(lema => lema === oferecido.familia));
+        // Quem oferece a família inteira não provou a especialidade pedida:
+        // "Logística" diante de "logística para exportar meu café" fica na
+        // nota da família (60), como valia antes desta PR. A exceção é o
+        // pedido que só nomeia destinatário comum ("Contador para MEI"): a
+        // família atende esse público por inteiro, e o par vale 100.
+        if (!soAFamilia && ehGenerico(oferecido)) {
+          if (soDestinatarioComum(alternativa)) return "especifico";
+          melhor = "familia";
+          continue;
+        }
         if (!soAFamilia) return "especifico";
         if (nadaAlemDaFamilia && pedidos.length === 1 && ehGenerico(pedido) && pedido.familia === oferecido.familia) return "especifico";
         melhor = "familia";

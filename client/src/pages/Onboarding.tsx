@@ -413,6 +413,12 @@ export default function Onboarding() {
   // num re-onboarding, o perfil salvo. Antes o formulario abria vazio e pedia
   // o nome de novo. O rascunho da usuária entra ANTES: campo que ela já
   // preencheu vence o perfil salvo.
+  // A bio da carga vai até 2000 caracteres (scripts/importacao/planilha.mjs) e o
+  // formulário só mostra LIMITE_BIO. Sem esta marca, concluir o cadastro sem tocar
+  // no campo mandava o texto CORTADO por cima do salvo e destruía o resto, em
+  // silêncio e sem volta (validação de 16/09 na #135, item 10).
+  const bioPrePreenchida = useRef<string | null>(null);
+  const bioSalvaEraMaior = useRef(false);
   const profileQuery = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   useEffect(() => {
     if (prefilled.current || !profileQuery.data) return;
@@ -423,6 +429,14 @@ export default function Onboarding() {
     // Chave e formulário mudam juntos (mesmo lote): o efeito que grava só roda
     // com o formulário já restaurado, nunca com o vazio do primeiro render.
     setChaveDoRascunho(chave);
+    // A bio da carga vai até 2000 caracteres e o formulário mostra LIMITE_BIO. O que
+    // aparece e se o salvo era MAIOR ficam decididos aqui, fora do atualizador: lá
+    // dentro a segunda passagem recebe o estado já preenchido e o sinalizador zerava.
+    const bioSalva = profile?.bio ?? "";
+    const bioDoRascunho = (rascunho as { bio?: string } | null)?.bio ?? "";
+    const bioMostrada = bioDoRascunho || cortarSemPartirEmoji(bioSalva, LIMITE_BIO);
+    bioPrePreenchida.current = bioMostrada;
+    bioSalvaEraMaior.current = !bioDoRascunho && bioSalva.length > bioMostrada.length;
     setForm(prev => {
       const base = rascunho ? { ...prev, ...rascunho } : prev;
       return {
@@ -435,7 +449,7 @@ export default function Onboarding() {
         // servidor (lista do Nicolas na PR #135, item 10). A carga insere sem
         // limite e o zod de completeOnboarding aceita até LIMITE_BIO: maior que
         // isso, o "Continuar" da etapa 1 travava e a conta não concluía.
-        bio: base.bio || cortarSemPartirEmoji(profile?.bio ?? "", LIMITE_BIO),
+        bio: bioMostrada,
         // O porte já gravado volta marcado, venha no formato antigo (um porte só)
         // ou no novo (lista separada por vírgula) — ver lerPortes.
         preferredCompanySizes: base.preferredCompanySizes.length > 0
@@ -715,7 +729,9 @@ export default function Onboarding() {
       // Em branco, o campo não vai: `bio: ""` apagava a bio importada, e o
       // servidor (upsertUserProfile → UPDATE do Drizzle) não toca na coluna
       // quando o valor está ausente.
-      bio: form.bio.trim() || undefined,
+      // Campo intocado cujo conteúdo é o texto CORTADO do que já está salvo: não vai.
+      // Ausente, o servidor não mexe na coluna e a bio longa da carga sobrevive.
+      bio: bioSalvaEraMaior.current && form.bio === bioPrePreenchida.current ? undefined : (form.bio.trim() || undefined),
       primarySpecialty: selectedSpecialties[0], secondarySpecialties: selectedSpecialties.slice(1),
       experienceYears: form.experienceYears ?? undefined,
       educationLevel: form.educationLevel as "high_school" | "bachelor" | "master" | "phd" | "other" | undefined,

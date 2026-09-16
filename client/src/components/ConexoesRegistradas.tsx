@@ -25,6 +25,13 @@ type Lado = { lado: "a" | "b"; tipo: "contato" | "membro"; contactId: number | n
 export type ConexaoNaTela = {
   id: string;
   origem: string;
+  /**
+   * Por que a plataforma juntou os dois lados, sem dado pessoal — o servidor
+   * monta em motivoAnonimo/motivoEntreMembras e troca pelo aviso quando o
+   * outro lado retira a autorização. Entre duas membras não há código anônimo
+   * para mostrar: é o motivo que diferencia um cartão do outro.
+   */
+  motivo: string;
   itens: Array<{ tem: string; precisa: string; deCodigo: string | null; paraCodigo: string | null }>;
   status: string;
   statusComissao: string;
@@ -59,6 +66,7 @@ export function ConexaoRegistrada({ conexao }: { conexao: ConexaoNaTela }) {
   const proxima = aguardandoOutroLado ? undefined : PROXIMA[conexao.status];
   const podeDescartar = conexao.status !== "fechada" && conexao.status !== "descartada";
   const meuOriginador = conexao.lados.find(lado => lado.meu && lado.originador);
+  const registradaEm = new Date(conexao.criadaEm).toLocaleString(i18n.language, { dateStyle: "short", timeStyle: "short" });
 
   return (
     <li className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
@@ -76,13 +84,17 @@ export function ConexaoRegistrada({ conexao }: { conexao: ConexaoNaTela }) {
                 {lado.codigoAnonimo ?? "—"}
               </Link>
             ) : (
-              <span className="rounded-md border border-white/10 px-2 py-0.5 text-white/55">
-                {lado.tipo === "membro" ? t("networkInteligente.connections.memberSide") : t("networkInteligente.connections.contactSide", { codigo: lado.codigoAnonimo ?? "—" })}
+              <span className={`rounded-md border px-2 py-0.5 ${lado.meu ? "border-[#c98f70]/30 bg-[#c98f70]/10 text-[#efcba8]" : "border-white/10 text-white/55"}`}>
+                {lado.tipo === "contato"
+                  ? t("networkInteligente.connections.contactSide", { codigo: lado.codigoAnonimo ?? "—" })
+                  : t(lado.meu ? "networkInteligente.connections.mySide" : "networkInteligente.connections.memberSide")}
               </span>
             )}
           </li>
         ))}
       </ul>
+
+      <p className="mt-2 text-sm text-white/75">{conexao.motivo}</p>
 
       <ul className="mt-2 space-y-1">
         {conexao.itens.map((item, indice) => (
@@ -91,7 +103,7 @@ export function ConexaoRegistrada({ conexao }: { conexao: ConexaoNaTela }) {
       </ul>
 
       <p className="mt-2 text-xs text-white/45">
-        {t("networkInteligente.connections.registeredAt", { data: new Date(conexao.criadaEm).toLocaleDateString(i18n.language) })}
+        {t("networkInteligente.connections.registeredAt", { data: registradaEm })}
         {" · "}
         {t("networkInteligente.connections.platformCommission", { status: t(`networkInteligente.connections.commission.${conexao.statusComissao}`) })}
         {meuOriginador?.statusComissaoOriginador && (
@@ -126,6 +138,11 @@ export function ConexaoRegistrada({ conexao }: { conexao: ConexaoNaTela }) {
             <DialogTitle className="text-white">{t("networkInteligente.connections.discardConfirmTitle")}</DialogTitle>
             <DialogDescription className="text-sm text-white/60">{t("networkInteligente.connections.discardConfirmText")}</DialogDescription>
           </DialogHeader>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs">
+            <p className="font-bold uppercase tracking-wider text-[#efcba8]">{t(`networkInteligente.connections.origin.${conexao.origem}`)}</p>
+            <p className="mt-1 text-white/75">{conexao.motivo}</p>
+            <p className="mt-1 text-white/45">{t("networkInteligente.connections.registeredAt", { data: registradaEm })}</p>
+          </div>
           <DialogFooter>
             <button type="button" disabled={avancar.isPending} onClick={() => setConfirmandoDescarte(false)}
               className="rounded-xl border border-white/15 px-4 py-2 text-sm text-white/60 hover:bg-white/8 disabled:opacity-50">

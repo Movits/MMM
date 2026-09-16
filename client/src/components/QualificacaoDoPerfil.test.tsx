@@ -34,7 +34,7 @@ describe("QualificacaoDoPerfil", () => {
     expect(screen.getByRole("heading", { name: "Membro Bronze: seu perfil está em qualificação" })).toBeInTheDocument();
     const itens = screen.getAllByRole("listitem").map(li => li.textContent);
     expect(itens).toEqual([
-      "Apresentação: 1 de 6 palavras de conteúdo; palavras curtas como 'de' e 'para' não contam",
+      "Apresentação: 1 de 6 palavras de conteúdo diferentes; palavras curtas como 'de' e 'para', e as repetidas, não contam",
       "Pelo menos um item em O que preciso",
     ]);
     expect(screen.getByText(/não têm mensalidade/)).toBeInTheDocument();
@@ -43,12 +43,17 @@ describe("QualificacaoDoPerfil", () => {
   it("a apresentação recusada mostra a contagem da régua, não só o mínimo (revisão da #135, item 8)", () => {
     // 7 palavras escritas, 5 de conteúdo: a membra lia "pelo menos 6" e não entendia.
     const { rerender } = render(<QualificacaoDoPerfil role="bronze" perfil={{ ...QUALIFICADO, bio: "Consultora de marketing digital para pequenas empresas" }} />);
-    expect(screen.getByRole("listitem")).toHaveTextContent("Apresentação: 5 de 6 palavras de conteúdo; palavras curtas como 'de' e 'para' não contam");
+    expect(screen.getByRole("listitem")).toHaveTextContent("Apresentação: 5 de 6 palavras de conteúdo diferentes; palavras curtas como 'de' e 'para', e as repetidas, não contam");
 
-    // Seis palavras diferentes, mas mais repetição que conteúdo: a contagem
-    // atinge o mínimo e não explica; fica o texto geral da apresentação.
+    // Seis palavras diferentes, mas mais repetição que conteúdo: a recusa é por
+    // repetição, e agora o texto diz isso — antes repetia "pelo menos 6 palavras"
+    // para quem tinha escrito 18 (validação de 16/09 na #135).
     const repetitiva = "vendas vendas vendas marketing marketing marketing digital digital digital varejo varejo varejo moda moda moda luxo luxo luxo";
     rerender(<QualificacaoDoPerfil role="bronze" perfil={{ ...QUALIFICADO, bio: repetitiva }} />);
+    expect(screen.getByRole("listitem")).toHaveTextContent("a maior parte se repete");
+
+    // Campo vazio continua com o texto geral, que é o único que cabe ali.
+    rerender(<QualificacaoDoPerfil role="bronze" perfil={{ ...QUALIFICADO, bio: "" }} />);
     expect(screen.getByRole("listitem")).toHaveTextContent("Uma apresentação com pelo menos 6 palavras que digam quem você é e o que faz");
   });
 

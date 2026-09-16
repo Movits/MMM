@@ -1751,7 +1751,8 @@
       "cidade": "Stadt",
       "atuacao": "Ihr Tätigkeitsbereich",
       "apresentacao": "Eine Vorstellung mit mindestens {{minimo}} Wörtern darüber, wer Sie sind und was Sie tun",
-      "apresentacaoContagem": "Vorstellung: {{contadas}} von {{minimo}} Inhaltswörtern; kurze Wörter wie „und“ und „für“ zählen nicht",
+      "apresentacaoContagem": "Vorstellung: {{contadas}} von {{minimo}} unterschiedlichen inhaltlichen Wörtern; kurze Wörter wie „von“ und „für“ sowie Wiederholungen zählen nicht",
+      "apresentacaoRepeticao": "Vorstellung: {{contadas}} inhaltliche Wörter, aber die meisten wiederholen sich – schreiben Sie sie mit verschiedenen Wörtern",
       "oQueTenho": "Mindestens ein Eintrag unter Was ich habe",
       "oQuePreciso": "Mindestens ein Eintrag unter Was ich brauche"
     }
@@ -1892,6 +1893,7 @@
       "noConsent": "Um Verbindungen zu sehen und zu erfassen, aktivieren Sie Intelligente Verbindungen.",
       "internalAlert": "Wir haben eine Chance in Ihrem eigenen Netzwerk gefunden.",
       "memberSide": "Plattformmitglied",
+      "mySide": "Ihre Seite",
       "contactSide": "Kontakt aus einem anderen Netzwerk ({{codigo}})",
       "itemLine": "Hat: {{tem}} · Braucht: {{precisa}}",
       "registeredAt": "Erfasst am {{data}}",

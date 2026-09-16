@@ -387,6 +387,30 @@ describe("item 10 — bio importada maior que o teto de 1000 do servidor", () =>
     expect(campoBio()).toHaveValue("Consultora " + "😀".repeat(494));
     expect(botaoContinuar()).toBeEnabled();
   });
+
+  it("concluir sem tocar no campo não manda a bio: o texto cortado não apaga o resto do que está salvo", () => {
+    // Validação de 16/09 na #135: a carga grava até 2000 caracteres, o formulário mostra 1000,
+    // e concluir enviava esses 1000 por cima — 400 caracteres destruídos em silêncio.
+    const bioLonga = "Consultora tributária com 15 anos de estrada. " + "a".repeat(1400);
+    duble.perfil = perfilDe(USUARIA_7, { displayName: "Fulana Importada", city: "Recife", country: "BR", bio: bioLonga });
+    render(<Onboarding />);
+    expect(campoBio()).toHaveValue(bioLonga.slice(0, 1000));
+
+    irAteAUltimaEtapa();
+    concluir();
+    // Sem valor: o zod de completeOnboarding trata como ausente e o upsert não toca na coluna.
+    expect(perfilEnviado().bio).toBeUndefined();
+  });
+
+  it("a bio editada continua indo, mesmo quando a salva era maior que o teto", () => {
+    duble.perfil = perfilDe(USUARIA_7, { displayName: "Fulana Importada", city: "Recife", country: "BR", bio: "a".repeat(1400) });
+    render(<Onboarding />);
+    fireEvent.change(campoBio(), { target: { value: "Consultora de exportação para o Mercosul" } });
+
+    irAteAUltimaEtapa();
+    concluir();
+    expect(perfilEnviado().bio).toBe("Consultora de exportação para o Mercosul");
+  });
 });
 
 describe("sair da conta apaga os rascunhos do cadastro (computador compartilhado)", () => {

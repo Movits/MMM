@@ -314,9 +314,17 @@ export const networkInteligenteRouter = router({
         const lista = await listarTodasAsConexoes({ origem: input?.origem, status: input?.status });
         // Leitura que atravessa as redes de todas as donas: "quem viu as
         // conexões do meu network?" precisa ter resposta, como GOLD_ACERVO_READ.
+        // Por isso a trilha guarda as CONTAS cujas conexões saíram nesta
+        // leitura (id da conta responsável por cada lado, que a lista já traz),
+        // e não só quantas linhas foram lidas: com a contagem sozinha, a
+        // pergunta não tem resposta. Nada de contato vai junto — nome, telefone
+        // e e-mail nunca entram nesta lista, e o teto de 200 conexões da
+        // consulta limita o tamanho do registro.
+        const donas = Array.from(new Set(lista.flatMap(conexao => conexao.lados.map(lado => lado.conta?.id))
+          .filter((id): id is number => typeof id === "number"))).sort((a, b) => a - b);
         await createAuditLog({
           userId: ctx.user.id, action: "NETWORK_CONNECTIONS_READ", resource: "conexoes_registradas",
-          details: { origem: input?.origem ?? null, status: input?.status ?? null, conexoes: lista.length },
+          details: { origem: input?.origem ?? null, status: input?.status ?? null, conexoes: lista.length, donas },
           status: "success", riskLevel: "medium",
         });
         return lista;

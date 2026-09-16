@@ -685,6 +685,34 @@ describe("Revisão de 15/09 dos consertos da #127 — motor privado", () => {
     }
   });
 
+  it("na necessidade, finalidade e público da mesma família voltam para a nota da família", () => {
+    // Validação de 16/09 na #135: a oferta genérica diante da necessidade que diz PARA QUÊ caía para 0 e a
+    // sugestão nem era gravada (corte de 50), enquanto na main valia 60 pela categoria em comum. Quem oferece a
+    // família não provou a especialidade, mas atende quem pede aquela família com uma finalidade ou um público.
+    for (const [oferta, necessidade] of [
+      ["Logística", "Preciso de logística para exportar meu café"], ["Marketing", "Marketing para restaurantes"],
+      ["Advocacia", "Advogado para causas do trabalho"], ["Consultoria", "Consultoria para exportação"],
+      ["Contabilidade", "Contabilidade para o agronegócio"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
+    }
+    // Público comum dos dois lados: a família atende o destinatário por inteiro, como já valia no sentido inverso.
+    for (const [oferta, necessidade] of [
+      ["Contabilidade", "Contador para MEI"], ["Contabilidade", "Contador para pequenas empresas"],
+      ["Advocacia", "Advogado para empresas"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 100, type: "exact" });
+    }
+    // O que a #124 fixou continua valendo: especialidade pedida não é atendida por quem só tem a família.
+    for (const [oferta, necessidade] of [
+      ["Advocacia", "Advogado tributarista"], ["Consultoria", "Consultoria trabalhista"],
+      ["Logística", "Preciso de um advogado"], ["Advocacia", "Juristische Person"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`)
+        .toEqual({ score: 0, type: "semantic", bloqueio: "servico-sem-demanda-expressa" });
+    }
+  });
+
   it("o que a classificação diz serviço, a leitura do serviço também lê: não é barrado diante do próprio profissional", () => {
     for (const [oferta, necessidade, categoria] of [
       ["Empresa de gestão contábil", "Contador", "Contabilidade"], ["Escritório de soluções jurídicas", "Advogado", "Jurídico"],

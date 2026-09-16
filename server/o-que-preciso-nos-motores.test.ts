@@ -217,6 +217,27 @@ describe("a descrição que nomeia o serviço que o próprio perfil OFERECE não
     const semOServico = { ...comIdFixo, activityArea: "Indústria de alimentos" };
     expect(necessidadesEscritasDoPerfil(semOServico)).toEqual([DESCRICAO_DA_PROPRIA_OFERTA]);
   });
+
+  it("a guarda usa o mesmo critério do motor: trocar a redação não escapa dela (validação de 16/09)", () => {
+    // A guarda olhava só `necessidadeNomeiaOServico`, enquanto `satisfaz` (server/matching.ts) casa também pelo
+    // ASSUNTO declarado sem nomear o serviço. Bastava reescrever a mesma oferta para o texto voltar a ser lido
+    // como necessidade e o par valer 50 no motor de perfis.
+    const tributarista = (descricao: string) => ({
+      whatIHave: ["Advocacia tributária"],
+      whatINeed: ["expansao_internacionalizacao"],
+      whatINeedDetails: [{ id: "d1", category: "expansao_internacionalizacao", description: descricao }],
+    });
+    for (const descricao of [
+      "Planejamento tributário para investidores estrangeiros e sócios",
+      "Assessoria tributária para holdings familiares",
+    ]) {
+      expect(necessidadesEscritasDoPerfil(tributarista(descricao)), descricao).toEqual([]);
+      expect(calculateCompatibilityScore(perfil({ whatIHave: ["Advocacia tributária"] }), perfil(tributarista(descricao))).overall, descricao).toBe(0);
+    }
+    // Necessidade de verdade continua passando: ela pede OUTRO serviço.
+    const precisaDeContador = tributarista("Preciso de um contador para fechar o balanço");
+    expect(necessidadesEscritasDoPerfil(precisaDeContador)).toContain("Preciso de um contador para fechar o balanço");
+  });
 });
 
 describe("categoria de serviço SEM descrição não casa", () => {
