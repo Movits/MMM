@@ -35,7 +35,7 @@ function PasswordStrength({ password, t }: { password: string; t: (key: string) 
         ))}
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-white/60">
           {t("auth.strength")}:{" "}
           <span className={score >= 3 ? "text-green-400" : "text-amber-400"}>
             {strengthLabels[score - 1] || t("auth.pwdVeryWeak")}
@@ -45,7 +45,7 @@ function PasswordStrength({ password, t }: { password: string; t: (key: string) 
           {checks.map((c) => (
             <span
               key={c.label}
-              className={`text-xs transition-colors ${c.ok ? "text-green-400" : "text-slate-600"}`}
+              className={`text-xs transition-colors ${c.ok ? "text-green-400" : "text-white/50"}`}
               title={c.label}
             >
               <CheckCircle2 className="w-3 h-3 inline" />
@@ -157,14 +157,14 @@ export default function Register() {
                 {t("auth.name")}
               </Label>
               <div className="relative group">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-amber-400 transition-colors" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60 group-focus-within:text-amber-400 transition-colors" />
                 <Input
                   id="name"
                   type="text"
                   placeholder={t("auth.namePlaceholder")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-amber-400/60 focus:ring-amber-400/20 h-11 transition-all"
+                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/50 focus:border-amber-400/60 focus:ring-amber-400/20 h-11 transition-all"
                   autoComplete="name"
                   disabled={registerMutation.isPending}
                 />
@@ -177,14 +177,14 @@ export default function Register() {
                 {t("auth.email")}
               </Label>
               <div className="relative group">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-amber-400 transition-colors" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60 group-focus-within:text-amber-400 transition-colors" />
                 <Input
                   id="email"
                   type="email"
                   placeholder={t("auth.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-amber-400/60 focus:ring-amber-400/20 h-11 transition-all"
+                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/50 focus:border-amber-400/60 focus:ring-amber-400/20 h-11 transition-all"
                   autoComplete="email"
                   disabled={registerMutation.isPending}
                 />
@@ -197,21 +197,21 @@ export default function Register() {
                 {t("auth.password")}
               </Label>
               <div className="relative group">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-amber-400 transition-colors" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60 group-focus-within:text-amber-400 transition-colors" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder={t("auth.passwordPlaceholder")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-amber-400/60 focus:ring-amber-400/20 h-11 transition-all"
+                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-white/50 focus:border-amber-400/60 focus:ring-amber-400/20 h-11 transition-all"
                   autoComplete="new-password"
                   disabled={registerMutation.isPending}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-slate-300 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -226,7 +226,7 @@ export default function Register() {
               </Label>
               <div className="relative group">
                 <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${
-                  passwordsMatch ? "text-green-400" : passwordsMismatch ? "text-red-400" : "text-slate-500 group-focus-within:text-amber-400"
+                  passwordsMatch ? "text-green-400" : passwordsMismatch ? "text-red-400" : "text-white/60 group-focus-within:text-amber-400"
                 }`} />
                 <Input
                   id="confirmPassword"
@@ -234,7 +234,7 @@ export default function Register() {
                   placeholder={t("auth.confirmPasswordPlaceholder")}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`pl-10 pr-10 bg-white/5 text-white placeholder:text-slate-600 h-11 transition-all ${
+                  className={`pl-10 pr-10 bg-white/5 text-white placeholder:text-white/50 h-11 transition-all ${
                     passwordsMatch
                       ? "border-green-500/50 focus:border-green-400/60"
                       : passwordsMismatch
@@ -247,7 +247,7 @@ export default function Register() {
                 <button
                   type="button"
                   onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-slate-300 transition-colors"
                 >
                   {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -263,7 +263,7 @@ export default function Register() {
             </div>
 
             {/* Termos */}
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-white/50 leading-relaxed">
               {t("auth.termsPrefix")}{" "}
               <span className="text-amber-500/70 hover:text-amber-400 cursor-pointer transition-colors">
                 {t("auth.terms")}
@@ -296,14 +296,14 @@ export default function Register() {
           </form>
 
           {/* Segurança */}
-          <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-center gap-2 text-xs text-slate-600">
+          <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-center gap-2 text-xs text-white/50">
             <Shield className="w-3.5 h-3.5 text-amber-500/50" />
             <span>{t("auth.registerSecurityNote")}</span>
           </div>
         </div>
 
         {/* Link de volta */}
-        <p className="text-center mt-6 text-xs text-slate-600">
+        <p className="text-center mt-6 text-xs text-white/50">
           <Link href="/">
             <span className="hover:text-slate-400 cursor-pointer transition-colors">← {t("auth.backToHome")}</span>
           </Link>
