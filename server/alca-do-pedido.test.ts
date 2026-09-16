@@ -16,10 +16,28 @@ describe("alça do pedido", () => {
   });
 
   it("não carrega o id em claro nem tem ordem: duas leituras do mesmo pedido dão alças diferentes", () => {
-    const [primeira, segunda] = [selarAlcaDoPedido(18, 9), selarAlcaDoPedido(18, 9)];
+    // O id é LONGO de propósito. Com "18", esta asserção falhava por sorteio: a
+    // alça tem ~48 caracteres de base64url, e a chance de dois caracteres
+    // quaisquer aparecerem por acaso é de cerca de 1% por execução — o CI da
+    // #115 caiu exatamente assim em 16/09, com a alça "AzID-18SeThl…". Com nove
+    // dígitos a coincidência fica na casa de 10^-14, e a propriedade testada
+    // continua sendo a mesma: o id não viaja em claro.
+    const ID = 987654321;
+    const [primeira, segunda] = [selarAlcaDoPedido(ID, 9), selarAlcaDoPedido(ID, 9)];
     expect(primeira).not.toBe(segunda);
-    expect(primeira).not.toContain("18");
-    expect(abrirAlcaDoPedido(segunda, 9)).toBe(18);
+    expect(primeira).not.toContain(String(ID));
+    expect(abrirAlcaDoPedido(segunda, 9)).toBe(ID);
+  });
+
+  it("nenhuma de cinquenta alças do mesmo pedido repete ou mostra o id", () => {
+    // Uma amostra só não distingue "nonce novo a cada selagem" de sorte.
+    const ID = 987654321;
+    const alcas = Array.from({ length: 50 }, () => selarAlcaDoPedido(ID, 9));
+    expect(new Set(alcas).size).toBe(alcas.length);
+    for (const alca of alcas) {
+      expect(alca).not.toContain(String(ID));
+      expect(abrirAlcaDoPedido(alca, 9)).toBe(ID);
+    }
   });
 
   it("outra conta não abre a alça de quem leu a fila", () => {
