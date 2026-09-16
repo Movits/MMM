@@ -87,6 +87,27 @@ export async function registerUser(params: {
 }
 
 // ─── Login com email + senha ──────────────────────────────────
+/**
+ * O `appId` que vai no JWT. NUNCA vazio: `sdk.verifySession` exige
+ * `isNonEmptyString(appId)` (server/_core/sdk.ts) e recusa a sessão inteira
+ * sem ele — a pessoa loga, a sessão é criada no banco, e no request seguinte
+ * já está deslogada, com "[Auth] Session payload missing required fields" no
+ * log.
+ *
+ * O defeito que isto fecha (achado pelo Gabryel na #139): o código usava
+ * `process.env.VITE_APP_ID ?? "mmm-os"`, e `??` só cai no padrão com
+ * null/undefined. O `.env.example` traz `VITE_APP_ID=` — vazio —, o dotenv
+ * entrega string VAZIA, que não é nullish, e o appId ia vazio. Ou seja: quem
+ * seguisse o README ("cp .env.example .env") não conseguia ficar logado.
+ *
+ * É a mesma cautela que o `safeName` logo abaixo já tinha. Fica como função
+ * exportada para o teste poder prendê-la (server/auth.identificador-do-aplicativo.test.ts):
+ * a troca de `??` por `||` é de um caractere e volta sem ninguém ver.
+ */
+export function identificadorDoAplicativo(): string {
+  return process.env.VITE_APP_ID?.trim() || "mmm-os";
+}
+
 export async function loginUser(params: {
   email: string;
   password: string;
@@ -174,9 +195,11 @@ export async function loginUser(params: {
     ? user.name.trim()
     : (user.email ? user.email.split("@")[0] : "usuario");
 
+  const safeAppId = identificadorDoAplicativo();
+
   const token = await new jose.SignJWT({
     openId: user.openId,                          // campo esperado pelo sdk.verifySession
-    appId: process.env.VITE_APP_ID ?? "mmm-os",  // campo esperado pelo sdk.verifySession
+    appId: safeAppId,                             // NUNCA vazio — sdk exige isNonEmptyString
     name: safeName,                               // NUNCA vazio — sdk exige isNonEmptyString
     sessionToken,                                  // para validação no banco (validateSessionToken)
   })
