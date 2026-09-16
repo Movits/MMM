@@ -394,8 +394,8 @@
       "workStyle": "पसंदीदा कार्य शैली *",
       "values": "आपके मूल मूल्य",
       "languages": "आप जो भाषाएं बोलते हैं",
-      "customSector": "Seu setor não está na lista?",
-      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
+      "customSector": "क्या आपका क्षेत्र सूची में नहीं है?",
+      "customSectorPlaceholder": "यहाँ अपना क्षेत्र लिखें"
     },
     "companySize": {
       "micro": "सूक्ष्म (1–9)",
@@ -895,9 +895,9 @@
     "placeholderTelefone": "+91 98765 43210",
     "labelWhatsapp": "WhatsApp",
     "labelEmail": "ईमेल",
-    "placeholderEmail": "contato@empresa.com",
+    "placeholderEmail": "contact@company.com",
     "labelLinkedin": "LinkedIn URL",
-    "placeholderLinkedin": "https://linkedin.com/in/nome",
+    "placeholderLinkedin": "https://linkedin.com/in/name",
     "labelInstagram": "Instagram",
     "placeholderInstagram": "@हैंडल (@ के बिना)",
     "labelPerfilTags": "प्रोफ़ाइल / टैग",

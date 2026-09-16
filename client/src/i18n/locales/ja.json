@@ -394,8 +394,8 @@
       "workStyle": "希望する働き方 *",
       "values": "あなたの核心的価値観",
       "languages": "話せる言語",
-      "customSector": "Seu setor não está na lista?",
-      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
+      "customSector": "あなたの業種が一覧にありませんか？",
+      "customSectorPlaceholder": "ここに業種を入力してください"
     },
     "companySize": {
       "micro": "マイクロ (1–9)",
@@ -895,9 +895,9 @@
     "placeholderTelefone": "+81 90-1234-5678",
     "labelWhatsapp": "WhatsApp",
     "labelEmail": "メールアドレス",
-    "placeholderEmail": "contato@empresa.com",
+    "placeholderEmail": "contact@company.com",
     "labelLinkedin": "LinkedIn URL",
-    "placeholderLinkedin": "https://linkedin.com/in/nome",
+    "placeholderLinkedin": "https://linkedin.com/in/name",
     "labelInstagram": "Instagram",
     "placeholderInstagram": "@ハンドル（@なし）",
     "labelPerfilTags": "プロフィール／タグ",

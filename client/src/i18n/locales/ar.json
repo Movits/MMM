@@ -394,8 +394,8 @@
       "workStyle": "أسلوب العمل المفضل *",
       "values": "قيمك الأساسية",
       "languages": "اللغات التي تتحدثها",
-      "customSector": "Seu setor não está na lista?",
-      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
+      "customSector": "ألا يوجد قطاعك في القائمة؟",
+      "customSectorPlaceholder": "اكتب هنا القطاع الذي تعمل فيه"
     },
     "companySize": {
       "micro": "صغيرة جدًا (1–9)",
@@ -895,9 +895,9 @@
     "placeholderTelefone": "+971 50 123 4567",
     "labelWhatsapp": "WhatsApp",
     "labelEmail": "البريد الإلكتروني",
-    "placeholderEmail": "contato@empresa.com",
+    "placeholderEmail": "contact@company.com",
     "labelLinkedin": "رابط LinkedIn",
-    "placeholderLinkedin": "https://linkedin.com/in/nome",
+    "placeholderLinkedin": "https://linkedin.com/in/name",
     "labelInstagram": "Instagram",
     "placeholderInstagram": "@اسم_المستخدم (بدون @)",
     "labelPerfilTags": "الملف الشخصي / الوسوم",

@@ -394,8 +394,8 @@
       "workStyle": "Estilo de trabajo preferido *",
       "values": "Tus valores principales",
       "languages": "Idiomas que hablas",
-      "customSector": "Seu setor não está na lista?",
-      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
+      "customSector": "¿Tu sector no está en la lista?",
+      "customSectorPlaceholder": "Escribe aquí cuál es tu sector"
     },
     "companySize": {
       "micro": "Micro (1–9)",

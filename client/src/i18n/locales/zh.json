@@ -394,8 +394,8 @@
       "workStyle": "偏好的工作方式 *",
       "values": "您的核心价值观",
       "languages": "您会说的语言",
-      "customSector": "Seu setor não está na lista?",
-      "customSectorPlaceholder": "Escreva aqui qual é o seu setor"
+      "customSector": "没有找到您所在的行业？",
+      "customSectorPlaceholder": "请在此填写您的行业"
     },
     "companySize": {
       "micro": "微型 (1–9)",
@@ -895,9 +895,9 @@
     "placeholderTelefone": "+55 11 9 9999-9999",
     "labelWhatsapp": "WhatsApp",
     "labelEmail": "电子邮箱",
-    "placeholderEmail": "contato@empresa.com",
+    "placeholderEmail": "contact@company.com",
     "labelLinkedin": "LinkedIn 链接",
-    "placeholderLinkedin": "https://linkedin.com/in/nome",
+    "placeholderLinkedin": "https://linkedin.com/in/name",
     "labelInstagram": "Instagram",
     "placeholderInstagram": "@用户名（不含@）",
     "labelPerfilTags": "档案 / 标签",
