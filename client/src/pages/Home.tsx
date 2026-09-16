@@ -247,37 +247,16 @@ function LanguageSelector() {
 // Respostas fixas: abrir uma pergunta não pode custar uma chamada de IA nem
 // depender dela estar no ar. A caixa "Pergunte à IA" continua logo abaixo
 // para dúvidas fora desta lista.
-const FAQ_ITEMS = [
-  {
-    // Respostas dos níveis reescritas com as palavras da spec de Governança
-    // (Glenda, 14/09): Bronze e Prata medem a qualificação do perfil e não têm
-    // mensalidade; Ouro é categoria premium mediante mensalidade. Sem preço.
-    q: "Quais são os níveis de membro da plataforma?",
-    a: "São três: Bronze, Prata e Ouro. Bronze e Prata não são planos de assinatura: representam o nível de qualificação das informações do seu perfil em Quem Sou, O Que Tenho e O Que Preciso. Toda conta começa no Bronze, e o Prata vem quando essas informações atingem os critérios de completude e qualidade da plataforma. Nenhum dos dois tem mensalidade. O Ouro é uma categoria premium, mediante mensalidade, com benefícios exclusivos.",
-  },
-  {
-    q: "Como funciona o acordo de confidencialidade (NDA) na Deal Room?",
-    a: "A Deal Room é a sala privada onde vocês negociam dentro da plataforma. Antes de qualquer conversa ali, as duas partes assinam um acordo de confidencialidade. A sala só é liberada depois das duas assinaturas, e tudo que for trocado ali fica protegido pelo acordo.",
-  },
-  {
-    q: "Como funciona a Deal Room, a sala privada de negociação?",
-    a: "Você demonstra interesse em uma oportunidade e, quando a outra parte aceita, a plataforma cria uma sala privada para vocês. Lá dentro ficam o chat e os documentos do negócio, tudo condicionado ao NDA assinado. A ideia é sair da conversa solta e ir para um espaço com regra clara.",
-  },
-  {
-    q: "O que é o nível Ouro e como consigo?",
-    a: "O Status Ouro é a categoria premium da rede, mediante mensalidade: acesso em primeira mão a oportunidades selecionadas de negócios nacionais e internacionais, convites para encontros estratégicos e prioridade na comunicação de oportunidades exclusivas da categoria. Ele não é uma evolução automática do Prata: depende da adesão à categoria premium e das regras específicas da plataforma.",
-  },
-  {
-    q: "Quais oportunidades posso encontrar na plataforma?",
-    a: "De vários tipos: ofertas de produtos e serviços, demandas de quem procura fornecedor, busca de investimento, parcerias comerciais e canais de distribuição. Antes de aparecer para os outros membros, toda oportunidade passa por uma checagem automática das regras da plataforma e pela aprovação da nossa equipe.",
-  },
-  {
-    q: "Como a IA encontra as combinações entre perfis e oportunidades?",
-    a: "O sistema compara os perfis em dimensões como especialidade, setor, objetivos, localização, valores e capacidade de investimento, e calcula um índice de compatibilidade. Para as conexões mais fortes, a IA escreve uma explicação de por que aquela parceria faz sentido, para você decidir com contexto.",
-  },
-];
+// As perguntas e as respostas moram nos 10 JSONs de idioma (`faq.items.*`).
+// Eram texto fixo em português aqui dentro, e por isso a seção inteira
+// continuava em português nos outros nove idiomas. O conteúdo das respostas
+// não mudou: as dos níveis seguem as palavras da spec de Governança (Glenda,
+// 14/09) — Bronze e Prata medem a qualificação do perfil e não têm
+// mensalidade; Ouro é categoria premium mediante mensalidade, sem preço.
+const FAQ_IDS = ["i1", "i2", "i3", "i4", "i5", "i6"] as const;
 
 function FAQSection() {
+  const { t, i18n } = useTranslation();
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   const [customQ, setCustomQ] = useState("");
   const [customAnswer, setCustomAnswer] = useState("");
@@ -293,9 +272,12 @@ function FAQSection() {
     setCustomLoading(true);
     setCustomAnswer("");
     try {
-      const res = await faqMutation.mutateAsync({ question: customQ });
+      // O idioma vai junto: a resposta da IA precisa sair no idioma da tela, e
+      // o servidor não tem outro jeito de saber qual é (não há cabeçalho de
+      // idioma nem coluna de idioma da usuária).
+      const res = await faqMutation.mutateAsync({ question: customQ, idioma: i18n.resolvedLanguage ?? i18n.language });
       setCustomAnswer(typeof res.answer === 'string' ? res.answer : String(res.answer));
-    } catch { setCustomAnswer("Não conseguimos responder agora. Tente de novo em instantes."); }
+    } catch { setCustomAnswer(t("faq.askError")); }
     setCustomLoading(false);
   };
 
@@ -303,27 +285,27 @@ function FAQSection() {
     <section id="faq" className="py-28 relative">
       <div className="relative container mx-auto px-6 max-w-3xl">
         <div className="text-center mb-14">
-          <SectionLabel>FAQ</SectionLabel>
+          <SectionLabel>{t("faq.label")}</SectionLabel>
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
-            Tire suas <span className="text-[#c98f70]">dúvidas</span>
+            {t("faq.headline1")}<span className="text-[#c98f70]">{t("faq.headline2")}</span>
           </h2>
-          <p className="text-white/40 text-lg">As respostas para as perguntas mais comuns. E se a sua não estiver aqui, pergunte à IA logo abaixo.</p>
+          <p className="text-white/40 text-lg">{t("faq.subtitle")}</p>
         </div>
 
         {/* Perguntas pré-definidas */}
         <div className="space-y-2.5 mb-8">
-          {FAQ_ITEMS.map((item, idx) => (
-            <div key={idx} className="bg-[#211e1b]/90 border border-white/[0.06] rounded-2xl overflow-hidden transition-all duration-200 hover:border-white/15">
+          {FAQ_IDS.map((id, idx) => (
+            <div key={id} className="bg-[#211e1b]/90 border border-white/[0.06] rounded-2xl overflow-hidden transition-all duration-200 hover:border-white/15">
               <button
                 onClick={() => handleToggle(idx)}
                 className="w-full flex items-center justify-between px-6 py-4 text-left"
               >
-                <span className="text-white/90 font-medium text-sm md:text-base">{item.q}</span>
+                <span className="text-white/90 font-medium text-sm md:text-base">{t(`faq.items.${id}.q`)}</span>
                 <span className={`text-[#c98f70] text-xl font-bold transition-transform duration-200 flex-shrink-0 ml-4 ${openIdx === idx ? 'rotate-45' : ''}`}>+</span>
               </button>
               {openIdx === idx && (
                 <div className="px-6 pb-5">
-                  <p className="text-white/60 text-sm leading-relaxed whitespace-pre-line">{item.a}</p>
+                  <p className="text-white/60 text-sm leading-relaxed whitespace-pre-line">{t(`faq.items.${id}.a`)}</p>
                 </div>
               )}
             </div>
@@ -332,14 +314,14 @@ function FAQSection() {
 
         {/* Campo de pergunta personalizada */}
         <div className="bg-[#211e1b]/90 border border-white/[0.06] rounded-2xl p-6">
-          <p className="text-white/50 text-sm mb-3 font-medium">Tem outra dúvida? Pergunte à IA:</p>
+          <p className="text-white/50 text-sm mb-3 font-medium">{t("faq.askTitle")}</p>
           <div className="flex gap-3">
             <input
               type="text"
               value={customQ}
               onChange={e => setCustomQ(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCustom()}
-              placeholder="Ex: Como funciona a verificação de identidade?"
+              placeholder={t("faq.askPlaceholder")}
               className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#c98f70]/50 transition-colors"
             />
             <button
@@ -349,7 +331,7 @@ function FAQSection() {
             >
               {customLoading ? (
                 <div className="w-4 h-4 border-2 border-[#151312]/40 border-t-[#151312] rounded-full animate-spin" />
-              ) : <><Send className="w-3.5 h-3.5" /> Perguntar</>}
+              ) : <><Send className="w-3.5 h-3.5" /> {t("faq.askButton")}</>}
             </button>
           </div>
           {customAnswer && (
@@ -528,7 +510,7 @@ export default function Home() {
         <div className="flex items-center justify-between px-6 md:px-12 py-3.5">
           <div className="flex items-center gap-2.5">
             <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-              className="cursor-pointer" aria-label="Voltar ao topo">
+              className="cursor-pointer" aria-label={t("nav.backToTop")}>
               <BrandMark />
             </a>
             <span className="text-[10px] uppercase tracking-wider bg-[#c98f70]/10 text-[#c98f70] border border-[#c98f70]/20 px-2 py-0.5 rounded-full font-semibold">{t("nav.beta")}</span>
@@ -542,7 +524,7 @@ export default function Home() {
           <button
             className="md:hidden flex flex-col justify-center items-center w-10 h-10 gap-1.5 bg-transparent border-none cursor-pointer z-50"
             onClick={() => setMobileMenuOpen(o => !o)}
-            aria-label="Menu"
+            aria-label={t("nav.menu")}
           >
             <span className={`block w-6 h-0.5 bg-white transition-all duration-300 origin-center ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
             <span className={`block w-6 h-0.5 bg-white transition-all duration-300 ${mobileMenuOpen ? 'opacity-0 scale-x-0' : ''}`} />
@@ -911,7 +893,7 @@ export default function Home() {
                     <div className="text-white/30 text-[10px] uppercase tracking-wider mt-1">{t("testimonials.match")}</div>
                   </div>
                 </div>
-                <div className="text-[10px] uppercase tracking-wider text-white/25 mb-5">Exemplo ilustrativo</div>
+                <div className="text-[10px] uppercase tracking-wider text-white/25 mb-5">{t("aiEngine.illustrative")}</div>
                 {[
                   { label: t("aiEngine.dim1"), pct: 92 },
                   { label: t("aiEngine.dim2"), pct: 88 },

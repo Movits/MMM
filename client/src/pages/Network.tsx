@@ -245,23 +245,23 @@ function ContactForm({ initial, onSave, onClose, loading }: {
     e.target.value = ""; // permite escolher o mesmo arquivo de novo
     if (!file) return;
     if (!(TIPOS_DE_IMAGEM as readonly string[]).includes(file.type)) {
-      toast.error("Formato não suportado: envie JPG, PNG ou WebP.");
+      toast.error(t("network.uploadFormatoNaoSuportado"));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("O arquivo deve ter no máximo 10 MB.");
+      toast.error(t("network.uploadArquivoMuitoGrande"));
       return;
     }
     const reader = new FileReader();
-    reader.onerror = () => toast.error("Não foi possível ler o arquivo. Tente de novo.");
+    reader.onerror = () => toast.error(t("network.uploadErroLerArquivo"));
     reader.onload = () => {
       const conteudo = String(reader.result ?? "");
-      if (!conteudo) { toast.error("Não foi possível ler o arquivo. Tente de novo."); return; }
+      if (!conteudo) { toast.error(t("network.uploadErroLerArquivo")); return; }
       mut.mutate(
         { fileName: file.name, mimeType: file.type as (typeof TIPOS_DE_IMAGEM)[number], dataBase64: conteudo },
         {
           onSuccess: res => set(campo, res.url),
-          onError: err => toast.error(err.message || "Não foi possível enviar a imagem."),
+          onError: err => toast.error(err.message || t("network.uploadErroEnviarImagem")),
         },
       );
     };
@@ -496,7 +496,7 @@ function ContactDetail({ contact: contatoDaLista, onEdit, onClose }: {
   onEdit: (contato: Contact) => void;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<"info" | "history">("info");
 
   // O contato da lista é um retrato de quando a lista foi carregada. O chat
@@ -823,8 +823,8 @@ function ContactDetail({ contact: contatoDaLista, onEdit, onClose }: {
         <div className="px-6 py-3 border-t border-white/8 bg-white/2">
           <p className="text-xs text-white/25">
             {t("network.rodapeDatas", {
-              criado: new Date(contact.createdAt).toLocaleDateString("pt-BR"),
-              atualizado: new Date(contact.updatedAt).toLocaleDateString("pt-BR"),
+              criado: new Date(contact.createdAt).toLocaleDateString(i18n.language),
+              atualizado: new Date(contact.updatedAt).toLocaleDateString(i18n.language),
             })}
           </p>
         </div>
@@ -878,7 +878,7 @@ function ContactDetail({ contact: contatoDaLista, onEdit, onClose }: {
                              isUndone ? t("network.statusDesfeito") :
                              item.status === "edited" ? t("network.statusEditado") :
                              t("network.statusConfirmado")}
-                            {item.actionedAt && ` · ${new Date(item.actionedAt).toLocaleDateString("pt-BR")}`}
+                            {item.actionedAt && ` · ${new Date(item.actionedAt).toLocaleDateString(i18n.language)}`}
                           </p>
                         </div>
                         {!isIgnored && !isUndone && (

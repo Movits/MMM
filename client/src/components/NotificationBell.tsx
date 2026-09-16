@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 
@@ -30,20 +31,25 @@ function NotifIcon({ type }: { type: string }) {
 }
 
 // ─── Formatar tempo relativo ──────────────────────────────────────────────────
-function timeAgo(date: Date): string {
+// Recebe o `t` porque é função de módulo, e quem tem o hook é quem a chama
+// (NotifItem). O texto era fixo em português e o sino saía assim nos dez
+// idiomas; o plural fica com o i18next (notifications.unread_*), não com um
+// "s" somado à mão.
+function timeAgo(date: Date, t: (chave: string, opcoes?: Record<string, unknown>) => string): string {
   const now = Date.now();
   const diff = now - new Date(date).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "agora";
-  if (mins < 60) return `${mins}min atrás`;
+  if (mins < 1) return t("notifications.timeNow");
+  if (mins < 60) return t("notifications.timeMinutes", { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h atrás`;
+  if (hours < 24) return t("notifications.timeHours", { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days}d atrás`;
+  return t("notifications.timeDays", { count: days });
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export function NotificationBell() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [animating, setAnimating] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -94,7 +100,7 @@ export function NotificationBell() {
       <button
         onClick={handleOpen}
         className="relative flex items-center justify-center w-9 h-9 rounded-full hover:bg-white/8 transition-colors duration-200"
-        title="Notificações"
+        title={t("notifications.title")}
         style={{ color: unreadCount > 0 ? "#c98f70" : "rgba(255,255,255,0.45)" }}
       >
         {/* Ícone sino SVG */}
@@ -142,10 +148,10 @@ export function NotificationBell() {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-white">Notificações</span>
+                <span className="text-sm font-bold text-white">{t("notifications.title")}</span>
                 {unreadCount > 0 && (
                   <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#c98f70]/20 text-[#c98f70] border border-[#c98f70]/30">
-                    {unreadCount} nova{unreadCount > 1 ? "s" : ""}
+                    {t("notifications.unread", { count: unreadCount })}
                   </span>
                 )}
               </div>
@@ -154,7 +160,7 @@ export function NotificationBell() {
                   onClick={handleMarkAllRead}
                   className="text-[10px] text-white/35 hover:text-white/70 transition-colors"
                 >
-                  Marcar todas como lidas
+                  {t("notifications.markAllRead")}
                 </button>
               )}
             </div>
@@ -164,7 +170,7 @@ export function NotificationBell() {
               {notifications.length === 0 ? (
                 <div className="py-10 text-center">
                   <div className="text-3xl mb-2">🔔</div>
-                  <p className="text-white/30 text-xs">Nenhuma notificação ainda</p>
+                  <p className="text-white/30 text-xs">{t("notifications.empty")}</p>
                 </div>
               ) : (
                 notifications.slice(0, 20).map((notif, i) => (
@@ -183,7 +189,7 @@ export function NotificationBell() {
               <div className="border-t border-white/8 px-4 py-2.5 text-center">
                 <Link href="/dashboard" onClick={() => setOpen(false)}>
                   <span className="text-[11px] text-[#c98f70]/70 hover:text-[#c98f70] transition-colors cursor-pointer">
-                    Ver todas as notificações
+                    {t("notifications.seeAll")}
                   </span>
                 </Link>
               </div>
@@ -223,6 +229,7 @@ export function NotificationBell() {
 
 // ─── Item de notificação ──────────────────────────────────────────────────────
 function NotifItem({ notif, index, onClose }: { notif: Notification; index: number; onClose: () => void }) {
+  const { t } = useTranslation();
   const isUnread = !notif.isRead;
 
   const content = (
@@ -257,7 +264,7 @@ function NotifItem({ notif, index, onClose }: { notif: Notification; index: numb
           </p>
         )}
         <p className="text-[10px] text-white/25 mt-1">
-          {timeAgo(notif.createdAt)}
+          {timeAgo(notif.createdAt, t)}
         </p>
       </div>
     </div>

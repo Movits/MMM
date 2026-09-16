@@ -36,7 +36,9 @@
     "login": "ログイン",
     "startFree": "アカウントを作成",
     "myDashboard": "マイダッシュボード",
-    "beta": "ベータ"
+    "beta": "ベータ",
+    "backToTop": "トップへ戻る",
+    "menu": "メニュー"
   },
   "hero": {
     "badge": "メンバー同士の世界的なビジネスネットワーク • 30か国以上 • 無限の可能性",
@@ -694,7 +696,16 @@
     "goToLogin": "ログインへ",
     "backToLogin": "ログインに戻る",
     "sending": "送信中...",
-    "passwordStrengthHint": "大文字、数字、記号を使用してより強いパスワードにしてください"
+    "passwordStrengthHint": "大文字、数字、記号を使用してより強いパスワードにしてください",
+    "forgotPasswordNote": "登録済みのメールアドレスであれば、まもなくリンクが届きます。",
+    "saving": "保存中...",
+    "forgotPasswordInfoTitle": "重要なお知らせ",
+    "forgotPasswordInfoExpiryBefore": "リンクの有効期限は",
+    "forgotPasswordInfoExpiryStrong": "1時間",
+    "forgotPasswordInfoOnceBefore": "使用できるのは",
+    "forgotPasswordInfoOnceStrong": "1回のみ",
+    "forgotPasswordInfoSpam": "届かない場合は迷惑メールフォルダーをご確認ください",
+    "emailPlaceholder": "name@email.com"
   },
   "errors": {
     "notFound": "ページが見つかりません",
@@ -704,7 +715,11 @@
     "backHome": "ホームに戻る",
     "goToDashboard": "ダッシュボードへ",
     "staleLink": "リンクからここに来た場合、そのリンクが古くなっている可能性があります。",
-    "notFoundDescShort": "お探しのページは存在しません。"
+    "notFoundDescShort": "お探しのページは存在しません。",
+    "databaseUnavailable": "データベースを利用できません。少し時間をおいて、もう一度お試しください",
+    "queryFailed": "データベースの照会中にエラーが発生しました",
+    "notAuthenticated": "続けるにはログインしてください。",
+    "notAuthorized": "この操作を行う権限がありません。"
   },
   "aiEngine": {
     "label": "AIエンジン",
@@ -716,7 +731,8 @@
     "dim3": "価値観と目的",
     "dim4": "投資能力",
     "badgeTitle": "AIによるつながり",
-    "badgeDesc": "6つの基準で分析"
+    "badgeDesc": "6つの基準で分析",
+    "illustrative": "イメージ例"
   },
   "aiSection": {
     "label": "人工知能",
@@ -773,7 +789,8 @@
       "whatINeedSubtitle": "成長と拡大のための要求とニーズ",
       "noAssets": "まだ資産が選択されていません。",
       "noDemands": "まだニーズが選択されていません。",
-      "clickToEdit": "編集するにはクリック →"
+      "clickToEdit": "編集するにはクリック →",
+      "noProfessionalInfo": "職業情報はまだありません。"
     },
     "gender": {
       "label": "性別",
@@ -800,6 +817,36 @@
       "registrationNumberPlaceholder": "英字と数字のみ",
       "registrationNumberHint": "MEI、企業、非営利団体は入力必須です。",
       "registrationNumberRequired": "事業者登録番号を入力してください。"
+    },
+    "backToHome": "ホームページに戻る",
+    "cancel": "キャンセル",
+    "saving": "保存中...",
+    "save": "保存",
+    "saveProfile": "プロフィールを保存",
+    "editProfile": "プロフィールを編集",
+    "updated": "プロフィールを更新しました！",
+    "badgeGold": "ゴールド",
+    "badgeSilver": "シルバー",
+    "badgeBronze": "ブロンズ",
+    "fields": {
+      "displayName": "表示名",
+      "displayNamePlaceholder": "どのように呼ばれたいですか",
+      "company": "会社",
+      "companyPlaceholder": "会社名",
+      "jobTitle": "役職",
+      "jobTitlePlaceholder": "例：CEO、営業部長",
+      "activityArea": "活動分野",
+      "activityAreaPlaceholder": "例：輸出、テクノロジー、ファッション",
+      "country": "国",
+      "countryPlaceholder": "国を選択",
+      "city": "都市",
+      "cityPlaceholder": "お住まいの都市",
+      "institutionalNetwork": "機関ネットワーク",
+      "institutionalNetworkPlaceholder": "例：商工会議所、業界団体、経済団体",
+      "bio": "あなたについて",
+      "bioPlaceholder": "あなたの歩みとビジネスについて少し教えてください...",
+      "linkedinPlaceholder": "https://linkedin.com/in/...",
+      "websitePlaceholder": "https://..."
     }
   },
   "network": {
@@ -958,7 +1005,12 @@
     "ouroRevogarCancelar": "キャンセル",
     "ouroRevogando": "取り消しています…",
     "ouroRevogadoToast": "許可を取り消しました。アーカイブはゴールドのアカウントから見えなくなります。",
-    "ouroRevogarFalhaToast": "許可を取り消せませんでした。"
+    "ouroRevogarFalhaToast": "許可を取り消せませんでした。",
+    "campoNotasIA": "📝 メモ",
+    "uploadFormatoNaoSuportado": "対応していない形式です。JPG、PNG、WebP をお送りください。",
+    "uploadArquivoMuitoGrande": "ファイルは最大 10 MB までです。",
+    "uploadErroLerArquivo": "ファイルを読み込めませんでした。もう一度お試しください。",
+    "uploadErroEnviarImagem": "画像をアップロードできませんでした。"
   },
   "contexts": {
     "editarContextoTitulo": "コンテキストを編集",
@@ -1353,7 +1405,8 @@
     "noDocsYet": "共有された書類はまだありません。",
     "sendDocsSecurely": "非公開書類を安全に送信できます。",
     "youLabel": "あなた",
-    "docsProtectedNotice": "このルームで共有されるすべての書類は、署名済みのNDAにより保護されています。本プラットフォーム外での共有は合意事項への違反となります。"
+    "docsProtectedNotice": "このルームで共有されるすべての書類は、署名済みのNDAにより保護されています。本プラットフォーム外での共有は合意事項への違反となります。",
+    "fileSizeKb": "{{size}} KB"
   },
   "meetings": {
     "statusDraft": "下書き",
@@ -1452,7 +1505,17 @@
     "recordingExpiredNoTranscript": "このミーティングに保存された音声はありません。音声の保存期間は最長30日です。",
     "decisionsPaused": "処理が完了すると操作できます。",
     "storedAudioMissing": "このミーティングの保存された音声が見つかりません。",
-    "audioDurationUnreadable": "この音声の長さを読み取れませんでした。MP3またはM4Aのファイルを送信してください。"
+    "audioDurationUnreadable": "この音声の長さを読み取れませんでした。MP3またはM4Aのファイルを送信してください。",
+    "entity": {
+      "person": "人物",
+      "company": "会社",
+      "phone": "電話",
+      "email": "メール",
+      "role": "役職",
+      "asset": "提供",
+      "need": "求む",
+      "opportunity": "機会"
+    }
   },
   "connections": {
     "messageSent": "メッセージを送信しました",
@@ -1558,7 +1621,21 @@
     "aceitaEm": "承認日：",
     "revogadaEmData": "· {{data}}に取り消し",
     "termoMudouAviso": "· その後、条項が変更されました",
-    "seloMesmoServico": "同じサービス"
+    "seloMesmoServico": "同じサービス",
+    "consentToastRegistered": "許可を記録しました。",
+    "consentErrorRegister": "許可を記録できませんでした。",
+    "consentLoading": "条項を読み込んでいます…",
+    "consentErrorDesc": "変更は行われていません。しばらくしてからこのページを開き直してください。",
+    "consentTitleUpdated": "条項が更新されました",
+    "consentTitleRequired": "許可が必要です",
+    "consentVersionLabel": "スマート照合の条項 バージョン {{version}}",
+    "consentChangedBefore": "あなたが許可したのは",
+    "consentChangedStrong": "バージョン {{version}}",
+    "consentChangedAfter": "。本文が変更され、以前の許可では新しい文面をカバーできません。そのため、このバージョンに同意いただくまで照合は一時停止されます。連絡先と、すでに承認済みのつながりはそのまま残ります。",
+    "consentReadFull": "条項を全文読む",
+    "consentAcceptNew": "新しいバージョンに同意する",
+    "consentAuthorize": "照合を許可する",
+    "consentRevokeNote": "いつでも取り消すことができ、プラットフォームの他の機能はそのままご利用いただけます。"
   },
   "networkPanel": {
     "eyebrow": "あなたの非公開ネットワーク",
@@ -2261,5 +2338,148 @@
     "legado": {
       "consultoria": "コンサルティング"
     }
+  },
+  "faq": {
+    "label": "よくある質問",
+    "headline1": "あなたの",
+    "headline2": "疑問を解消",
+    "subtitle": "よくあるご質問への回答です。お探しの質問がない場合は、すぐ下のAIにお尋ねください。",
+    "items": {
+      "i1": {
+        "q": "プラットフォームの会員ランクにはどのようなものがありますか？",
+        "a": "ブロンズ、シルバー、ゴールドの3つです。ブロンズとシルバーは有料プランではなく、「私は誰か」「持っているもの」「必要なもの」に記載されたプロフィール情報の充実度を表します。すべてのアカウントはブロンズから始まり、これらの情報がプラットフォームの充実度と品質の基準を満たすとシルバーになります。どちらも月額料金はかかりません。ゴールドは月額制のプレミアムカテゴリーで、限定の特典が付きます。"
+      },
+      "i2": {
+        "q": "商談ルームでの秘密保持契約（NDA）はどのように機能しますか？",
+        "a": "商談ルームは、プラットフォーム内で両者が交渉する非公開のルームです。そこでの会話を始める前に、双方が秘密保持契約に署名します。ルームは両者の署名後にはじめて開放され、そこでやり取りされる内容はすべて契約によって保護されます。"
+      },
+      "i3": {
+        "q": "非公開の交渉スペースである商談ルームはどのように機能しますか？",
+        "a": "案件に関心を示し、相手が承諾すると、プラットフォームがお二人のための非公開ルームを作成します。その中には取引のチャットと書類があり、いずれも署名済みのNDAが前提です。散発的なやり取りから離れ、明確なルールのある場に移ることが目的です。"
+      },
+      "i4": {
+        "q": "ゴールドランクとは何ですか。どうすれば得られますか？",
+        "a": "ゴールドステータスは、月額制のネットワークのプレミアムカテゴリーです。厳選された国内外のビジネス機会にいち早くアクセスでき、戦略的な会合への招待や、当カテゴリー限定の機会に関する案内で優先されます。シルバーから自動的に上がるものではなく、プレミアムカテゴリーへの加入とプラットフォームの個別のルールによります。"
+      },
+      "i5": {
+        "q": "プラットフォームではどのような機会が見つかりますか？",
+        "a": "さまざまな種類があります。製品やサービスの提供、仕入先を探している方からの要望、投資の募集、事業提携、流通チャネルなどです。他のメンバーに表示される前に、すべての案件はプラットフォームのルールに基づく自動チェックと、当社チームによる承認を経ます。"
+      },
+      "i6": {
+        "q": "AIはプロフィールと機会の組み合わせをどのように見つけるのですか？",
+        "a": "システムは、専門分野、業種、目標、所在地、価値観、投資余力などの観点からプロフィールを比較し、適合度スコアを算出します。特に有望なつながりについては、その提携が理にかなう理由をAIが説明し、背景を踏まえて判断できるようにします。"
+      }
+    },
+    "askTitle": "ほかにご質問はありますか？AIにお尋ねください：",
+    "askPlaceholder": "例：本人確認はどのように行われますか？",
+    "askButton": "質問する",
+    "askError": "ただいま回答できませんでした。少し時間をおいて、もう一度お試しください。"
+  },
+  "notifications": {
+    "title": "通知",
+    "markAllRead": "すべて既読にする",
+    "empty": "通知はまだありません",
+    "seeAll": "すべての通知を見る",
+    "unread_zero": "新着 {{count}} 件",
+    "unread_one": "新着 {{count}} 件",
+    "unread_two": "新着 {{count}} 件",
+    "unread_few": "新着 {{count}} 件",
+    "unread_many": "新着 {{count}} 件",
+    "unread_other": "新着 {{count}} 件",
+    "timeNow": "たった今",
+    "timeMinutes": "{{count}}分前",
+    "timeHours": "{{count}}時間前",
+    "timeDays": "{{count}}日前"
+  },
+  "protectedRoute": {
+    "checkingAccess": "アクセスを確認しています...",
+    "checkFailedTitle": "アクセスを確認できませんでした",
+    "retry": "もう一度試す"
+  },
+  "memory": {
+    "suggestion1": "ナイジェリアで知っているのは誰ですか？",
+    "suggestion2": "医療業界で働いているのは誰ですか？",
+    "suggestion3": "医薬品を輸出しているのは誰ですか？",
+    "suggestion4": "閣僚に知り合いがいるのは誰ですか？",
+    "suggestion5": "鉱業に携わっているのは誰ですか？",
+    "suggestion6": "ヨーロッパで市場を開拓できるのは誰ですか？",
+    "typeContact": "連絡先",
+    "typeContext": "コンテキスト",
+    "typeMeeting": "ミーティング",
+    "updatedToast": "メモリーを更新しました：{{partes}}。",
+    "updatedIndexed": "新しい記録 {{count}} 件",
+    "updatedRemoved": "{{count}} 件を削除",
+    "updatedJoin": "、",
+    "pendingToast": "AIサービスの処理ペースに合わせ、{{count}} 件は次回の更新に回しました。",
+    "truncatedToast": "{{count}} 件は対象外になりました。アカウントがメモリーの文書上限を超えています。",
+    "errorReindex": "メモリーを更新できませんでした。",
+    "errorSearch": "検索を実行できませんでした。",
+    "errorShortQuery": "2文字以上の質問を入力してください。",
+    "eyebrow": "スマートメモリー",
+    "title": "あなたの言葉でネットワークについて尋ねましょう",
+    "subtitle": "正確な言葉を思い出せなくても、連絡先・コンテキスト・非公開の会話を見つけられます。回答はあなたのアカウント内の情報だけを使います。",
+    "searchPlaceholder": "例：再生可能エネルギーに携わっているのは誰ですか？",
+    "searchButton": "検索",
+    "privateMemory": "非公開メモリー",
+    "checkingStatus": "メモリーを確認しています…",
+    "documentsStored": "保存済みの記録 {{count}} 件",
+    "updatedAt": " · {{data}} に更新",
+    "reindexButton": "メモリーを更新",
+    "searchingTitle": "非公開メモリーを検索しています…",
+    "searchingSubtitle": "連絡先、コンテキスト、ミーティングを検索しています。",
+    "pendingBanner": "メモリーはまだインデックス作成中です（待機中 {{count}} 件）。結果が不完全な場合があります。少し時間をおいて、もう一度お尋ねください。",
+    "truncatedBanner": "アカウントが文書上限を超えたため、{{count}} 件はメモリーに入っていません。検索の対象外です。",
+    "answerTitle": "あなたの記録に基づく回答",
+    "sourcesTitle": "使用した非公開の情報源",
+    "relevance": "関連度 {{percent}}%",
+    "openSource": "情報源を開く",
+    "noSources": "情報源は見つかりませんでした。"
+  },
+  "enrichment": {
+    "saveEdit": "編集を保存",
+    "assistantName": "WRWアシスタント",
+    "contextCreated": "コンテキスト「{{nome}}」を作成し、連絡先に紐づけました。",
+    "contextExisted": "コンテキスト「{{nome}}」はすでに存在していました。連絡先をそれに紐づけました。",
+    "contextGone": "このコンテキストはここからは作成できなくなりました。",
+    "contextCreateError": "コンテキストを作成できませんでした。もう一度お試しください。",
+    "contextOfferQuestion": "コンテキスト「{{nome}}」を作成しますか？",
+    "creating": "作成中...",
+    "create": "作成",
+    "notNow": "今はしない",
+    "reloadError": "会話を再読み込みできませんでした。連絡先を閉じてから開き直してください。",
+    "sessionAlreadyActive": "情報補完のセッションはすでに進行中です。",
+    "startError": "情報補完の開始でエラーが発生しました：{{motivo}}",
+    "suggestionPending": "決定待ちの提案があります。確認するか無視すると続行できます。",
+    "processError": "ただいまご回答を処理できませんでした。もう一度お試しください。",
+    "savedToProfile": "情報をプロフィールに保存しました！",
+    "enrichedSuccess": "登録情報を充実させました！",
+    "alreadyDecided": "この提案はすでに処理済みでした。会話を更新しました。",
+    "saveError": "情報の保存でエラーが発生しました。",
+    "ignoreError": "情報の無視でエラーが発生しました。",
+    "completed": "情報補完が完了しました！",
+    "starting": "開始しています...",
+    "startButton": "✨ AIで登録情報を充実させる",
+    "headerDone": "情報補完が完了",
+    "headerActive": "情報補完チャット",
+    "startingConversation": "会話を開始しています...",
+    "enrichedTitle": "✨ 登録情報が充実しました！",
+    "sessionDone": "セッションが完了しました。",
+    "inputPlaceholder": "ここに回答...",
+    "confirmOrIgnore": "続けるには、上の情報を確認するか無視してください。",
+    "finish": "情報補完を終了 →",
+    "confidence": "確信度 {{pct}}%"
+  },
+  "oQueTenho": {
+    "industria": "工業",
+    "fazenda": "農場・アグリ",
+    "laboratorio": "研究所",
+    "tecnologia": "テクノロジー",
+    "investidores": "投資家ネットワーク",
+    "acesso_governamental": "行政へのアクセス",
+    "commodities": "原材料（コモディティ）",
+    "licencas": "ライセンス・認証",
+    "imoveis": "不動産",
+    "logistica": "物流",
+    "canais_comerciais": "販売チャネル"
   }
 }

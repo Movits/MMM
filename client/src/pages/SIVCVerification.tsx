@@ -211,7 +211,7 @@ export default function SIVCVerification() {
   // Só o título do header passa por t() por enquanto: o resto da tela é
   // pt-BR fixo (dívida registrada), mas o menu global é compartilhado e o
   // título ao lado dele precisa acompanhar o idioma escolhido.
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [consentChecked, setConsentChecked] = useState(false);
@@ -450,7 +450,7 @@ export default function SIVCVerification() {
                   <FileText className="w-4 h-4 text-zinc-500 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">{doc.docType}</p>
-                    <p className="text-xs text-zinc-500">{doc.module} • {new Date(doc.createdAt).toLocaleDateString("pt-BR")}</p>
+                    <p className="text-xs text-zinc-500">{doc.module} • {new Date(doc.createdAt).toLocaleDateString(i18n.language)}</p>
                   </div>
                   <div className="shrink-0 flex items-center gap-2">
                     {doc.ocrStatus === "processing" && <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />}

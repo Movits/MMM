@@ -36,7 +36,9 @@
     "login": "登录",
     "startFree": "创建账户",
     "myDashboard": "我的仪表板",
-    "beta": "测试版"
+    "beta": "测试版",
+    "backToTop": "返回顶部",
+    "menu": "菜单"
   },
   "hero": {
     "badge": "会员之间的全球商业网络 • +30 个国家 • 无限可能",
@@ -694,7 +696,16 @@
     "goToLogin": "前往登录",
     "backToLogin": "返回登录",
     "sending": "发送中...",
-    "passwordStrengthHint": "使用大写字母、数字和符号以获得更强的密码"
+    "passwordStrengthHint": "使用大写字母、数字和符号以获得更强的密码",
+    "forgotPasswordNote": "如果该邮箱已注册，您稍后就会收到链接。",
+    "saving": "保存中...",
+    "forgotPasswordInfoTitle": "重要提示",
+    "forgotPasswordInfoExpiryBefore": "链接有效期为",
+    "forgotPasswordInfoExpiryStrong": "1 小时",
+    "forgotPasswordInfoOnceBefore": "该链接",
+    "forgotPasswordInfoOnceStrong": "仅可使用一次",
+    "forgotPasswordInfoSpam": "如果没有收到，请查看垃圾邮件文件夹",
+    "emailPlaceholder": "name@email.com"
   },
   "errors": {
     "notFound": "页面未找到",
@@ -704,7 +715,11 @@
     "backHome": "返回首页",
     "goToDashboard": "前往控制台",
     "staleLink": "如果您通过链接到达这里，该链接可能已过时。",
-    "notFoundDescShort": "您正在寻找的页面不存在。"
+    "notFoundDescShort": "您正在寻找的页面不存在。",
+    "databaseUnavailable": "数据库暂不可用；请稍后再试",
+    "queryFailed": "查询数据库时出错",
+    "notAuthenticated": "请登录后继续。",
+    "notAuthorized": "您没有执行此操作的权限。"
   },
   "aiEngine": {
     "label": "AI引擎",
@@ -716,7 +731,8 @@
     "dim3": "价值观与目标",
     "dim4": "投资能力",
     "badgeTitle": "AI 连接",
-    "badgeDesc": "六项标准分析"
+    "badgeDesc": "六项标准分析",
+    "illustrative": "示例说明"
   },
   "aiSection": {
     "label": "人工智能",
@@ -773,7 +789,8 @@
       "whatINeedSubtitle": "成长与扩张的需求",
       "noAssets": "尚未选择任何资产。",
       "noDemands": "尚未选择任何需求。",
-      "clickToEdit": "点击编辑 →"
+      "clickToEdit": "点击编辑 →",
+      "noProfessionalInfo": "暂无职业信息。"
     },
     "gender": {
       "label": "性别",
@@ -800,6 +817,36 @@
       "registrationNumberPlaceholder": "仅限字母和数字",
       "registrationNumberHint": "MEI、企业和非营利组织必须填写。",
       "registrationNumberRequired": "请输入企业注册号。"
+    },
+    "backToHome": "返回首页",
+    "cancel": "取消",
+    "saving": "保存中...",
+    "save": "保存",
+    "saveProfile": "保存档案",
+    "editProfile": "编辑档案",
+    "updated": "档案更新成功！",
+    "badgeGold": "黄金",
+    "badgeSilver": "银牌",
+    "badgeBronze": "铜牌",
+    "fields": {
+      "displayName": "显示名称",
+      "displayNamePlaceholder": "您希望别人如何称呼您",
+      "company": "公司",
+      "companyPlaceholder": "您公司的名称",
+      "jobTitle": "职位",
+      "jobTitlePlaceholder": "例如：CEO、商务总监",
+      "activityArea": "业务领域",
+      "activityAreaPlaceholder": "例如：出口、技术、时尚",
+      "country": "国家",
+      "countryPlaceholder": "请选择国家",
+      "city": "城市",
+      "cityPlaceholder": "您所在的城市",
+      "institutionalNetwork": "机构网络",
+      "institutionalNetworkPlaceholder": "例如：商会、行业协会、企业理事会",
+      "bio": "关于您",
+      "bioPlaceholder": "简单介绍一下您的经历和事业...",
+      "linkedinPlaceholder": "https://linkedin.com/in/...",
+      "websitePlaceholder": "https://..."
     }
   },
   "network": {
@@ -958,7 +1005,12 @@
     "ouroRevogarCancelar": "取消",
     "ouroRevogando": "正在撤销…",
     "ouroRevogadoToast": "授权已撤销。藏库不再对金卡账户可见。",
-    "ouroRevogarFalhaToast": "无法撤销授权。"
+    "ouroRevogarFalhaToast": "无法撤销授权。",
+    "campoNotasIA": "📝 备注",
+    "uploadFormatoNaoSuportado": "不支持的格式：请上传 JPG、PNG 或 WebP。",
+    "uploadArquivoMuitoGrande": "文件大小不得超过 10 MB。",
+    "uploadErroLerArquivo": "无法读取该文件。请再试一次。",
+    "uploadErroEnviarImagem": "无法上传图片。"
   },
   "contexts": {
     "editarContextoTitulo": "编辑背景",
@@ -1353,7 +1405,8 @@
     "noDocsYet": "尚未共享任何文件。",
     "sendDocsSecurely": "安全发送保密文件。",
     "youLabel": "您",
-    "docsProtectedNotice": "此洽谈室中共享的所有文件均受已签署NDA的保护。在本平台之外分享将违反已约定的条款。"
+    "docsProtectedNotice": "此洽谈室中共享的所有文件均受已签署NDA的保护。在本平台之外分享将违反已约定的条款。",
+    "fileSizeKb": "{{size}} KB"
   },
   "meetings": {
     "statusDraft": "草稿",
@@ -1452,7 +1505,17 @@
     "recordingExpiredNoTranscript": "此会议没有保存音频。音频最多保存30天。",
     "decisionsPaused": "处理完成后即可操作。",
     "storedAudioMissing": "未找到此会议已保存的音频。",
-    "audioDurationUnreadable": "无法读取此音频的时长。请上传MP3或M4A格式的文件。"
+    "audioDurationUnreadable": "无法读取此音频的时长。请上传MP3或M4A格式的文件。",
+    "entity": {
+      "person": "人物",
+      "company": "公司",
+      "phone": "电话",
+      "email": "邮箱",
+      "role": "职位",
+      "asset": "提供",
+      "need": "寻找",
+      "opportunity": "机会"
+    }
   },
   "connections": {
     "messageSent": "消息已发送",
@@ -1558,7 +1621,21 @@
     "aceitaEm": "接受于",
     "revogadaEmData": "· 撤销于 {{data}}",
     "termoMudouAviso": "· 此后条款已发生变更",
-    "seloMesmoServico": "相同服务"
+    "seloMesmoServico": "相同服务",
+    "consentToastRegistered": "授权已记录。",
+    "consentErrorRegister": "无法记录授权。",
+    "consentLoading": "正在加载协议…",
+    "consentErrorDesc": "没有做任何更改。请稍后重新打开此页面。",
+    "consentTitleUpdated": "协议已更新",
+    "consentTitleRequired": "需要授权",
+    "consentVersionLabel": "智能比对协议第 {{version}} 版",
+    "consentChangedBefore": "您此前授权的是",
+    "consentChangedStrong": "第 {{version}} 版",
+    "consentChangedAfter": "。文本已变更，先前的授权不涵盖新的表述，因此智能比对已暂停，直到您接受此版本。您的联系人和已接受的连接保持不变。",
+    "consentReadFull": "阅读协议全文",
+    "consentAcceptNew": "接受新版本",
+    "consentAuthorize": "授权智能比对",
+    "consentRevokeNote": "您可以随时撤销，平台的其他功能不受影响。"
   },
   "networkPanel": {
     "eyebrow": "您的私人人脉",
@@ -2261,5 +2338,148 @@
     "legado": {
       "consultoria": "咨询"
     }
+  },
+  "faq": {
+    "label": "常见问题",
+    "headline1": "解答您的",
+    "headline2": "疑问",
+    "subtitle": "最常见问题的解答。如果这里没有您的问题，可以在下方直接询问人工智能。",
+    "items": {
+      "i1": {
+        "q": "平台的会员等级有哪些？",
+        "a": "共有三个等级：铜牌、银牌和黄金。铜牌和银牌不是订阅套餐，而是代表您档案中「我是谁」「我拥有什么」「我需要什么」等信息的完善程度。每个账户都从铜牌开始，当这些信息达到平台的完整性与质量标准时即升为银牌。这两个等级都不收取月费。黄金则是尊享类别，按月付费，并享有专属权益。"
+      },
+      "i2": {
+        "q": "洽谈室中的保密协议（NDA）如何运作？",
+        "a": "洽谈室是双方在平台内进行洽谈的私密空间。在其中开始任何交流之前，双方都要签署保密协议。只有在双方都签署后洽谈室才会开放，并且在其中交流的所有内容都受该协议保护。"
+      },
+      "i3": {
+        "q": "作为私密洽谈空间的洽谈室如何运作？",
+        "a": "您对某个机会表达兴趣，对方接受后，平台就会为双方创建一个私密洽谈室。其中包含该笔业务的聊天记录与文件，且全部以已签署的保密协议为前提。目的是从零散的交流转入规则明确的空间。"
+      },
+      "i4": {
+        "q": "什么是黄金等级？如何获得？",
+        "a": "黄金身份是本网络的尊享类别，按月付费：可优先获取精选的国内外商业机会、受邀参加战略性聚会，并在该类别专属机会的通知中享有优先权。它并非由银牌自动升级而来：需要加入该尊享类别，并符合平台的具体规则。"
+      },
+      "i5": {
+        "q": "我可以在平台上找到哪些机会？",
+        "a": "类型多样：产品与服务的供给、寻找供应商的需求、融资需求、商业合作以及分销渠道。每个机会在向其他会员展示之前，都会先经过平台规则的自动核查和我们团队的审核。"
+      },
+      "i6": {
+        "q": "人工智能如何在档案与机会之间找到契合？",
+        "a": "系统会从专业领域、行业、目标、所在地、价值观和投资能力等维度比较各份档案，并计算出一个契合度指数。对于最紧密的连接，人工智能还会说明这段合作为何合理，帮助您在了解来龙去脉后做出判断。"
+      }
+    },
+    "askTitle": "还有其他疑问？来问问人工智能：",
+    "askPlaceholder": "例如：身份验证是如何进行的？",
+    "askButton": "提问",
+    "askError": "我们暂时无法回答。请稍后再试。"
+  },
+  "notifications": {
+    "title": "通知",
+    "markAllRead": "全部标为已读",
+    "empty": "暂无通知",
+    "seeAll": "查看全部通知",
+    "unread_zero": "{{count}} 条新通知",
+    "unread_one": "{{count}} 条新通知",
+    "unread_two": "{{count}} 条新通知",
+    "unread_few": "{{count}} 条新通知",
+    "unread_many": "{{count}} 条新通知",
+    "unread_other": "{{count}} 条新通知",
+    "timeNow": "刚刚",
+    "timeMinutes": "{{count}} 分钟前",
+    "timeHours": "{{count}} 小时前",
+    "timeDays": "{{count}} 天前"
+  },
+  "protectedRoute": {
+    "checkingAccess": "正在验证访问权限...",
+    "checkFailedTitle": "无法验证您的访问权限",
+    "retry": "重试"
+  },
+  "memory": {
+    "suggestion1": "我在尼日利亚认识谁？",
+    "suggestion2": "谁从事医疗健康行业？",
+    "suggestion3": "谁在出口药品？",
+    "suggestion4": "谁认识部长级人士？",
+    "suggestion5": "谁从事矿业？",
+    "suggestion6": "谁能帮忙打开欧洲市场？",
+    "typeContact": "联系人",
+    "typeContext": "情境",
+    "typeMeeting": "会议",
+    "updatedToast": "记忆已更新：{{partes}}。",
+    "updatedIndexed": "{{count}} 条新记录",
+    "updatedRemoved": "{{count}} 条已移除",
+    "updatedJoin": "、",
+    "pendingToast": "有 {{count}} 条记录留待下次更新，以配合 AI 服务的处理节奏。",
+    "truncatedToast": "有 {{count}} 条记录未纳入：您的账户已超出记忆的文档上限。",
+    "errorReindex": "无法更新记忆。",
+    "errorSearch": "无法执行搜索。",
+    "errorShortQuery": "请输入至少 2 个字符的问题。",
+    "eyebrow": "智能记忆",
+    "title": "用您自己的话询问您的人脉",
+    "subtitle": "无需记住确切措辞，即可找到联系人、情境和私密对话。答案仅使用您账户中的内容。",
+    "searchPlaceholder": "例如：谁从事可再生能源行业？",
+    "searchButton": "搜索",
+    "privateMemory": "私密记忆",
+    "checkingStatus": "正在检查您的记忆…",
+    "documentsStored": "已保存 {{count}} 条记录",
+    "updatedAt": " · 更新于 {{data}}",
+    "reindexButton": "更新记忆",
+    "searchingTitle": "正在查询您的私密记忆…",
+    "searchingSubtitle": "正在您的联系人、情境和会议中查找。",
+    "pendingBanner": "您的记忆仍在建立索引（队列中有 {{count}} 条记录），结果可能不完整。请稍后再问一次。",
+    "truncatedBanner": "有 {{count}} 条记录未进入记忆，因为您的账户已超出文档上限，搜索无法看到它们。",
+    "answerTitle": "基于您的记录给出的回答",
+    "sourcesTitle": "所用的私密来源",
+    "relevance": "相关度 {{percent}}%",
+    "openSource": "打开来源",
+    "noSources": "未找到来源。"
+  },
+  "enrichment": {
+    "saveEdit": "保存修改",
+    "assistantName": "WRW 助手",
+    "contextCreated": "已创建情境「{{nome}}」并关联到该联系人。",
+    "contextExisted": "情境「{{nome}}」已存在：该联系人已关联到它。",
+    "contextGone": "该情境已无法从这里创建。",
+    "contextCreateError": "无法创建该情境。请再试一次。",
+    "contextOfferQuestion": "要创建情境「{{nome}}」吗？",
+    "creating": "创建中...",
+    "create": "创建",
+    "notNow": "暂不",
+    "reloadError": "无法重新加载对话。请关闭该联系人后再打开。",
+    "sessionAlreadyActive": "已有一个信息补全会话在进行中。",
+    "startError": "启动信息补全时出错：{{motivo}}",
+    "suggestionPending": "有一条建议等待您的决定。确认或忽略后才能继续。",
+    "processError": "暂时无法处理您的回答。请再试一次。",
+    "savedToProfile": "信息已保存到档案！",
+    "enrichedSuccess": "资料补全成功！",
+    "alreadyDecided": "该建议此前已处理。我已刷新对话。",
+    "saveError": "保存信息时出错。",
+    "ignoreError": "忽略信息时出错。",
+    "completed": "信息补全已完成！",
+    "starting": "启动中...",
+    "startButton": "✨ 用 AI 补全资料",
+    "headerDone": "信息补全已完成",
+    "headerActive": "信息补全对话",
+    "startingConversation": "正在开始对话...",
+    "enrichedTitle": "✨ 资料已补全！",
+    "sessionDone": "会话已结束。",
+    "inputPlaceholder": "在此回答...",
+    "confirmOrIgnore": "请确认或忽略上方信息以继续。",
+    "finish": "完成信息补全 →",
+    "confidence": "置信度 {{pct}}%"
+  },
+  "oQueTenho": {
+    "industria": "工业",
+    "fazenda": "农场 / 农业",
+    "laboratorio": "实验室",
+    "tecnologia": "技术",
+    "investidores": "投资人网络",
+    "acesso_governamental": "政府渠道",
+    "commodities": "原材料（大宗商品）",
+    "licencas": "许可与认证",
+    "imoveis": "房地产",
+    "logistica": "物流",
+    "canais_comerciais": "商业渠道"
   }
 }

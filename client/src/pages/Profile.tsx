@@ -37,30 +37,32 @@ const LANGUAGES_LIST = [
 ];
 
 const COUNTRIES = [
-  { code: "BR", name: "Brasil" }, { code: "PT", name: "Portugal" },
-  { code: "US", name: "Estados Unidos" }, { code: "AR", name: "Argentina" },
-  { code: "CL", name: "Chile" }, { code: "CO", name: "Colômbia" },
-  { code: "MX", name: "México" }, { code: "ES", name: "Espanha" },
-  { code: "FR", name: "França" }, { code: "DE", name: "Alemanha" },
-  { code: "GB", name: "Reino Unido" }, { code: "IT", name: "Itália" },
-  { code: "CN", name: "China" }, { code: "JP", name: "Japão" },
-  { code: "IN", name: "Índia" }, { code: "ZA", name: "África do Sul" },
-  { code: "NG", name: "Nigéria" }, { code: "AE", name: "Emirados Árabes" },
+  { code: "BR", chave: "newOpportunity.countryBrasil" }, { code: "PT", chave: "newOpportunity.countryPortugal" },
+  { code: "US", chave: "newOpportunity.countryEstadosUnidos" }, { code: "AR", chave: "newOpportunity.countryArgentina" },
+  { code: "CL", chave: "newOpportunity.countryChile" }, { code: "CO", chave: "newOpportunity.countryColombia" },
+  { code: "MX", chave: "newOpportunity.countryMexico" }, { code: "ES", chave: "newOpportunity.countryEspanha" },
+  { code: "FR", chave: "newOpportunity.countryFranca" }, { code: "DE", chave: "newOpportunity.countryAlemanha" },
+  { code: "GB", chave: "newOpportunity.countryReinoUnido" }, { code: "IT", chave: "newOpportunity.countryItalia" },
+  { code: "CN", chave: "newOpportunity.countryChina" }, { code: "JP", chave: "newOpportunity.countryJapao" },
+  { code: "IN", chave: "newOpportunity.countryIndia" }, { code: "ZA", chave: "newOpportunity.countryAfricaDoSul" },
+  { code: "NG", chave: "newOpportunity.countryNigeria" }, { code: "AE", chave: "newOpportunity.countryEmiradosArabes" },
 ];
 
-// Tags "O que tenho"
+// Tags "O que tenho" — a MESMA lista do Onboarding; as chaves ficam em
+// `oQueTenho.*` para as duas telas lerem o mesmo rótulo, como já acontece com
+// "O que preciso" (shared/o-que-preciso.ts).
 const WHAT_I_HAVE_OPTIONS = [
-  { id: "industria", label: "Indústria", icon: "🏭" },
-  { id: "fazenda", label: "Fazenda / Agro", icon: "🌾" },
-  { id: "laboratorio", label: "Laboratório", icon: "🔬" },
-  { id: "tecnologia", label: "Tecnologia", icon: "💻" },
-  { id: "investidores", label: "Rede de Investidores", icon: "💰" },
-  { id: "acesso_governamental", label: "Acesso Governamental", icon: "🏛️" },
-  { id: "commodities", label: "Matérias-primas (commodities)", icon: "📦" },
-  { id: "licencas", label: "Licenças & Certificações", icon: "📋" },
-  { id: "imoveis", label: "Imóveis", icon: "🏢" },
-  { id: "logistica", label: "Logística", icon: "🚚" },
-  { id: "canais_comerciais", label: "Canais Comerciais", icon: "🤝" },
+  { id: "industria", chave: "oQueTenho.industria", icon: "🏭" },
+  { id: "fazenda", chave: "oQueTenho.fazenda", icon: "🌾" },
+  { id: "laboratorio", chave: "oQueTenho.laboratorio", icon: "🔬" },
+  { id: "tecnologia", chave: "oQueTenho.tecnologia", icon: "💻" },
+  { id: "investidores", chave: "oQueTenho.investidores", icon: "💰" },
+  { id: "acesso_governamental", chave: "oQueTenho.acesso_governamental", icon: "🏛️" },
+  { id: "commodities", chave: "oQueTenho.commodities", icon: "📦" },
+  { id: "licencas", chave: "oQueTenho.licencas", icon: "📋" },
+  { id: "imoveis", chave: "oQueTenho.imoveis", icon: "🏢" },
+  { id: "logistica", chave: "oQueTenho.logistica", icon: "🚚" },
+  { id: "canais_comerciais", chave: "oQueTenho.canais_comerciais", icon: "🤝" },
 ];
 
 // "O que preciso": as 17 categorias e a segunda camada vivem em shared/o-que-preciso.ts
@@ -186,7 +188,7 @@ export default function Profile() {
 
   const updateMutation = trpc.profile.update.useMutation({
     onSuccess: (resultado) => {
-      toast.success("Perfil atualizado com sucesso!");
+      toast.success(t("profile.updated"));
       utils.profile.get.invalidate();
       // Bronze que qualificou o perfil saiu Prata no servidor: o selo e o cartão
       // de qualificação leem o nível de auth.me, que precisa ser relido.
@@ -258,6 +260,11 @@ export default function Profile() {
   const profileWhatINeed = Array.isArray((profile as any)?.whatINeed) ? (profile as any).whatINeed as string[] : [];
   const profileInterestSectors = Array.isArray((profile as any)?.interestSectors) ? (profile as any).interestSectors as string[] : [];
 
+  const nomeDoPais = (codigo?: string | null) => {
+    const pais = COUNTRIES.find(c => c.code === codigo);
+    return pais ? t(pais.chave) : codigo ?? "";
+  };
+
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Barra da página, logo abaixo do cabeçalho da área logada (que já tem
@@ -268,25 +275,25 @@ export default function Profile() {
         <Link href="/dashboard">
           <span className="flex items-center gap-2 text-white/50 hover:text-white transition-colors cursor-pointer text-sm">
             <ArrowLeft size={16} />
-            Voltar para a página inicial
+            {t("profile.backToHome")}
           </span>
         </Link>
         {editing ? (
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setEditing(false)} className="text-white/40 hover:text-white/70">
-              Cancelar
+              {t("profile.cancel")}
             </Button>
             <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending}
               className="bg-amber-500 hover:bg-amber-400 text-black font-bold gap-2">
               <Save size={14} />
-              {updateMutation.isPending ? "Salvando..." : "Salvar"}
+              {updateMutation.isPending ? t("profile.saving") : t("profile.save")}
             </Button>
           </div>
         ) : (
           <Button size="sm" onClick={startEditing}
             className="bg-white/8 hover:bg-white/15 border border-white/15 text-white gap-2">
             <Edit2 size={14} />
-            Editar perfil
+            {t("profile.editProfile")}
           </Button>
         )}
       </nav>
@@ -329,22 +336,22 @@ export default function Profile() {
               {/* Badge de nível */}
               {user?.role === "president" && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30">
-                  <Crown size={10} /> Ouro
+                  <Crown size={10} /> {t("profile.badgeGold")}
                 </span>
               )}
               {user?.role === "gold" && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30">
-                  <Star size={10} /> Ouro
+                  <Star size={10} /> {t("profile.badgeGold")}
                 </span>
               )}
               {user?.role === "silver" && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-400/15 text-slate-300 border border-slate-400/30">
-                  <Shield size={10} /> Prata
+                  <Shield size={10} /> {t("profile.badgeSilver")}
                 </span>
               )}
               {user?.role === "bronze" && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border" style={{ background: "rgba(205,127,50,0.15)", color: "#c98f70", borderColor: "rgba(205,127,50,0.3)" }}>
-                  <Shield size={10} /> Bronze
+                  <Shield size={10} /> {t("profile.badgeBronze")}
                 </span>
               )}
             </div>
@@ -371,15 +378,15 @@ export default function Profile() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">Nome de exibição</label>
+                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.fields.displayName")}</label>
                   <Input value={displayName} onChange={e => setDisplayName(e.target.value)}
-                    placeholder="Como você quer ser chamada"
+                    placeholder={t("profile.fields.displayNamePlaceholder")}
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                 </div>
                 <div>
-                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">Empresa</label>
+                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.fields.company")}</label>
                   <Input value={company} onChange={e => setCompany(e.target.value)}
-                    placeholder="Nome da sua empresa"
+                    placeholder={t("profile.fields.companyPlaceholder")}
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                 </div>
                 <div>
@@ -404,34 +411,34 @@ export default function Profile() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">Cargo</label>
+                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.fields.jobTitle")}</label>
                   <Input value={jobTitle} onChange={e => setJobTitle(e.target.value)}
-                    placeholder="Ex: CEO, Diretora Comercial"
+                    placeholder={t("profile.fields.jobTitlePlaceholder")}
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                 </div>
                 <div>
-                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">Área de Atuação</label>
+                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.fields.activityArea")}</label>
                   <Input value={activityArea} onChange={e => setActivityArea(e.target.value)}
-                    placeholder="Ex: Exportação, Tecnologia, Moda"
+                    placeholder={t("profile.fields.activityAreaPlaceholder")}
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                 </div>
                 <div>
-                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">País</label>
+                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.fields.country")}</label>
                   <Select value={country} onValueChange={setCountry}>
                     <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-amber-500/50">
-                      <SelectValue placeholder="Selecione o país" />
+                      <SelectValue placeholder={t("profile.fields.countryPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent className="bg-[#1b1714] border-white/10 text-white">
-                      {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: country.name })), i18n.language).map(c => (
-                        <SelectItem key={c.code} value={c.code} className="text-white hover:bg-white/10 focus:bg-white/10">{c.name}</SelectItem>
+                      {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: t(country.chave) })), i18n.language).map(c => (
+                        <SelectItem key={c.code} value={c.code} className="text-white hover:bg-white/10 focus:bg-white/10">{c.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">Cidade</label>
+                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.fields.city")}</label>
                   <Input value={city} onChange={e => setCity(e.target.value)}
-                    placeholder="Sua cidade"
+                    placeholder={t("profile.fields.cityPlaceholder")}
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                 </div>
                 <div>
@@ -488,16 +495,16 @@ export default function Profile() {
               )}
 
               <div>
-                <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">Rede Institucional</label>
+                <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.fields.institutionalNetwork")}</label>
                 <Input value={institutionalNetwork} onChange={e => setInstitutionalNetwork(e.target.value)}
-                  placeholder="Ex: Câmara de Comércio, Associação Setorial, Conselho Empresarial"
+                  placeholder={t("profile.fields.institutionalNetworkPlaceholder")}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
               </div>
 
               <div>
-                <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">Sobre você</label>
+                <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.fields.bio")}</label>
                 <Textarea value={bio} onChange={e => setBio(e.target.value)}
-                  placeholder="Conte um pouco da sua história e do seu negócio..."
+                  placeholder={t("profile.fields.bioPlaceholder")}
                   rows={3}
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50 resize-none" />
                 {/* Gravar áudio e Revisar texto: só mudam o campo; salvar continua sendo o botão do Perfil. */}
@@ -508,7 +515,7 @@ export default function Profile() {
               </div>
 
               <div>
-                <label className="text-xs text-white/40 uppercase tracking-wider mb-2 block">Setores de Interesse</label>
+                <label className="text-xs text-white/40 uppercase tracking-wider mb-2 block">{t("onboarding.misc.interestSectors")}</label>
                 <div className="flex flex-wrap gap-2">
                   {sortTextAlphabetically(rotulosComLegado(t, interestSectors), i18n.language).map(s => (
                     <button key={s} type="button" onClick={() => toggleTag(interestSectors, setInterestSectors, s)}
@@ -527,13 +534,13 @@ export default function Profile() {
                 <div>
                   <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">LinkedIn</label>
                   <Input value={linkedinUrl} onChange={e => setLinkedinUrl(e.target.value)}
-                    placeholder="https://linkedin.com/in/..."
+                    placeholder={t("profile.fields.linkedinPlaceholder")}
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                 </div>
                 <div>
                   <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">Website</label>
                   <Input value={websiteUrl} onChange={e => setWebsiteUrl(e.target.value)}
-                    placeholder="https://..."
+                    placeholder={t("profile.fields.websitePlaceholder")}
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
                 </div>
               </div>
@@ -550,7 +557,7 @@ export default function Profile() {
                   (profile as any)?.personType && { icon: <Building size={13} />, label: t(`profile.business.${(profile as any).personType === "legal_entity" ? "legalEntity" : (profile as any).personType}`) },
                   (profile as any)?.companySize && { icon: <Building size={13} />, label: t(`profile.business.size${String((profile as any).companySize).charAt(0).toUpperCase()}${String((profile as any).companySize).slice(1)}`) },
                   (profile as any)?.companyCnpj && { icon: <Building size={13} />, label: `${t("profile.business.registrationNumber")}: ${mascararCadastroEmpresarial((profile as any).companyCnpj)}` },
-                  (profile?.city || profile?.country) && { icon: <MapPin size={13} />, label: [profile?.city, COUNTRIES.find(c => c.code === profile?.country)?.name].filter(Boolean).join(", ") },
+                  (profile?.city || profile?.country) && { icon: <MapPin size={13} />, label: [profile?.city, nomeDoPais(profile?.country)].filter(Boolean).join(", ") },
                   (profile as any)?.gender && { icon: <User size={13} />, label: t(`profile.gender.${(profile as any).gender}`) },
                   (profile as any)?.institutionalNetwork && { icon: <Network size={13} />, label: (profile as any).institutionalNetwork },
                   profile?.linkedinUrl && { icon: <Link2 size={13} />, label: "LinkedIn", href: profile.linkedinUrl },
@@ -568,7 +575,7 @@ export default function Profile() {
               </div>
               {profileInterestSectors.length > 0 && (
                 <div>
-                  <p className="text-xs text-white/30 uppercase tracking-wider mb-2">Setores de Interesse</p>
+                  <p className="text-xs text-white/30 uppercase tracking-wider mb-2">{t("onboarding.misc.interestSectors")}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {profileInterestSectors.map((s: string) => (
                       <span key={s} className="px-2.5 py-1 rounded-full bg-amber-500/8 border border-amber-500/20 text-xs text-amber-300/70">{s}</span>
@@ -578,9 +585,9 @@ export default function Profile() {
               )}
               {!profile?.bio && !(profile as any)?.company && !(profile as any)?.jobTitle && (
                 <div className="text-center py-6">
-                  <p className="text-white/30 text-sm">Nenhuma informação profissional ainda.</p>
+                  <p className="text-white/30 text-sm">{t("profile.sections.noProfessionalInfo")}</p>
                   <button onClick={startEditing} className="text-amber-400 text-sm mt-1 hover:text-amber-300 transition-colors">
-                    Clique para editar →
+                    {t("profile.sections.clickToEdit")}
                   </button>
                 </div>
               )}
@@ -596,7 +603,7 @@ export default function Profile() {
         >
           {editing ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {sortOptionsAlphabetically(WHAT_I_HAVE_OPTIONS, i18n.language).map(opt => (
+              {sortOptionsAlphabetically(WHAT_I_HAVE_OPTIONS.map(o => ({ ...o, label: t(o.chave) })), i18n.language).map(opt => (
                 <TagButton
                   key={opt.id}
                   icon={opt.icon}
@@ -609,7 +616,7 @@ export default function Profile() {
           ) : (
             profileWhatIHave.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {sortOptionsAlphabetically(WHAT_I_HAVE_OPTIONS.filter(o => profileWhatIHave.includes(o.id)), i18n.language).map(opt => (
+                {sortOptionsAlphabetically(WHAT_I_HAVE_OPTIONS.filter(o => profileWhatIHave.includes(o.id)).map(o => ({ ...o, label: t(o.chave) })), i18n.language).map(opt => (
                   <div key={opt.id} className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-amber-500/8 border border-amber-500/20">
                     <span className="text-base">{opt.icon}</span>
                     {/* Mesma caixa alta dos cartões de edição: é a mesma lista,
@@ -675,12 +682,12 @@ export default function Profile() {
           <div className="sticky bottom-4 flex gap-3 pt-2">
             <Button variant="ghost" onClick={() => setEditing(false)}
               className="flex-1 border border-white/10 text-white/50 hover:text-white hover:bg-white/5">
-              Cancelar
+              {t("profile.cancel")}
             </Button>
             <Button onClick={handleSave} disabled={updateMutation.isPending}
               className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-bold gap-2">
               <Save size={14} />
-              {updateMutation.isPending ? "Salvando..." : "Salvar perfil"}
+              {updateMutation.isPending ? t("profile.saving") : t("profile.saveProfile")}
             </Button>
           </div>
         )}

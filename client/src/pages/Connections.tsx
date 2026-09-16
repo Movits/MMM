@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { MessageSquare, Users, Lock, Crown, ArrowLeft, Send, Search, Info } from "lucide-react";
 
 export default function Connections() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"messages" | "groups">("messages");
@@ -224,7 +224,7 @@ export default function Connections() {
                           }`}>
                             <p>{msg.content}</p>
                             <p className={`text-xs mt-1 ${msg.senderId === user?.id ? "text-black/60" : "text-gray-500"}`}>
-                              {new Date(msg.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                              {new Date(msg.createdAt).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
                             </p>
                           </div>
                         </div>
