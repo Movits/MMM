@@ -575,7 +575,20 @@
     pointer-events: none;
     z-index: 0;
   }
-  .abstract-bg > * {
-    position: relative;
-    z-index: 1;
+  /* Põe o conteúdo acima do ::before, e DENTRO de @layer components de
+     propósito. Fora de camada (como o resto deste trecho do arquivo), a regra
+     vencia as classes do Tailwind, que moram em @layer utilities. Isso vale
+     para qualquer especificidade. O cabeçalho da área logada (AppHeader) é
+     filho direto deste fundo (App.tsx, TelaAutenticada) e perdia o
+     `sticky top-0` e o `z-40`. Ele rolava para fora da tela, e as barras das
+     páginas, presas em `top-16`, ficavam soltas a 64 px do topo, com o
+     conteúdo passando por cima. O menu de idioma, que abre de dentro dele,
+     ficava debaixo da página. Na camada, a regra continua valendo para quem
+     não traz classe de posição, e a classe da tela manda quando existe. A
+     guarda é server/cabecalho-global-grudado.test.ts. */
+  @layer components {
+    .abstract-bg > * {
+      position: relative;
+      z-index: 1;
+    }
   }
