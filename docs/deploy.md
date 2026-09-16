@@ -213,18 +213,36 @@ ordem é esta:
 1. Merge na `main`. O Render sobe e aplica a 0013 no boot.
 2. Confirmar que a 0013 entrou. No exame, a linha "migrações pendentes: nenhuma"
    precisa sair OK.
-3. Logo em seguida, com autorização do Roberto (é escrita no banco de produção):
+3. Logo em seguida, com autorização do Roberto (é escrita no banco de produção).
+   **O script não aceita `--env`**: ele lê `process.env.DATABASE_URL` e morre com
+   "Defina DATABASE_URL." Use o preload do dotenv, que não passa a URL pelo shell
+   (a do Aiven tem JSON no parâmetro de SSL e o shell a quebraria):
    ```bash
-   node scripts/publicar-documento.mjs termo_geral_de_uso docs/termos/termo-geral-de-uso.md --simular
-   node scripts/publicar-documento.mjs termo_geral_de_uso docs/termos/termo-geral-de-uso.md --sem-aviso --confirmo-producao
+   DOTENV_CONFIG_PATH=.env.producao node -r dotenv/config scripts/publicar-documento.mjs termo_geral_de_uso docs/termos/termo-geral-de-uso.md --simular
+   DOTENV_CONFIG_PATH=.env.producao node -r dotenv/config scripts/publicar-documento.mjs termo_geral_de_uso docs/termos/termo-geral-de-uso.md --confirmo-producao
    ```
+   Na simulação, confira quatro coisas: `vigente: nenhuma`, `nova: versão 1`, o
+   tamanho em caracteres e a linha do aviso suprimido.
    Só o cadastro pede este aceite, e o aviso no sino mandaria quem já tem conta a
    um `/dashboard` sem tela para aceitar. Para `termo_geral_de_uso` o script
    suprime o aviso sozinho (`TIPOS_SEM_AVISO` em `scripts/publicar-documento.mjs`),
-   com ou sem a flag: o `--sem-aviso` do comando acima é redundante e fica ali só
-   porque o exame o imprime assim.
+   com ou sem `--sem-aviso`.
 4. Rodar o exame. A linha "Termo Geral de Uso vigente" sai FALHA enquanto não
    houver exatamente uma versão vigente.
+
+**Antes do passo 1, conte quantas contas o portão do cadastro tranca.** Toda conta
+com `onboardingCompleted = 0` fica presa em `/onboarding` a partir deste deploy
+(`server/cadastro-concluido.ts`), e a carga de participantes
+(`scripts/importar-participantes.mjs`) grava exatamente isso. É leitura pura:
+
+```bash
+DOTENV_CONFIG_PATH=.env.producao node -r dotenv/config -e "const m=require('mysql2/promise');m.createConnection(process.env.DATABASE_URL).then(async c=>{const [r]=await c.query('SELECT COUNT(*) AS trancadas FROM users WHERE onboardingCompleted = 0');console.log(r[0]);await c.end();})"
+```
+
+Diferente de zero significa que essas pessoas terão de passar pelo cadastro para
+aceitar o Termo. O formulário delas abre PREENCHIDO com o que a planilha trouxe
+(nome, cidade, país, bio, empresa, cargo, setor, o que tem e o que precisa), então
+é conferir e aceitar — mas ainda é uma etapa que elas não esperavam.
 
 Entre os passos 1 e 3, o cadastro novo não conclui. Para zerar essa janela,
 aplique a migração antes do merge (`node scripts/migrar.mjs` contra produção, com
