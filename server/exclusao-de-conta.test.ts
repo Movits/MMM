@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { and, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { readFileSync } from "node:fs";
@@ -353,6 +353,82 @@ describe("B3) a conta sai da lista de membros dos grupos alheios", () => {
     linhasPorTabela.set(strategicGroups, [{ id: 4, membros: null }]);
     expect(await tirarDosGruposAlheios(fakeDb, 7)).toBe(0);
     expect(atualizacoes).toHaveLength(0);
+  });
+});
+
+// ═══ B4) falha do bucket: a conta sai, mas ninguém finge que deu tudo certo ═══
+// Achado do Nicolas, 14/09: o comentário prometia que uma falha no bucket
+// "deixa a conta de pé e a dona tenta outra vez", e o código fazia o contrário —
+// apagava o banco assim mesmo e a tela dizia "sua conta e seus dados foram
+// excluídos". A decisão é continuar apagando (a dona PEDIU a exclusão; parar no
+// meio deixaria o dado pessoal no banco), mas relatar com honestidade: as chaves
+// que ficaram no bucket são o ÚNICO ponteiro que sobra para os objetos órfãos,
+// porque as linhas que as citavam já saíram.
+describe("B4) o bucket que recusa não é engolido", () => {
+  it("o log nomeia cada chave que ficou e diz que a conta foi apagada assim mesmo", async () => {
+    bucketFalha.add("contacts/open-7/foto.jpg");
+    bucketFalha.add("sivc/7/9/1234-rg.png");
+    const linhasDeLog: string[] = [];
+    const espiao = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      linhasDeLog.push(args.map(String).join(" "));
+    });
+    let relatorio;
+    try {
+      relatorio = await excluirConta(fakeDb, CONTA, { apagarArquivo });
+    } finally {
+      espiao.mockRestore();
+    }
+
+    // O relatório continua nomeando as chaves, e a conta sai assim mesmo.
+    expect(relatorio.arquivosComFalha).toEqual(["contacts/open-7/foto.jpg", "sivc/7/9/1234-rg.png"]);
+    expect(delecoes[delecoes.length - 1].tabela).toBe(users);
+
+    const resumo = linhasDeLog.find(l => l.includes("ficaram no bucket"));
+    expect(resumo, "nenhuma linha de log resume o que sobrou no bucket").toBeDefined();
+    for (const chave of relatorio.arquivosComFalha) expect(resumo!).toContain(chave);
+    expect(resumo!).toContain("userId 7");
+    expect(resumo!).toMatch(/conta foi apagada assim mesmo/i);
+  });
+
+  it("sem falha nenhuma, não há linha de log inventando problema", async () => {
+    const linhasDeLog: string[] = [];
+    const espiao = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      linhasDeLog.push(args.map(String).join(" "));
+    });
+    try {
+      await excluirConta(fakeDb, CONTA, { apagarArquivo });
+    } finally {
+      espiao.mockRestore();
+    }
+    expect(linhasDeLog.filter(l => l.includes("ficaram no bucket"))).toEqual([]);
+  });
+});
+
+// ═══ B5) o aviso chega até a tela, em vez de morrer no relatório ══════════════
+// Leitura de fonte (o mesmo método do teste da carga de participantes): o que se
+// prova aqui é o CONTRATO entre as três camadas, que nenhum teste de unidade
+// sozinho cobre — relatório → router → tela.
+describe("B5) a tela não diz 'excluídos' quando um arquivo ficou para trás", () => {
+  const ler = (...partes: string[]) => readFileSync(path.resolve(AQUI, "..", ...partes), "utf8");
+  const FONTE_ROUTER = ler("server", "routers", "conta.ts");
+  const FONTE_TELA = ler("client", "src", "components", "ExcluirMinhaConta.tsx");
+
+  it("o router devolve a contagem de arquivos com falha para a tela", () => {
+    const retorno = FONTE_ROUTER.slice(FONTE_ROUTER.lastIndexOf("return {"));
+    expect(retorno).toContain("arquivosComFalha");
+  });
+
+  it("a tela olha arquivosComFalha antes de escolher a mensagem", () => {
+    expect(
+      FONTE_TELA.includes("arquivosComFalha"),
+      "a tela diz sucesso sem olhar o que ficou no bucket",
+    ).toBe(true);
+  });
+
+  it("existe um texto próprio para o caso de arquivo pendente, e ele não é o de sucesso", () => {
+    expect(FONTE_TELA).toContain("conta.excluir.sucessoComPendencias");
+    // O toast de sucesso puro continua existindo, mas agora é um ramo.
+    expect(FONTE_TELA).toContain("conta.excluir.sucesso\"");
   });
 });
 

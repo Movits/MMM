@@ -28,6 +28,7 @@ const AQUI_TESTE: string = (import.meta as { dirname?: string }).dirname ?? ".";
 import {
   achatar, lerCsv, mapearCabecalho, normalizarEmail, emailValido, normalizarPais,
   separarTags, completude, validarLinha, prepararImportacao, resumo, classificarTags,
+  destinoDasOutrasLinhas, erroDeLinhasEngolidas, ERRO_DE_ASPAS_ABERTAS,
   COLUNAS, OBRIGATORIAS, PROIBIDAS, VOCABULARIO_POSSUI, VOCABULARIO_PROCURA,
 } from "../scripts/importacao/planilha.mjs";
 
@@ -567,6 +568,331 @@ describe("as tags viram os ids que o cruzamento entende", () => {
     const comIds = completude({ nome: "M", possui: ["tecnologia"], procura: ["investidores"], idsPossui: ["tecnologia"], idsProcura: ["investidores"] });
     const soTexto = completude({ nome: "M", possui: ["algo estranho"], procura: ["outro"], idsPossui: [], idsProcura: [] });
     expect(comIds).toBeGreaterThan(soTexto);
+  });
+});
+
+// ══ 12b. a aspa solta no meio do campo (achado do Nicolas, 14/09) ════════════
+// Uma bio com `50"` engolia o resto do arquivo: o parser tratava QUALQUER aspa
+// como abertura de campo entre aspas, então a partir dali o separador e a quebra
+// de linha viravam texto e as participantes seguintes desapareciam — não como
+// recusa, com número de linha, mas em silêncio absoluto.
+//
+// A INVARIANTE, DITA COMO ELA É (revisão de 15/09). "Válidas + recusadas = total
+// de linhas de dados" não valia em todo caminho, e o contraexemplo é o bloco 12d:
+// um campo entre aspas pode atravessar a quebra de linha e engolir as linhas do
+// meio, e aí a conta fecha justamente porque as engolidas sumiram. A invariante
+// verdadeira é condicional, e o código agora a sustenta:
+//
+//   em toda planilha que NÃO é recusada inteira (erroFatal), válidas + recusadas
+//   = o total de linhas de dados com conteúdo.
+//
+// O caso em que ela não poderia valer — linha que engole as seguintes — deixou de
+// passar em silêncio: é detectado e recusa o ARQUIVO, com o número da linha que
+// abre e da que fecha (bloco 12d).
+describe("aspa solta no meio do campo não engole o resto da planilha", () => {
+  const CABECALHO_COM_BIO = "nome;email;setor;possui;procura;bio";
+  const CASO_DO_NICOLAS = [
+    CABECALHO_COM_BIO,
+    'Maria;maria@exemplo.com;Alimentação;vinho;distribuidor;vende tela de 50" na loja',
+    "Ana;ana@exemplo.com;Logística;logística;compradores;bio sem aspa nenhuma",
+    "Bia;bia@exemplo.com;Saúde;tecnologia;investidores;outra bio comum",
+  ].join("\n");
+
+  it("as três linhas continuam existindo, e a aspa fica no texto como a pessoa escreveu", () => {
+    const { linhas } = lerCsv(CASO_DO_NICOLAS);
+    expect(linhas).toHaveLength(4);
+    expect(linhas[1][5]).toBe('vende tela de 50" na loja');
+    expect(linhas[2][0]).toBe("Ana");
+    expect(linhas[3][0]).toBe("Bia");
+  });
+
+  it("válidas + recusadas = o total de linhas de dados", () => {
+    const r = prepararImportacao(CASO_DO_NICOLAS);
+    expect(r.erroFatal).toBeUndefined();
+    expect(r.participantes.length + r.recusadas.length).toBe(3);
+    expect(r.participantes.map(p => p.email)).toEqual([
+      "maria@exemplo.com", "ana@exemplo.com", "bia@exemplo.com",
+    ]);
+    expect(r.participantes[0].bio).toBe('vende tela de 50" na loja');
+  });
+
+  it("o campo que usa aspas DE VERDADE continua funcionando", () => {
+    const { linhas } = lerCsv('nome;bio\n"Silva; Maria";"ela disse ""sim"" e assinou"\nAna;fim');
+    expect(linhas[1][0]).toBe("Silva; Maria");
+    expect(linhas[1][1]).toBe('ela disse "sim" e assinou');
+    expect(linhas[2]).toEqual(["Ana", "fim"]);
+  });
+
+  it("dentro de um campo entre aspas, a aspa solta é literal e a do fim é que fecha", () => {
+    const { linhas } = lerCsv('nome;bio;cidade\nMaria;"tela de 50" na loja";Recife');
+    expect(linhas[1]).toEqual(["Maria", 'tela de 50" na loja', "Recife"]);
+  });
+
+  it("aspa em toda célula da linha não desalinha as colunas", () => {
+    const { linhas } = lerCsv('nome;bio\n5" de altura;3" de largura\nAna;fim');
+    expect(linhas[1]).toEqual(['5" de altura', '3" de largura']);
+    expect(linhas[2]).toEqual(["Ana", "fim"]);
+  });
+
+});
+
+// ══ 12c. os três destinos de uma aspa (revisão de 15/09) ═════════════════════
+// A correção da aspa solta trocou um buraco por outro: passou a tratar a aspa do
+// COMEÇO do campo como sintaxe que só fecha antes do separador, e com isso uma
+// bio que começa com aspas — `"Transformar" é o verbo dela`, escrita sem as
+// aspas de campo — abria um campo que nunca fechava e DERRUBAVA O ARQUIVO
+// INTEIRO, que antes entrava. Uma planilha de 600 participantes recusada por
+// causa de uma aspa é o mesmo dano de antes, com outra roupa.
+//
+// Os três destinos possíveis de uma aspa, e o que cada um faz:
+//
+// 1. no INÍCIO do campo: abre campo entre aspas (CSV normal) — o separador, a
+//    quebra de linha e a aspa dobrada ficam sendo texto até a aspa de fecho.
+// 2. NO MEIO do campo: caractere literal — `tela de 50"` é polegada.
+// 3. aberta e NUNCA fechada: para SÓ naquela linha. A leitura volta ao ponto da
+//    abertura, rebaixa aquela aspa a caractere e relê dali; a linha sai como
+//    RECUSADA, com o número e o motivo, e as outras entram.
+//
+// A invariante continua a mesma dos dois achados, na forma condicional do bloco
+// 12b: em planilha que não é recusada inteira, válidas + recusadas = linhas de
+// dados com conteúdo. Ninguém some, nem por engolimento silencioso, nem por
+// recusa em bloco.
+describe("os três destinos de uma aspa", () => {
+  const CABECALHO_COM_BIO = "nome;email;setor;possui;procura;bio";
+
+  it("1. aspa no INÍCIO do campo abre campo entre aspas, como em qualquer CSV", () => {
+    const { linhas, linhasComAspasAbertas } = lerCsv(
+      'nome;bio\nMaria;"vinho; azeite e ""rótulo próprio"""\nAna;fim',
+    );
+    expect(linhas[1]).toEqual(["Maria", 'vinho; azeite e "rótulo próprio"']);
+    expect(linhas[2]).toEqual(["Ana", "fim"]);
+    expect(linhasComAspasAbertas).toEqual([]);
+  });
+
+  it("2. aspa NO MEIO do campo é caractere literal, e não desalinha a linha", () => {
+    const { linhas, linhasComAspasAbertas } = lerCsv(
+      'nome;bio;cidade\nMaria;vende tela de 50" na loja;Recife\nAna;fim;SP',
+    );
+    expect(linhas[1]).toEqual(["Maria", 'vende tela de 50" na loja', "Recife"]);
+    expect(linhas[2]).toEqual(["Ana", "fim", "SP"]);
+    expect(linhasComAspasAbertas).toEqual([]);
+  });
+
+  it("3. aspa aberta e nunca fechada para SÓ na linha dela", () => {
+    const CASO = [
+      CABECALHO_COM_BIO,
+      'Maria;maria@exemplo.com;Saúde;vinho;compradores;"Transformar" é o verbo dela',
+      "Ana;ana@exemplo.com;Logística;logística;compradores;bio comum",
+      "Bia;bia@exemplo.com;Saúde;tecnologia;investidores;outra bio",
+    ].join("\n");
+
+    const { linhas, linhasComAspasAbertas } = lerCsv(CASO);
+    expect(linhasComAspasAbertas).toEqual([2]);
+    expect(linhas).toHaveLength(4);
+    expect(linhas[1][5]).toBe('"Transformar" é o verbo dela');
+    expect(linhas[2][0]).toBe("Ana");
+    expect(linhas[3][0]).toBe("Bia");
+
+    const r = prepararImportacao(CASO);
+    expect(r.erroFatal).toBeUndefined();
+    expect(r.participantes.map(p => p.email)).toEqual(["ana@exemplo.com", "bia@exemplo.com"]);
+    expect(r.recusadas).toHaveLength(1);
+    expect(r.recusadas[0].numero).toBe(2);
+    expect(r.recusadas[0].email).toBe("maria@exemplo.com");
+    expect(r.recusadas[0].erros.join(" ")).toMatch(/aspas/i);
+    // A invariante: ninguém some.
+    expect(r.participantes.length + r.recusadas.length).toBe(3);
+  });
+
+  it("aspa aberta na ÚLTIMA linha não leva as anteriores junto", () => {
+    const r = prepararImportacao([
+      CABECALHO_COM_BIO,
+      "Ana;ana@exemplo.com;Logística;logística;compradores;bio comum",
+      'Maria;maria@exemplo.com;Saúde;vinho;compradores;"bio que abre aspas e nunca fecha',
+    ].join("\n"));
+    expect(r.erroFatal).toBeUndefined();
+    expect(r.participantes.map(p => p.email)).toEqual(["ana@exemplo.com"]);
+    expect(r.recusadas.map(l => l.numero)).toEqual([3]);
+    expect(r.participantes.length + r.recusadas.length).toBe(2);
+  });
+
+  it("aspa aberta no CABEÇALHO é fatal: sem ele não se sabe qual coluna é qual", () => {
+    const r = prepararImportacao('nome;"email;bio\nMaria;maria@exemplo.com;bio comum');
+    expect(r.erroFatal).toMatch(/aspas/i);
+    expect(r.erroFatal).toContain("linha 1");
+    expect(r.participantes).toEqual([]);
+  });
+
+  it("campo entre aspas que atravessa a quebra de linha continua sendo um campo só", () => {
+    const { linhas, linhasComAspasAbertas, linhasQueEngolemOutras } = lerCsv(
+      'nome;bio\nMaria;"primeira linha\nsegunda linha"\nAna;fim',
+    );
+    expect(linhas[1]).toEqual(["Maria", "primeira linha\nsegunda linha"]);
+    expect(linhas[2]).toEqual(["Ana", "fim"]);
+    expect(linhasComAspasAbertas).toEqual([]);
+    // A leitura lê como manda o CSV, E CONTA o que fez: o registro 2 começou na
+    // linha 2 do arquivo e terminou na 3. Quem decide o que fazer com isso é o
+    // prepararImportacao (bloco 12d).
+    expect(linhasQueEngolemOutras).toEqual([{ numero: 2, de: 2, ate: 3 }]);
+  });
+});
+
+// ══ 12d. a linha que ENGOLE as seguintes (contraexemplo do revisor, 15/09) ═══
+// A invariante anunciada nos blocos 12b/12c — válidas + recusadas = linhas de
+// dados — não valia em todo caminho, e o furo era o oposto do destino 3: uma
+// aspa que ABRE numa linha e FECHA muitas linhas depois. Tudo o que está no meio
+// entra dentro de um campo, e a conta fecha exatamente porque as linhas do meio
+// deixaram de existir. Na leitura antiga, a planilha abaixo virava 2 registros
+// para 4 linhas de dados, sem marca nenhuma: Ana e Bia sumiam em silêncio.
+//
+// Campo entre aspas atravessando a quebra de linha é CSV legítimo, então não dá
+// para "consertar" a leitura. O que dá, e é o que o código faz agora, é DETECTAR
+// e recusar o arquivo com o número da linha que abre e o da que fecha. Com isso a
+// invariante passa a valer de verdade na forma condicional: em toda planilha que
+// não é recusada inteira, válidas + recusadas = linhas de dados com conteúdo.
+describe("linha que engole as seguintes recusa o arquivo, em vez de sumir com gente", () => {
+  const CONTRAEXEMPLO = [
+    "nome;email;setor;possui;procura;bio",
+    'Maria;maria@exemplo.com;Saúde;vinho;compradores;"Transformar" é o verbo dela',
+    "Ana;ana@exemplo.com;Logística;logística;compradores;bio comum",
+    "Bia;bia@exemplo.com;Saúde;tecnologia;investidores;outra bio",
+    'Carla;carla@exemplo.com;Moda;tecnologia;compradores;e aqui fecha"',
+  ].join("\n");
+
+  it("a leitura enxerga o engolimento e diz de que linha a que linha", () => {
+    const { linhas, linhasQueEngolemOutras } = lerCsv(CONTRAEXEMPLO);
+    // 4 linhas de dados viraram 1 registro: é isso que ninguém via.
+    expect(linhas).toHaveLength(2);
+    expect(linhasQueEngolemOutras).toEqual([{ numero: 2, de: 2, ate: 5 }]);
+  });
+
+  it("e o arquivo é recusado, com as duas linhas e o que fazer", () => {
+    const r = prepararImportacao(CONTRAEXEMPLO);
+    expect(r.erroFatal).toContain("linha 2");
+    expect(r.erroFatal).toContain("linha 5");
+    expect(r.erroFatal).toMatch(/aspas/i);
+    expect(r.erroFatal).toMatch(/rode de novo/);
+    expect(r.participantes).toEqual([]);
+  });
+
+  it("a bio com quebra de linha de propósito cai na mesma recusa, e não em silêncio", () => {
+    // Não dá para distinguir uma da outra daqui: as duas são uma aspa que abre
+    // numa linha e fecha em outra. Recusar as duas é o único jeito de nunca
+    // engolir participante.
+    const r = prepararImportacao([
+      "nome;email;bio",
+      'Maria;maria@exemplo.com;"primeira linha',
+      'segunda linha"',
+      "Ana;ana@exemplo.com;bio comum",
+    ].join("\n"));
+    expect(r.erroFatal).toContain("linha 2");
+    expect(r.erroFatal).toContain("linha 3");
+    expect(r.erroFatal).toMatch(/UMA linha/);
+  });
+
+  it("cabeçalho que engole a primeira participante também é fatal, e se identifica", () => {
+    const r = prepararImportacao('nome;"email;bio\nMaria;maria@exemplo.com;bio comum"');
+    expect(r.erroFatal).toContain("cabeçalho");
+    expect(r.erroFatal).toContain("linha 2");
+    expect(r.participantes).toEqual([]);
+  });
+
+  it("a mensagem concorda no singular e no plural", () => {
+    expect(erroDeLinhasEngolidas({ numero: 3, de: 4, ate: 5 })).toContain("a linha 5 foi lida");
+    expect(erroDeLinhasEngolidas({ numero: 3, de: 4, ate: 7 })).toContain("as linhas 5 a 7 foram lidas");
+  });
+
+  // A invariante em si, sobre os caminhos que existem: ou o arquivo é recusado
+  // inteiro, e aí não há contagem, ou toda linha de dados com conteúdo saiu como
+  // válida ou como recusada — nenhuma some no caminho.
+  it.each([
+    ["linha limpa", ["Ana;ana@exemplo.com;Logística;logística;compradores;bio comum"]],
+    ["aspa no meio do campo", ['Maria;maria@exemplo.com;Saúde;vinho;compradores;tela de 50" na loja']],
+    ["aspa aberta e nunca fechada", ['Maria;maria@exemplo.com;Saúde;vinho;compradores;"Transformar" é o verbo']],
+    ["e-mail repetido e linha sem nome", [
+      "Ana;ana@exemplo.com;Logística;logística;compradores;bio",
+      ";sem-nome@exemplo.com;;;;",
+      "Outra;ANA@exemplo.com;Saúde;vinho;compradores;bio",
+    ]],
+    ["linha que engole as seguintes", [
+      'Maria;maria@exemplo.com;Saúde;vinho;compradores;"abre aqui',
+      'Ana;ana@exemplo.com;Logística;logística;compradores;fecha aqui"',
+    ]],
+  ])("%s: ou recusa o arquivo, ou fecha a conta das linhas", (_caso, corpo) => {
+    const texto = ["nome;email;setor;possui;procura;bio", ...corpo].join("\n");
+    const r = prepararImportacao(texto);
+    if (r.erroFatal) {
+      expect(r.participantes).toEqual([]);
+      expect(r.recusadas).toEqual([]);
+      return;
+    }
+    const comConteudo = corpo.filter(l => l.replace(/[;\s]/g, "") !== "").length;
+    expect(r.participantes.length + r.recusadas.length).toBe(comConteudo);
+  });
+});
+
+// ══ 12e. o custo da leitura (revisão de 15/09) ═══════════════════════════════
+// A leitura anterior descobria a aspa que nunca fecha só ao bater no fim do
+// arquivo: voltava ao ponto da abertura e RELIA tudo dali para frente. Como a
+// aspa decorativa no começo da bio (`"Transformar" é o verbo dela`) é justamente
+// o que aparece repetido numa base inteira, cada linha dessas custava uma
+// releitura do resto — custo quadrático. Medido nesta máquina (Node 24) com o
+// mesmo texto: 100 linhas 24 ms, 200 linhas 71 ms, 400 linhas 247 ms (quadruplica
+// a cada dobro), e 800 linhas de bio grande, 1,2 MB, 6,7 SEGUNDOS. Com a leitura
+// de uma passada só, o mesmo 1,2 MB sai em 14 ms.
+describe("o custo da leitura cresce com o tamanho, não com o quadrado", () => {
+  function planilhaComAspaDecorativa(quantas: number, tamanhoDaBio: number) {
+    const recheio = "x".repeat(tamanhoDaBio);
+    const linhas = ["nome;email;setor;possui;procura;bio"];
+    for (let i = 0; i < quantas; i++) {
+      linhas.push(`Participante ${i};p${i}@exemplo.com;Saúde;tecnologia;investidores;"Transformar" é o verbo dela ${recheio}`);
+    }
+    return linhas.join("\n");
+  }
+
+  it("1,2 MB com 800 aspas decorativas são lidos numa passada só", () => {
+    const texto = planilhaComAspaDecorativa(800, 1500);
+    expect(texto.length).toBeGreaterThan(1_000_000);
+
+    const comecou = Date.now();
+    const { linhas, linhasComAspasAbertas } = lerCsv(texto);
+    const levou = Date.now() - comecou;
+
+    // Rápido E certo: as 800 linhas existem, cada uma marcada como aspa aberta,
+    // e o texto da bio volta inteiro com a aspa que a pessoa digitou.
+    expect(linhas).toHaveLength(801);
+    expect(linhasComAspasAbertas).toHaveLength(800);
+    expect(linhas[1][0]).toBe("Participante 0");
+    expect(linhas[800][5]).toContain('"Transformar" é o verbo dela');
+    // 6,7 s antes, 14 ms depois: o teto é folgado de propósito, para máquina
+    // lenta de CI não virar falha inventada, e mesmo assim reprova o quadrático.
+    expect(levou).toBeLessThan(2000);
+  }, 60_000);
+});
+
+// ══ 12f. a mensagem que diz o que aconteceu de verdade ═══════════════════════
+// A recusa por aspas terminava com "as outras linhas entraram normalmente" — e
+// saía igualzinha no ENSAIO, que não grava nada. Quem sabe se houve gravação é o
+// script (ele conhece o --aplicar), não o parser; o texto da linha recusada fala
+// só do que é certo, e o destino das outras vem de destinoDasOutrasLinhas.
+describe("a recusa por aspas não promete o que não aconteceu", () => {
+  it("o texto da linha recusada fala só dela", () => {
+    expect(ERRO_DE_ASPAS_ABERTAS).toMatch(/Feche as aspas/);
+    expect(ERRO_DE_ASPAS_ABERTAS).not.toMatch(/entraram/i);
+    expect(ERRO_DE_ASPAS_ABERTAS).not.toMatch(/outras linhas/i);
+  });
+
+  it("no ensaio, a frase diz que ninguém entrou; com --aplicar, que as outras seguem", () => {
+    expect(destinoDasOutrasLinhas(false)).toMatch(/ENSAIO/);
+    expect(destinoDasOutrasLinhas(false)).toMatch(/nada foi gravado/);
+    expect(destinoDasOutrasLinhas(false)).not.toMatch(/entraram normalmente/);
+    expect(destinoDasOutrasLinhas(true)).toMatch(/seguem para a carga/);
+  });
+
+  it("e é o script que escolhe a frase, pelo --aplicar", () => {
+    const fonte = readFileSync(pathResolve(AQUI_TESTE, "..", "scripts", "importar-participantes.mjs"), "utf8");
+    expect(fonte).toContain("destinoDasOutrasLinhas(aplicar)");
+    expect(fonte).not.toContain("as outras linhas entraram normalmente");
   });
 });
 

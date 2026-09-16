@@ -45,7 +45,7 @@
 import mysql from "mysql2/promise";
 import crypto from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
-import { prepararImportacao, resumo } from "./importacao/planilha.mjs";
+import { prepararImportacao, resumo, destinoDasOutrasLinhas } from "./importacao/planilha.mjs";
 
 // As aspas NÃO são enfeite: os campos de possui/procura levam ';' dentro, que é
 // o mesmo separador das colunas. Sem elas, o próprio script lê este exemplo
@@ -113,6 +113,9 @@ if (leitura.recusadas.length) {
   console.log(`\nLINHAS RECUSADAS (${leitura.recusadas.length}) — corrija a planilha e rode de novo:`);
   for (const r of leitura.recusadas.slice(0, 40)) console.log(`  linha ${r.numero}: ${r.erros.join("; ")}`);
   if (leitura.recusadas.length > 40) console.log(`  ... e mais ${leitura.recusadas.length - 40}`);
+  // Quem sabe se alguém entrou é aqui, não o parser: no ensaio nada foi gravado,
+  // e a recusa não pode terminar dizendo que "as outras entraram normalmente".
+  console.log(`  ${destinoDasOutrasLinhas(aplicar)}`);
 }
 if (leitura.avisos.length) {
   console.log(`\nAVISOS (${leitura.avisos.length}) — a conta entra, mas leia:`);

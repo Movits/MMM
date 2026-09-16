@@ -69,6 +69,20 @@ export type InvokeParams = {
   model?: string;
   thinking?: Record<string, unknown>;
   reasoning?: Record<string, unknown>;
+  /**
+   * Temperatura da amostragem. Sem ela, o provedor usa o padrão dele e a mesma
+   * pergunta volta com respostas diferentes — foi o que fez o mesmo anúncio
+   * receber notas de confiança 88, 75 e 75 no reteste v4. Quem precisa de
+   * resposta estável (classificação, nota, extração) manda 0. Quem não informa
+   * continua sem o campo no corpo: o comportamento não muda.
+   */
+  temperature?: number;
+  /**
+   * Semente da amostragem, para os provedores compatíveis que a aceitam. Só
+   * sobe quando informada, pelo mesmo motivo: um campo desconhecido a mais no
+   * corpo é 400 em algumas implementações da API compatível com a OpenAI.
+   */
+  seed?: number;
   /** Teto de cada tentativa HTTP (padrão 60 s). */
   timeoutMs?: number;
   /** Orçamento total, tentativas e esperas incluídas (padrão 120 s). */
@@ -436,6 +450,8 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     model,
     thinking,
     reasoning,
+    temperature,
+    seed,
     maxTokens,
     max_tokens,
     timeoutMs = TIMEOUT_PADRAO_MS,
@@ -478,6 +494,15 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   }
   if (reasoning) {
     payload.reasoning = reasoning;
+  }
+
+  // `typeof === "number"` e não um truthy: temperature 0 e seed 0 são os
+  // valores mais úteis dos dois, e um `if (temperature)` os descartaria.
+  if (typeof temperature === "number") {
+    payload.temperature = temperature;
+  }
+  if (typeof seed === "number") {
+    payload.seed = seed;
   }
 
   const normalizedResponseFormat = normalizeResponseFormat({

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { eq, desc, sql, inArray } from "drizzle-orm";
@@ -16,6 +17,125 @@ import { createAuditLog } from "../security";
 import { exigirTextoSemContato } from "../bloqueio-de-contato";
 import { exigirLeituraDaOportunidade, exigirSalvarOportunidade, podeVerConfidencial } from "../oportunidade-acesso";
 import { opportunityMatches, opportunities as opportunitiesTable, users } from "../../drizzle/schema";
+
+// ============================================================
+// A MESMA OPORTUNIDADE, A MESMA NOTA
+// ============================================================
+// Reteste v4, item 1: o mesmo anúncio recebia notas de confiança diferentes
+// (88, 75, 75) e fatores de risco diferentes a cada publicação. São duas
+// causas somadas. A primeira é a chamada: ia sem temperatura, então o modelo
+// amostrava uma resposta nova toda vez — daí o `temperature: 0` em TODAS as
+// análises de oportunidade deste arquivo. A segunda é a ausência de memória:
+// nada ligava a análise ao que foi analisado, e a mesma entrada pagava uma ida
+// nova ao modelo.
+//
+// São QUATRO chamadas, não uma. A nota vem da análise de criação e da reanálise
+// por documento; os FATORES DE RISCO e a LISTA DE DOCUMENTOS SUGERIDOS que a
+// usuária vê enquanto preenche o formulário vêm de outras duas
+// (`analyzeForCompliance` e `suggestDocuments`). Estabilizar só as primeiras
+// deixava a tela do cadastro trocando de risco e de documento a cada digitada,
+// que foi o que o reteste seguinte ainda reclamou. As quatro passam pela mesma
+// regra.
+//
+// A memória é POR CONTEÚDO: título, descrição, tipo, setor, país e o conjunto
+// de documentos viram um hash, e enquanto o hash não muda a análise anterior é
+// reaproveitada. Mudou uma vírgula da descrição ou entrou um documento NOVO, é
+// conteúdo novo e o modelo é consultado de novo.
+//
+// Só entra na memória o que DEU CERTO. Análise que falhou (modelo fora do ar,
+// resposta que não é JSON) devolve o texto de reserva e não é guardada: senão a
+// primeira falha grudaria em todas as publicações seguintes do mesmo anúncio.
+//
+// A memória é do PROCESSO, não do banco: `opportunities` guarda a análise
+// (complianceLevel, complianceExplanation, suggestedDocuments,
+// frauenTrustScore, lastComplianceAt), mas NÃO tem coluna para o hash do que
+// foi analisado, e criar uma exigiria migração. Consequência assumida: todo
+// reinício do servidor (isto é, todo deploy) esvazia a memória e a próxima
+// análise volta ao modelo — com temperatura 0, para cair na mesma nota.
+type AnaliseDeCompliance = {
+  nivel: "green" | "yellow" | "orange" | "red";
+  explicacao: string;
+  documentosSugeridos: string[];
+  nota: number;
+};
+
+const TETO_DE_ANALISES_GUARDADAS = 500;
+
+// Uma memória por formato de resposta guardada. O hash já separa as etapas,
+// mas cada memória tem o seu tipo: misturar os quatro formatos numa tabela só
+// obrigaria a confiar num `as` toda vez que a resposta fosse lida de volta.
+const criarMemoriaPorConteudo = <T>() => {
+  const guardadas = new Map<string, T>();
+  return {
+    ler(hash: string): T | undefined {
+      const guardada = guardadas.get(hash);
+      if (guardada === undefined) return undefined;
+      // Descarte por menos usada recentemente: reler recoloca no fim da fila.
+      guardadas.delete(hash);
+      guardadas.set(hash, guardada);
+      return guardada;
+    },
+    guardar(hash: string, valor: T) {
+      guardadas.set(hash, valor);
+      // Teto, para a memória não crescer sem fim num processo de semanas.
+      while (guardadas.size > TETO_DE_ANALISES_GUARDADAS) {
+        const maisAntiga = guardadas.keys().next();
+        if (maisAntiga.done) break;
+        guardadas.delete(maisAntiga.value);
+      }
+    },
+  };
+};
+
+const memoriaDeCompliance = criarMemoriaPorConteudo<AnaliseDeCompliance>();
+// As duas do cadastro devolvem JSON solto para a tela (a forma é a do
+// json_schema logo abaixo de cada chamada), então a memória guarda o objeto
+// como veio do modelo.
+const memoriaDoCadastro = criarMemoriaPorConteudo<Record<string, unknown>>();
+const memoriaDeDocumentosSugeridos = criarMemoriaPorConteudo<Record<string, unknown>>();
+
+// CONJUNTO de documentos, não lista: nomes repetidos contam uma vez só, e a
+// ordem não importa. Sem isso o caminho de upload nunca reaproveitava nada — o
+// documento novo é GRAVADO antes de a lista ser lida de volta, então cada envio
+// devolvia uma lista maior que a da análise anterior e o hash jamais coincidia,
+// nem quando a usuária reenviava exatamente o mesmo arquivo.
+const conjuntoDeDocumentos = (nomes: readonly (string | null | undefined)[]): string[] =>
+  Array.from(new Set(nomes.map(nome => (nome ?? "").trim()).filter(Boolean))).sort();
+
+// A etapa entra no hash porque os prompts são diferentes (o da criação pede
+// documentos sugeridos; o da reanálise, não): sem ela, duas análises de
+// conteúdos iguais em etapas diferentes se confundiriam.
+const hashDoConteudoAnalisado = (
+  etapa: "criacao" | "reanalise" | "cadastro" | "documentos",
+  conteudo: {
+    titulo?: string;
+    descricao?: string;
+    tipo: string;
+    setor?: string | null;
+    pais?: string | null;
+    documentos?: string[];
+  },
+): string =>
+  createHash("sha256")
+    .update(
+      JSON.stringify([
+        etapa,
+        conteudo.titulo ?? "",
+        conteudo.descricao ?? "",
+        conteudo.tipo,
+        conteudo.setor ?? "",
+        conteudo.pais ?? "",
+        conjuntoDeDocumentos(conteudo.documentos ?? []),
+      ]),
+    )
+    .digest("hex");
+
+// A tela mostra os dois textos da IA juntos; o formato é o mesmo nas duas
+// análises, então mora num lugar só.
+const explicacaoCombinada = (r: { riskAnalysis?: string; explanation: string }): string =>
+  r.riskAnalysis
+    ? `**Análise de Risco:** ${r.riskAnalysis}\n\n**Status de Confiança:** ${r.explanation}`
+    : r.explanation;
 
 // ============================================================
 // OPORTUNIDADES — CORE DA PLATAFORMA FRAUEN
@@ -91,8 +211,26 @@ export const opportunitiesRouter = router({
       let suggestedDocuments: string[] = [];
       let frauenTrustScore = 50;
 
-      try {
+      // Anúncio idêntico já analisado: a nota anterior vale, sem nova ida ao
+      // modelo (ver o bloco "A MESMA OPORTUNIDADE, A MESMA NOTA" acima).
+      const hashDaAnalise = hashDoConteudoAnalisado("criacao", {
+        titulo: input.title,
+        descricao: input.description,
+        tipo: input.type,
+        setor: input.sector,
+        pais: input.country,
+      });
+      const jaAnalisado = memoriaDeCompliance.ler(hashDaAnalise);
+
+      if (jaAnalisado) {
+        complianceLevel = jaAnalisado.nivel;
+        complianceExplanation = jaAnalisado.explicacao;
+        suggestedDocuments = jaAnalisado.documentosSugeridos;
+        frauenTrustScore = jaAnalisado.nota;
+      } else try {
         const aiResponse = await invokeLLM({
+          // Temperatura 0: a nota de confiança é classificação, não redação.
+          temperature: 0,
           messages: [
             {
               role: "system",
@@ -139,11 +277,17 @@ Retorne um JSON estruturado com os campos: complianceLevel, explanation, riskAna
         const result = JSON.parse(aiResponse.choices[0].message.content as string);
         complianceLevel = result.complianceLevel;
         // Combina riskAnalysis + explanation para exibição completa no frontend
-        complianceExplanation = result.riskAnalysis
-          ? `**Análise de Risco:** ${result.riskAnalysis}\n\n**Status de Confiança:** ${result.explanation}`
-          : result.explanation;
+        complianceExplanation = explicacaoCombinada(result);
         suggestedDocuments = result.suggestedDocuments;
         frauenTrustScore = result.trustScore;
+        // Só o que deu certo fica guardado: análise que falhou nasce "pending"
+        // e a próxima publicação tem de tentar de novo.
+        memoriaDeCompliance.guardar(hashDaAnalise, {
+          nivel: result.complianceLevel,
+          explicacao: complianceExplanation,
+          documentosSugeridos: suggestedDocuments,
+          nota: frauenTrustScore,
+        });
       } catch (e) {
         console.error("[Compliance AI] Erro:", e);
       }
@@ -264,8 +408,23 @@ Retorne um JSON estruturado com os campos: complianceLevel, explanation, riskAna
       type: z.enum(["offer", "demand", "investment", "partnership", "distribution", "other"]),
     }))
     .mutation(async ({ input }) => {
+      // Os fatores de risco e a lista de documentos desta tela são o que o
+      // reteste viu mudar a cada publicação do mesmo anúncio: mesma entrada,
+      // mesma resposta (ver o bloco no topo do arquivo).
+      const hashDoCadastro = hashDoConteudoAnalisado("cadastro", {
+        titulo: input.title,
+        descricao: input.description,
+        tipo: input.type,
+        setor: input.sector,
+      });
+      const jaAnalisado = memoriaDoCadastro.ler(hashDoCadastro);
+      if (jaAnalisado) return jaAnalisado;
+
       try {
         const aiResp = await invokeLLM({
+          // Temperatura 0 pelo mesmo motivo das outras: risco e documentos são
+          // classificação, não redação.
+          temperature: 0,
           messages: [
             {
               role: "system",
@@ -302,7 +461,11 @@ Analise a oportunidade de negócio e retorne um JSON com:
             },
           },
         });
-        return JSON.parse(aiResp.choices[0].message.content as string);
+        const analise = JSON.parse(aiResp.choices[0].message.content as string) as Record<string, unknown>;
+        // Guardar só DEPOIS do parse: o texto de reserva do catch abaixo não
+        // pode virar a análise definitiva daquele anúncio.
+        memoriaDoCadastro.guardar(hashDoCadastro, analise);
+        return analise;
       } catch {
         return {
           dynamicQuestion: "Quais documentos comprovam que esta oportunidade realmente existe?",
@@ -322,8 +485,23 @@ Analise a oportunidade de negócio e retorne um JSON com:
       existingDocuments: z.array(z.string()).default([]),
     }))
     .query(async ({ input }) => {
+      // Mesmo tipo, mesmo setor e o mesmo CONJUNTO de documentos já enviados:
+      // a lista sugerida tem de ser a mesma, e não outra a cada carregamento da
+      // tela.
+      const documentosJaEnviados = conjuntoDeDocumentos(input.existingDocuments);
+      const hashDaSugestao = hashDoConteudoAnalisado("documentos", {
+        tipo: input.opportunityType,
+        setor: input.sector,
+        documentos: documentosJaEnviados,
+      });
+      const jaSugerido = memoriaDeDocumentosSugeridos.ler(hashDaSugestao);
+      if (jaSugerido) return jaSugerido;
+
       try {
         const aiResp = await invokeLLM({
+          // Temperatura 0: a lista de documentos de um setor não muda de uma
+          // consulta para a outra.
+          temperature: 0,
           messages: [
             {
               role: "system",
@@ -331,7 +509,8 @@ Analise a oportunidade de negócio e retorne um JSON com:
             },
             {
               role: "user",
-              content: `Tipo: ${input.opportunityType}\nSetor: ${input.sector ?? "geral"}\nDocumentos já enviados: ${input.existingDocuments.join(", ") || "nenhum"}`,
+              // O mesmo conjunto que entrou no hash vai ao prompt.
+              content: `Tipo: ${input.opportunityType}\nSetor: ${input.sector ?? "geral"}\nDocumentos já enviados: ${documentosJaEnviados.join(", ") || "nenhum"}`,
             },
           ],
           response_format: {
@@ -352,7 +531,10 @@ Analise a oportunidade de negócio e retorne um JSON com:
             },
           },
         });
-        return JSON.parse(aiResp.choices[0].message.content as string);
+        const sugestao = JSON.parse(aiResp.choices[0].message.content as string) as Record<string, unknown>;
+        // Só o que deu certo fica guardado (a reserva do catch, não).
+        memoriaDeDocumentosSugeridos.guardar(hashDaSugestao, sugestao);
+        return sugestao;
       } catch {
         return {
           suggestions: ["Contrato ou Proposta Comercial", "Certidão de Registro da Empresa", "Comprovante de Capacidade Financeira"],
@@ -401,29 +583,60 @@ Analise a oportunidade de negócio e retorne um JSON com:
       // Recalcular compliance após novo documento (best-effort)
       try {
         const docs = await db.select().from(opportunityDocuments).where(eq(opportunityDocuments.opportunityId, input.opportunityId));
-        const docNames = docs.map(d => d.name).join(", ");
-        const aiResp = await invokeLLM({
-          messages: [
-            { role: "system", content: `Você é a IA de Compliance e Due Diligence do ecossistema global "Women Rocking the World" (WRW). Reclassifique a oportunidade considerando os documentos enviados. Retorne JSON com: complianceLevel ("green"/"yellow"/"orange"/"red"), riskAnalysis (parágrafo curto sobre riscos), explanation (justificativa do nível de confiança), trustScore (0-100).` },
-            { role: "user", content: `Título: ${opp.title}\nDescrição: ${opp.description}\nDocumentos enviados: ${docNames || 'nenhum'}` },
-          ],
-          response_format: { type: "json_schema", json_schema: { name: "reanalysis", strict: true, schema: { type: "object", properties: { complianceLevel: { type: "string", enum: ["green","yellow","orange","red"] }, riskAnalysis: { type: "string" }, explanation: { type: "string" }, trustScore: { type: "number" } }, required: ["complianceLevel","riskAnalysis","explanation","trustScore"], additionalProperties: false } } },
+        // O mesmo conjunto vai ao hash E ao prompt: assim o que foi analisado é
+        // exatamente o que a memória diz ter analisado. O documento acabou de
+        // ser gravado logo acima, então esta lista já o inclui — e reenviar o
+        // mesmo arquivo deixa o conjunto igual, sem pagar outra ida ao modelo
+        // (ver "A MESMA OPORTUNIDADE, A MESMA NOTA" no topo do arquivo).
+        const nomesDosDocumentos = conjuntoDeDocumentos(docs.map(d => d.name));
+        const docNames = nomesDosDocumentos.join(", ");
+        const hashDaReanalise = hashDoConteudoAnalisado("reanalise", {
+          titulo: opp.title,
+          descricao: opp.description,
+          tipo: opp.type,
+          setor: opp.sector,
+          pais: opp.country,
+          documentos: nomesDosDocumentos,
         });
-        const r = JSON.parse(aiResp.choices[0].message.content as string);
-        const reanalysisExplanation = r.riskAnalysis
-          ? `**Análise de Risco:** ${r.riskAnalysis}\n\n**Status de Confiança:** ${r.explanation}`
-          : r.explanation;
+        let reanalise = memoriaDeCompliance.ler(hashDaReanalise);
+
+        if (!reanalise) {
+          const aiResp = await invokeLLM({
+            // Temperatura 0 pelo mesmo motivo da análise de criação: a nota é
+            // classificação, e sem ela o mesmo par (oportunidade, documentos)
+            // saía com nota diferente a cada envio.
+            temperature: 0,
+            messages: [
+              { role: "system", content: `Você é a IA de Compliance e Due Diligence do ecossistema global "Women Rocking the World" (WRW). Reclassifique a oportunidade considerando os documentos enviados. Retorne JSON com: complianceLevel ("green"/"yellow"/"orange"/"red"), riskAnalysis (parágrafo curto sobre riscos), explanation (justificativa do nível de confiança), trustScore (0-100).` },
+              { role: "user", content: `Título: ${opp.title}\nDescrição: ${opp.description}\nDocumentos enviados: ${docNames || 'nenhum'}` },
+            ],
+            response_format: { type: "json_schema", json_schema: { name: "reanalysis", strict: true, schema: { type: "object", properties: { complianceLevel: { type: "string", enum: ["green","yellow","orange","red"] }, riskAnalysis: { type: "string" }, explanation: { type: "string" }, trustScore: { type: "number" } }, required: ["complianceLevel","riskAnalysis","explanation","trustScore"], additionalProperties: false } } },
+          });
+          const r = JSON.parse(aiResp.choices[0].message.content as string);
+          reanalise = {
+            nivel: r.complianceLevel,
+            explicacao: explicacaoCombinada(r),
+            // A reanálise não sugere documentos: os da criação continuam
+            // valendo na coluna suggestedDocuments, que este caminho não toca.
+            documentosSugeridos: [],
+            nota: r.trustScore,
+          };
+          // Depois do parse: reanálise que estourou não é guardada, e o próximo
+          // envio do mesmo documento tenta de novo.
+          memoriaDeCompliance.guardar(hashDaReanalise, reanalise);
+        }
+
         await db.update(opportunities).set({
-          frauenTrustScore: r.trustScore,
-          complianceLevel: r.complianceLevel as any,
-          complianceExplanation: reanalysisExplanation,
+          frauenTrustScore: reanalise.nota,
+          complianceLevel: reanalise.nivel as any,
+          complianceExplanation: reanalise.explicacao,
           lastComplianceAt: new Date(),
         }).where(eq(opportunities.id, input.opportunityId));
 
         // Alerta de subida de nível de confiabilidade
         const levelOrder = { red: 0, orange: 1, yellow: 2, green: 3 };
         const oldLevel = (opp.complianceLevel ?? 'red') as string;
-        const newLevel = r.complianceLevel as string;
+        const newLevel = reanalise.nivel as string;
         const oldRank = levelOrder[oldLevel as keyof typeof levelOrder] ?? 0;
         const newRank = levelOrder[newLevel as keyof typeof levelOrder] ?? 0;
         if (newRank > oldRank) {
@@ -433,7 +646,7 @@ Analise a oportunidade de negócio e retorne um JSON com:
             yellow: '🟡 Confiabilidade Média',
             green: '🟢 Alta Confiabilidade',
           };
-          const scoreMsg = `Nota de confiança: ${Math.round(r.trustScore)}%`;
+          const scoreMsg = `Nota de confiança: ${Math.round(reanalise.nota)}%`;
           await createNotification({
             userId: opp.publishedBy,
             type: 'compliance_update',

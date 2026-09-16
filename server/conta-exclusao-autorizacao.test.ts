@@ -50,8 +50,8 @@ import { COOKIE_NAME } from "../shared/const";
 import type { TrpcContext } from "./_core/context";
 import { auditLogs, users } from "../drizzle/schema";
 import {
-  ACAO_EXCLUSAO, ACAO_EXCLUSAO_RECUSADA, LIMITE_DE_TENTATIVAS,
-  confirmacaoConfere, confirmacaoEsperada,
+  ACAO_EXCLUSAO, ACAO_EXCLUSAO_RECUSADA, LIMITE_DE_TENTATIVAS, TETO_DE_CHAVES_NA_AUDITORIA,
+  confirmacaoConfere, confirmacaoEsperada, impressaoDaChave, pastaDaChave,
 } from "./routers/conta";
 
 const fakeDb = {
@@ -218,6 +218,108 @@ describe("o caminho feliz", () => {
     const resposta = await caller.conta.excluirMinhaConta({ senha: "certa", confirmacao: "dona@exemplo.com" });
     expect(resposta.arquivosComFalha).toBe(1);
     expect(auditoria.find(linha => linha.action === ACAO_EXCLUSAO)).toMatchObject({ status: "failure" });
+  });
+});
+
+// ══ o que ficou no bucket precisa estar LOCALIZÁVEL, sem virar dado pessoal ══
+// Duas revisões de 15/09, nesta ordem.
+//
+// A primeira: a auditoria gravava só `arquivosComFalha: 2`. Contagem não apaga
+// arquivo — quando alguém for limpar o bucket à mão, dias depois e obrigada a
+// isso por LGPD, as linhas que diziam ONDE o objeto está já saíram junto com a
+// conta, e o único outro lugar em que as chaves aparecem é o console.error do
+// processo, que no Render se perde na rolagem do log.
+//
+// A segunda, do revisor: a lista de chaves CRUAS, que entrou como remédio,
+// carrega dado pessoal. O nome do arquivo enviado vira parte da chave em
+// deal-rooms, sivc e contexts, e `audit_logs` é imutável e sobrevive à conta —
+// então "rg-frente-ana-souza.jpg" ficaria escrito no banco para sempre DEPOIS
+// de a dona pedir a exclusão. Daí o formato de hoje: a pasta (só ids) escrita,
+// o nome do arquivo virando impressão digital. Dá para achar o objeto (listar a
+// pasta, hashear, comparar) e não dá para ler o que ele é.
+describe("a auditoria localiza o que ficou no bucket sem escrever o nome do arquivo", () => {
+  // Uma chave de cada prefixo em que o nome do arquivo é escolhido por gente:
+  // documento de identidade, contrato da sala e mídia de contexto.
+  const CHAVES = [
+    "sivc/7/9/1757000000000-rg-frente-ana-souza.jpg",
+    "deal-rooms/12/1757000001000-Contrato_Ana_Souza_assinado.pdf",
+    "contexts/open-7/44/almoco-com-ana-souza.jpg",
+  ];
+
+  async function detalhesDaExclusao(arquivosComFalha: string[]) {
+    excluirContaFalso.mockResolvedValue({ ...RELATORIO, arquivosComFalha });
+    const { caller } = contexto();
+    await caller.conta.excluirMinhaConta({ senha: "certa", confirmacao: "dona@exemplo.com" });
+    return auditoria.find(linha => linha.action === ACAO_EXCLUSAO)?.details as Record<string, unknown>;
+  }
+
+  it("o nome do arquivo NÃO entra no registro — nem o da dona, nem o do documento", async () => {
+    const detalhes = await detalhesDaExclusao(CHAVES);
+    const serializado = JSON.stringify(detalhes);
+    for (const vazamento of ["rg-frente", "Contrato", "Ana_Souza", "ana-souza", "almoco", ".pdf", ".jpg"]) {
+      expect(serializado).not.toContain(vazamento);
+    }
+    expect(serializado).not.toContain("Dona");
+    expect(serializado.toLowerCase()).not.toContain("exemplo.com");
+  });
+
+  it("a pasta e a contagem ficam escritas: é por onde a limpeza começa", async () => {
+    const detalhes = await detalhesDaExclusao(CHAVES);
+    expect(detalhes.arquivosComFalha).toBe(3);
+    expect(detalhes.pastasQueFicaramNoBucket).toEqual([
+      { pasta: "contexts/open-7/44", arquivos: 1 },
+      { pasta: "deal-rooms/12", arquivos: 1 },
+      { pasta: "sivc/7/9", arquivos: 1 },
+    ]);
+    expect(detalhes.chavesOmitidas).toBeUndefined();
+    expect(detalhes.pastasOmitidas).toBeUndefined();
+  });
+
+  it("a impressão digital identifica O OBJETO: duas chaves da MESMA pasta não se confundem", async () => {
+    // A pasta de uma sala guarda documento das DUAS pontas (routers/dealRoom.ts):
+    // apagar a pasta inteira levaria o arquivo da contraparte. Quem limpa precisa
+    // escolher um objeto por vez, e é a impressão que diz qual.
+    const daSala = ["deal-rooms/12/1757000001000-meu.pdf", "deal-rooms/12/1757000002000-dela.pdf"];
+    const detalhes = await detalhesDaExclusao(daSala);
+    expect(detalhes.pastasQueFicaramNoBucket).toEqual([{ pasta: "deal-rooms/12", arquivos: 2 }]);
+    const impressoes = detalhes.impressoesDasChaves as string[];
+    expect(impressoes).toEqual(daSala.map(impressaoDaChave));
+    expect(new Set(impressoes).size).toBe(2);
+    for (const impressao of impressoes) expect(impressao).toMatch(/^[0-9a-f]{16}$/);
+  });
+
+  it("a impressão é estável: quem listar o bucket depois chega ao mesmo valor", () => {
+    expect(impressaoDaChave(CHAVES[0])).toBe(impressaoDaChave(CHAVES[0]));
+    expect(impressaoDaChave(CHAVES[0])).not.toBe(impressaoDaChave(CHAVES[1]));
+    expect(pastaDaChave("deal-rooms/12/1757000001000-Contrato.pdf")).toBe("deal-rooms/12");
+    // Chave sem barra nenhuma não vira nome de arquivo escrito por engano.
+    expect(pastaDaChave("legado.jpg")).toBe("(raiz do bucket)");
+  });
+
+  it("sem falha nenhuma, nada disso aparece no registro", async () => {
+    const detalhes = await detalhesDaExclusao([]);
+    expect(detalhes.arquivosComFalha).toBe(0);
+    expect("pastasQueFicaramNoBucket" in detalhes).toBe(false);
+    expect("impressoesDasChaves" in detalhes).toBe(false);
+  });
+
+  it("muitos objetos na mesma pasta: as impressões são cortadas no teto, e o registro conta as que faltam", async () => {
+    const muitas = Array.from({ length: TETO_DE_CHAVES_NA_AUDITORIA + 7 }, (_, i) => `contacts/open-7/foto-${i}.jpg`);
+    const detalhes = await detalhesDaExclusao(muitas);
+    expect(detalhes.arquivosComFalha).toBe(muitas.length);
+    expect(detalhes.impressoesDasChaves).toHaveLength(TETO_DE_CHAVES_NA_AUDITORIA);
+    expect(detalhes.chavesOmitidas).toBe(7);
+    // A contagem da pasta olha TODAS as chaves, não só as que couberam.
+    expect(detalhes.pastasQueFicaramNoBucket).toEqual([{ pasta: "contacts/open-7", arquivos: muitas.length }]);
+    expect(detalhes.pastasOmitidas).toBeUndefined();
+  });
+
+  it("muitas pastas diferentes: a lista de pastas também é cortada, e diz quantas ficaram de fora", async () => {
+    const muitas = Array.from({ length: TETO_DE_CHAVES_NA_AUDITORIA + 3 }, (_, i) => `contexts/open-7/${i}/midia.jpg`);
+    const detalhes = await detalhesDaExclusao(muitas);
+    expect(detalhes.pastasQueFicaramNoBucket).toHaveLength(TETO_DE_CHAVES_NA_AUDITORIA);
+    expect(detalhes.pastasOmitidas).toBe(3);
+    expect(detalhes.chavesOmitidas).toBe(3);
   });
 });
 

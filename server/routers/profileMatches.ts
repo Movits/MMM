@@ -94,6 +94,20 @@ export const profileMatchesRouter = router({
       return { ocultas: ids.filter(id => !comTermo.has(id)).length };
     }),
 
+  // Reteste v4 (item 6.4): o aviso "N novas conexões sugeridas esperando pela
+  // sua atenção" nunca baixava — `userSeen` nasce false e nada marcava a linha.
+  // A tela manda para cá os ids que ACABOU de desenhar, nunca "todas as minhas":
+  // sugestão que a usuária não chegou a ver não vira vista pelas costas dela.
+  // A posse é do WHERE (server/matching.ts): id de outra dona não encontra linha.
+  marcarVistas: protectedProcedure
+    // Teto igual ao da janela de leitura de `list`: a tela não desenha mais que isso.
+    .input(z.object({ matchIds: z.array(z.number().int()).min(1).max(50) }))
+    .mutation(async ({ ctx, input }) => {
+      const { marcarSugestoesComoVistas } = await import("../matching");
+      const marcadas = await marcarSugestoesComoVistas(ctx.user.id, input.matchIds);
+      return { marcadas };
+    }),
+
   dismiss: protectedProcedure
     .input(z.object({ matchId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {

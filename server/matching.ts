@@ -797,12 +797,31 @@ export async function dismissMatch(userId: number, matchId: number) {
     .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
 }
 
-// ─── Mark match as seen ───────────────────────────────────────
-export async function markMatchSeen(userId: number, matchId: number) {
+// ─── Mark matches as seen ─────────────────────────────────────
+/**
+ * Marca como vistas as sugestões que a usuária ACABOU DE VER na tela.
+ *
+ * Reteste v4 (item 6.4): a versão anterior era singular (`markMatchSeen`) e não
+ * tinha nenhum chamador, então `userSeen` nascia false e nunca mudava — o aviso
+ * "N novas conexões sugeridas esperando pela sua atenção" era permanente. A
+ * plural existe porque o Dashboard mostra a lista inteira de uma vez: um UPDATE
+ * só, em vez de um por cartão.
+ *
+ * A posse mora no WHERE, não numa conferência antes da query: `userId` = quem
+ * está logada junto do `IN` dos ids que a tela mostrou. Id de outra dona no
+ * pedido não encontra linha — some no WHERE, sem erro e sem efeito.
+ *
+ * Devolve quantas linhas o WHERE alcançou (o mysql2 liga CLIENT_FOUND_ROWS:
+ * conta a linha encontrada, não a que mudou de valor).
+ */
+export async function marcarSugestoesComoVistas(userId: number, matchIds: number[]): Promise<number> {
+  if (matchIds.length === 0) return 0;
   const db = await exigirDb();
-  await db.update(matches)
+  const resultado = await db.update(matches)
     .set({ userSeen: true })
-    .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
+    .where(and(eq(matches.userId, userId), inArray(matches.id, matchIds)));
+  const cabecalho = Array.isArray(resultado) ? resultado[0] : resultado;
+  return (cabecalho as { affectedRows?: number } | null | undefined)?.affectedRows ?? 0;
 }
 
 // ─── Get match stats for dashboard ───────────────────────────

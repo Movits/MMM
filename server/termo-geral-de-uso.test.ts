@@ -187,6 +187,39 @@ describe("o tipo e o texto andam juntos", () => {
   });
 });
 
+/**
+ * Pedido do Rosber (Roberto, 15/09): a palavra "Match" não aparece para a
+ * usuária. O termo é a ÚLTIMA etapa do cadastro, então é a primeira e a última
+ * tela em que ela leria a palavra — o texto jurídico passa a dizer CONEXÃO.
+ *
+ * O que NÃO muda: SMART MATCH é nome próprio do produto e continua escrito
+ * assim nas 29 ocorrências. Se Dr. Ronei revisar o texto e esse número mudar,
+ * o número aqui muda junto — é pino de contagem, não regra de negócio.
+ */
+describe("o termo diz CONEXÃO, e só SMART MATCH sobra com a palavra", () => {
+  const AQUI = path.dirname(fileURLToPath(import.meta.url));
+  const termo = () => readFileSync(path.resolve(AQUI, "..", "docs", "termos", "termo-geral-de-uso.md"), "utf8");
+
+  it("tirando SMART MATCH, a palavra não aparece em caixa alta, baixa nem no plural", () => {
+    const sobra = termo().replace(/SMART MATCH/g, "");
+    expect(sobra.match(/match\w*/gi) ?? []).toEqual([]);
+  });
+
+  it("SMART MATCH, nome do produto, fica de pé nas 29 ocorrências", () => {
+    expect(termo().match(/SMART MATCH/g) ?? []).toHaveLength(29);
+  });
+
+  it("a definição da Cláusula 2 e as remissões a ela acompanham o gênero novo", () => {
+    const texto = termo();
+    expect(texto).toContain("**CONEXÃO.** Potencial compatibilidade identificada pela PLATAFORMA");
+    expect(texto).toContain("**NEGÓCIO DECORRENTE DA CONEXÃO.**");
+    expect(texto).toContain("## 13. NEGÓCIO DECORRENTE DA CONEXÃO E NEGÓCIOS REALIZADOS FORA DA PLATAFORMA");
+    expect(texto).toContain("## 17. REGISTROS ELETRÔNICOS, PROVA E CERTIFICADO DA CONEXÃO");
+    expect(texto).toContain("“Certificado da Conexão”");
+    expect(texto).toContain("6.1. A CONEXÃO não constitui sociedade");
+  });
+});
+
 describe("O que você busca? — Outra necessidade", () => {
   beforeEach(() => {
     leituras.set(documentVersions, [[TERMO]]);

@@ -127,19 +127,38 @@ export async function getUserProfile(userId: number) {
   return rows[0] ? consolidarPerfil(rows[0]) : null;
 }
 
-// Os mesmos 10 campos da antiga saveUserProfile (matching.ts), que ficou órfã
-// quando o onboarding passou a usar este upsert — desde então o Dashboard
-// mostrava "0% Perfil completo" para todo mundo.
+/**
+ * Os campos que contam para o "Perfil completo" do Dashboard.
+ *
+ * Eram DEZ, copiados da antiga `saveUserProfile` (matching.ts), que ficou órfã
+ * quando o onboarding passou a usar este upsert. Dois deles saíram da lista em
+ * 15/09: `workStyle` e `values` foram suprimidos do cadastro (Rosber, 14/09
+ * 21:08 — ver client/src/pages/Onboarding.tsx) e nunca existiram na tela de
+ * Perfil, então nenhuma usuária tinha como preenchê-los: com eles na conta, o
+ * teto de todo mundo era 80% e a barra nunca fechava. Campo que a usuária não
+ * consegue preencher não entra na conta.
+ *
+ * Os oito que ficaram são exatamente os que o cadastro envia (`salvarPerfil` em
+ * Onboarding.tsx) e o Perfil edita. A lista é exportada para o teste conferir
+ * isso contra o schema, porque a leitura abaixo é por nome, sem tipo.
+ */
+export const CAMPOS_DA_COMPLETUDE_DO_PERFIL = [
+  "displayName", "city", "primarySpecialty", "sector",
+  "seekingTypes", "incomeRange", "bio", "experienceYears",
+] as const;
+
+/**
+ * Quanto do perfil está preenchido, de 0 a 100. O número só é EXIBIDO (Dashboard
+ * e PresidentPanel): nada no servidor compara com limiar, e quem promove a Prata
+ * é a régua de `shared/qualificacao-do-perfil.ts`, que não olha para cá — mudar
+ * a lista muda a barra, não muda nível de ninguém.
+ */
 export function computeProfileCompleteness(profile: Record<string, unknown> | null | undefined) {
   if (!profile) return 0;
-  const fields = [
-    profile.displayName, profile.city, profile.primarySpecialty,
-    profile.sector, profile.seekingTypes, profile.incomeRange,
-    profile.workStyle, profile.bio, profile.experienceYears,
-    profile.values,
-  ];
-  const filled = fields.filter(f => f !== null && f !== undefined && f !== "" && !(Array.isArray(f) && f.length === 0)).length;
-  return Math.round((filled / fields.length) * 100);
+  const preenchido = (valor: unknown) =>
+    valor !== null && valor !== undefined && valor !== "" && !(Array.isArray(valor) && valor.length === 0);
+  const filled = CAMPOS_DA_COMPLETUDE_DO_PERFIL.filter(campo => preenchido(profile[campo])).length;
+  return Math.round((filled / CAMPOS_DA_COMPLETUDE_DO_PERFIL.length) * 100);
 }
 
 export async function upsertUserProfile(userId: number, data: Record<string, unknown>) {
@@ -758,9 +777,22 @@ export async function getAuditLogs(filters: { userId?: number; action?: string; 
  * O `aiInsight` pode ficar: o prompt que o gera (server/matching.ts) monta os
  * dois perfis só com especialidade, busca, setor e valores — nome nunca entra.
  */
+/**
+ * `souDestinataria` é `sql<boolean>`, mas o mysql2 entrega o tinyint do MySQL
+ * como 1/0 e o drizzle não converte expressão de SQL cru: o valor saía daqui
+ * como NÚMERO. Na tela isso virou um "0" solto abaixo do setor — `status ===
+ * "pending" && conn.souDestinataria` valia `0`, e o React desenha o zero. A
+ * conversão mora AQUI, na camada de dados, e não no componente: quem consumir a
+ * consulta amanhã (outro router, o exame de produção, um script) recebe o
+ * booleano que o tipo promete, sem precisar saber do driver.
+ */
+function comSouDestinatariaBooleana<T extends { souDestinataria: unknown }>(linhas: T[]): (Omit<T, "souDestinataria"> & { souDestinataria: boolean })[] {
+  return linhas.map(linha => ({ ...linha, souDestinataria: Boolean(linha.souDestinataria) }));
+}
+
 export async function getMatchesForUser(userId: number, limit = 20) {
   const db = await exigirDb();
-  return db.select({
+  const linhas = await db.select({
     matchId: matches.id,
     matchedUserId: matches.matchedUserId,
     overallScore: matches.overallScore,
@@ -810,6 +842,7 @@ export async function getMatchesForUser(userId: number, limit = 20) {
     .where(and(eq(matches.userId, userId), eq(matches.userDismissed, false)))
     .orderBy(desc(matches.overallScore))
     .limit(limit);
+  return comSouDestinatariaBooleana(linhas);
   // A13 (histórico): a `bio` era texto livre da OUTRA usuária chegando a esta, e
   // saía daqui mascarada contra telefone/e-mail. Ela deixou de ser lida — proteção
   // maior, não menor: o que não é selecionado não precisa ser mascarado. A máscara
@@ -881,7 +914,7 @@ export async function getConnectionsForUser(userId: number) {
   const db = await exigirDb();
   const outraParte = sql`CASE WHEN ${connections.requesterId} = ${userId} THEN ${connections.recipientId} ELSE ${connections.requesterId} END`;
   const aceita = sql`${connections.status} = 'accepted'`;
-  return db.select({
+  const linhas = await db.select({
     id: connections.id,
     status: connections.status,
     createdAt: connections.createdAt,
@@ -908,6 +941,7 @@ export async function getConnectionsForUser(userId: number) {
     ))
     .orderBy(desc(connections.createdAt))
     .limit(50);
+  return comSouDestinatariaBooleana(linhas);
 }
 
 /**

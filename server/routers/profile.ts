@@ -52,6 +52,16 @@ function conferirCadastroEmpresarial(personType: string | undefined, companyCnpj
   }
 }
 
+/**
+ * "O que tenho": as opções marcadas e, desde 15/09 (Rosber, 14/09 21:17), o ativo
+ * escrito à mão em "Outros" — que chega aqui como MAIS UM item da lista, não como
+ * campo próprio, porque é assim que os motores leem os ativos. Os tetos são de
+ * produto, para um texto livre não virar um item enorme numa coluna json; a tela
+ * já corta em 200. Nada aqui recusa dado antigo: os ids gravados têm 25 letras
+ * no máximo e as listas, 11 itens.
+ */
+const esquemaDoWhatIHave = z.array(z.string().max(500)).max(50);
+
 export const profileRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
     const profile = await getUserProfile(ctx.user.id);
@@ -83,7 +93,7 @@ export const profileRouter = router({
      interestSectors: z.array(z.string()).optional(),
      institutionalNetwork: z.string().max(300).optional(),
       currentResources: z.string().max(2000).optional(),
-     whatIHave: z.array(z.string()).optional(),
+     whatIHave: esquemaDoWhatIHave.optional(),
       whatINeed: esquemaDoWhatINeed.optional(),
       // "O que preciso" detalhado (shared/o-que-preciso.ts); validado em prepararOQuePreciso.
       whatINeedDetails: esquemaDasDemandas.optional(),
@@ -132,7 +142,12 @@ export const profileRouter = router({
      city: z.string().max(100),
      country: z.string().length(2).default("BR"),
      sectors: z.array(z.string()).min(1).max(5).optional(),
-     languages: z.array(z.string()).default([]),
+     // `.default([])` gravava uma lista VAZIA quando o pedido não trazia o
+     // campo. Os idiomas saíram do cadastro (Rosber, 14/09 21:08) e, com o
+     // default, concluir o cadastro apagaria os idiomas já gravados — o
+     // contrário do combinado ("o servidor continua aceitando, o dado antigo
+     // fica"). Ausente agora é ausente: o upsert não toca na coluna.
+     languages: z.array(z.string()).optional(),
      linkedinUrl: z.string().optional(),
      company: z.string().max(200).optional(),
      position: z.string().max(200).optional(),
@@ -152,7 +167,11 @@ export const profileRouter = router({
      currentCompany: z.string().max(200).optional(),
      sector: z.string().max(100).optional(),
      // "O que você busca?": as 12 chaves de shared/o-que-busca.ts, o "Quero
-     // também mentorar" e as 5 antigas (Onboarding em cache durante o deploy).
+     // também mentorar" e as 5 antigas (job, mentor, investor, strategic_partner,
+     // team). As antigas são COMPATIBILIDADE DE DADO JÁ GRAVADO, não cache de
+     // deploy: 14/09 trocou a lista sem migrar perfil, então um perfil antigo
+     // devolve essas chaves ao salvar e seria recusado inteiro. Só saem daqui
+     // depois de scripts/normalizar-buscas-antigas.mjs rodar com --aplicar.
      seekingTypes: z.array(z.string().refine(
        valor => VALORES_ACEITOS_EM_SEEKING_TYPES.includes(valor),
        "Opção desconhecida em \"O que você busca?\".",
@@ -177,7 +196,7 @@ export const profileRouter = router({
      interestSectors: z.array(z.string()).optional(),
      institutionalNetwork: z.string().max(300).optional(),
       currentResources: z.string().max(2000).optional(),
-     whatIHave: z.array(z.string()).optional(),
+     whatIHave: esquemaDoWhatIHave.optional(),
       whatINeed: esquemaDoWhatINeed.optional(),
       // "O que preciso" detalhado (shared/o-que-preciso.ts); ausente no Onboarding em cache do deploy.
       whatINeedDetails: esquemaDasDemandas.optional(),
