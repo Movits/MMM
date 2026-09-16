@@ -48,6 +48,12 @@ export const CHAVE_QUERO_MENTORAR = "be_mentor" as const;
  * Perfis gravados antes da troca têm as chaves antigas. Não se migra dado:
  * quem exibe traduz na leitura. Três antigas têm equivalente novo; `job` e
  * `mentor` não têm, e seguem com o rótulo antigo (onboarding.seeking.*).
+ *
+ * Como `rotuloDaBusca` (client/src/lib/interesses.ts) troca a chave ANTES de
+ * procurar tradução, o rótulo antigo destas três nunca chegava à tela: ele saiu
+ * dos 10 idiomas em 15/09. Acrescentar chave aqui exige rótulo novo em nenhum
+ * lugar; TIRAR uma daqui faria a leitura cair no rótulo antigo, que não existe
+ * mais — então elas ficam.
  */
 export const BUSCA_LEGADA_EQUIVALENTE: Readonly<Record<string, ChaveOQueBusca>> = {
   investor: "investimento_capital",
@@ -72,7 +78,17 @@ export function opcaoDaBusca(valor: string) {
   return OPCOES_O_QUE_BUSCA.find(opcao => opcao.chave === chave) ?? null;
 }
 
-/** Tudo o que `seekingTypes` pode receber: as 12 novas, "Quero também mentorar" e as antigas (cliente em cache no deploy). */
+/**
+ * Tudo o que `seekingTypes` pode receber: as 12 novas, "Quero também mentorar" e
+ * as 5 antigas.
+ *
+ * As antigas seguem aceitas por COMPATIBILIDADE DE DADO, não por cache de
+ * deploy: o cadastro de 14/09 não migrou nada, e o perfil gravado antes ainda
+ * chega inteiro ao servidor sempre que a dona salva o Perfil sem tocar em "O que
+ * você busca?" — recusá-las faria um perfil antigo deixar de salvar. Sair daqui
+ * depende de os dados serem normalizados primeiro
+ * (scripts/normalizar-buscas-antigas.mjs), nunca de esperar um deploy passar.
+ */
 export const VALORES_ACEITOS_EM_SEEKING_TYPES = [
   ...CHAVES_O_QUE_BUSCA,
   CHAVE_QUERO_MENTORAR,

@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BrandMark } from "@/components/BrandLogo";
 import { ExcluirMinhaConta } from "@/components/ExcluirMinhaConta";
 import { AssistenteDeTexto } from "@/components/AssistenteDeTexto";
 import { QualificacaoDoPerfil } from "@/components/QualificacaoDoPerfil";
@@ -17,6 +16,7 @@ import { categoriasPendentes, demandasParaGravar, lerDemandas, type DemandaDetal
 import { toast } from "sonner";
 import { exigeCadastroEmpresarial, mascararCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
+import { rotulosComLegado } from "@shared/setores";
 import {
   ArrowLeft, User, Briefcase, Globe, Link2, Edit2, Save,
   MapPin, Building, X, Plus, CheckCircle, Network, Tag,
@@ -24,21 +24,12 @@ import {
 } from "lucide-react";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const SECTORS = [
-  "Tecnologia", "Saúde", "Educação", "Finanças", "Agronegócio",
-  "Energia", "Varejo", "Imobiliário", "Indústria", "Serviços",
-  "Moda", "Alimentação", "Turismo", "Logística", "Jurídico",
-  "Beleza & Cosméticos", "Exportação", "Importação", "Infraestrutura",
-  "Commodities", "Farmacêutico", "Consultoria", "Marketing",
-];
-
-const INTEREST_SECTORS = [
-  "Tecnologia", "Saúde", "Educação", "Finanças", "Agronegócio",
-  "Energia", "Varejo", "Imobiliário", "Indústria", "Serviços",
-  "Moda", "Alimentação", "Turismo", "Logística", "Jurídico",
-  "Beleza & Cosméticos", "Exportação", "Importação", "Infraestrutura",
-  "Commodities", "Farmacêutico", "Consultoria", "Marketing",
-];
+// Os "Setores de interesse" saíram daqui: a lista vem da fonte ÚNICA em
+// shared/setores.ts, a mesma do cadastro e de "Nova Oportunidade" (reteste v4,
+// item 7). `rotulosComLegado` acrescenta o que a usuária já tinha gravado e não
+// está mais na lista (ex.: o antigo "Tecnologia", hoje "Tecnologia & Software"),
+// para nenhuma seleção antiga sumir da tela. Havia ainda uma constante SECTORS
+// idêntica, sem nenhum uso, apagada junto.
 
 const LANGUAGES_LIST = [
   "Português", "English", "Español", "Français", "Deutsch",
@@ -76,6 +67,15 @@ const WHAT_I_HAVE_OPTIONS = [
 // e components/OQuePreciso.tsx (Rosber, 14/09), as mesmas do Onboarding.
 
 // ─── Componente de Tag Selecionável ───────────────────────────────────────────
+// CAIXA ALTA nos títulos das categorias, como no cadastro (revisão de 15/09): a
+// regra vale para as DUAS listas de seleção — "O que tenho" (este cartão) e "O
+// que preciso" (components/OQuePreciso.tsx) — e para as duas telas em que elas
+// aparecem. Aqui tinha ficado pela metade: "O que preciso" já saía em caixa alta
+// por morar no componente compartilhado, e esta lista, logo acima dela, não.
+// Nada mais do Perfil muda: setores de interesse são outra lista, e título de
+// seção não é título de categoria. É por CSS, nunca reescrevendo o texto dos 10
+// JSONs — árabe, chinês e japonês não têm caixa, e `text-transform` não os toca.
+// Guarda: client/src/pages/Profile.caixa-dos-titulos.test.tsx.
 function TagButton({
   icon, label, selected, onClick,
 }: { icon: string; label: string; selected: boolean; onClick: () => void }) {
@@ -90,7 +90,7 @@ function TagButton({
       }`}
     >
       <span className="text-base leading-none">{icon}</span>
-      <span>{label}</span>
+      <span className="uppercase">{label}</span>
       {selected && <CheckCircle size={13} className="text-amber-400 ml-auto" />}
     </button>
   );
@@ -260,16 +260,16 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-transparent text-white">
-      {/* Navbar */}
-      <nav className="border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-40 bg-[#151312]/95 backdrop-blur-xl">
+      {/* Barra da página, logo abaixo do cabeçalho da área logada (que já tem
+          o logo, o menu, o sino e o idioma — ver App.tsx): aqui ficam só o
+          "voltar" e o que é do perfil. O logo saiu daqui para não aparecer
+          duas vezes na mesma tela. */}
+      <nav className="border-b border-white/5 px-6 py-4 flex items-center justify-between gap-3 sticky top-16 z-30 bg-[#151312]/95 backdrop-blur-xl">
         <Link href="/dashboard">
           <span className="flex items-center gap-2 text-white/50 hover:text-white transition-colors cursor-pointer text-sm">
             <ArrowLeft size={16} />
             Voltar para a página inicial
           </span>
-        </Link>
-        <Link href="/dashboard">
-          <BrandMark />
         </Link>
         {editing ? (
           <div className="flex items-center gap-2">
@@ -510,7 +510,7 @@ export default function Profile() {
               <div>
                 <label className="text-xs text-white/40 uppercase tracking-wider mb-2 block">Setores de Interesse</label>
                 <div className="flex flex-wrap gap-2">
-                  {sortTextAlphabetically(INTEREST_SECTORS, i18n.language).map(s => (
+                  {sortTextAlphabetically(rotulosComLegado(t, interestSectors), i18n.language).map(s => (
                     <button key={s} type="button" onClick={() => toggleTag(interestSectors, setInterestSectors, s)}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
                         interestSectors.includes(s)
@@ -612,7 +612,10 @@ export default function Profile() {
                 {sortOptionsAlphabetically(WHAT_I_HAVE_OPTIONS.filter(o => profileWhatIHave.includes(o.id)), i18n.language).map(opt => (
                   <div key={opt.id} className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-amber-500/8 border border-amber-500/20">
                     <span className="text-base">{opt.icon}</span>
-                    <span className="text-sm text-amber-300/80 font-medium">{opt.label}</span>
+                    {/* Mesma caixa alta dos cartões de edição: é a mesma lista,
+                        e a leitura de "O que preciso" logo abaixo já sai assim
+                        (DemandasDoPerfil, em components/OQuePreciso.tsx). */}
+                    <span className="text-sm text-amber-300/80 font-medium uppercase">{opt.label}</span>
                     <CheckCircle size={13} className="text-amber-400 ml-auto" />
                   </div>
                 ))}

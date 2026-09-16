@@ -18,7 +18,11 @@ export default function Login() {
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: (data) => {
       const firstName = (data.user.name?.split(" ")[0] || "").toUpperCase();
-      toast.success(t("auth.welcomeBack", { name: firstName }), {
+      // Quem acabou de se cadastrar e entra pela primeira vez não "volta":
+      // o cadastro por concluir é o primeiro acesso, e é o mesmo sinal que
+      // decide o destino logo abaixo (reteste v4, item 8).
+      const saudacao = data.user.onboardingCompleted ? "auth.welcomeBack" : "auth.welcomeFirst";
+      toast.success(t(saudacao, { name: firstName }), {
         description: t("auth.redirecting"),
       });
       // Usar window.location.href para garantir que o cookie de sessão

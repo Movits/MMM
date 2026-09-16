@@ -148,7 +148,7 @@ export default function OpportunityDetail() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
-      <div className="border-b border-white/10 bg-[#151312]/95 backdrop-blur-xl sticky top-0 z-40">
+      <div className="border-b border-white/10 bg-[#151312]/95 backdrop-blur-xl sticky top-16 z-30">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/opportunities">
             <button className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm">

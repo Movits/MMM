@@ -206,7 +206,7 @@ export default function AdminPanel() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
-      <header className="bg-[#1B1714] border-b border-[#C98F70]/30 sticky top-0 z-50">
+      <header className="bg-[#1B1714] border-b border-[#C98F70]/30 sticky top-16 z-30">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Shield className="w-7 h-7 text-[#C98F70]" />

@@ -171,9 +171,9 @@ describe("cartão de match — anônimo até o interesse mútuo", () => {
       data: [{ id: 7, status: "pending", souDestinataria: true, outraParteId: null, displayName: null, primarySpecialty: "finance", city: "Porto", message: null }],
     };
     render(<Dashboard />);
-    // O nome acessível da aba traz a contagem; sem ela, casaria também com o
-    // cartão de estatística de mesmo rótulo.
-    fireEvent.click(screen.getByRole("button", { name: "Conexões (1)" }));
+    // A contagem da aba é a das conexões EFETIVADAS (item 6.1 do reteste v4):
+    // com um pedido pendente e nenhuma aceita, a aba sai sem número.
+    fireEvent.click(screen.getByRole("button", { name: "Conexões" }));
 
     expect(await screen.findByRole("button", { name: "Aceitar e revelar" }, ESPERA)).toBeInTheDocument();
     expect(document.body.innerHTML).not.toContain("Zoroastra");
@@ -195,7 +195,10 @@ describe("cartão de match — o passo do distribuidor", () => {
     render(<Dashboard />);
 
     expect(document.body.innerHTML).not.toContain("Zoroastra");
-    expect(screen.getByRole("button", { name: "Em análise pelo distribuidor" })).toBeDisabled();
+    // O texto do estado é o do vídeo do Rosber (14/09, 21:12): a pessoa não tem
+    // mais nada a fazer, então lê que o consultor fará contato — e não o nome
+    // do papel interno que confere o pedido.
+    expect(screen.getByRole("button", { name: "Em breve nosso consultor fará contato" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Demonstrar Interesse" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Aceitar e revelar" })).not.toBeInTheDocument();
     // Não dá para sumir com o cartão enquanto alguém está decidindo sobre ele.
@@ -221,7 +224,7 @@ describe("cartão de match — o passo do distribuidor", () => {
     render(<Dashboard />);
 
     expect(document.body.innerHTML).not.toContain("Zoroastra");
-    expect(screen.getByRole("button", { name: "Em análise pelo distribuidor" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Em breve nosso consultor fará contato" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Aceitar e revelar" })).not.toBeInTheDocument();
     expect(screen.queryByText("Demonstrou interesse em você")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Membro da rede" })).toBeInTheDocument();
@@ -235,9 +238,12 @@ describe("cartão de match — o passo do distribuidor", () => {
       ],
     };
     render(<Dashboard />);
-    fireEvent.click(screen.getByRole("button", { name: "Conexões (2)" }));
+    // Nenhuma aceita: a aba conta as efetivadas e sai sem número (item 6.1).
+    fireEvent.click(screen.getByRole("button", { name: "Conexões" }));
 
-    expect(await screen.findByText("🔎 Em análise", {}, ESPERA)).toBeInTheDocument();
+    // O rótulo aparece duas vezes: no cabeçalho do grupo e no selo do cartão
+    // (a lista passou a ser agrupada por status, item 13.4 do reteste v4).
+    expect((await screen.findAllByText("🔎 Em análise", {}, ESPERA)).length).toBeGreaterThan(0);
     expect(screen.getByText("✕ Não encaminhado")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Aceitar e revelar" })).not.toBeInTheDocument();
     expect(document.body.innerHTML).not.toContain("Zoroastra");

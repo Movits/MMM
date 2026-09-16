@@ -75,10 +75,9 @@ function irAteOQuePreciso() {
   avancar();
   clicarCartao(pt.oQueBusca.opcoes.expandir_negocio.titulo);
   clicarCartao(pt.onboarding.income.under_3k);
-  clicarCartao(pt.onboarding.workStyle.remote);
   avancar();
   fireEvent.change(document.querySelector("select")!, { target: { value: pt.onboarding.sectors.technology } });
-  // Setor → rede institucional → O que tenho → O que preciso (as duas do meio são opcionais).
+  // Setor → O que tenho → O que preciso (a do meio é opcional).
   for (let i = 0; i < 10 && screen.getByRole("heading", { level: 1 }).textContent !== pt.onboarding.steps.s9_title; i++) avancar();
 }
 

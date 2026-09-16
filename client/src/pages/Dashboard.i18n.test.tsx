@@ -451,7 +451,8 @@ describe("Dashboard em inglês — varredura do texto inteiro, aba por aba", () 
     semPortugues("aba de matches, cartão expandido, banner Ouro");
     semMatch("aba de conexões sugeridas, cartão expandido, banner Ouro");
 
-    fireEvent.click(screen.getByRole("button", { name: "Connections (1)" }));
+    // A aba conta as conexões EFETIVADAS (item 6.1): nenhuma aceita, nenhum número.
+    fireEvent.click(screen.getByRole("button", { name: "Connections" }));
     expect(await screen.findByRole("button", { name: "Accept and reveal" }, ESPERA)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
     semPortugues("aba de conexões");
@@ -471,19 +472,23 @@ describe("Dashboard em inglês — varredura do texto inteiro, aba por aba", () 
 });
 
 describe("o passo do distribuidor no idioma da tela", () => {
-  it("inglês: 'Under review by the distributor' no cartão e 'Under review' na aba Conexões, nada em português", async () => {
+  it("inglês: 'Our consultant will contact you soon' no cartão e 'Under review' na aba Conexões, nada em português", async () => {
     await i18n.changeLanguage("en");
     duble.respostas["matches.list"] = { data: [match(1, false, { connectionId: 7, connectionStatus: "in_review", souDestinataria: false })] };
     duble.respostas["connections.list"] = {
       data: [{ id: 7, status: "in_review", souDestinataria: false, outraParteId: null, displayName: null, primarySpecialty: "finance", city: "Porto", message: null }],
     };
     render(<Dashboard />);
-    expect(screen.getByRole("button", { name: "Under review by the distributor" })).toBeDisabled();
+    // O cartão diz o que a pessoa precisa saber (o consultor fará contato); o
+    // selo da aba Conexões continua sendo o estado do pedido ("Under review").
+    expect(screen.getByRole("button", { name: "Our consultant will contact you soon" })).toBeDisabled();
     expect(screen.queryByText(/Em análise/)).not.toBeInTheDocument();
     semPortugues("cartão em análise");
 
-    fireEvent.click(screen.getByRole("button", { name: "Connections (1)" }));
-    expect(await screen.findByText("🔎 Under review")).toBeInTheDocument();
+    // A aba conta as conexões EFETIVADAS (item 6.1): nenhuma aceita, nenhum número.
+    fireEvent.click(screen.getByRole("button", { name: "Connections" }));
+    // Cabeçalho do grupo e selo do cartão, desde o agrupamento por status.
+    expect((await screen.findAllByText("🔎 Under review")).length).toBeGreaterThan(0);
     semPortugues("aba Conexões em análise");
   });
 

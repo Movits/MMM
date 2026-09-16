@@ -8,6 +8,7 @@ import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
 import { exigeCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
+import { interesseEhDoSetor, setoresTraduzidos } from "@shared/setores";
 import {
   CHAVE_OUTRA_NECESSIDADE,
   CHAVE_QUERO_MENTORAR,
@@ -45,12 +46,17 @@ function cortarSemPartirEmoji(texto: string, limite: number): string {
  * ÚNICA etapa de termos do cadastro: substituiu a antiga "Termos e Condições"
  * (contrato de comissão), porque o termo do Dr. Ronei já cobre intermediação e
  * remuneração nas cláusulas 12 a 15 (Rosber, 14/09 21:34).
+ *
+ * São 8 etapas desde 15/09: a etapa "Quem sou" existia só para a Rede
+ * Institucional, e o Rosber a suprimiu no vídeo de 14/09 (21:15).
  */
-const ETAPA_TERMO_GERAL = 9;
+const ETAPA_TERMO_GERAL = 8;
 const TIPO_TERMO_GERAL = "termo_geral_de_uso" as const;
 
 
 // ─── Tags "O que tenho" ───────────────────────────────────────────────────────
+// Os rótulos continuam em pt-BR fixo (como sempre estiveram); só o "Outros"
+// novo passa pelo i18n, com texto nos 10 idiomas.
 const WHAT_I_HAVE_OPTIONS = [
   { id: "industria", label: "Indústria", icon: "🏭" },
   { id: "fazenda", label: "Fazenda / Agro", icon: "🌾" },
@@ -65,30 +71,81 @@ const WHAT_I_HAVE_OPTIONS = [
   { id: "canais_comerciais", label: "Canais Comerciais", icon: "🤝" },
 ];
 
+/**
+ * "Outros" em "O que tenho" (Rosber, 14/09 21:17: "a gente precisa inserir nesse
+ * 'o que tenho' um botão 'outros', para a pessoa poder digitar"). Mesmo padrão
+ * do "Outra necessidade" de "O que você busca": marcar abre um campo de texto
+ * obrigatório, e o que a pessoa digitar vira UM ITEM de `whatIHave` — os motores
+ * leem os itens como texto, então o ativo escrito à mão chega a eles como os
+ * outros. A chave "outros" é só a porta do campo e NUNCA é gravada: ela não é
+ * um ativo, e gravá-la faria o motor cruzar a palavra "outros".
+ */
+const CHAVE_OUTRO_ATIVO = "outros";
+const MINIMO_DO_OUTRO_ATIVO = 3;
+const LIMITE_DO_OUTRO_ATIVO = 200;
+
+function outroAtivoValido(marcados: readonly string[], texto: string): boolean {
+  if (!marcados.includes(CHAVE_OUTRO_ATIVO)) return true;
+  const aparado = texto.trim();
+  return aparado.length >= MINIMO_DO_OUTRO_ATIVO && aparado.length <= LIMITE_DO_OUTRO_ATIVO;
+}
+
+/** Os ativos que vão ao servidor: os marcados, sem a porta "outros", mais o texto livre. */
+function ativosParaGravar(marcados: readonly string[], texto: string): string[] {
+  const ativos = marcados.filter(id => id !== CHAVE_OUTRO_ATIVO);
+  const aparado = texto.trim();
+  if (marcados.includes(CHAVE_OUTRO_ATIVO) && aparado) ativos.push(aparado);
+  return ativos;
+}
+
+// ─── Porte preferido da empresa ───────────────────────────────────────────────
+// Rosber, 14/09 21:13: "ele dá a opção de qualquer tamanho, mas não deixa eu
+// selecionar dois tamanhos específicos. Eu quero fazer só com média e pequena".
+// A coluna `preferredCompanySize` é um varchar(50) que já guardava UM valor
+// ("medium", "any"), então a lista é gravada no mesmo campo, separada por
+// vírgula e na ordem canônica abaixo ("small,medium" cabe de sobra). Nenhum
+// porte marcado é o "qualquer tamanho" de sempre, e continua sendo gravado como
+// "any": é o vocabulário que o dado já tem.
+const PORTES_DA_EMPRESA = ["micro", "small", "medium", "large"] as const;
+const PORTE_QUALQUER = "any";
+
+/** Leitura: aceita o formato antigo (um porte só, ou "any") e o novo (lista). */
+function lerPortes(gravado: string | null | undefined): string[] {
+  if (!gravado) return [];
+  const escolhidos = gravado.split(",").map(p => p.trim()).filter(p => p && p !== PORTE_QUALQUER);
+  return PORTES_DA_EMPRESA.filter(porte => escolhidos.includes(porte));
+}
+
+/** Escrita: a lista na ordem canônica, ou "any" quando nada foi marcado. */
+function portesParaGravar(escolhidos: readonly string[]): string {
+  const lista = PORTES_DA_EMPRESA.filter(porte => escolhidos.includes(porte));
+  return lista.length > 0 ? lista.join(",") : PORTE_QUALQUER;
+}
+
 // ─── "O que preciso" ──────────────────────────────────────────────────────────
 // As 17 categorias e a segunda camada de detalhamento (Rosber, 14/09 21:24) vivem
 // em shared/o-que-preciso.ts e components/OQuePreciso.tsx, que o Perfil reusa.
 // "Consultoria" saiu: genérica demais; "Especialistas / Serviços" no lugar.
 
-const INTEREST_SECTORS = [
-  "Tecnologia", "Saúde", "Educação", "Finanças", "Agronegócio",
-  "Energia", "Varejo", "Imobiliário", "Indústria", "Serviços",
-  "Moda", "Alimentação", "Turismo", "Logística", "Jurídico",
-  "Beleza & Cosméticos", "Exportação", "Importação", "Infraestrutura",
-  "Commodities", "Farmacêutico", "Consultoria", "Marketing",
-];
-
 interface FormData {
-  // Idade saiu do cadastro (Rosber, 14/09 20:31: "Suprimir"); a coluna e o dado
-  // antigo continuam no banco, só não se pede mais.
+  // Campos SUPRIMIDOS do cadastro, com a mesma regra da idade (Rosber, 14/09
+  // 20:31) — a coluna e o dado antigo continuam no banco, o servidor segue
+  // aceitando cada um deles, e a tela só deixou de pedir:
+  //   - idade (20:31);
+  //   - estilo de trabalho, valores principais e idiomas (21:08: "não está
+  //     dentro do escopo do projeto");
+  //   - aberto a remoto e disponível para viagens (21:10: "está mais voltado
+  //     para busca de empregos");
+  //   - rede institucional, e com ela a etapa "Quem sou", que só tinha esse
+  //     campo (21:15).
   displayName: string; city: string; country: string; bio: string;
   primarySpecialty: string; primarySpecialties: string[]; customSpecialty: string; secondarySpecialties: string[]; experienceYears: number | null;
   educationLevel: string;
   seekingTypes: string[]; seekingOtherNeed: string; shortTermGoal: string; longTermGoal: string;
-  sector: string; businessInterests: string[]; preferredCompanySize: string;
-  openToRemote: boolean; availableForTravel: boolean;
+  sector: string; businessInterests: string[];
+  /** Vários portes ao mesmo tempo; vazio é "qualquer tamanho" (ver PORTES_DA_EMPRESA). */
+  preferredCompanySizes: string[];
   incomeRange: string; investmentCapacity: string; lookingForInvestment: boolean;
-  workStyle: string; values: string[]; languages: string[];
   gender: "" | "male" | "female" | "prefer_not_to_say";
   personType: "" | "individual" | "legal_entity" | "mei" | "nonprofit";
   companySize: "" | "mei" | "micro" | "small" | "medium" | "large";
@@ -97,8 +154,12 @@ interface FormData {
   currentResources: string;
   // Novos campos v2
   company: string; jobTitle: string; activityArea: string;
-  institutionalNetwork: string; interestSectors: string[];
-  whatIHave: string[]; whatINeed: string[];
+  interestSectors: string[];
+  /** As opções marcadas em "O que tenho"; "outros" é a porta do texto abaixo. */
+  whatIHave: string[];
+  /** O ativo escrito à mão em "Outros" (ver CHAVE_OUTRO_ATIVO). */
+  whatIHaveOther: string;
+  whatINeed: string[];
   /** As demandas detalhadas de "O que preciso", cada uma separada (whatINeedDetails). */
   whatINeedDetails: DemandaDetalhada[];
   // Termo Geral de Uso (única etapa de termos do cadastro): o id da VERSÃO que
@@ -114,18 +175,19 @@ const INITIAL: FormData = {
   primarySpecialty: "", primarySpecialties: [], customSpecialty: "", secondarySpecialties: [], experienceYears: null,
   educationLevel: "",
   seekingTypes: [], seekingOtherNeed: "", shortTermGoal: "", longTermGoal: "",
-  sector: "", businessInterests: [], preferredCompanySize: "",
-  openToRemote: false, availableForTravel: false,
-  incomeRange: "", investmentCapacity: "none", lookingForInvestment: false,
-  workStyle: "", values: [], languages: [],
+  sector: "", businessInterests: [], preferredCompanySizes: [],
+  // Capacidade de investimento começa VAZIA ("Selecione..."): abrir em "none"
+  // gravava "Sem capital disponível" em quem só passou pelo campo (reteste v4,
+  // item 5). Segue opcional para avançar, e só vai no envio quando escolhida.
+  incomeRange: "", investmentCapacity: "", lookingForInvestment: false,
   gender: "",
   personType: "", companySize: "", companyCnpj: "",
   customSector: "",
   currentResources: "",
   // Novos campos v2
   company: "", jobTitle: "", activityArea: "",
-  institutionalNetwork: "", interestSectors: [],
-  whatIHave: [], whatINeed: [], whatINeedDetails: [],
+  interestSectors: [],
+  whatIHave: [], whatIHaveOther: "", whatINeed: [], whatINeedDetails: [],
   termoGeralAceitoId: null,
 };
 
@@ -199,12 +261,28 @@ function apagarRascunho(chave: string) {
 }
 
 // ─── Componentes reutilizáveis ────────────────────────────────────────────────
+// CAIXA ALTA, onde vale (revisão de 15/09): o Rosber mandou em caixa alta os
+// títulos das categorias das DUAS listas de seleção — "O que tenho" (TagButton
+// abaixo) e "O que preciso" (components/OQuePreciso.tsx) —, e é só ali que ela
+// fica, nas mesmas duas listas no cadastro e no Perfil. Na rodada anterior a
+// caixa alta havia escorrido para os demais cartões (especialidade, tipo de
+// pessoa, o que busca, renda, porte) e para o Perfil, e ficava inconsistente
+// dentro da própria tela; estes voltaram à caixa normal.
+//
+// Onde ela existe, é por CSS (`uppercase`) e nunca reescrevendo o texto dos 10
+// JSONs: árabe, chinês e japonês não têm caixa, `text-transform` simplesmente
+// não os toca, e um rótulo gravado em maiúsculas estragaria os idiomas latinos
+// sem fazer nada por esses três.
 function CardOption({ selected, onClick, icon, label, desc }: {
   selected: boolean; onClick: () => void; icon: string; label: string; desc?: string;
 }) {
+  // `h-full` no cartão e `break-words` no rótulo: rótulo comprido
+  // ("Microempreendedor Individual (MEI)") quebra DENTRO do cartão em vez de
+  // transbordar para o vizinho, e a fileira fica com a mesma altura mesmo com
+  // um cartão de duas linhas (reteste v4, item 10).
   return (
     <button type="button" onClick={onClick}
-      className={`group relative p-4 rounded-xl border text-left transition-all duration-200 active:scale-95 ${selected
+      className={`group relative h-full p-4 rounded-xl border text-left transition-all duration-200 active:scale-95 ${selected
         ? "bg-[#c98f70]/15 border-[#c98f70] shadow-lg shadow-[#c98f70]/10"
         : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/30"}`}>
       {selected && (
@@ -215,7 +293,7 @@ function CardOption({ selected, onClick, icon, label, desc }: {
         </div>
       )}
       <div className="text-2xl mb-2">{icon}</div>
-      <div className={`font-semibold text-sm ${selected ? "text-[#c98f70]" : "text-white"}`}>{label}</div>
+      <div className={`font-semibold text-sm break-words ${selected ? "text-[#c98f70]" : "text-white"}`}>{label}</div>
       {desc && <div className="text-xs text-white/40 mt-0.5">{desc}</div>}
     </button>
   );
@@ -243,7 +321,7 @@ function TagButton({ icon, label, selected, onClick }: {
           : "bg-white/3 border-white/10 text-white/50 hover:border-white/25 hover:text-white/75 hover:bg-white/6"
       }`}>
       <span className="text-base leading-none">{icon}</span>
-      <span>{label}</span>
+      <span className="uppercase">{label}</span>
       {selected && <CheckCircle size={13} className="text-[#c98f70] ml-auto" />}
     </button>
   );
@@ -338,7 +416,7 @@ export default function Onboarding() {
   const profileQuery = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   useEffect(() => {
     if (prefilled.current || !profileQuery.data) return;
-    const { user, profile } = profileQuery.data as { user?: { id?: number; name?: string | null } | null; profile?: Partial<FormData> & { displayName?: string | null; city?: string | null; country?: string | null; bio?: string | null } | null };
+    const { user, profile } = profileQuery.data as { user?: { id?: number; name?: string | null } | null; profile?: Partial<FormData> & { displayName?: string | null; city?: string | null; country?: string | null; bio?: string | null; preferredCompanySize?: string | null } | null };
     prefilled.current = true;
     const chave = user?.id != null ? chaveDoRascunhoDa(user.id) : null;
     const rascunho = chave ? lerRascunho(chave) : null;
@@ -358,6 +436,11 @@ export default function Onboarding() {
         // limite e o zod de completeOnboarding aceita até LIMITE_BIO: maior que
         // isso, o "Continuar" da etapa 1 travava e a conta não concluía.
         bio: base.bio || cortarSemPartirEmoji(profile?.bio ?? "", LIMITE_BIO),
+        // O porte já gravado volta marcado, venha no formato antigo (um porte só)
+        // ou no novo (lista separada por vírgula) — ver lerPortes.
+        preferredCompanySizes: base.preferredCompanySizes.length > 0
+          ? base.preferredCompanySizes
+          : lerPortes(profile?.preferredCompanySize),
       };
     });
   }, [profileQuery.data]);
@@ -409,19 +492,25 @@ export default function Onboarding() {
     desc: t(`oQueBusca.opcoes.${o.chave}.descricao`),
   }));
 
-  const SECTORS = [
-    "agribusiness", "construction", "education", "energy", "entertainment",
-    "financial", "government", "industry", "logistics", "health",
-    "technology", "telecom", "tourism", "retail", "other",
-  ].map(key => ({ key, label: t("onboarding.sectors." + key) }));
+  // Setores: fonte ÚNICA em shared/setores.ts, a mesma do Perfil ("Setores de
+  // interesse") e de "Nova Oportunidade" — antes eram três listas diferentes e
+  // quem se cadastrava em "Tecnologia & Software" não achava o próprio setor na
+  // lista de interesses (reteste v4, item 7). O cadastro continua gravando o
+  // RÓTULO traduzido, não a chave: é o que server/matching.ts normaliza em
+  // `chaveDoSetor`, e os rótulos dos setores que já existiam aqui não mudaram.
+  const SECTORS = setoresTraduzidos(t).map(s => ({ key: s.chave, label: s.rotulo }));
+  // "Outro" não é setor: é a saída para texto livre, e por isso fica fora da
+  // fonte única e sempre no fim da lista.
   const OTHER_SECTOR_LABEL = t("onboarding.sectors.other");
 
+  // "Qualquer tamanho" continua na tela, agora como o cartão que LIMPA a
+  // seleção: marcado quando nenhum porte específico está, e clicá-lo desmarca
+  // todos. É o mesmo significado de sempre, sem virar um porte da lista.
   const COMPANY_SIZES = [
     { value: "micro", label: t("onboarding.companySize.micro"), icon: "🌱" },
     { value: "small", label: t("onboarding.companySize.small"), icon: "🏠" },
     { value: "medium", label: t("onboarding.companySize.medium"), icon: "🏢" },
     { value: "large", label: t("onboarding.companySize.large"), icon: "🏙️" },
-    { value: "any", label: t("onboarding.companySize.any"), icon: "🌍" },
   ];
 
   const INCOME_RANGES = [
@@ -440,23 +529,9 @@ export default function Onboarding() {
     { value: "200k_plus", label: t("onboarding.investment.200k_plus") },
   ];
 
-  const WORK_STYLES = [
-    { value: "remote", label: t("onboarding.workStyle.remote"), icon: "🏠" },
-    { value: "hybrid", label: t("onboarding.workStyle.hybrid"), icon: "🔄" },
-    { value: "onsite", label: t("onboarding.workStyle.onsite"), icon: "🏢" },
-    { value: "flexible", label: t("onboarding.workStyle.flexible"), icon: "🌊" },
-  ];
-
-  const VALUES_OPTIONS = [
-    "innovation", "social_impact", "autonomy", "fast_growth", "stability",
-    "purpose", "collaboration", "results", "diversity", "transparency",
-    "sustainability", "technical_excellence",
-  ].map(key => ({ key, label: t("onboarding.values." + key) }));
-
-  const LANGUAGES_LIST_I18N = [
-    "portuguese", "english", "spanish", "french", "german",
-    "mandarin", "japanese", "arabic", "italian",
-  ].map(key => ({ key, label: t("onboarding.languages." + key) }));
+  // Estilo de trabalho, valores principais e idiomas saíram do cadastro (Rosber,
+  // 14/09 21:08). Os rótulos seguem nos 10 JSONs porque o Dashboard traduz por
+  // eles o que já está gravado (onboarding.workStyle/values/languages).
 
   const EDUCATION_LEVELS = [
     { value: "high_school", label: t("onboarding.education.high_school") },
@@ -488,23 +563,25 @@ export default function Onboarding() {
     { value: "XX", label: t("onboarding.countries.other") },
   ];
 
+  // "Seus valores" saiu da lista junto com o campo (21:08): a etapa de revisão
+  // não pode prometer uma análise do que o cadastro não pergunta mais.
   const AI_ANALYSIS_ITEMS = [
     t("onboarding.aiAnalysis.specialty"), t("onboarding.aiAnalysis.goals"),
     t("onboarding.aiAnalysis.income"), t("onboarding.aiAnalysis.location"),
-    t("onboarding.aiAnalysis.values"), t("onboarding.aiAnalysis.sectors"),
+    t("onboarding.aiAnalysis.sectors"),
   ];
 
-  // 9 etapas: Vida & Valores foi integrada a “O que você busca”, e o Termo Geral
-  // de Uso (última) substituiu a antiga "Termos e Condições".
+  // 8 etapas: "Vida & Valores" foi integrada a "O que você busca", "Quem sou"
+  // saiu com a Rede Institucional (21:15), e o Termo Geral de Uso (última)
+  // substituiu a antiga "Termos e Condições".
   const STEPS = [
     { id: 1, title: t("onboarding.steps.s1_title"), subtitle: t("onboarding.steps.s1_sub"), icon: "👤" },
     { id: 2, title: t("onboarding.steps.s2_title"), subtitle: t("onboarding.steps.s2_sub"), icon: "⚡" },
     { id: 3, title: t("onboarding.steps.s3_title"), subtitle: t("onboarding.steps.s3_sub"), icon: "🎯" },
     { id: 4, title: t("onboarding.steps.s4_title"), subtitle: t("onboarding.steps.s4_sub"), icon: "🌐" },
-    { id: 5, title: t("onboarding.steps.s7_title"), subtitle: t("onboarding.steps.s7_sub"), icon: "🏢" },
-    { id: 6, title: t("onboarding.steps.s8_title"), subtitle: t("onboarding.steps.s8_sub"), icon: "✦" },
-    { id: 7, title: t("onboarding.steps.s9_title"), subtitle: t("onboarding.steps.s9_sub"), icon: "◈" },
-    { id: 8, title: t("onboarding.steps.s6_title"), subtitle: t("onboarding.steps.s6_sub"), icon: "🚀" },
+    { id: 5, title: t("onboarding.steps.s8_title"), subtitle: t("onboarding.steps.s8_sub"), icon: "✦" },
+    { id: 6, title: t("onboarding.steps.s9_title"), subtitle: t("onboarding.steps.s9_sub"), icon: "◈" },
+    { id: 7, title: t("onboarding.steps.s6_title"), subtitle: t("onboarding.steps.s6_sub"), icon: "🚀" },
     // Termo Geral de Uso do Dr. Ronei: "última etapa do processo de
     // cadastramento", e a única de termos. A etapa "Termos e Condições" (contrato
     // de comissão) saiu do cadastro; o tipo `contrato_comissao` e os aceites já
@@ -549,6 +626,10 @@ export default function Onboarding() {
 
   const set = (key: keyof FormData, value: unknown) => setForm(prev => ({ ...prev, [key]: value }));
 
+  // O que "O que tenho" vale de fato: as opções marcadas (sem a porta "outros")
+  // mais o ativo escrito à mão. É o que a contagem mostra e o que vai gravado.
+  const ativosDoQueTenho = ativosParaGravar(form.whatIHave, form.whatIHaveOther);
+
   const toggleArray = (key: keyof FormData, value: string) => {
     const arr = (form[key] as string[]) || [];
     set(key, arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value]);
@@ -588,13 +669,16 @@ export default function Onboarding() {
     if (step === 3) {
       const textosCabem = form.shortTermGoal.length <= LIMITE_META && form.longTermGoal.length <= LIMITE_META
         && form.currentResources.length <= LIMITE_META;
-      return form.seekingTypes.length > 0 && form.incomeRange.length > 0 && form.workStyle.length > 0
+      // Estilo de trabalho era exigido aqui e saiu do cadastro (21:08).
+      return form.seekingTypes.length > 0 && form.incomeRange.length > 0
         && outraNecessidadeValida(form.seekingTypes, form.seekingOtherNeed) && textosCabem;
     }
     if (step === 4) return form.sector.length > 0;
+    // "O que tenho": marcar nada continua valendo, mas "Outros" marcado exige o texto.
+    if (step === 5) return outroAtivoValido(form.whatIHave, form.whatIHaveOther);
     // "O que preciso": marcar nada continua valendo, mas categoria marcada precisa
     // de ao menos uma demanda detalhada e válida — a seleção sozinha não gera conexão.
-    if (step === 7) return categoriasPendentes(form.whatINeed, form.whatINeedDetails).length === 0;
+    if (step === 6) return categoriasPendentes(form.whatINeed, form.whatINeedDetails).length === 0;
     if (step === ETAPA_TERMO_GERAL) return aceitouTermoGeral;
     // Etapas profissionais e de ativos são opcionais — sempre pode avançar
     return true;
@@ -644,25 +728,27 @@ export default function Onboarding() {
       longTermGoal: form.longTermGoal.trim() || undefined,
       sector: form.sector === OTHER_SECTOR_LABEL && form.customSector.trim() ? form.customSector.trim() : form.sector,
       businessInterests: form.businessInterests,
-      preferredCompanySize: form.preferredCompanySize as "startup" | "small" | "medium" | "large" | "any" | undefined,
-      openToRemote: form.openToRemote, availableForTravel: form.availableForTravel,
+      // Vários portes num campo só, ou "any" sem nenhum (ver portesParaGravar).
+      preferredCompanySize: portesParaGravar(form.preferredCompanySizes),
       incomeRange: form.incomeRange as "under_3k" | "3k_7k" | "7k_15k" | "15k_30k" | "30k_plus",
-      investmentCapacity: form.investmentCapacity as "none" | "under_10k" | "10k_50k" | "50k_200k" | "200k_plus" | undefined,
+      // Sem escolha o campo não vai: o zod do servidor é optional() e recusaria "".
+      investmentCapacity: (form.investmentCapacity || undefined) as "none" | "under_10k" | "10k_50k" | "50k_200k" | "200k_plus" | undefined,
       lookingForInvestment: form.lookingForInvestment,
       gender: form.gender || undefined,
       personType: form.personType || undefined,
       companySize: form.personType === "mei" ? "mei" : form.companySize || undefined,
       companyCnpj: form.personType !== "individual" ? normalizarCadastroEmpresarial(form.companyCnpj) || undefined : undefined,
       currentResources: form.currentResources || undefined,
-      workStyle: form.workStyle as "remote" | "hybrid" | "onsite" | "flexible" | undefined,
-      values: form.values, languages: form.languages,
+      // workStyle, values, languages, openToRemote, availableForTravel e
+      // institutionalNetwork saíram do cadastro (21:08, 21:10 e 21:15): o campo
+      // não vai no envio, e o que já está gravado no banco fica onde está — o
+      // servidor não escreve coluna que não recebeu.
       // Novos campos v2
       company: form.company || undefined,
       jobTitle: form.jobTitle || undefined,
       activityArea: form.activityArea || undefined,
-      institutionalNetwork: form.institutionalNetwork || undefined,
       interestSectors: form.interestSectors.length > 0 ? form.interestSectors : undefined,
-      whatIHave: form.whatIHave.length > 0 ? form.whatIHave : undefined,
+      whatIHave: ativosDoQueTenho.length > 0 ? ativosDoQueTenho : undefined,
       whatINeed: form.whatINeed.length > 0 ? form.whatINeed : undefined,
       // Cada demanda separada, sem as em branco; o servidor valida de novo.
       whatINeedDetails: form.whatINeed.length > 0 ? demandasParaGravar(form.whatINeed, form.whatINeedDetails) : undefined,
@@ -806,6 +892,10 @@ export default function Onboarding() {
                 <div className="rounded-2xl border border-[#c98f70]/25 bg-[#c98f70]/5 p-5 space-y-4">
                   <div>
                     <h2 className="text-white font-semibold text-base">{t("profile.business.personType")}</h2>
+                    {/* O texto de apoio fica SÓ aqui: repetido como dica do campo de
+                        Número de Cadastro Empresarial, aparecia duas vezes no mesmo
+                        bloco (reteste v4, item 10). Como subtítulo ele é visível antes
+                        de escolher o tipo, que é quando ajuda. */}
                     <p className="text-xs text-white/45 mt-1">{t("profile.business.registrationNumberHint")}</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -837,7 +927,7 @@ export default function Onboarding() {
                             ], i18n.language)} placeholder={t("onboarding.fields.selectPlaceholder")}/>
                       <TextInput label={t("profile.business.registrationNumber")} required value={form.companyCnpj}
                         onChange={(value, compondo) => set("companyCnpj", compondo ? value : normalizarCadastroEmpresarial(value))}
-                        placeholder={t("profile.business.registrationNumberPlaceholder")} hint={t("profile.business.registrationNumberHint")}/>
+                        placeholder={t("profile.business.registrationNumberPlaceholder")}/>
                     </div>
                   )}
                 </div>
@@ -931,36 +1021,8 @@ export default function Onboarding() {
                       </div>
                     </div>
                   </button>
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-3">{t("onboarding.fields.workStyle")}</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {sortOptionsAlphabetically(WORK_STYLES, i18n.language).map(w => (
-                        <CardOption key={w.value} selected={form.workStyle === w.value}
-                          onClick={() => set("workStyle", w.value)} icon={w.icon} label={w.label}/>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-3">{t("onboarding.fields.values")} <span className="text-white/30 font-normal">{t("onboarding.fields.upTo4")}</span></label>
-                    <div className="flex flex-wrap gap-2">
-                      {sortOptionsAlphabetically(VALUES_OPTIONS, i18n.language).map(v => (
-                        <TagOption key={v.key} selected={form.values.includes(v.key)}
-                          onClick={() => {
-                            if (form.values.includes(v.key)) toggleArray("values", v.key);
-                            else if (form.values.length < 4) toggleArray("values", v.key);
-                            else toast.error(t("onboarding.maxValues"));
-                          }} label={v.label}/>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-white/70 mb-3">{t("onboarding.fields.languages")}</label>
-                    <div className="flex flex-wrap gap-2">
-                      {sortOptionsAlphabetically(LANGUAGES_LIST_I18N, i18n.language).map(l => (
-                        <TagOption key={l.key} selected={form.languages.includes(l.key)} onClick={() => toggleArray("languages", l.key)} label={l.label}/>
-                      ))}
-                    </div>
-                  </div>
+                  {/* Estilo de trabalho preferido, valores principais e idiomas
+                      ficavam aqui e saíram do cadastro (Rosber, 14/09 21:08). */}
                 </div>
               </div>
             )}
@@ -971,7 +1033,7 @@ export default function Onboarding() {
                 <div>
                   {/* Opção "outro" sempre no final, não alfabética: consistência com demais dropdowns (validação de testes) */}
                   <SelectInput label={t("onboarding.fields.sector")} value={form.sector} onChange={v => set("sector", v)}
-                    options={[...sortOptionsAlphabetically(SECTORS.filter(s => s.key !== "other").map(s => ({ value: s.label, label: s.label })), i18n.language), { value: OTHER_SECTOR_LABEL, label: t("onboarding.sectors.other") }]} placeholder={t("onboarding.fields.selectPlaceholder")}/>
+                    options={[...sortOptionsAlphabetically(SECTORS.map(s => ({ value: s.label, label: s.label })), i18n.language), { value: OTHER_SECTOR_LABEL, label: t("onboarding.sectors.other") }]} placeholder={t("onboarding.fields.selectPlaceholder")}/>
                   {form.sector === OTHER_SECTOR_LABEL && (
                     <div className="mt-3">
                       <TextInput label={t("onboarding.fields.customSector")} value={form.customSector}
@@ -982,54 +1044,61 @@ export default function Onboarding() {
                 </div>
                 <div >
                   <label className="block text-sm font-medium text-white/70 mb-3">
-                    {t("onboarding.fields.businessInterests")} <span className="text-white/30 font-normal">{t("onboarding.fields.upTo4")}</span>
+                    {/* O teto de 4 saiu (Rosber, 14/09 21:09: "retirar essa
+                        limitação de até quatro, Setores de interesse"). */}
+                    {t("onboarding.fields.businessInterests")} <span className="text-white/30 font-normal">{t("onboarding.misc.selectAllApply")}</span>
                   </label>
+                  {/* Mesma lista do campo "Setor" acima, inclusive o setor da
+                      própria usuária: ela era descartada por `s.label !== form.sector`
+                      e quem é de tecnologia não conseguia declarar interesse no
+                      próprio setor (reteste v4, item 7) — que é justamente onde
+                      mais se procura parceria.
+                      Grava a CHAVE ("construcao"), não o rótulo traduzido: o valor
+                      precisa ser o mesmo em qualquer idioma, senão duas usuárias
+                      com o mesmo interesse em línguas diferentes nunca se cruzam.
+                      A tela mostra o rótulo, e `interesseEhDoSetor` mantém marcado
+                      o que foi gravado com o rótulo antes desta correção. */}
                   <div className="flex flex-wrap gap-2">
-                    {sortOptionsAlphabetically(SECTORS.filter(s => s.label !== form.sector && s.key !== "other"), i18n.language).map(s => (
-                      <TagOption key={s.key} selected={form.businessInterests.includes(s.key)}
-                        onClick={() => { if (form.businessInterests.includes(s.key) || form.businessInterests.length < 4) toggleArray("businessInterests", s.key); }}
-                        label={s.label}/>
-                    ))}
+                    {sortOptionsAlphabetically(SECTORS, i18n.language).map(s => {
+                      const setor = { chave: s.key, rotulo: s.label };
+                      const marcado = form.businessInterests.some(gravado => interesseEhDoSetor(gravado, setor));
+                      return (
+                        <TagOption key={s.key} selected={marcado} label={s.label}
+                          onClick={() => set("businessInterests", marcado
+                            ? form.businessInterests.filter(gravado => !interesseEhDoSetor(gravado, setor))
+                            : [...form.businessInterests, s.key])}/>
+                      );
+                    })}
                   </div>
                 </div>
                 <div >
-                  <label className="block text-sm font-medium text-white/70 mb-3">{t("onboarding.fields.preferredCompanySize")}</label>
+                  <label className="block text-sm font-medium text-white/70 mb-3">
+                    {t("onboarding.fields.preferredCompanySize")} <span className="text-white/30 font-normal">{t("onboarding.misc.selectAllApply")}</span>
+                  </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {COMPANY_SIZES.map(c => (
-                      <CardOption key={c.value} selected={form.preferredCompanySize === c.value}
-                        onClick={() => set("preferredCompanySize", c.value)} icon={c.icon} label={c.label}/>
+                      <CardOption key={c.value} selected={form.preferredCompanySizes.includes(c.value)}
+                        onClick={() => toggleArray("preferredCompanySizes", c.value)} icon={c.icon} label={c.label}/>
                     ))}
+                    {/* "Qualquer tamanho": marcado quando nenhum porte específico
+                        está, e clicar nele limpa a seleção. */}
+                    <CardOption selected={form.preferredCompanySizes.length === 0}
+                      onClick={() => set("preferredCompanySizes", [])}
+                      icon="🌍" label={t("onboarding.companySize.any")}/>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <button type="button" onClick={() => set("openToRemote", !form.openToRemote)}
-                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.openToRemote ? "bg-[#c98f70]/15 border-[#c98f70] text-[#c98f70]" : "bg-white/5 border-white/10 text-white/60"}`}>
-                    <div className="text-2xl mb-2">🌐</div>
-                    <div className="font-semibold text-sm">{t("onboarding.fields.openToRemote")}</div>
-                    <div className="text-xs opacity-60 mt-0.5">{t("onboarding.fields.openToRemoteDesc")}</div>
-                  </button>
-                  <button type="button" onClick={() => set("availableForTravel", !form.availableForTravel)}
-                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${form.availableForTravel ? "bg-[#c98f70]/15 border-[#c98f70] text-[#c98f70]" : "bg-white/5 border-white/10 text-white/60"}`}>
-                    <div className="text-2xl mb-2">✈️</div>
-                    <div className="font-semibold text-sm">{t("onboarding.fields.availableForTravel")}</div>
-                    <div className="text-xs opacity-60 mt-0.5">{t("onboarding.fields.availableForTravelDesc")}</div>
-                  </button>
-                </div>
+                {/* "Aberto a remoto" e "Disponível para viagens" ficavam aqui e
+                    saíram do cadastro (Rosber, 14/09 21:10: "está mais voltado
+                    para busca de empregos"). */}
               </div>
             )}
 
-            {/* STEP 5 — Rede institucional (os demais campos repetiam os steps 2 e 4) */}
+            {/* A etapa "Quem sou" existia só para a Rede Institucional e saiu
+                inteira com o campo (Rosber, 14/09 21:15). O que estava gravado
+                em institutionalNetwork continua no banco e no Perfil. */}
+
+            {/* STEP 5 — O QUE TENHO */}
             {step === 5 && (
-              <div className="flex flex-col gap-5">
-                <p className="text-white/40 text-sm -mt-4 mb-2">
-                  {t("onboarding.misc.step6_hint")} <span className="text-white/25">{t("onboarding.misc.optional")}</span>
-                </p>
-                <TextInput label={t("onboarding.misc.institutionalNetwork")} value={form.institutionalNetwork} onChange={v => set("institutionalNetwork", v)}
-                  placeholder={t("onboarding.misc.institutionalNetworkPlaceholder")}/>
-              </div>
-            )}
-
-            {step === 6 && (
               <div className="space-y-5">
                 <p className="text-white/40 text-sm -mt-4 mb-2">
                   {t("onboarding.misc.step7_hint")} <span className="text-white/25">{t("onboarding.misc.optional")}</span>
@@ -1044,19 +1113,31 @@ export default function Onboarding() {
                       onClick={() => toggleArray("whatIHave", opt.id)}
                     />
                   ))}
+                  {/* "Outros" fica sempre no fim, fora da ordem alfabética: é a
+                      porta do texto livre, não mais um ativo da lista. */}
+                  <TagButton icon="✍️" label={t("onboarding.misc.outrosAtivo")}
+                    selected={form.whatIHave.includes(CHAVE_OUTRO_ATIVO)}
+                    onClick={() => toggleArray("whatIHave", CHAVE_OUTRO_ATIVO)}/>
                 </div>
-                {form.whatIHave.length > 0 && (
+                {form.whatIHave.includes(CHAVE_OUTRO_ATIVO) && (
+                  <TextareaInput label={t("onboarding.misc.outrosAtivoRotulo")} required
+                    value={form.whatIHaveOther} onChange={v => set("whatIHaveOther", v)}
+                    placeholder={t("onboarding.misc.outrosAtivoPlaceholder")}
+                    hint={form.whatIHaveOther.trim().length < MINIMO_DO_OUTRO_ATIVO ? t("onboarding.misc.outrosAtivoObrigatorio") : undefined}
+                    limite={LIMITE_DO_OUTRO_ATIVO} assistente/>
+                )}
+                {ativosDoQueTenho.length > 0 && (
                   <div className="mt-4 p-3 rounded-xl bg-[#c98f70]/8 border border-[#c98f70]/20">
                     <p className="text-xs text-[#c98f70]/70 font-medium">
-                      ✦ {form.whatIHave.length} {form.whatIHave.length === 1 ? t("onboarding.misc.assetSelected") : t("onboarding.misc.assetsSelected")}
+                      ✦ {ativosDoQueTenho.length} {ativosDoQueTenho.length === 1 ? t("onboarding.misc.assetSelected") : t("onboarding.misc.assetsSelected")}
                     </p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* STEP 7 — O QUE PRECISO */}
-            {step === 7 && (
+            {/* STEP 6 — O QUE PRECISO */}
+            {step === 6 && (
               <div className="space-y-5">
                 {/* Texto explicativo e frase discreta do Rosber (14/09 21:24; "conexões", não "Match", 21:34). */}
                 <div className="-mt-4 mb-2">
@@ -1071,8 +1152,8 @@ export default function Onboarding() {
               </div>
             )}
 
-            {/* STEP 8 — Revisão final */}
-            {step === 8 && (
+            {/* STEP 7 — Revisão final */}
+            {step === 7 && (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   {[
@@ -1096,13 +1177,14 @@ export default function Onboarding() {
                   ))}
                 </div>
 
-                {/* Resumo O que tenho / O que preciso */}
-                {(form.whatIHave.length > 0 || form.whatINeed.length > 0) && (
+                {/* Resumo O que tenho / O que preciso. O "outros" marcado não
+                    conta como ativo; o texto que a pessoa escreveu conta. */}
+                {(ativosDoQueTenho.length > 0 || form.whatINeed.length > 0) && (
                   <div className="grid grid-cols-2 gap-3">
-                    {form.whatIHave.length > 0 && (
+                    {ativosDoQueTenho.length > 0 && (
                       <div className="p-3 rounded-xl bg-[#c98f70]/8 border border-[#c98f70]/20">
                         <p className="text-xs text-[#c98f70]/70 font-medium mb-1">✦ {t("onboarding.steps.s8_title")}</p>
-                        <p className="text-xs text-white/50">{form.whatIHave.length} {form.whatIHave.length === 1 ? t("onboarding.misc.asset") : t("onboarding.misc.assets")} {form.whatIHave.length === 1 ? t("onboarding.misc.selected") : t("onboarding.misc.selectedPlural")}</p>
+                        <p className="text-xs text-white/50">{ativosDoQueTenho.length} {ativosDoQueTenho.length === 1 ? t("onboarding.misc.asset") : t("onboarding.misc.assets")} {ativosDoQueTenho.length === 1 ? t("onboarding.misc.selected") : t("onboarding.misc.selectedPlural")}</p>
                       </div>
                     )}
                     {form.whatINeed.length > 0 && (

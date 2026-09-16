@@ -81,7 +81,7 @@ export default function Connections() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
-      <div className="border-b border-white/10 bg-black/40 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-white/10 bg-black/40 backdrop-blur-sm sticky top-16 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button

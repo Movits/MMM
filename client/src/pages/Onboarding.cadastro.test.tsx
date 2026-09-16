@@ -12,9 +12,9 @@ import ptBR from "@/i18n/locales/pt-BR.json";
  *    substituída pelo Termo Geral: o cadastro tem UMA etapa de termos e não
  *    registra mais o aceite do contrato_comissao;
  *  - Rosber (20:31): "Sua idade" sai do primeiro passo;
- *  - Rosber (20:44): "CNPJ" vira "Número de Cadastro Empresarial" na tela,
- *    mantendo as duas dicas (sem máscara: detalhes em
- *    Onboarding.cadastro-empresarial.test.tsx);
+ *  - Rosber (20:44): "CNPJ" vira "Número de Cadastro Empresarial" na tela (sem
+ *    máscara: detalhes em Onboarding.cadastro-empresarial.test.tsx; o texto de
+ *    apoio, que saía duas vezes, ficou em uma só — Onboarding.reteste-v4.test.tsx);
  *  - Rosber (19:10) e Roberto: "Gravar áudio" e "Revisar texto" em "Quem é você
  *    em uma frase?";
  *  - Lucas (20:58): as 12 opções de "O que você busca?", com "Outra necessidade"
@@ -22,7 +22,9 @@ import ptBR from "@/i18n/locales/pt-BR.json";
  */
 
 const pt = ptBR as unknown as {
-  onboarding: { specialties: Record<string, string>; income: Record<string, string>; workStyle: Record<string, string>; sectors: Record<string, string>; fields: Record<string, string>; nav: Record<string, string> };
+  onboarding: { specialties: Record<string, string>; income: Record<string, string>; sectors: Record<string, string>; fields: Record<string, string>; nav: Record<string, string> };
+  // A lista de setores da tela vem da fonte única (shared/setores.ts), no espaço `setores.*`.
+  setores: Record<string, string>;
   profile: { business: Record<string, string> };
   termoGeral: Record<string, string>;
   oQueBusca: { opcoes: Record<string, { titulo: string; descricao: string }> } & Record<string, unknown>;
@@ -141,14 +143,14 @@ function irAteAUltimaEtapa() {
   avancar();
   clicarCartao(pt.oQueBusca.opcoes.expandir_negocio.titulo);
   clicarCartao(pt.onboarding.income.under_3k);
-  clicarCartao(pt.onboarding.workStyle.remote);
+  // "Estilo de trabalho preferido" era obrigatório aqui e saiu do cadastro
+  // (Rosber, 14/09 21:08) — ver Onboarding.pedidos-do-video.test.tsx.
   avancar();
-  fireEvent.change(document.querySelector("select")!, { target: { value: pt.onboarding.sectors.technology } });
-  avancar(); // 4 → 5
-  avancar(); // 5 → 6
-  avancar(); // 6 → 7
-  avancar(); // 7 → 8
-  avancar(); // 8 → 9: o Termo Geral de Uso, sem etapa de contrato de comissão antes
+  fireEvent.change(document.querySelector("select")!, { target: { value: pt.setores.tecnologia } });
+  avancar(); // 4 → 5 (O que tenho)
+  avancar(); // 5 → 6 (O que preciso)
+  avancar(); // 6 → 7 (revisão)
+  avancar(); // 7 → 8: o Termo Geral de Uso, sem etapa de contrato de comissão antes
 }
 
 const botaoFinal = () => screen.getByRole("button", { name: new RegExp(pt.onboarding.nav.findMatches) });
@@ -188,7 +190,9 @@ describe("passo 2 — Número de Cadastro Empresarial", () => {
     clicarCartao(pt.profile.business.legalEntity);
 
     expect(screen.getByText("Número de Cadastro Empresarial")).toBeInTheDocument();
-    expect(screen.getAllByText(pt.profile.business.registrationNumberHint)).toHaveLength(2);
+    // Era 2 (subtítulo do bloco + dica do campo). O reteste v4 (item 10) pediu
+    // uma vez só: ficou o subtítulo, visível antes de escolher o tipo de pessoa.
+    expect(screen.getAllByText(pt.profile.business.registrationNumberHint)).toHaveLength(1);
     expect(pt.profile.business.registrationNumberHint).toMatch(/Número de Cadastro Empresarial/);
     expect(document.body.textContent).not.toMatch(/CNPJ/);
     // A máscara do CNPJ saiu (PR #133): o campo aceita letras e números de qualquer país.
@@ -198,17 +202,18 @@ describe("passo 2 — Número de Cadastro Empresarial", () => {
 });
 
 describe("uma etapa de termos só — o Termo Geral substituiu 'Termos e Condições'", () => {
-  it("são 9 etapas, nenhuma chamada 'Termos e Condições', e o Termo Geral é a última", () => {
+  // Eram 9 até 15/09; a etapa "Quem sou" saiu com a Rede Institucional (21:15).
+  it("são 8 etapas, nenhuma chamada 'Termos e Condições', e o Termo Geral é a última", () => {
     render(<Onboarding />);
 
-    expect(screen.getByText("1 / 9")).toBeInTheDocument();
+    expect(screen.getByText("1 / 8")).toBeInTheDocument();
     expect(screen.queryByText("Termos e Condições")).not.toBeInTheDocument();
     expect(screen.queryByText(/Acordo de Comissionamento/)).not.toBeInTheDocument();
     // O painel lateral lista as etapas; a última é a do Termo Geral.
     expect(screen.getByText(pt.termoGeral.etapaTitulo)).toBeInTheDocument();
 
     irAteAUltimaEtapa();
-    expect(screen.getByText("9 / 9")).toBeInTheDocument();
+    expect(screen.getByText("8 / 8")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(pt.termoGeral.etapaTitulo);
   });
 
@@ -272,7 +277,6 @@ describe("passo 3 — O que você busca?", () => {
     clicarCartao(pt.onboarding.specialties.tech);
     avancar();
     clicarCartao(pt.onboarding.income.under_3k);
-    clicarCartao(pt.onboarding.workStyle.remote);
     clicarCartao("Outra necessidade");
 
     const texto = campo(/armazém refrigerado/i);

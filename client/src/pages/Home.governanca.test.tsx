@@ -115,7 +115,9 @@ describe("Home — Governança (Bronze, Prata e Ouro)", () => {
     const prata = cartao(secaoGovernanca(), "MEMBRO PRATA");
     expect(prata.getByText("Mais informação. Mais precisão. Melhores conexões.")).toBeInTheDocument();
     expect(prata.getByText("Um perfil qualificado permite que nossa inteligência compreenda melhor quem você é, o que pode oferecer e o que procura — aumentando a precisão das conexões e oportunidades apresentadas a você.")).toBeInTheDocument();
-    expect(prata.getByText("Perfil qualificado para conexões estratégicas e um Business Match mais preciso.")).toBeInTheDocument();
+    // Texto da Glenda, no plural: "Business Matches mais precisos" (pedido do
+    // Roberto, 15/09). O singular "um Business Match mais preciso" era nosso.
+    expect(prata.getByText("Perfil qualificado para conexões estratégicas e Business Matches mais precisos.")).toBeInTheDocument();
   });
 
   it("Bronze e Prata: sem mensalidade, e a plataforma participa só dos negócios concretizados", () => {

@@ -149,9 +149,10 @@ describe("indicadores da plataforma no Dashboard", () => {
     render(<Dashboard />);
 
     // Dois cartões de conexão na tela, com rótulos e números diferentes: o da
-    // usuária ("Conexões", 1 aceita) e o da rede inteira ("Conexões realizadas", 42).
+    // usuária ("Conexões efetivadas", 1 aceita — o rótulo ficou explícito no
+    // item 6.1 do reteste v4) e o da rede inteira ("Conexões realizadas", 42).
     expect(await screen.findByText("Conexões realizadas", {}, ESPERA)).toBeInTheDocument();
-    expect(screen.getAllByText("Conexões").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Conexões efetivadas").length).toBeGreaterThan(0);
     await waitFor(() => expect(screen.getByText("42")).toBeInTheDocument(), ESPERA);
   });
 

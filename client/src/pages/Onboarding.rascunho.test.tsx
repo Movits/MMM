@@ -146,14 +146,12 @@ function irAteAUltimaEtapa() {
   avancar();
   clicarCartao(pt.oQueBusca.opcoes.expandir_negocio.titulo);
   clicarCartao(pt.onboarding.income.under_3k);
-  clicarCartao(pt.onboarding.workStyle.remote);
   avancar();
   fireEvent.change(document.querySelector("select")!, { target: { value: pt.onboarding.sectors.technology } });
-  avancar(); // 4 → 5
-  avancar(); // 5 → 6
-  avancar(); // 6 → 7
-  avancar(); // 7 → 8
-  avancar(); // 8 → 9: Termo Geral de Uso
+  avancar(); // 4 → 5 (O que tenho)
+  avancar(); // 5 → 6 (O que preciso)
+  avancar(); // 6 → 7 (revisão)
+  avancar(); // 7 → 8: Termo Geral de Uso
 }
 
 function concluir() {
@@ -265,13 +263,14 @@ describe("janela C — rascunho do cadastro em localStorage, por usuária", () =
     unmount();
 
     render(<Onboarding />);
-    // O rascunho já preencheu as 8 etapas: só "Continuar" até a última — fora
-    // a faixa de renda, que não fica no rascunho e a etapa 3 exige de novo.
+    // O rascunho já preencheu as 7 primeiras etapas: só "Continuar" até a
+    // última — fora a faixa de renda, que não fica no rascunho e a etapa 3
+    // exige de novo.
     avancar(); // 1 → 2
     avancar(); // 2 → 3
     clicarCartao(pt.onboarding.income.under_3k);
-    for (let etapa = 3; etapa < 9; etapa++) avancar();
-    expect(screen.getByText("9 / 9")).toBeInTheDocument();
+    for (let etapa = 3; etapa < 8; etapa++) avancar();
+    expect(screen.getByText("8 / 8")).toBeInTheDocument();
     expect(screen.getByRole("checkbox")).not.toBeChecked();
     expect(botaoFinal()).toBeDisabled();
   });

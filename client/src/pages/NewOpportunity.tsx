@@ -27,9 +27,11 @@ export default function NewOpportunity() {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
 
-  // A chave é fixa (independe do idioma da tela); só o rótulo exibido muda —
-  // é o que faz o filtro por setor (server/db.ts) achar oportunidades criadas
-  // em qualquer idioma. Ver client/src/lib/opportunity-sectors.ts.
+  // Setores: fonte ÚNICA em shared/setores.ts, a mesma do cadastro e dos
+  // "Setores de interesse" do Perfil (reteste v4, item 7). A chave é fixa
+  // (independe do idioma da tela); só o rótulo exibido muda — é o que faz o
+  // filtro por setor (server/db.ts) achar oportunidades criadas em qualquer
+  // idioma. Ver client/src/lib/opportunity-sectors.ts.
   const SECTORS = OPPORTUNITY_SECTOR_KEYS.map(key => ({ key, label: opportunitySectorLabel(t, key) }));
 
   const COUNTRIES = [
@@ -200,7 +202,7 @@ export default function NewOpportunity() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       {/* Header */}
-      <div className="border-b border-white/10 bg-[#151312]/95 backdrop-blur-xl sticky top-0 z-40">
+      <div className="border-b border-white/10 bg-[#151312]/95 backdrop-blur-xl sticky top-16 z-30">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/opportunities")} className="text-white/50 hover:text-white transition-colors">

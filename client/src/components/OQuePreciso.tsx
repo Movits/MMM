@@ -320,7 +320,10 @@ export function EditorDoQuePreciso({ valor, onChange, variante = "onboarding", t
         className={`sm:col-span-2 rounded-2xl border p-4 sm:p-5 space-y-4 ${tema.painel}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-white">{categoria.emoji} {titulo(categoria.chave)}</p>
+            {/* O cabeçalho da segunda camada repete o título da categoria e tinha
+                ficado em caixa normal, com o cartão logo acima em caixa alta: é o
+                mesmo título, leva o mesmo tratamento (revisão de 15/09). */}
+            <p className="text-sm font-semibold text-white">{categoria.emoji} <span className="uppercase">{titulo(categoria.chave)}</span></p>
             {/* Em "Outra necessidade" a pergunta é o próprio rótulo do campo: não se repete. */}
             {categoria.chave !== "outra_necessidade" && (
               <p className="text-base font-bold text-white mt-1">{t(`oQuePreciso.categorias.${categoria.chave}.pergunta`)}</p>
@@ -387,7 +390,14 @@ export function EditorDoQuePreciso({ valor, onChange, variante = "onboarding", t
                 : "bg-white/3 border-white/10 text-white/50 hover:border-white/25 hover:text-white/75 hover:bg-white/6"}`}>
               <span className="text-base leading-none mt-0.5">{categoria.emoji}</span>
               <span className="min-w-0 flex-1">
-                <span className="block">{titulo(categoria.chave)}</span>
+                {/* Caixa alta por CSS (pedido do Roberto, 15/09): o Rosber mandou as
+                    17 categorias em CAIXA ALTA. O texto dos 10 JSONs fica como está —
+                    árabe, chinês e japonês não têm caixa, e `text-transform` não os
+                    toca. O mesmo tratamento vale para o cabeçalho da segunda camada
+                    (é o mesmo título), para a leitura do Perfil e para os cartões de
+                    "O que tenho" — e só para eles: os demais cartões do cadastro
+                    voltaram à caixa normal na revisão de 15/09. */}
+                <span className="block uppercase">{titulo(categoria.chave)}</span>
                 <span className="block text-xs font-normal text-white/40 mt-0.5">{t(`oQuePreciso.categorias.${categoria.chave}.descricao`)}</span>
               </span>
               {selecionada && (
@@ -455,7 +465,8 @@ export function DemandasDoPerfil({ whatINeed, whatINeedDetails }: { whatINeed: u
             <div key={categoria.chave} className="px-3.5 py-2.5 rounded-xl bg-blue-500/8 border border-blue-500/20">
               <div className="flex items-center gap-2.5">
                 <span className="text-base">{categoria.emoji}</span>
-                <span className="text-sm text-blue-300/80 font-medium">{titulo(categoria.chave)}</span>
+                {/* Mesma caixa alta dos cartões de edição: é a mesma lista. */}
+                <span className="text-sm text-blue-300/80 font-medium uppercase">{titulo(categoria.chave)}</span>
                 <CheckCircle size={13} className="text-blue-400 ml-auto" />
               </div>
               {lista.length > 0 ? (

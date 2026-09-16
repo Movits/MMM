@@ -161,7 +161,11 @@ export function AppHeader({ title, backTo, actions }: {
   const { t } = useTranslation();
 
   return (
-    <nav className="border-b border-white/[0.06] px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-40 bg-[#151312]/95 backdrop-blur-2xl">
+    // Altura fixa (h-16 = 64px) porque as barras próprias das páginas grudam
+    // logo abaixo dele, com `sticky top-16`: com a altura variando conforme o
+    // botão mais alto do momento, a barra de baixo escorregava para cima ou
+    // deixava uma fresta. O conteúdo já era centrado, então nada se mexe.
+    <nav className="border-b border-white/[0.06] px-4 sm:px-6 h-16 flex items-center justify-between sticky top-0 z-40 bg-[#151312]/95 backdrop-blur-2xl">
       <div className="flex items-center gap-3 min-w-0">
         <Link href="/dashboard">
           <BrandMark />
