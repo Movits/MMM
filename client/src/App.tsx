@@ -32,6 +32,13 @@ const Contexts = lazy(() => import("./pages/Contexts"));
 const Meetings = lazy(() => import("./pages/Meetings"));
 const Memory = lazy(() => import("./pages/Memory"));
 const IntelligentMatches = lazy(() => import("./pages/IntelligentMatches"));
+const MeuNetworkInteligente = lazy(() => import("./pages/MeuNetworkInteligente"));
+const PerfilDoContatoNetwork = lazy(() => import("./pages/PerfilDoContatoNetwork"));
+
+// O cabeçalho da área logada entra pelo mesmo caminho das páginas (lazy) para
+// não engordar o pacote da landing, que não o usa. `lazy` só aceita export
+// default; o AppHeader é um export nomeado, daí o `.then`.
+const AppHeader = lazy(() => import("./components/AppHeader").then(m => ({ default: m.AppHeader })));
 
 // Skeleton de loading global
 function PageLoader() {
@@ -42,9 +49,50 @@ function PageLoader() {
           <div className="w-12 h-12 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin" />
           <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-amber-500/10 border-b-amber-400/50 animate-spin" style={{ animationDirection: "reverse", animationDuration: "1.5s" }} />
         </div>
-        <span className="text-sm font-medium tracking-wide text-white">MMM</span>
+        <span className="text-sm font-medium tracking-wide text-white">WRW</span>
       </div>
     </div>
+  );
+}
+
+/**
+ * Uma tela autenticada: a guarda de acesso, o corte por inatividade e o
+ * cabeçalho com o menu global, montado UMA vez, aqui.
+ *
+ * Pedido do Rosber em 14/09/2026: "o ideal é que o menu fique sempre visível na
+ * página. Entra em oportunidades: o menu some. Para acessar o menu de novo ele
+ * tem que voltar". Eram 11 telas logadas sem cabeçalho nenhum (Oportunidades,
+ * Nova Oportunidade, Detalhe, Perfil, Conexões, Rede, Contextos, Deal Room,
+ * Painel Admin e Painel Ouro): de dentro delas só se voltava a navegar passando
+ * pelo Dashboard. Montar aqui, e não em cada página, é o que faz a tela 19
+ * nascer com menu sem ninguém precisar lembrar.
+ *
+ * As telas que já montam o próprio cabeçalho — porque querem título, "voltar"
+ * ou ações próprias — pedem `cabecalhoProprio` para ele não sair em dobro.
+ * A guarda disso é client/src/App.cabecalho-de-todas-as-telas.test.ts.
+ *
+ * Exportada só para o teste montá-la sozinha (App.tela-autenticada.test.tsx);
+ * quem usa é o Router logo abaixo.
+ */
+export function TelaAutenticada({
+  children,
+  cabecalhoProprio = false,
+  ...guarda
+}: {
+  children: React.ReactNode;
+  /** A página monta o seu cabeçalho; a rota não monta o global. */
+  cabecalhoProprio?: boolean;
+  requireAdmin?: boolean;
+  requireGold?: boolean;
+  requireOpportunities?: boolean;
+}) {
+  return (
+    <ProtectedRoute {...guarda}>
+      <InactivityGuard>
+        {!cabecalhoProprio && <AppHeader />}
+        {children}
+      </InactivityGuard>
+    </ProtectedRoute>
   );
 }
 
@@ -65,142 +113,137 @@ function Router() {
         <Route path={"/forgot-password"} component={ForgotPassword} />
         <Route path={"/reset-password"} component={ResetPassword} />
 
-        {/* Rota de onboarding - protegida mas sem InactivityGuard */}
+        {/* Rota de onboarding — protegida, mas sem InactivityGuard e, de
+            propósito, sem o menu global: com o cadastro incompleto toda outra
+            rota protegida devolve a pessoa para cá (ver ProtectedRoute), e um
+            menu aqui seria um beco sem saída. */}
         <Route path={"/onboarding"}>
-          <ProtectedRoute>
+          <ProtectedRoute permitirCadastroIncompleto>
             <Onboarding />
           </ProtectedRoute>
         </Route>
 
-        {/* Rotas protegidas com guard de autenticação */}
+        {/* Rotas protegidas com guard de autenticação. O Dashboard monta a
+            própria barra (o aviso de convites pendentes fica nela, ao lado do
+            GlobalMenu), por isso vai de `cabecalhoProprio`. */}
         <Route path={"/dashboard"}>
-          <ProtectedRoute>
-            <InactivityGuard>
-              <Dashboard />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada cabecalhoProprio>
+            <Dashboard />
+          </TelaAutenticada>
         </Route>
 
         <Route path={"/admin"}>
-          <ProtectedRoute requireAdmin>
-            <InactivityGuard>
-              <AdminPanel />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada requireAdmin>
+            <AdminPanel />
+          </TelaAutenticada>
         </Route>
 
         {/* Painel Ouro — Ouro/Admin, ou quem tem o poder de distribuição do Smart
             Match (só a aba Distribuição). A guarda fina mora no próprio painel. */}
         <Route path={"/president"}>
-          <ProtectedRoute>
-            <InactivityGuard>
-              <PresidentPanel />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada>
+            <PresidentPanel />
+          </TelaAutenticada>
         </Route>
 
         {/* Rota de perfil */}
         <Route path="/profile">
-          <ProtectedRoute>
-            <InactivityGuard>
-              <Profile />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada>
+            <Profile />
+          </TelaAutenticada>
         </Route>
 
         {/* Rotas de oportunidades — Prata e Bronze têm acesso */}
         <Route path="/opportunities/new">
-          <ProtectedRoute requireOpportunities>
-            <InactivityGuard>
-              <NewOpportunity />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada requireOpportunities>
+            <NewOpportunity />
+          </TelaAutenticada>
         </Route>
 
         <Route path="/opportunities/:id">
-          <ProtectedRoute requireOpportunities>
-            <InactivityGuard>
-              <OpportunityDetail />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada requireOpportunities>
+            <OpportunityDetail />
+          </TelaAutenticada>
         </Route>
 
         <Route path="/opportunities">
-          <ProtectedRoute requireOpportunities>
-            <InactivityGuard>
-              <Opportunities />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada requireOpportunities>
+            <Opportunities />
+          </TelaAutenticada>
         </Route>
 
         {/* Conexões estratégicas — exclusivo para Ouro */}
         <Route path="/connections">
-          <ProtectedRoute requireGold>
-            <InactivityGuard>
-              <Connections />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada requireGold>
+            <Connections />
+          </TelaAutenticada>
         </Route>
 
         {/* Deal Room — sala de negociação privada */}
         <Route path="/deal-room/:id">
-          <ProtectedRoute>
-            <InactivityGuard>
-              <DealRoom />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada>
+            <DealRoom />
+          </TelaAutenticada>
         </Route>
 
         {/* SIVC — Verificação de Identidade */}
         <Route path="/verification">
-          <ProtectedRoute>
-            <InactivityGuard>
-              <SIVCVerification />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada cabecalhoProprio>
+            <SIVCVerification />
+          </TelaAutenticada>
         </Route>
 
         {/* Minha Rede de Relacionamentos — Base Particular de Contatos */}
         <Route path="/network">
-          <ProtectedRoute>
-            <InactivityGuard>
-              <Network />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada>
+            <Network />
+          </TelaAutenticada>
         </Route>
 
         {/* Contextos — Onde e Como Conheceu */}
         <Route path="/contexts">
-          <ProtectedRoute>
-            <InactivityGuard>
-              <Contexts />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada>
+            <Contexts />
+          </TelaAutenticada>
         </Route>
 
-        {/* Assistente de Reuniões — gravação e transcrição privada */}
+        {/* Assistente de Reuniões — gravação e transcrição privada. A isenção
+            vale para a tela inteira: a página monta o cabeçalho ACIMA dos seus
+            três ramos (lista, nova reunião, detalhe), e não dentro de um deles
+            — montado só na lista, os outros dois ficavam sem menu nenhum. */}
         <Route path="/meetings">
-          <ProtectedRoute>
-            <InactivityGuard>
-              <Meetings />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada cabecalhoProprio>
+            <Meetings />
+          </TelaAutenticada>
         </Route>
 
         <Route path="/memory">
-          <ProtectedRoute>
-            <InactivityGuard>
-              <Memory />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada cabecalhoProprio>
+            <Memory />
+          </TelaAutenticada>
         </Route>
 
         <Route path="/intelligent-matches">
-          <ProtectedRoute>
-            <InactivityGuard>
-              <IntelligentMatches />
-            </InactivityGuard>
-          </ProtectedRoute>
+          <TelaAutenticada cabecalhoProprio>
+            <IntelligentMatches />
+          </TelaAutenticada>
+        </Route>
+
+        {/* Meu Network Inteligente — perfil de um contato: Quem Sou, O Que
+            Tenho, O Que Preciso, ID anônimo, sugestões da IA, conexões e a
+            memória de relacionamento (spec de 14/09, itens 20 e 22) */}
+        <Route path="/meu-network-inteligente/contatos/:id">
+          <TelaAutenticada cabecalhoProprio>
+            <PerfilDoContatoNetwork />
+          </TelaAutenticada>
+        </Route>
+
+        {/* Meu Network Inteligente — painel da rede particular: reuniões,
+            contatos, informações faltando e matches internos */}
+        <Route path="/meu-network-inteligente">
+          <TelaAutenticada cabecalhoProprio>
+            <MeuNetworkInteligente />
+          </TelaAutenticada>
         </Route>
 
         <Route path={"/404"} component={NotFound} />

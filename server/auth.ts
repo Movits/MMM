@@ -71,7 +71,11 @@ export async function registerUser(params: {
     passwordHash,
     emailVerified: false,
     loginMethod: "email",
-    role: "silver",
+    // Governança (14/09/2026): todo cadastro nasce Bronze, "perfil em
+    // qualificação". A Prata vem sozinha quando o perfil atende à régua de
+    // shared/qualificacao-do-perfil.ts (server/nivel-do-perfil.ts). Bronze tem
+    // os mesmos acessos que Prata: o nível mede qualificação, não permissão.
+    role: "bronze",
     isActive: true,
     isVerified: false,
     onboardingCompleted: false,

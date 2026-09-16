@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { hasValidConsent, usersComConsentimento } from "./consent";
+import { insightParaExibir } from "../vocabulario-da-conexao";
 
 // ============================================================
 // MATCHES DE PERFIS (sistema original MMM)
@@ -51,7 +52,9 @@ export const profileMatchesRouter = router({
           incomeScore: m.incomeScore,
           locationScore: m.locationScore,
           valuesScore: m.valuesScore,
-          aiInsight: m.aiInsight,
+          // Insight gravado pelo prompt antigo que fala em "match" não vai à tela
+          // (14/09: "match" virou "conexão"); a próxima rodada o refaz.
+          aiInsight: insightParaExibir(m.aiInsight),
           userSeen: m.userSeen,
           createdAt: m.createdAt,
           city: m.city,
@@ -89,6 +92,20 @@ export const profileMatchesRouter = router({
       if (ids.length === 0) return { ocultas: 0 };
       const comTermo = await usersComConsentimento(ids, "termo_smart_match");
       return { ocultas: ids.filter(id => !comTermo.has(id)).length };
+    }),
+
+  // Reteste v4 (item 6.4): o aviso "N novas conexões sugeridas esperando pela
+  // sua atenção" nunca baixava — `userSeen` nasce false e nada marcava a linha.
+  // A tela manda para cá os ids que ACABOU de desenhar, nunca "todas as minhas":
+  // sugestão que a usuária não chegou a ver não vira vista pelas costas dela.
+  // A posse é do WHERE (server/matching.ts): id de outra dona não encontra linha.
+  marcarVistas: protectedProcedure
+    // Teto igual ao da janela de leitura de `list`: a tela não desenha mais que isso.
+    .input(z.object({ matchIds: z.array(z.number().int()).min(1).max(50) }))
+    .mutation(async ({ ctx, input }) => {
+      const { marcarSugestoesComoVistas } = await import("../matching");
+      const marcadas = await marcarSugestoesComoVistas(ctx.user.id, input.matchIds);
+      return { marcadas };
     }),
 
   dismiss: protectedProcedure

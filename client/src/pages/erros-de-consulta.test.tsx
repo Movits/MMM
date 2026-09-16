@@ -131,7 +131,7 @@ describe("Oportunidades — lista e vitrine em erro", () => {
 });
 
 describe("Dashboard — matches em erro", () => {
-  const perfil = { profile: { displayName: "Glenda", currentRole: "CEO", city: "São Paulo", profileCompleteness: 80 } };
+  const perfil = { profile: { displayName: "Glenda", jobTitle: "CEO", city: "São Paulo", profileCompleteness: 80 } };
 
   it("stats mostram '—' (não zero) e a aba de matches traz o alerta, sem convite a gerar os primeiros matches", async () => {
     duble.respostas["profile.get"] = { data: perfil };
@@ -143,9 +143,11 @@ describe("Dashboard — matches em erro", () => {
     // Os cards entram com um pequeno atraso (animação de entrada).
     await waitFor(() => expect(screen.getAllByText("—")).toHaveLength(3));
     expect(screen.getByRole("alert")).toHaveTextContent(MENSAGEM);
-    expect(screen.queryByText("Pronta para sua próxima grande conexão?")).not.toBeInTheDocument();
+    expect(screen.queryByText(i18n.t("dashboard.noMatches"))).not.toBeInTheDocument();
     expect(screen.queryByText("✨ Encontrar conexões para mim")).not.toBeInTheDocument();
-    expect(screen.queryByText(/Gere seus primeiros matches/)).not.toBeInTheDocument();
+    // Pela chave, não pelo texto: o convite de boas-vindas mudou de "matches"
+    // para "conexões" (14/09) e uma negativa com o texto velho passaria à toa.
+    expect(screen.queryByText(i18n.t("dashboard.greetingWelcome"))).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: RETENTAR }));
     expect(duble.refetchDe("matches.list")).toHaveBeenCalled();
   });

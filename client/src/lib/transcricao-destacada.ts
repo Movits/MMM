@@ -11,15 +11,20 @@ export type TipoEntidade =
   | "person" | "company" | "phone" | "email"
   | "role" | "asset" | "need" | "opportunity";
 
-export const TIPOS_DE_ENTIDADE: Record<TipoEntidade, { rotulo: string; classes: string }> = {
-  person:      { rotulo: "Pessoa",       classes: "border border-amber-300/40 bg-amber-300/15 text-amber-200" },
-  company:     { rotulo: "Empresa",      classes: "border border-sky-300/40 bg-sky-300/15 text-sky-200" },
-  phone:       { rotulo: "Telefone",     classes: "border border-emerald-300/40 bg-emerald-300/15 text-emerald-200" },
-  email:       { rotulo: "E-mail",       classes: "border border-teal-300/40 bg-teal-300/15 text-teal-200" },
-  role:        { rotulo: "Cargo",        classes: "border border-violet-300/40 bg-violet-300/15 text-violet-200" },
-  asset:       { rotulo: "Oferece",      classes: "border border-pink-300/40 bg-pink-300/15 text-pink-200" },
-  need:        { rotulo: "Procura",      classes: "border border-orange-300/40 bg-orange-300/15 text-orange-200" },
-  opportunity: { rotulo: "Oportunidade", classes: "border border-indigo-300/40 bg-indigo-300/15 text-indigo-200" },
+// `chave`, e não o rótulo pronto: o nome do tipo aparece na tela (chip do
+// resumo, legenda e o title de cada marcação da transcrição) e saía sempre em
+// português, nos dez idiomas. Quem traduz é a tela, que tem o `t` — este
+// módulo é uma função pura, sem hook. As `classes` continuam aqui: são estilo,
+// não texto.
+export const TIPOS_DE_ENTIDADE: Record<TipoEntidade, { chave: string; classes: string }> = {
+  person:      { chave: "meetings.entity.person",      classes: "border border-amber-300/40 bg-amber-300/15 text-amber-200" },
+  company:     { chave: "meetings.entity.company",     classes: "border border-sky-300/40 bg-sky-300/15 text-sky-200" },
+  phone:       { chave: "meetings.entity.phone",       classes: "border border-emerald-300/40 bg-emerald-300/15 text-emerald-200" },
+  email:       { chave: "meetings.entity.email",       classes: "border border-teal-300/40 bg-teal-300/15 text-teal-200" },
+  role:        { chave: "meetings.entity.role",        classes: "border border-violet-300/40 bg-violet-300/15 text-violet-200" },
+  asset:       { chave: "meetings.entity.asset",       classes: "border border-pink-300/40 bg-pink-300/15 text-pink-200" },
+  need:        { chave: "meetings.entity.need",        classes: "border border-orange-300/40 bg-orange-300/15 text-orange-200" },
+  opportunity: { chave: "meetings.entity.opportunity", classes: "border border-indigo-300/40 bg-indigo-300/15 text-indigo-200" },
 };
 
 export type Segmento = { texto: string; tipo?: TipoEntidade };

@@ -15,6 +15,14 @@
  *
  * Este teste existe porque esse tipo de texto envelhece em silêncio: ninguém
  * reclama de uma cláusula errada até o dia em que ela é cobrada.
+ *
+ * Em 14/09/2026 (Rosber, 21:34) a etapa "Termos e Condições — Termos de Uso e
+ * Acordo de Comissionamento" saiu do cadastro, substituída pelo Termo Geral de
+ * Uso do Dr. Ronei, que trata de intermediação e remuneração nas cláusulas 12 a
+ * 15 e vem do documento publicado, não do JSON de idiomas. As chaves
+ * `onboarding.terms.*` foram apagadas; a guarda agora cobre os textos de tela
+ * que ainda falam de comissão e o contrato provisório em docs/, que continua
+ * publicável como `contrato_comissao`.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
@@ -40,38 +48,32 @@ function idioma(arquivo: string) {
 }
 
 describe("o texto de tela não pode dizer que a comissão sai do lucro", () => {
-  it("são dez idiomas, e todos têm a cláusula do comissionamento", () => {
+  it("são dez idiomas, e nenhum guarda mais a cláusula provisória do cadastro", () => {
     expect(IDIOMAS).toHaveLength(10);
     for (const arquivo of IDIOMAS) {
-      const chaves = textos(idioma(arquivo)).map(t => t.caminho);
-      expect(chaves.some(c => c.endsWith("clause2_item2")), `${arquivo} perdeu a cláusula`).toBe(true);
+      const conteudo = idioma(arquivo) as { onboarding?: Record<string, unknown>; termoGeral?: Record<string, unknown> };
+      const chaves = textos(conteudo).map(t => t.caminho);
+      expect(conteudo.onboarding?.terms, `${arquivo} ainda tem onboarding.terms`).toBeUndefined();
+      expect(chaves.some(c => /clause2_item/.test(c)), `${arquivo} ainda tem a cláusula de comissão da etapa removida`).toBe(false);
+      // O que ficou no lugar: a etapa do Termo Geral de Uso.
+      expect(conteudo.termoGeral?.etapaTitulo, `${arquivo} sem a etapa do Termo Geral`).toBeTypeOf("string");
     }
   });
 
-  it("nenhum idioma promete comissão sobre o lucro", () => {
-    // A palavra existe em cada língua; procuramos dentro da cláusula, não no
-    // arquivo inteiro, para não reprovar um texto legítimo sobre lucro.
+  it("nenhum texto de tela sobre comissão promete comissão sobre o lucro", () => {
+    // A palavra existe em cada língua; procuramos só nos textos de comissão, não
+    // no arquivo inteiro, para não reprovar um texto legítimo sobre lucro.
     const proibido = /lucro|profit|ganancia|bénéfice|benefice|gewinn|利益|прибыл|利润|लाभ|ربح/i;
     for (const arquivo of IDIOMAS) {
-      const clausulas = textos(idioma(arquivo)).filter(t => /clause2_item[12]/.test(t.caminho));
-      for (const c of clausulas) {
+      const deComissao = textos(idioma(arquivo)).filter(t => /commission|comiss|noFee/i.test(t.caminho));
+      expect(deComissao.length, `${arquivo} sem nenhum texto de comissão para conferir`).toBeGreaterThan(0);
+      for (const c of deComissao) {
         expect(
           proibido.test(c.valor),
-          `${arquivo} → ${c.caminho} ainda fala em lucro: "${c.valor}"`,
+          `${arquivo} → ${c.caminho} fala em lucro: "${c.valor}"`,
         ).toBe(false);
       }
     }
-  });
-
-  it("o português diz honorários da intermediação e Diretoria Comercial", () => {
-    const pt = textos(idioma("pt-BR.json"));
-    const item1 = pt.find(t => t.caminho.endsWith("clause2_item1"))?.valor ?? "";
-    const item2 = pt.find(t => t.caminho.endsWith("clause2_item2"))?.valor ?? "";
-    expect(item2).toMatch(/honorários da intermediação/i);
-    expect(item2).toMatch(/50%/);
-    expect(item1).toMatch(/Diretoria Comercial/i);
-    // O critério que a cláusula antiga inventava e que a cliente não deu.
-    expect(item1).not.toMatch(/tipo e o tamanho/i);
   });
 
   it("o contrato de comissão em docs/ diz a mesma coisa que a tela", () => {

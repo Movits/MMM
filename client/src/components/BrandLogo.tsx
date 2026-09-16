@@ -1,39 +1,36 @@
-import { useTranslation } from "react-i18next";
-
-// Identidade visual oficial (docs/identidade-visual, Glenda 03/09). Só existem
-// artes em português e inglês, então a regra segue a da bandeira do seletor:
-// pt-BR usa a arte PT e os outros nove idiomas usam a arte EN. A versão branca
-// EN foi gerada por recolorização do mono preto oficial; a metálica só existe
-// em EN — por isso o destaque em pt-BR usa a branca, não uma metálica inventada.
+// Identidade visual oficial: WRW — Women Rocking the World (decisão do Roberto em
+// 15/09, logo da Cris). As artes de /brand foram geradas dos originais guardados em
+// docs/identidade-visual/wrw/. O nome é marca e não se traduz, por isso não há mais
+// arte nem alt por idioma: os 10 idiomas usam as mesmas peças.
 const ARTES = {
   monograma: "/brand/monograma-branco.png",
-  lockup: { pt: "/brand/lockup-branco-pt.png", en: "/brand/lockup-branco-en.png" },
-  destaque: { pt: "/brand/lockup-branco-pt.png", en: "/brand/lockup-metal-en.png" },
+  wordmark: "/brand/wordmark-branco.png",
+  lockup: "/brand/lockup-branco.png",
+  destaque: "/brand/lockup-cor.png",
   selo: "/brand/selo.png",
 } as const;
+
+const ALT = "WRW — Women Rocking the World";
 
 type Variante = keyof typeof ARTES;
 
 export function BrandLogo({ variante, className }: {
-  /** monograma: quadrado p/ headers; lockup: completo branco; destaque: peça de login/hero; selo: circular p/ avatares. */
+  /**
+   * monograma: letras WRW brancas num quadrado; wordmark: só as letras WRW, brancas,
+   * largura livre (headers); lockup: completo branco (com nome e lema); destaque:
+   * completo em dourado rosé, peça de login/hero; selo: circular p/ avatares.
+   */
   variante: Variante;
   className?: string;
 }) {
-  const { i18n } = useTranslation();
-  const idiomaAtual = i18n.resolvedLanguage ?? i18n.language;
-  const idioma = idiomaAtual?.startsWith("pt") ? "pt" : "en";
-  const arte = ARTES[variante];
-  const src = typeof arte === "string" ? arte : arte[idioma];
-  const alt = idioma === "pt" ? "MMM — Mulheres que Movem o Mundo" : "MMM — Women Moving the World";
-  return <img src={src} alt={alt} className={className} />;
+  return <img src={ARTES[variante]} alt={ALT} className={className} />;
 }
 
-/** Marca compacta dos headers: monograma + wordmark "MMM" (sem o antigo "OS"). */
+/** Marca compacta dos headers: a arte do wordmark WRW, na altura do antigo monograma. */
 export function BrandMark({ className }: { className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-2 cursor-pointer ${className ?? ""}`}>
-      <BrandLogo variante="monograma" className="h-[30px] w-[30px]" />
-      <span className="text-xl font-black tracking-tight text-white">MMM</span>
+    <span className={`inline-flex items-center cursor-pointer ${className ?? ""}`}>
+      <BrandLogo variante="wordmark" className="h-7 w-auto" />
     </span>
   );
 }

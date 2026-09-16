@@ -4,6 +4,25 @@ export const UNAUTHED_ERR_MSG = 'Please login (10001)';
 export const NOT_ADMIN_ERR_MSG = 'You do not have required permission (10002)';
 
 /**
+ * Banco fora do ar e erro de consulta, nas palavras que chegam ao navegador.
+ *
+ * Moram aqui, e não em server/banco-indisponivel.ts, pelo mesmo motivo de
+ * CODIGO_ERRO_INTERROMPIDO logo abaixo: o servidor escreve sem saber o idioma
+ * de quem vai ler — não há cabeçalho de idioma tratado em lugar nenhum, nem
+ * coluna de idioma em `users` — e é a TELA que traduz, reconhecendo o texto
+ * exato (client/src/lib/mensagem-de-erro.ts). As duas frases acima, em inglês,
+ * são traduzidas pelo mesmo caminho: elas apareciam cruas, em inglês, para
+ * quem lia a plataforma em qualquer um dos dez idiomas.
+ *
+ * O servidor continua importando estas constantes de server/banco-indisponivel.ts,
+ * que as reexporta: nenhum import de lá precisou mudar.
+ */
+export const MENSAGEM_BANCO_INDISPONIVEL = "Banco de dados indisponível; tente de novo em instantes";
+
+/** Erro do driver que NÃO é queda do banco (tabela ausente, chave duplicada, SQL inválido). */
+export const MENSAGEM_ERRO_DE_CONSULTA = "Erro ao consultar o banco de dados";
+
+/**
  * Código (não frase) que a varredura de reuniões presas grava em
  * `meetings.processing_error`. Mora em shared/ porque os dois lados o leem:
  * o servidor escreve sem saber o idioma da dona, e a tela de Reuniões traduz

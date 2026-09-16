@@ -485,7 +485,10 @@ describe("Etapa 11 — a regra dentro do motor de match", () => {
   });
 
   it("não mexe em nada que não traga verbo de direção", () => {
-    // Os 10 contatos da rede de teste seguem exatamente como antes.
+    // Os 10 contatos da rede de teste seguem como antes, com uma exceção DE
+    // PROPÓSITO: desde que a logística é serviço (decisão de 14/09), a
+    // armazenagem oferecida não casa pela categoria com quem procura um galpão —
+    // procurar um imóvel não é declarar que precisa do serviço de armazenagem.
     expect(scoreMatch(
       { slug: "compradores-no-exterior", label: "Compradores no exterior", category: "Comércio exterior" },
       { slug: "compradores-no-exterior", label: "Compradores no exterior", category: "Comércio exterior" },
@@ -493,6 +496,11 @@ describe("Etapa 11 — a regra dentro do motor de match", () => {
     expect(scoreMatch(
       { slug: "armazenagem-refrigerada", label: "Armazenagem refrigerada", category: "Logística" },
       { slug: "galpao-alfandegado", label: "Galpão alfandegado", category: "logistica" },
+    ).score).toBe(0);
+    // O bem físico continua casando pela categoria, como antes.
+    expect(scoreMatch(
+      { slug: "galpao-alfandegado", label: "Galpão alfandegado", category: "logistica" },
+      { slug: "armazem-em-santos", label: "Armazém em Santos", category: "Logística" },
     )).toEqual({ score: 60, type: "category" });
   });
 

@@ -9,15 +9,43 @@ import {
   meetingTranscriptTranslations,
 } from "../drizzle/schema";
 import { CODIGO_ERRO_INTERROMPIDO, LIMITE_PROCESSAMENTO_MS, MENSAGEM_AUDIO_GUARDADO_AUSENTE } from "@shared/const";
-import { descreverErroDeBanco, ehErroDoDriverDeBanco, MENSAGEM_ERRO_DE_CONSULTA } from "./banco-indisponivel";
+import { tokensDoTermo } from "@shared/direcao-do-termo";
+import { descreverErroDeBanco, ehErroDeBancoIndisponivel, ehErroDoDriverDeBanco, MENSAGEM_ERRO_DE_CONSULTA } from "./banco-indisponivel";
 import { exigirDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { chaveDoStorageDaDona, ObjetoAusenteNoStorageError, storageDelete, storageGetBytes, storagePut } from "./storage";
 import { GeminiIndisponivelError, transcribeWithGemini } from "./gemini";
+import {
+  apagarPendenciasDaReuniao, emailEstaNaFonte, gravarPendencias, pendenciasDaPessoaNaReuniao,
+  REGRAS_DAS_TRES_DIMENSOES, telefoneEstaNaFonte, type ItemProposto,
+} from "./network-extracao";
+import { registrarConsumoDeMinutos } from "./minutos-de-reuniao";
+import { medirDuracaoDoAudio } from "./duracao-do-audio";
 
 export const MAX_MEETING_AUDIO_BYTES = 10 * 1024 * 1024;
 export const MAX_MEETING_DURATION_SECONDS = 10 * 60;
 export const MEETING_AUDIO_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+export const MENSAGEM_REUNIAO_LONGA_DEMAIS = "No modo atual, cada reunião pode ter no máximo 10 minutos.";
+export const MENSAGEM_DURACAO_ILEGIVEL = "Não foi possível ler a duração deste áudio. Envie o arquivo em MP3, M4A, WAV, OGG ou WebM.";
+/**
+ * Folga sobre o limite medido: o gravador da tela para aos 600 s pelo relógio
+ * (consulta a cada 500 ms) e o contêiner fecha alguns décimos depois.
+ */
+export const FOLGA_DA_DURACAO_MEDIDA_SECONDS = 5;
+
+/**
+ * A duração que vale para o limite gratuito e para o contador de minutos: a
+ * MEDIDA nos bytes (duracao-do-audio.ts), nunca a que o navegador declarou —
+ * sem ler a duração, a tela mandava 60 s, e um .webm de 25 minutos passava e
+ * entrava no contador como 1 minuto. Sem medida, recusa: não há como aplicar
+ * o limite a um áudio cuja duração ninguém conhece.
+ */
+export function duracaoConferidaDoAudio(audio: Buffer): number {
+  const medida = medirDuracaoDoAudio(audio);
+  if (medida === null) throw new Error(MENSAGEM_DURACAO_ILEGIVEL);
+  if (medida > MAX_MEETING_DURATION_SECONDS + FOLGA_DA_DURACAO_MEDIDA_SECONDS) throw new Error(MENSAGEM_REUNIAO_LONGA_DEMAIS);
+  return Math.max(1, Math.round(medida));
+}
 
 /**
  * Código (não frase) gravado em `processing_error` quando a varredura dá uma
@@ -76,6 +104,12 @@ export type MeetingExtraction = {
     phone: string | null;
     email: string | null;
     confidence: number;
+    // Meu Network Inteligente (spec da Glenda de 14/09, itens 5 a 9). Opcionais
+    // na leitura: uma resposta antiga, ou de um modelo que os omita, continua
+    // valendo para a sugestão de contato, só sem pendências de Tenho/Preciso.
+    tipoPessoa?: "fisica" | "juridica" | "nao_informado";
+    oQueTenho?: ItemProposto[];
+    oQuePreciso?: ItemProposto[];
   }>;
 };
 
@@ -131,6 +165,18 @@ export function decodeMeetingAudio(base64: string, mimeType: string) {
 // ~100 s, já descontada a transcrição): teto por chamada e orçamento total
 // mais folgados que os do chat, mas ainda dentro do que a requisição aguenta.
 const TIMEOUT_DA_EXTRACAO_MS = 45_000;
+
+/** Um item de O QUE TENHO / O QUE PRECISO, com o trecho literal que o sustenta (network-extracao.ts confere). */
+const ITEM_DO_PERFIL = {
+  type: "object",
+  properties: {
+    texto: { type: "string", maxLength: 200 },
+    trecho: { type: "string", maxLength: 1000 },
+    confianca: { type: "number" },
+  },
+  required: ["texto", "trecho", "confianca"],
+  additionalProperties: false,
+} as const;
 const ORCAMENTO_DA_EXTRACAO_MS = 60_000;
 
 export async function extractMeetingData(transcript: string): Promise<MeetingExtraction> {
@@ -140,7 +186,7 @@ export async function extractMeetingData(transcript: string): Promise<MeetingExt
     messages: [
       {
         role: "system",
-        content: "Você extrai dados de transcrições de reuniões em português. Não invente dados. Retorne somente JSON estruturado.",
+        content: `Você extrai dados de transcrições de reuniões em português. Não invente dados. Retorne somente JSON estruturado.\nPara cada pessoa ou empresa em "contacts": ${REGRAS_DAS_TRES_DIMENSOES}\nEm "contacts", fullName, phone e email são o QUEM SOU; jobTitle e company ficam só como apoio e nunca substituem O QUE TENHO.`,
       },
       {
         role: "user",
@@ -182,8 +228,11 @@ export async function extractMeetingData(transcript: string): Promise<MeetingExt
                   phone: { type: ["string", "null"], maxLength: LIMITE_SUGESTAO.phone },
                   email: { type: ["string", "null"], maxLength: LIMITE_SUGESTAO.email },
                   confidence: { type: "number" },
+                  tipoPessoa: { type: "string", enum: ["fisica", "juridica", "nao_informado"] },
+                  oQueTenho: { type: "array", items: ITEM_DO_PERFIL },
+                  oQuePreciso: { type: "array", items: ITEM_DO_PERFIL },
                 },
-                required: ["fullName", "jobTitle", "company", "phone", "email", "confidence"],
+                required: ["fullName", "jobTitle", "company", "phone", "email", "confidence", "tipoPessoa", "oQueTenho", "oQuePreciso"],
                 additionalProperties: false,
               },
             },
@@ -234,6 +283,45 @@ export function ajustarSugestaoAosLimites(contato: MeetingExtraction["contacts"]
     phone: ouNulo(contato.phone, LIMITE_SUGESTAO.phone),
     email: ouNulo(contato.email, LIMITE_SUGESTAO.email),
   };
+}
+
+/** Escritas sem espaço entre as palavras: nelas o nome aparece colado ao resto da fala. */
+const ESCRITA_SEM_ESPACO = new RegExp("[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{Script=Thai}]", "u");
+
+/**
+ * O nome da pessoa sugerida reduzido às palavras que a transcrição sustenta.
+ * QUEM SOU não se inventa (spec da Glenda de 14/09, item 6), e o nome é o
+ * campo que a tela marca com ✓: a fala diz "falei com o Carlos sobre o
+ * galpão", o modelo devolve "Carlos Mendes", e o sobrenome inventado ia para
+ * o contato criado e para a pendência de nome do "Vincular".
+ *
+ * Cada palavra fica só se todos os pedaços dela aparecem, como palavra, na
+ * transcrição (em chinês, japonês e tailandês, que não separam palavras,
+ * basta aparecer no texto). Quando alguma palavra sai, as palavras curtas
+ * das pontas saem junto ("Carlos de [Mendes]" vira "Carlos"). O resultado
+ * precisa ter ao menos uma palavra de 3+ letras, a mesma exigência de
+ * nomeEstaNaFonte (network-extracao.ts); se não tiver, devolve "" e a
+ * sugestão não entra.
+ */
+export function nomeSustentadoPelaTranscricao(nome: string, transcricao: string): string {
+  const tokensDaFonte = tokensDoTermo(transcricao);
+  const daFonte = new Set(tokensDaFonte);
+  const fonteCorrida = tokensDaFonte.join(" ");
+  const sustentada = (palavra: string) => {
+    const tokens = tokensDoTermo(palavra);
+    return tokens.length > 0 && tokens.every(t => daFonte.has(t) || (ESCRITA_SEM_ESPACO.test(t) && fonteCorrida.includes(t)));
+  };
+  const significativa = (palavra: string) => tokensDoTermo(palavra).some(t => t.length >= 3 || ESCRITA_SEM_ESPACO.test(t));
+
+  const palavras = nome.trim().split(/\s+/).filter(Boolean);
+  const mantidas = palavras.filter(sustentada);
+  if (!mantidas.some(significativa)) return "";
+  if (mantidas.length === palavras.length) return nome.trim();
+  let inicio = 0;
+  let fim = mantidas.length;
+  while (!significativa(mantidas[inicio])) inicio++;
+  while (!significativa(mantidas[fim - 1])) fim--;
+  return mantidas.slice(inicio, fim).join(" ");
 }
 
 // A tradução pede a transcrição INTEIRA de volta: até 48 000 caracteres de
@@ -449,7 +537,7 @@ export async function processMeetingRecording(input: {
   language: string;
 }) {
   if (input.durationSeconds < 1 || input.durationSeconds > MAX_MEETING_DURATION_SECONDS) {
-    throw new Error("No modo atual, cada reunião pode ter no máximo 10 minutos.");
+    throw new Error(MENSAGEM_REUNIAO_LONGA_DEMAIS);
   }
   const db = await exigirDb();
   const [meeting] = await db.select().from(meetings).where(and(eq(meetings.id, input.meetingId), eq(meetings.ownerId, input.ownerId))).limit(1);
@@ -462,9 +550,13 @@ export async function processMeetingRecording(input: {
   // para a reunião que ainda espera áudio ('recording'): um reenvio com áudio
   // ruim não rebaixa reunião pronta, nem a que outra execução processa — e,
   // como 'deleted' não é 'recording', a falha não ressuscita reunião excluída.
+  // A duração declarada pela tela só serve de filtro barato acima; a que vale
+  // (limite, gravação, transcrição e contador) é a medida nos bytes.
   let audio: Buffer;
+  let duracaoMedida: number;
   try {
     audio = decodeMeetingAudio(input.audioBase64, input.mimeType);
+    duracaoMedida = duracaoConferidaDoAudio(audio);
   } catch (error) {
     await db.update(meetings).set({
       status: "failed",
@@ -506,7 +598,7 @@ export async function processMeetingRecording(input: {
       storageUrl: uploaded.url,
       mimeType: input.mimeType,
       sizeBytes: audio.length,
-      durationSeconds: Math.round(input.durationSeconds),
+      durationSeconds: duracaoMedida,
       expiresAt: ficha + MEETING_AUDIO_TTL_MS,
       createdAt: ficha,
     });
@@ -516,7 +608,7 @@ export async function processMeetingRecording(input: {
       ownerId: input.ownerId,
       audio,
       mimeType: input.mimeType,
-      durationSeconds: input.durationSeconds,
+      durationSeconds: duracaoMedida,
       language: input.language,
       ficha,
       limparAntes: false,
@@ -625,17 +717,54 @@ async function processarAudioGuardado(db: Banco, execucao: {
   // não entra: full_name é NOT NULL e o "" passaria, virando um cartão
   // "Criar contato" sem ninguém para criar. O filtro é DEPOIS do ajuste,
   // que é quem apara os espaços.
+  //
+  // QUEM SOU não se inventa (spec da Glenda de 14/09, item 6): o nome fica só
+  // com as palavras que a transcrição sustenta (sem nenhuma, a sugestão não
+  // entra), e telefone e e-mail que ela não sustenta ficam vazios, para a dona
+  // completar — o modelo às vezes "completa" um sobrenome ou um número, ou
+  // monta um e-mail com o nome da empresa. O que a pessoa TEM e PRECISA vira
+  // pendência à parte (network_sugestoes), só com trecho literal conferido.
   const sugestoes = extraction.contacts
-    .map(contact => ({ ...ajustarSugestaoAosLimites(contact), confidence: contact.confidence }))
+    .map(contact => {
+      const ajustada = ajustarSugestaoAosLimites(contact);
+      return {
+        ...ajustada,
+        fullName: nomeSustentadoPelaTranscricao(ajustada.fullName, transcription.text),
+        phone: telefoneEstaNaFonte(ajustada.phone, transcription.text) ? ajustada.phone : null,
+        email: emailEstaNaFonte(ajustada.email, transcription.text) ? ajustada.email : null,
+        id: crypto.randomUUID(),
+        confidence: contact.confidence,
+        pendencias: pendenciasDaPessoaNaReuniao(contact, transcription.text),
+      };
+    })
     .filter(contact => contact.fullName);
   if (sugestoes.length) {
     await db.insert(meetingContactSuggestions).values(sugestoes.map(contact => ({
-      id: crypto.randomUUID(), meetingId, ownerId,
+      id: contact.id, meetingId, ownerId,
       fullName: contact.fullName, jobTitle: contact.jobTitle, company: contact.company,
       phone: contact.phone, email: contact.email, sourceEntityIds: [],
       confidence: confiancaParaGravar(contact.confidence), status: "pending" as const,
       createdAt: completedAt, updatedAt: completedAt,
     })));
+    for (const contact of sugestoes) {
+      await gravarPendencias(db, {
+        ownerId, origem: "reuniao", contactId: null, meetingId, meetingSuggestionId: contact.id, linhas: contact.pendencias,
+      });
+    }
+  }
+  // Contador de minutos do Meu Network Inteligente (itens 4 e 19). ANTES da
+  // promoção, no bloco de escritas da ficha: gravado depois do 'ready', uma
+  // queda do banco entre os dois perdia a linha para sempre — reunião pronta
+  // não se reprocessa, e resumoDeMinutos subcontava o mês. Aqui, banco fora do
+  // ar derruba a execução, a reunião vira falha e o reprocessamento conta;
+  // o índice único (dona, origem, referência) impede contar duas vezes, e
+  // exclusão no meio não apaga a linha, porque a IA já transcreveu. Outro erro
+  // (o banco respondeu) não tira da dona a reunião pronta: fica no log.
+  try {
+    await registrarConsumoDeMinutos(db, { ownerId, origem: "reuniao", referencia: meetingId, segundos: execucao.durationSeconds });
+  } catch (erro) {
+    if (ehErroDeBancoIndisponivel(erro)) throw erro;
+    console.warn("[Reuniões] o contador de minutos não registrou esta reunião:", erro instanceof Error ? erro.message : erro);
   }
   // A releitura acima e este UPDATE não são atômicos: exclusão, reprocessamento
   // novo ou varredura podem ter entrado entre os dois. O WHERE com a ficha faz
@@ -771,12 +900,16 @@ async function executarReprocessamento(db: Banco, execucao: {
       if (erro instanceof ObjetoAusenteNoStorageError) throw new Error(MENSAGEM_AUDIO_GUARDADO_AUSENTE, { cause: erro });
       throw new Error(MENSAGEM_AUDIO_GUARDADO_ILEGIVEL, { cause: erro });
     }
+    // Medida de novo nos bytes lidos: a gravação guardada antes da medição no
+    // servidor carrega a duração que o navegador declarou, e é ela que o
+    // contador de minutos receberia.
+    const duracaoMedida = duracaoConferidaDoAudio(audio);
     await processarAudioGuardado(db, {
       meetingId: execucao.meetingId,
       ownerId: execucao.ownerId,
       audio,
       mimeType: execucao.mimeType,
-      durationSeconds: execucao.durationSeconds,
+      durationSeconds: duracaoMedida,
       language: execucao.language,
       ficha: execucao.ficha,
       limparAntes: true,
@@ -944,6 +1077,9 @@ async function apagarDerivadosDaReuniao(db: Banco, ownerId: string, meetingId: s
  */
 async function apagarDerivadosSemGravacao(db: Banco, ownerId: string, meetingId: string) {
   await db.delete(meetingContactSuggestions).where(and(eq(meetingContactSuggestions.meetingId, meetingId), eq(meetingContactSuggestions.ownerId, ownerId)));
+  // As pendências de Quem Sou / Tenho / Preciso tiradas desta reunião carregam
+  // trechos literais da transcrição: saem com ela.
+  await apagarPendenciasDaReuniao(db, ownerId, meetingId);
   await db.delete(meetingEntities).where(and(eq(meetingEntities.meetingId, meetingId), eq(meetingEntities.ownerId, ownerId)));
   await db.delete(meetingTranscripts).where(and(eq(meetingTranscripts.meetingId, meetingId), eq(meetingTranscripts.ownerId, ownerId)));
   // As TRADUÇÕES são cópias da transcrição em outros idiomas: apagar só o

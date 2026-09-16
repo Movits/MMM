@@ -8,6 +8,7 @@ import {
   MENSAGEM_BANCO_INDISPONIVEL,
   MENSAGEM_ERRO_DE_CONSULTA,
 } from "../banco-indisponivel";
+import { exigirCadastroConcluido } from "../cadastro-concluido";
 import type { TrpcContext } from "./context";
 
 const t = initTRPC.context<TrpcContext>().create({
@@ -90,4 +91,11 @@ const requireUser = t.middleware(async opts => {
   });
 });
 
-export const protectedProcedure = publicProcedure.use(requireUser);
+// Cadastro não concluído (logo, sem o Termo Geral de Uso aceito) só alcança o
+// que o próprio cadastro precisa: ver server/cadastro-concluido.ts.
+const requireCadastroConcluido = t.middleware(async ({ ctx, path, next }) => {
+  if (ctx.user) exigirCadastroConcluido(ctx.user, path);
+  return next();
+});
+
+export const protectedProcedure = publicProcedure.use(requireUser).use(requireCadastroConcluido);

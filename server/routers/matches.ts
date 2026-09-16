@@ -4,6 +4,8 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { aiMatchSuggestions, contactAssets, contactNeeds, privateContacts } from "../../drizzle/schema";
 import { exigirDb } from "../db";
+// Todo recálculo daqui também registra as conexões internas novas (Meu Network
+// Inteligente, item 16): o registro mora no fim de recalculatePrivateMatches.
 import { recalculatePrivateMatches, slugifyMatchTag } from "../match-service";
 import { protectedProcedure, router } from "../_core/trpc";
 import { hasValidConsent } from "./consent";

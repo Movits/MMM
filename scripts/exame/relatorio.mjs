@@ -177,6 +177,32 @@ export function resumirErro(resposta, separador = "") {
   return partes.length ? separador + partes.join(" ") : "";
 }
 
+/**
+ * Termo Geral de Uso vigente em `document_versions` (contagem de isCurrent = 1).
+ *
+ * Sem versão vigente, `profile.completeOnboarding` lança PRECONDITION_FAILED
+ * (server/termo-geral-de-uso.ts) e NENHUM cadastro novo conclui. A migração 0013
+ * só abre o valor no enum; a versão nasce à mão, com publicar-documento.mjs,
+ * depois de a 0013 estar aplicada. Sem esta checagem o exame pós-deploy saía
+ * verde com o cadastro travado. Mais de uma vigente também reprova: o índice
+ * único de document_versions deveria impedir, e `getCurrentDocument` pegaria uma
+ * qualquer (LIMIT 1 sem ordem).
+ */
+export const COMANDO_PUBLICAR_TERMO_GERAL =
+  "node scripts/publicar-documento.mjs termo_geral_de_uso docs/termos/termo-geral-de-uso.md --sem-aviso --confirmo-producao";
+
+export function avaliarTermoGeralVigente(vigentes) {
+  const n = Number(vigentes);
+  if (n === 1) return { ok: true, detalhe: "1 versão vigente" };
+  if (n === 0) {
+    return {
+      ok: false,
+      detalhe: `NENHUMA versão vigente: todo cadastro novo para na última etapa. Com autorização do Roberto: ${COMANDO_PUBLICAR_TERMO_GERAL}`,
+    };
+  }
+  return { ok: false, detalhe: `${Number.isFinite(n) ? n : "?"} versões vigentes: getCurrentDocument escolhe uma qualquer` };
+}
+
 /** Cabeçalho combinado RateLimit (draft-7): "limit=100, remaining=87, reset=42". */
 export function analisarRateLimit(valor) {
   if (!valor || typeof valor !== "string") return null;

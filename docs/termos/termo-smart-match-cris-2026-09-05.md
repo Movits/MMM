@@ -1,14 +1,19 @@
-# Termo de Autorização do Smart Match — redação da Cris (recebida em 05/09/2026)
+<!-- NOTA INTERNA — não vai para o texto que a Membra aceita.
 
-Texto recebido pelo Roberto no WhatsApp em 05/09/2026 às 10:12 (arquivo `1 Termo Autorizacao Smart Match.docx`, 11 KB), transcrito sem alteração. Ainda NÃO está publicado: a versão vigente em produção continua sendo o texto provisório (versão 1, publicada em 04/09/2026). Publicar é rodar `node scripts/publicar-documento.mjs termo_smart_match <este arquivo> --confirmo-producao`, o que obriga toda a base a aceitar de novo.
+     Termo de Autorização do Smart Match — redação da Cris (recebida em 05/09/2026)
 
-## O que precisa ser ajustado antes de virar a versão 2
+     Texto recebido pelo Roberto no WhatsApp em 05/09/2026 às 10:12 (arquivo
+     "1 Termo Autorizacao Smart Match.docx", 11 KB), transcrito sem alteração.
+     Ainda NÃO está publicado: a versão vigente em produção continua sendo o texto
+     provisório (versão 1, publicada em 04/09/2026). Publicar é rodar
+       node scripts/publicar-documento.mjs termo_smart_match <este arquivo> --confirmo-producao
+     o que obriga toda a base a aceitar de novo.
 
-1. **Não cobre a base particular de contatos.** O texto autoriza só o cruzamento entre perfis de membras; o cruzamento principal do produto (o que cada contato da base particular possui × o que os outros procuram, etapa 7) fica sem consentimento escrito. O texto provisório em `docs/termos/termo-smart-match-provisorio.md` cobre os dois.
-2. **Promete o que o app não faz hoje:** "histórico de negócios fechados" como critério e "notificar por e-mail". Não é erro jurídico, mas convém alinhar com o que existe.
-3. **Nome:** o texto diz "WMW – Women Moving the World, Plataforma Internacional"; o app e o termo provisório dizem "MMM – Mulheres que Movem o Mundo". Confirmar com a Glenda qual é o nome jurídico.
-
----
+     O script publica só o corpo do termo: este bloco de comentário, e tudo a
+     partir da linha marcadora de notas internas lá embaixo, ficam de fora
+     (recortarCorpoDoTermo, em scripts/publicar-documento.mjs). O que sai daqui
+     para o banco é a transcrição da Cris, começando na linha logo abaixo.
+-->
 
 WMW – Women Moving the World, Plataforma Internacional
 TERMO DE AUTORIZAÇÃO PARA CRUZAMENTO INTELIGENTE DE DADOS ("SMART MATCH")
@@ -32,3 +37,11 @@ O tratamento de dados pessoais para fins de Smart Match tem como base o consenti
 Este Termo vigora enquanto a funcionalidade Smart Match estiver ativada no perfil da Membra, extinguindo-se automaticamente com a desativação da funcionalidade ou com o cancelamento do cadastro da Membra na Plataforma.
 Ao clicar em "Ativar Smart Match", a Membra declara ter lido e compreendido este Termo e manifesta seu consentimento livre e informado nos termos aqui descritos.
 WMW – Women Moving the World, Plataforma Internacional — Versão 1.0
+
+<!-- NOTAS INTERNAS -->
+
+## O que precisa ser ajustado antes de virar a versão 2
+
+1. **Não cobre a base particular de contatos.** O texto autoriza só o cruzamento entre perfis de membras; o cruzamento principal do produto (o que cada contato da base particular possui × o que os outros procuram, etapa 7) fica sem consentimento escrito. O texto provisório em `docs/termos/termo-smart-match-provisorio.md` cobre os dois.
+2. **Promete o que o app não faz hoje:** "histórico de negócios fechados" como critério e "notificar por e-mail". Não é erro jurídico, mas convém alinhar com o que existe.
+3. **Nome:** o texto diz "WMW – Women Moving the World, Plataforma Internacional"; o app e o termo provisório dizem "MMM – Mulheres que Movem o Mundo". Confirmar com a Glenda qual é o nome jurídico.

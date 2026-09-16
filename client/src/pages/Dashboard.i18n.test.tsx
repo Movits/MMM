@@ -89,7 +89,7 @@ function match(matchId: number, userSeen: boolean, extra: Record<string, unknown
   };
 }
 
-const perfil = { profile: { displayName: "Ana", currentRole: "CEO", city: "Lisboa", profileCompleteness: 80 } };
+const perfil = { profile: { displayName: "Ana", jobTitle: "CEO", city: "Lisboa", profileCompleteness: 80 } };
 
 // A tela tem dois atrasos de tempo real: o banner Ouro entra 500 ms depois
 // de montar e a troca de aba leva 180 ms (animação). Todo `findBy*` que espera
@@ -103,9 +103,18 @@ const ESPERA = { timeout: 3000 };
 // fallback ("Usuária"; "Membro" é o que um tradutor apressado escreveria).
 // Com a tela em inglês nenhuma pode aparecer no texto do documento; o teste
 // em português prova que o regex reconhece o texto de verdade (não é vazio).
-const PORTUGUES = /oportunidades|Salas|Ver detalhes|novos|convite|Boas-vindas|Recomendadas|Usuário|Membro|Identidade|revelar/i;
+const PORTUGUES = /oportunidades|Salas|Ver detalhes|novos|novas|conexõ|convite|Boas-vindas|Recomendadas|Usuário|Membro|Identidade|revelar/i;
 function semPortugues(onde: string) {
   expect(document.body.textContent, onde).not.toMatch(PORTUGUES);
+}
+
+// "match" virou "conexão" em todas as telas (grupo Projetos IA, 14/09). Ficam de
+// fora só os nomes próprios Smart Match e Business Match. A saudação e o convite
+// de boas-vindas são conferidos palavra por palavra, e a varredura garante que
+// "match" não sobrou em canto nenhum da tela.
+function semMatch(onde: string) {
+  const texto = (document.body.textContent ?? "").replace(/Smart Match|Business Match(es)?/g, "");
+  expect(texto, onde).not.toMatch(/match/i);
 }
 
 // Três matches não vistos, um convite pendente dirigido a mim, uma
@@ -150,9 +159,10 @@ describe("Dashboard em inglês — nada em português fixo", () => {
     render(<Dashboard />);
 
     // Saudação: a parte destacada é o plural certo, o complemento vem de outra chave.
-    expect(screen.getByText("3 new matches")).toBeInTheDocument();
+    expect(screen.getByText("3 new suggested connections")).toBeInTheDocument();
     expect(screen.getByText(/waiting for your attention/)).toBeInTheDocument();
-    expect(screen.queryByText(/novos matches/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/novas conexões|novos matches/)).not.toBeInTheDocument();
+    semMatch("saudação em inglês");
     expect(screen.queryByText(/esperando pela sua atenção/)).not.toBeInTheDocument();
 
     // Convite pendente dirigido a mim: singular.
@@ -180,11 +190,12 @@ describe("Dashboard em inglês — nada em português fixo", () => {
     render(<Dashboard />);
 
     // "alimentos" e o rótulo antigo "Beleza & Cosméticos" viram a chave de
-    // interesse e saem em inglês; "investor" é opção do onboarding; texto
-    // livre sem sinônimo passa intacto.
+    // interesse e saem em inglês; "investor" é chave antiga de "O que você
+    // busca?" e sai com o rótulo da opção nova equivalente (investimento_capital,
+    // troca de 14/09, sem migrar dado); texto livre sem sinônimo passa intacto.
     expect(screen.getByText("Food & Beverage")).toBeInTheDocument();
     expect(screen.getByText("Beauty & Cosmetics")).toBeInTheDocument();
-    expect(screen.getByText("Investor")).toBeInTheDocument();
+    expect(screen.getByText("Investment / Capital")).toBeInTheDocument();
     expect(screen.getByText("Financeiro & Fintechs")).toBeInTheDocument();
     expect(screen.queryByText("Alimentos & Bebidas")).not.toBeInTheDocument();
 
@@ -228,19 +239,23 @@ describe("Dashboard em inglês — nada em português fixo", () => {
     expect(screen.queryByText(/Falta assinar/)).not.toBeInTheDocument();
   });
 
-  it("banner do Selo Ouro e saudação de boas-vindas sem matches", async () => {
+  it("banner do Status Ouro e saudação de boas-vindas sem matches", async () => {
     duble.respostas["matches.list"] = { data: [] };
     duble.respostas["connections.list"] = { data: [] };
     duble.respostas["notifications.list"] = { data: [{ id: 1, type: "gold_granted", isRead: false, body: null }] };
     await i18n.changeLanguage("en");
     render(<Dashboard />);
 
-    expect(screen.getByText("Welcome to MMM! Generate your first matches below")).toBeInTheDocument();
+    expect(screen.getByText("Welcome to WRW! Generate your first suggested connections below")).toBeInTheDocument();
+    semMatch("boas-vindas em inglês");
     // O banner entra meio segundo depois (tempo real: por isso a ESPERA de 3 s).
-    expect(await screen.findByText("Congratulations! You received the Gold Seal!", {}, ESPERA)).toBeInTheDocument();
-    expect(screen.getByText(/Gold Institutional Exclusivity Seal/)).toBeInTheDocument();
+    // Ouro é categoria premium (Governança, 14/09/2026): o banner fala de
+    // status ativo, não de selo concedido por reconhecimento.
+    expect(await screen.findByText("Welcome to Gold Status!", {}, ESPERA)).toBeInTheDocument();
+    expect(screen.getByText("Your Gold Status, WRW's premium tier, is now active.")).toBeInTheDocument();
+    expect(screen.queryByText(/Seal/)).not.toBeInTheDocument();
     expect(screen.getByTitle("Close")).toBeInTheDocument();
-    expect(screen.queryByText(/Parabéns/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Status Ouro/)).not.toBeInTheDocument();
   });
 });
 
@@ -248,12 +263,14 @@ describe("Dashboard em português — o que a usuária lia continua igual", () =
   it("saudação e convite no plural/singular de sempre, aba e barras", async () => {
     render(<Dashboard />);
 
-    expect(screen.getByText("3 novos matches")).toBeInTheDocument();
+    expect(screen.getByText("3 novas conexões sugeridas")).toBeInTheDocument();
+    semMatch("saudação em português");
     expect(screen.getByText(/esperando pela sua atenção/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "1 convite para responder" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "🔐 Salas de Negociação" })).toBeInTheDocument();
     expect(screen.getByText("Alimentos & Bebidas")).toBeInTheDocument();
-    expect(screen.getByText("Investidor")).toBeInTheDocument();
+    // "investor" gravado antes de 14/09 sai com o rótulo da opção nova.
+    expect(screen.getByText("Investimento / Capital")).toBeInTheDocument();
     // O regex da varredura em inglês reconhece o português de verdade: se
     // parasse de casar aqui, a varredura passaria à toa.
     expect(document.body.textContent).toMatch(PORTUGUES);
@@ -263,10 +280,18 @@ describe("Dashboard em português — o que a usuária lia continua igual", () =
     expect(screen.getByText("Renda")).toBeInTheDocument();
   });
 
-  it("um único match não visto: singular", () => {
+  it("uma única conexão sugerida não vista: singular", () => {
     duble.respostas["matches.list"] = { data: [match(1, false)] };
     render(<Dashboard />);
-    expect(screen.getByText("1 novo match")).toBeInTheDocument();
+    expect(screen.getByText("1 nova conexão sugerida")).toBeInTheDocument();
+  });
+
+  it("boas-vindas sem conexões sugeridas: convite a gerar as primeiras conexões, sem 'match'", () => {
+    duble.respostas["matches.list"] = { data: [] };
+    duble.respostas["connections.list"] = { data: [] };
+    render(<Dashboard />);
+    expect(screen.getByText("Boas-vindas à WRW! Gere suas primeiras conexões sugeridas abaixo")).toBeInTheDocument();
+    semMatch("boas-vindas em português");
   });
 
   it("todos vistos: total de oportunidades compatíveis, no plural certo", () => {
@@ -420,12 +445,14 @@ describe("Dashboard em inglês — varredura do texto inteiro, aba por aba", () 
     await i18n.changeLanguage("en");
     render(<Dashboard />);
 
-    expect(await screen.findByText("Congratulations! You received the Gold Seal!", {}, ESPERA)).toBeInTheDocument();
+    expect(await screen.findByText("Welcome to Gold Status!", {}, ESPERA)).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: "View details" })[0]);
     expect(screen.getByText("Goals")).toBeInTheDocument();
     semPortugues("aba de matches, cartão expandido, banner Ouro");
+    semMatch("aba de conexões sugeridas, cartão expandido, banner Ouro");
 
-    fireEvent.click(screen.getByRole("button", { name: "Connections (1)" }));
+    // A aba conta as conexões EFETIVADAS (item 6.1): nenhuma aceita, nenhum número.
+    fireEvent.click(screen.getByRole("button", { name: "Connections" }));
     expect(await screen.findByRole("button", { name: "Accept and reveal" }, ESPERA)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
     semPortugues("aba de conexões");
@@ -445,19 +472,23 @@ describe("Dashboard em inglês — varredura do texto inteiro, aba por aba", () 
 });
 
 describe("o passo do distribuidor no idioma da tela", () => {
-  it("inglês: 'Under review by the distributor' no cartão e 'Under review' na aba Conexões, nada em português", async () => {
+  it("inglês: 'Our consultant will contact you soon' no cartão e 'Under review' na aba Conexões, nada em português", async () => {
     await i18n.changeLanguage("en");
     duble.respostas["matches.list"] = { data: [match(1, false, { connectionId: 7, connectionStatus: "in_review", souDestinataria: false })] };
     duble.respostas["connections.list"] = {
       data: [{ id: 7, status: "in_review", souDestinataria: false, outraParteId: null, displayName: null, primarySpecialty: "finance", city: "Porto", message: null }],
     };
     render(<Dashboard />);
-    expect(screen.getByRole("button", { name: "Under review by the distributor" })).toBeDisabled();
+    // O cartão diz o que a pessoa precisa saber (o consultor fará contato); o
+    // selo da aba Conexões continua sendo o estado do pedido ("Under review").
+    expect(screen.getByRole("button", { name: "Our consultant will contact you soon" })).toBeDisabled();
     expect(screen.queryByText(/Em análise/)).not.toBeInTheDocument();
     semPortugues("cartão em análise");
 
-    fireEvent.click(screen.getByRole("button", { name: "Connections (1)" }));
-    expect(await screen.findByText("🔎 Under review")).toBeInTheDocument();
+    // A aba conta as conexões EFETIVADAS (item 6.1): nenhuma aceita, nenhum número.
+    fireEvent.click(screen.getByRole("button", { name: "Connections" }));
+    // Cabeçalho do grupo e selo do cartão, desde o agrupamento por status.
+    expect((await screen.findAllByText("🔎 Under review")).length).toBeGreaterThan(0);
     semPortugues("aba Conexões em análise");
   });
 

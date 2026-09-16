@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EnrichmentChat } from "@/components/EnrichmentChat";
 import { ErroDeConsulta } from "@/components/ErroDeConsulta";
@@ -17,6 +17,8 @@ import {
 import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
 import { AutorizacaoAcervoOuro } from "@/components/AutorizacaoAcervoOuro";
+import { AlertaDeCompletude } from "@/components/CompletudeDoContato";
+import { camposFaltantes } from "@shared/completude-do-contato";
 
 // ─── Tags de perfil predefinidas ─────────────────────────────────────────────
 // Os valores em si permanecem em português: é o que fica salvo no contato
@@ -66,6 +68,9 @@ type Contact = {
   notes?: string | null;
   enrichmentStatus?: string | null;
   nivelVisibilidade?: "privado" | "ouro" | "publico" | null;
+  // Meu Network Inteligente (spec de 14/09, itens 13 e 14)
+  codigoAnonimo?: string | null;
+  disponivelRedeGlobal?: boolean | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -240,23 +245,23 @@ function ContactForm({ initial, onSave, onClose, loading }: {
     e.target.value = ""; // permite escolher o mesmo arquivo de novo
     if (!file) return;
     if (!(TIPOS_DE_IMAGEM as readonly string[]).includes(file.type)) {
-      toast.error("Formato não suportado: envie JPG, PNG ou WebP.");
+      toast.error(t("network.uploadFormatoNaoSuportado"));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("O arquivo deve ter no máximo 10 MB.");
+      toast.error(t("network.uploadArquivoMuitoGrande"));
       return;
     }
     const reader = new FileReader();
-    reader.onerror = () => toast.error("Não foi possível ler o arquivo. Tente de novo.");
+    reader.onerror = () => toast.error(t("network.uploadErroLerArquivo"));
     reader.onload = () => {
       const conteudo = String(reader.result ?? "");
-      if (!conteudo) { toast.error("Não foi possível ler o arquivo. Tente de novo."); return; }
+      if (!conteudo) { toast.error(t("network.uploadErroLerArquivo")); return; }
       mut.mutate(
         { fileName: file.name, mimeType: file.type as (typeof TIPOS_DE_IMAGEM)[number], dataBase64: conteudo },
         {
           onSuccess: res => set(campo, res.url),
-          onError: err => toast.error(err.message || "Não foi possível enviar a imagem."),
+          onError: err => toast.error(err.message || t("network.uploadErroEnviarImagem")),
         },
       );
     };
@@ -491,7 +496,7 @@ function ContactDetail({ contact: contatoDaLista, onEdit, onClose }: {
   onEdit: (contato: Contact) => void;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<"info" | "history">("info");
 
   // O contato da lista é um retrato de quando a lista foi carregada. O chat
@@ -564,6 +569,17 @@ function ContactDetail({ contact: contatoDaLista, onEdit, onClose }: {
   const removeNeedMut = trpc.network.removeNeed.useMutation(aoRemoverItem);
   const removendoItem = removeAssetMut.isPending || removeNeedMut.isPending;
 
+  // Meu Network Inteligente: o que falta neste contato (Quem Sou, O Que Tenho,
+  // O Que Preciso), pela mesma régua do painel. Só com possui/procura lido: em
+  // erro ou carregando não se sabe o que falta, e o alerta não afirma nada.
+  const faltando = possuiProcura && !erroPossuiProcura
+    ? camposFaltantes({
+        fullName: contact.fullName, phone: contact.phone, whatsapp: contact.whatsapp, email: contact.email,
+        totalTenho: possuiProcura.possui.length, totalPreciso: possuiProcura.procura.length,
+      })
+    : [];
+  const chatDoContato = useRef<HTMLDivElement>(null);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -628,6 +644,28 @@ function ContactDetail({ contact: contatoDaLista, onEdit, onClose }: {
             )}
           </div>
         </div>
+
+        {faltando.length > 0 && (
+          <AlertaDeCompletude
+            faltando={faltando}
+            aoCompletarPorTexto={() => chatDoContato.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          />
+        )}
+
+        {/* Meu Network Inteligente: ID anônimo, SIM/NÃO da rede global e o
+            atalho para o perfil do contato, onde ficam as sugestões da IA, o
+            completar por voz, as conexões e a memória de relacionamento. */}
+        <Link href={`/meu-network-inteligente/contatos/${contact.id}`}
+          className="mx-6 mb-4 block rounded-xl border border-[#c98f70]/25 bg-[#c98f70]/[0.06] p-4 transition-colors hover:border-[#c98f70]/45">
+          <span className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#efcba8]">{t("networkPanel.title")}</span>
+            {contact.codigoAnonimo && <code className="font-mono text-xs font-bold text-[#efcba8]">{contact.codigoAnonimo}</code>}
+          </span>
+          <span className="mt-1 block text-xs text-white/60">
+            {contact.disponivelRedeGlobal ? t("networkInteligente.detailLink.availableYes") : t("networkInteligente.detailLink.availableNo")}
+          </span>
+          <span className="mt-1 block text-sm font-semibold text-[#c98f70]">{t("networkInteligente.detailLink.open")} →</span>
+        </Link>
 
         {/* Comunicação */}
         {(contact.phone || contact.whatsapp || contact.email) && (
@@ -785,13 +823,15 @@ function ContactDetail({ contact: contatoDaLista, onEdit, onClose }: {
         <div className="px-6 py-3 border-t border-white/8 bg-white/2">
           <p className="text-xs text-white/25">
             {t("network.rodapeDatas", {
-              criado: new Date(contact.createdAt).toLocaleDateString("pt-BR"),
-              atualizado: new Date(contact.updatedAt).toLocaleDateString("pt-BR"),
+              criado: new Date(contact.createdAt).toLocaleDateString(i18n.language),
+              atualizado: new Date(contact.updatedAt).toLocaleDateString(i18n.language),
             })}
           </p>
         </div>
-        {/* Chat de Enriquecimento com IA */}
-        <EnrichmentChat contactId={contact.id} contactName={contact.fullName} />
+        {/* Chat de Enriquecimento com IA — o "Completar por texto" do alerta rola até aqui */}
+        <div ref={chatDoContato}>
+          <EnrichmentChat contactId={contact.id} contactName={contact.fullName} />
+        </div>
         </>)}
 
         {/* Aba Histórico IA */}
@@ -838,7 +878,7 @@ function ContactDetail({ contact: contatoDaLista, onEdit, onClose }: {
                              isUndone ? t("network.statusDesfeito") :
                              item.status === "edited" ? t("network.statusEditado") :
                              t("network.statusConfirmado")}
-                            {item.actionedAt && ` · ${new Date(item.actionedAt).toLocaleDateString("pt-BR")}`}
+                            {item.actionedAt && ` · ${new Date(item.actionedAt).toLocaleDateString(i18n.language)}`}
                           </p>
                         </div>
                         {!isIgnored && !isUndone && (
@@ -876,6 +916,26 @@ export default function Network() {
   const [editContact, setEditContact] = useState<Contact | null>(null);
   const [viewContact, setViewContact] = useState<Contact | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+
+  // Atalho do painel Meu Network Inteligente: /network?contato=<id> abre o
+  // detalhe daquele contato. A posse é do servidor (network.get filtra pela
+  // dona): id de outra pessoa ou inexistente dá erro, e nada abre.
+  const [contatoDoLink, setContatoDoLink] = useState<number | null>(() => {
+    const id = Number(new URLSearchParams(window.location.search).get("contato"));
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+  });
+  const contatoLinkado = trpc.network.get.useQuery(
+    { id: contatoDoLink ?? 0 },
+    { enabled: isAuthenticated && contatoDoLink !== null, retry: false, refetchOnWindowFocus: false },
+  );
+  useEffect(() => {
+    if (contatoDoLink === null || (!contatoLinkado.data && !contatoLinkado.isError)) return;
+    if (contatoLinkado.data) setViewContact(contatoLinkado.data);
+    else toast.error(t("networkPanel.contactNotFound"));
+    setContatoDoLink(null);
+    // Tira o ?contato= da barra: recarregar a página não reabre o detalhe.
+    window.history.replaceState(window.history.state, "", window.location.pathname);
+  }, [contatoDoLink, contatoLinkado.data, contatoLinkado.isError, t]);
 
   // Debounce da busca
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -1018,7 +1078,7 @@ export default function Network() {
   return (
     <div className="min-h-screen bg-[#151312] text-white">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#151312]/95 backdrop-blur-sm border-b border-white/8 px-4 sm:px-6 py-4">
+      <div className="sticky top-16 z-10 bg-[#151312]/95 backdrop-blur-sm border-b border-white/8 px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="text-white/40 hover:text-white/70 transition-colors">

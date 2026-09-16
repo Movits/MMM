@@ -23,7 +23,7 @@ const CONFIDENCE_WEIGHTS = {
   declaration_only: 5, // Apenas declaração textual
 } as const;
 
-// ─── Módulos obrigatórios para nível Prata ───────────────────────────────────
+// ─── Módulos obrigatórios para a identidade verificada ───────────────────────
 const MANDATORY_MODULES = ["identity"] as const;
 
 // ─── Status de ciclo de vida do dado ────────────────────────────────────────
@@ -49,10 +49,10 @@ const SIVC_MODULES = {
   },
   corporate: {
     label: "Corporativo e Societário",
-    description: "Razão Social, CNPJ, situação cadastral, quadro societário",
+    description: "Razão Social, Número de Cadastro Empresarial, situação cadastral, quadro societário",
     mandatory: false,
     fields: ["company_name", "cnpj", "cnae", "qsa_link"],
-    docTypes: ["Contrato Social", "Cartão CNPJ", "Certidão da Junta Comercial"],
+    docTypes: ["Contrato Social", "Comprovante do Número de Cadastro Empresarial", "Certidão da Junta Comercial"],
   },
   finance: {
     label: "Finanças Corporativas",
@@ -130,7 +130,12 @@ function calculateOverallScore(checks: Array<{ confidenceScore: number; weight: 
   };
 }
 
-// ─── State Machine: Bronze vs Prata ─────────────────────────────────────────
+// ─── State Machine: verificação concluída ou não ────────────────────────────
+// A coluna `sivc_verifications.level` guarda "bronze"/"silver" desde o Manus e
+// fica assim (dado existente, sem migração), mas mede só a VERIFICAÇÃO DE
+// IDENTIDADE. Nunca mexeu em `users.role` e continua sem mexer: o nível de
+// membro Bronze/Prata é a qualidade do perfil (shared/qualificacao-do-perfil.ts,
+// Governança de 14/09/2026). Por isso as mensagens não falam mais em Prata.
 function classifyLevel(mandatoryPassed: boolean, score: number): {
   level: "bronze" | "silver";
   message: string;
@@ -138,12 +143,12 @@ function classifyLevel(mandatoryPassed: boolean, score: number): {
   if (mandatoryPassed && score >= 80) {
     return {
       level: "silver",
-      message: "Parabéns! Todas as informações obrigatórias foram verificadas com sucesso. Sua conta foi promovida automaticamente para o nível Prata.",
+      message: "Parabéns! Todas as informações obrigatórias foram verificadas com sucesso. Sua identidade está verificada.",
     };
   }
   return {
     level: "bronze",
-    message: "Você foi classificado como Bronze porque ainda existem informações obrigatórias que não puderam ser comprovadas. Assim que todos os documentos e verificações forem concluídos com sucesso, sua conta será reavaliada automaticamente.",
+    message: "Sua verificação ainda não foi concluída porque existem informações obrigatórias que não puderam ser comprovadas. Assim que todos os documentos e verificações forem concluídos com sucesso, ela será reavaliada automaticamente.",
   };
 }
 

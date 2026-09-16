@@ -38,9 +38,20 @@ export function ExcluirMinhaConta() {
   });
 
   const excluir = trpc.conta.excluirMinhaConta.useMutation({
-    onSuccess: () => {
+    onSuccess: (resultado) => {
       setAberto(false);
-      toast.success(t("conta.excluir.sucesso"));
+      // A conta e as linhas SAÍRAM nos dois casos. O que pode ter sobrado é
+      // objeto no bucket que o storage recusou apagar (`arquivosComFalha`), e
+      // dizer "excluídos" nessa hora seria mentir para quem acabou de pedir que
+      // tudo saísse — achado do Nicolas, 14/09. O aviso fica mais tempo na tela
+      // porque a navegação para "/" acontece logo em seguida.
+      if (resultado.arquivosComFalha > 0) {
+        toast.warning(t("conta.excluir.sucessoComPendencias", { quantidade: resultado.arquivosComFalha }), {
+          duration: 15000,
+        });
+      } else {
+        toast.success(t("conta.excluir.sucesso"));
+      }
       // A conta não existe mais: o cache em memória é a única coisa que ainda
       // a considera logada.
       utils.auth.me.setData(undefined, null);

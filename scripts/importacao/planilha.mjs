@@ -89,13 +89,82 @@ export function achatar(texto) {
 }
 
 /**
+ * Para cada posição do texto, se uma leitura JÁ DENTRO DE ASPAS começada ali
+ * ainda encontra a aspa que fecha o campo. Uma varredura de trás para frente, um
+ * byte por caractere, que é o que permite à leitura decidir o destino da aspa NA
+ * HORA em que ela aparece, sem nunca voltar atrás (ver `lerCsv`).
+ *
+ * As regras são exatamente as do laço de leitura dentro de aspas, na mesma
+ * ordem: `""` é aspa escapada (pula duas e continua procurando); aspa seguida de
+ * separador, quebra de linha ou fim do arquivo é a que FECHA; qualquer outra
+ * aspa é literal e a procura segue.
+ */
+function tabelaDeFecho(texto, separador) {
+  // Uma posição a mais: em `texto.length` mora o fim do arquivo, que não fecha
+  // nada — é dali que a resposta "esta aspa nunca fecha" se propaga para trás.
+  const fecha = new Uint8Array(texto.length + 1);
+  for (let p = texto.length - 1; p >= 0; p--) {
+    if (texto[p] !== '"') { fecha[p] = fecha[p + 1]; continue; }
+    const seguinte = texto[p + 1];
+    if (seguinte === '"') { fecha[p] = fecha[p + 2]; continue; }       // aspa escapada
+    if (seguinte === undefined || seguinte === separador || seguinte === "\n" || seguinte === "\r") {
+      fecha[p] = 1;                                                    // é esta que fecha
+      continue;
+    }
+    fecha[p] = fecha[p + 1];                                           // literal no meio da frase
+  }
+  return fecha;
+}
+
+/**
  * CSV de verdade: campo entre aspas pode conter o separador, quebra de linha e
  * aspas dobradas. Detecta o separador pela primeira linha (`;` é o que o Excel
  * em português usa) e tolera BOM e CRLF, que é como o arquivo chega do Windows.
+ *
+ * OS TRÊS DESTINOS DE UMA ASPA (achado do Nicolas, 14/09, e revisão de 15/09).
+ * A primeira versão tratava QUALQUER aspa como abertura de campo, então uma bio
+ * com `tela de 50"` ligava o modo "entre aspas" no meio da célula: dali para a
+ * frente o `;` e a quebra de linha viravam texto, e as participantes seguintes
+ * sumiam em silêncio, que é o pior resultado possível numa carga de base.
+ *
+ * 1. `"` no COMEÇO do campo, HAVENDO a aspa que fecha, abre o campo entre aspas:
+ *    o separador, a quebra de linha e `""` viram texto até a aspa de fecho. A
+ *    aspa só FECHA quando o que vem depois é o separador, a quebra de linha ou o
+ *    fim do arquivo — no meio da frase ela é literal, e por isso
+ *    `"tela de 50" na loja"` volta inteiro em vez de partir a linha.
+ * 2. `"` em qualquer outro lugar do campo é caractere literal: a polegada da bio
+ *    é polegada, não sintaxe.
+ * 3. `"` no começo do campo SEM aspa que feche também é caractere literal, mas a
+ *    linha sai marcada em `linhasComAspasAbertas`: `prepararImportacao` recusa SÓ
+ *    ela, com o número e o motivo, e as outras entram. Uma bio que começa com
+ *    aspas — `"Transformar" é o verbo dela` — não pode derrubar uma planilha de
+ *    600 participantes, e tampouco pode ser adivinhada: ninguém sabe se a pessoa
+ *    queria a aspa no texto ou esqueceu de fechá-la, e chutar aqui é escrever no
+ *    perfil dela algo que ela não escreveu.
+ *
+ * COMO O DESTINO 3 É DECIDIDO NA HORA (desempenho, revisão de 15/09). A versão
+ * anterior só descobria o destino 3 ao bater no fim do arquivo: voltava ao ponto
+ * da abertura, rebaixava aquela aspa a caractere e RELIA tudo dali para frente.
+ * Cada aspa assim custava uma releitura do resto do arquivo, e o custo crescia
+ * com o QUADRADO do tamanho — numa base de 600 participantes com bio grande,
+ * justamente onde a aspa decorativa aparece, a carga demorava demais.
+ *
+ * Agora a resposta vem pronta de `tabelaDeFecho`, uma varredura linear de trás
+ * para frente, e a leitura é uma máquina de estados de uma passada só que nunca
+ * volta atrás. O resultado é o mesmo, caractere por caractere; o custo passa a
+ * ser proporcional ao tamanho do arquivo.
+ *
+ * O QUE ESTA FUNÇÃO NÃO DECIDE. Um campo entre aspas pode ATRAVESSAR a quebra de
+ * linha — é CSV legítimo, e bio com parágrafo existe. Só que, numa carga em que
+ * cada participante é uma linha, isso é indistinguível de uma aspa esquecida que
+ * comeu as linhas seguintes: a leitura devolve o caso em `linhasQueEngolemOutras`
+ * (com a linha que abre e a que fecha) e quem recusa o arquivo, em vez de
+ * entregar uma contagem que fecha às custas de linhas engolidas, é
+ * `prepararImportacao`.
  */
 export function lerCsv(texto) {
   const limpo = String(texto ?? "").replace(/^﻿/, "");
-  if (!limpo.trim()) return { separador: ";", linhas: [] };
+  if (!limpo.trim()) return { separador: ";", linhas: [], linhasComAspasAbertas: [], linhasQueEngolemOutras: [] };
 
   const primeiraLinha = limpo.split(/\r?\n/)[0];
   let separador = SEPARADORES[0], melhor = -1;
@@ -104,28 +173,86 @@ export function lerCsv(texto) {
     if (quantos > melhor) { melhor = quantos; separador = candidato; }
   }
 
-  const linhas = [];
-  let campo = "", linha = [], dentroDeAspas = false;
+  const fecha = tabelaDeFecho(limpo, separador);
+
+  const registros = [];
+  /** Índices (em `registros`) das linhas cuja aspa abriu e nunca fechou. */
+  const registrosComAspasAbertas = new Set();
+  /** Linha DO ARQUIVO em que cada registro começou e terminou (iguais, no normal). */
+  const comecaNaLinha = [];
+  const terminaNaLinha = [];
+
+  let campo = "", linha = [], dentroDeAspas = false, inicioDeCampo = true;
+  let linhaDoArquivo = 1, registroComecouEm = 1;
+
   for (let i = 0; i < limpo.length; i++) {
     const c = limpo[i];
+
     if (dentroDeAspas) {
       if (c === '"') {
-        if (limpo[i + 1] === '"') { campo += '"'; i++; }
-        else dentroDeAspas = false;
-      } else campo += c;
+        const seguinte = limpo[i + 1];
+        if (seguinte === '"') { campo += '"'; i++; continue; }         // aspa escapada
+        if (seguinte === undefined || seguinte === separador || seguinte === "\n" || seguinte === "\r") {
+          dentroDeAspas = false;                                       // fecha o campo
+          continue;
+        }
+        campo += '"';                                                  // destino 2, dentro do campo
+        continue;
+      }
+      if (c === "\n") linhaDoArquivo++;                                // o campo atravessa a quebra
+      campo += c;
       continue;
     }
-    if (c === '"') { dentroDeAspas = true; continue; }
-    if (c === separador) { linha.push(campo); campo = ""; continue; }
-    if (c === "\n") { linha.push(campo); linhas.push(linha); linha = []; campo = ""; continue; }
+
+    if (c === '"' && inicioDeCampo) {
+      if (fecha[i + 1]) {                                              // destino 1
+        dentroDeAspas = true;
+        inicioDeCampo = false;
+        continue;
+      }
+      // Destino 3: não existe aspa que feche. Ela vale como caractere e a linha
+      // fica marcada; a leitura segue em frente, sem releitura nenhuma.
+      registrosComAspasAbertas.add(registros.length);
+      campo += '"';
+      inicioDeCampo = false;
+      continue;
+    }
+    if (c === separador) { linha.push(campo); campo = ""; inicioDeCampo = true; continue; }
+    if (c === "\n") {
+      linha.push(campo);
+      registros.push(linha);
+      comecaNaLinha.push(registroComecouEm);
+      terminaNaLinha.push(linhaDoArquivo);
+      linha = []; campo = ""; inicioDeCampo = true;
+      linhaDoArquivo++;
+      registroComecouEm = linhaDoArquivo;
+      continue;
+    }
     if (c === "\r") continue;
-    campo += c;
+    campo += c;                                                        // destino 2
+    inicioDeCampo = false;
   }
   linha.push(campo);
-  linhas.push(linha);
+  registros.push(linha);
+  comecaNaLinha.push(registroComecouEm);
+  terminaNaLinha.push(linhaDoArquivo);
 
-  // Linha totalmente vazia no fim (ou no meio) não é participante.
-  return { separador, linhas: linhas.filter(l => l.some(v => String(v).trim() !== "")) };
+  // Linha totalmente vazia no fim (ou no meio) não é participante — e o número
+  // que sai daqui é o da linha JÁ SEM as vazias, o mesmo que `prepararImportacao`
+  // usa para falar com quem montou a planilha.
+  const linhas = [];
+  const linhasComAspasAbertas = [];
+  const linhasQueEngolemOutras = [];
+  registros.forEach((registro, indice) => {
+    if (!registro.some(v => String(v).trim() !== "")) return;
+    linhas.push(registro);
+    if (registrosComAspasAbertas.has(indice)) linhasComAspasAbertas.push(linhas.length);
+    if (terminaNaLinha[indice] > comecaNaLinha[indice]) {
+      linhasQueEngolemOutras.push({ numero: linhas.length, de: comecaNaLinha[indice], ate: terminaNaLinha[indice] });
+    }
+  });
+
+  return { separador, linhas, linhasComAspasAbertas, linhasQueEngolemOutras };
 }
 
 /** Casa o cabeçalho da planilha com os campos conhecidos. */
@@ -412,11 +539,72 @@ export function completude(p) {
   return pesos.reduce((soma, [tem, peso]) => soma + (tem ? peso : 0), 0);
 }
 
+/**
+ * O que a pessoa lê quando a aspa da linha dela não fechou.
+ *
+ * O texto fala SÓ do que é certo: o que aconteceu com esta linha e o que fazer.
+ * A frase sobre as OUTRAS linhas saiu daqui (revisão de 15/09) porque ela dizia
+ * "as outras linhas entraram normalmente" também no ensaio, onde ninguém entrou
+ * e nada foi gravado — quem sabe se houve gravação é o script, não o parser, e é
+ * ele que diz, com `destinoDasOutrasLinhas`.
+ */
+export const ERRO_DE_ASPAS_ABERTAS =
+  "abre aspas num campo e nunca as fecha: o resto da linha foi lido como texto de um campo só. " +
+  "Feche as aspas (ou tire-as) desta linha e rode de novo.";
+
+/** O destino das linhas NÃO recusadas, que depende de o ensaio ter gravado algo. */
+export function destinoDasOutrasLinhas(aplicar) {
+  return aplicar
+    ? "As outras linhas seguem para a carga normalmente; só as recusadas ficam de fora."
+    : "ENSAIO: ninguém entrou ainda, nada foi gravado — as outras linhas são as que entrariam com --aplicar.";
+}
+
+/**
+ * O que a pessoa lê quando uma linha abriu aspas que só fecharam linhas depois,
+ * engolindo as do meio dentro de um campo.
+ *
+ * Por que isso RECUSA O ARQUIVO INTEIRO, em vez de virar aviso: campo entre
+ * aspas atravessando a quebra de linha é CSV legítimo, mas aqui cada participante
+ * é uma linha, e o caso é indistinguível de uma aspa esquecida que comeu as
+ * participantes seguintes. Aceitar em silêncio é perder gente; recusar só a
+ * linha que abriu não resolve, porque as engolidas não existem mais como linha
+ * para serem recusadas com número. Recusando o arquivo, a invariante "válidas +
+ * recusadas = linhas de dados com conteúdo" passa a valer em todo caminho que
+ * não é fatal, e ninguém some nem em silêncio nem em bloco.
+ */
+export function erroDeLinhasEngolidas({ numero, de, ate }) {
+  const engolidas = ate - de === 1
+    ? `a linha ${de + 1} foi lida DENTRO desse campo, em vez de virar participante`
+    : `as linhas ${de + 1} a ${ate} foram lidas DENTRO desse campo, em vez de virarem participantes`;
+  const quem = numero === 1 ? `o cabeçalho (linha ${de})` : `a linha ${de}`;
+  return `${quem} abre aspas que só fecham na linha ${ate}, então ${engolidas}. ` +
+    "Nesta carga cada participante ocupa UMA linha, e daqui não dá para " +
+    `saber se a quebra de linha era da bio ou se foi aspa esquecida. Feche (ou tire) as aspas da linha ${de}, ` +
+    "ou deixe o texto numa linha só, e rode de novo.";
+}
+
 /** Lê a planilha inteira e devolve o que dá para importar e o que não dá. */
 export function prepararImportacao(texto) {
-  const { separador, linhas } = lerCsv(texto);
+  const { separador, linhas, linhasComAspasAbertas, linhasQueEngolemOutras } = lerCsv(texto);
   if (!linhas.length) {
     return { erroFatal: "a planilha está vazia", separador, participantes: [], recusadas: [], avisos: [] };
+  }
+  // A aspa aberta no CABEÇALHO é fatal: sem saber qual coluna é qual, nenhuma
+  // linha pode ser lida. Nas linhas de dados ela recusa só a linha (ver o bloco
+  // de regras em lerCsv).
+  if (linhasComAspasAbertas.includes(1)) {
+    return {
+      erroFatal: "a linha 1 (o cabeçalho) abre aspas num campo e nunca as fecha, então não dá para saber qual coluna é qual. Feche as aspas (ou tire-as) e rode de novo.",
+      separador, participantes: [], recusadas: [], avisos: [],
+    };
+  }
+  // Linha que engoliu as seguintes: fatal, e é o que faz a invariante ser
+  // verdade (ver erroDeLinhasEngolidas).
+  if (linhasQueEngolemOutras.length) {
+    return {
+      erroFatal: erroDeLinhasEngolidas(linhasQueEngolemOutras[0]),
+      separador, participantes: [], recusadas: [], avisos: [],
+    };
   }
 
   const [cabecalho, ...corpo] = linhas;
@@ -439,9 +627,22 @@ export function prepararImportacao(texto) {
   const participantes = [];
   const recusadas = [];
   const avisos = [];
+  const comAspasAbertas = new Set(linhasComAspasAbertas);
 
   corpo.forEach((linha, i) => {
     const numero = i + 2; // +1 do cabeçalho, +1 porque planilha começa em 1
+    // A linha existe e está alinhada (a leitura tratou a aspa como caractere,
+    // destino 3 em lerCsv), mas ninguém sabe se a pessoa quis a aspa no texto ou
+    // esqueceu de fechá-la: ela sai recusada, com o número, e as outras entram.
+    if (comAspasAbertas.has(numero)) {
+      const emailDaLinha = "email" in mapa ? normalizarEmail(linha[mapa.email]) : "";
+      recusadas.push({
+        numero,
+        email: emailValido(emailDaLinha) ? emailDaLinha : null,
+        erros: [ERRO_DE_ASPAS_ABERTAS],
+      });
+      return;
+    }
     const resultado = validarLinha(linha, mapa, numero, emailsJaVistos);
     if (!resultado.ok) { recusadas.push({ numero: resultado.numero, email: resultado.email, erros: resultado.erros }); return; }
     emailsJaVistos.set(resultado.participante.email, numero);

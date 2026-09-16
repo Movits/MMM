@@ -23,36 +23,70 @@ function assertFaqRate(ip: string) {
   if (faqCalls.size > 5000) faqCalls.clear();
 }
 
+// O idioma em que a IA deve responder. A chave é o código do seletor da Home
+// (client/src/i18n/index.ts) e o valor é o nome do idioma DENTRO do prompt,
+// que é escrito em português.
+//
+// Vem do cliente porque o servidor não tem como saber o idioma da tela: não há
+// cabeçalho de idioma tratado em lugar nenhum e `users` não tem coluna de
+// idioma. Desconhecido ou ausente cai no português do Brasil, que é o
+// fallback do próprio i18n.
+const IDIOMA_DA_RESPOSTA: Record<string, string> = {
+  "pt-BR": "português do Brasil",
+  en: "inglês",
+  es: "espanhol",
+  fr: "francês",
+  ar: "árabe",
+  zh: "chinês simplificado",
+  hi: "híndi",
+  de: "alemão",
+  ja: "japonês",
+  ru: "russo",
+};
+
 // ============================================================
 // FAQ COM IA
 // ============================================================
 export const faqRouter = router({
   ask: publicProcedure
-    .input(z.object({ question: z.string().min(1).max(500) }))
+    .input(z.object({
+      question: z.string().min(1).max(500),
+      idioma: z.string().max(10).optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       assertFaqRate(getRequestIp(ctx.req.headers["x-forwarded-for"], ctx.req.socket?.remoteAddress));
-      const systemPrompt = `Você é a assistente virtual da plataforma MMM — uma rede de negócios para pessoas empreendedoras e líderes de negócios. Responda perguntas sobre a plataforma de forma clara, amigável e concisa (máximo 3 parágrafos curtos).
+      const idiomaDaResposta = IDIOMA_DA_RESPOSTA[input.idioma ?? ""] ?? IDIOMA_DA_RESPOSTA["pt-BR"];
+      const systemPrompt = `Você é a assistente virtual da plataforma WRW — Women Rocking the World — uma rede de negócios para pessoas empreendedoras e líderes de negócios. Responda perguntas sobre a plataforma de forma clara, amigável e concisa (máximo 3 parágrafos curtos).
 
 Informações sobre a plataforma:
-- Níveis de membro: Bronze (acesso a oportunidades), Prata (acesso a oportunidades, mais validado), Ouro (acesso total — oportunidades, conexões estratégicas, Deal Rooms, painel de governança)
-- Ouro é o nível mais alto e é concedido por membros Ouro existentes
+- Nome: WRW, por extenso Women Rocking the World. É marca e não se traduz. A plataforma já se chamou MMM; se perguntarem por esse nome, explique que é a mesma plataforma, hoje WRW, e use sempre WRW
+- Níveis de membro: Bronze e Prata medem a qualificação das informações do perfil, não são planos. Todo cadastro começa Bronze (perfil em qualificação) e passa a Prata automaticamente quando Quem Sou, O Que Tenho e O Que Preciso estão completos e com conteúdo. Bronze e Prata têm os mesmos acessos e não pagam mensalidade: a plataforma participa dos negócios efetivamente concretizados por sua intermediação, conforme as condições aplicáveis a cada operação (não informe percentual)
+- Ouro é a categoria premium, mediante mensalidade, com acesso em primeira mão a oportunidades selecionadas, conexões estratégicas, Deal Rooms, encontros estratégicos e painel de governança. Não é evolução automática da Prata. Não informe preço nem diga que dá para assinar pela plataforma: o valor e a cobrança ainda não existem nela; hoje o Status Ouro é concedido por membros Ouro
 - Deal Room: sala de negociação privada protegida por NDA (Acordo de Confidencialidade). Ambas as partes assinam digitalmente antes de iniciar o chat
 - NDA: Termo de Confidencialidade que protege todas as informações trocadas na Deal Room
 - Oportunidades: propostas de sociedade, investimento, mentoria, parceria, projetos e vagas publicadas por membros
-- A plataforma usa IA para fazer match entre perfis e oportunidades
-- Segurança: criptografia de ponta a ponta, verificação de identidade (SIVC), sistema de confiança com índice de confiabilidade
+- A plataforma usa IA para sugerir conexões entre perfis e oportunidades (conexões sugeridas); quando duas pessoas demonstram interesse uma na outra, elas criam uma conexão. Chame isso sempre de "conexão", nunca de "match" (Smart Match e Business Match são nomes próprios e continuam assim). Conexões sugeridas e conexões criadas por interesse mútuo existem em todos os níveis (Bronze, Prata e Ouro); não confunda com as Conexões Estratégicas, rede exclusiva do Status Ouro
+- Segurança: acesso com login, bloqueio automático de tentativas de acesso suspeitas, verificação de identidade (SIVC) e sistema de confiança com índice de confiabilidade. Não afirme que existe criptografia de ponta a ponta: ela não existe
+- Meu Network Inteligente: a pessoa grava ou envia reuniões de até 10 minutos gratuitamente; a IA transcreve e sugere os contatos citados, que ficam na rede particular dela, privados por padrão; a plataforma cruza o que cada contato tem e procura para mostrar oportunidades entre pessoas que ela já conhece. Se quiser, ela pode disponibilizar cada contato para oportunidades da rede, de forma anonimizada: a opção começa em NÃO e pode voltar a NÃO quando ela quiser; com SIM, e com o termo do Smart Match aceito, a rede enxerga só um ID anônimo e o que o contato tem e o que precisa, nunca nome, telefone, e-mail, áudio, transcrição ou notas, e a plataforma procura conexões com contatos disponibilizados por outras pessoas e com membros da plataforma. Toda conexão identificada fica registrada com a origem, as etapas e o status da comissão; nenhum percentual, valor ou cobrança é aplicado automaticamente (não informe percentual). Não prometa planos pagos nem minutos extras: ainda não existem
 - Conexões Estratégicas: rede de contatos exclusiva para membros Ouro
 - Líderes Nacionais: membros nomeados por Ouro para representar a plataforma em suas regiões
 - Plataforma disponível em 10 idiomas
 
-Responda sempre em português do Brasil, de forma acolhedora e profissional. Seja direta e objetiva.`;
+Responda SEMPRE em ${idiomaDaResposta}, de forma acolhedora e profissional, qualquer que seja o idioma da pergunta. Seja direta e objetiva. Não traduza os nomes próprios da plataforma: WRW, Women Rocking the World, Deal Room, NDA, Smart Match e Business Match.`;
       const response = await invokeLLM({
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: input.question },
         ],
       });
-      const answer = response.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua pergunta. Tente novamente em instantes.";
+      const answer = response.choices?.[0]?.message?.content;
+      // Sem texto do modelo não há resposta para mostrar. Lançar deixa a
+      // mensagem com a TELA, que a escreve no idioma da visitante
+      // (`faq.askError`); a frase fixa que ficava aqui saía em português nos
+      // dez idiomas, justamente na caixa que acabou de responder em outro.
+      if (!answer) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A IA não devolveu resposta." });
+      }
       return { answer };
     }),
 });

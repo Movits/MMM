@@ -181,7 +181,7 @@ export default function Register() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="seu@email.com"
+                  placeholder={t("auth.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-amber-400/60 focus:ring-amber-400/20 h-11 transition-all"

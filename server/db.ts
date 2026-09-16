@@ -18,6 +18,7 @@ import {
   type EnrichmentSession, type EnrichmentMessage, type EnrichmentSuggestion,
   contactAssets, contactNeeds, aiMatchSuggestions,
   meetings, meetingContactSuggestions,
+  networkSugestoes, conexoesParticipantes,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import nodeCrypto from "node:crypto";
@@ -25,7 +26,10 @@ import { slugifyMatchTag } from "./match-service";
 import { normalizar } from "@shared/direcao-do-termo";
 import { BancoIndisponivel } from "./banco-indisponivel";
 import { condicaoDeStatusNasListas } from "./oportunidade-acesso";
+import { consolidarPerfil } from "./perfil-consolidado";
+import { avaliarQualificacaoDoPerfil } from "@shared/qualificacao-do-perfil";
 import { contextoParaOferecer } from "./contexto-oferecido";
+import { nomeDoTipoDeContexto } from "./nome-do-tipo-de-contexto";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -118,22 +122,43 @@ export async function updateUser(id: number, data: Partial<InsertUser>) {
 export async function getUserProfile(userId: number) {
   const db = await exigirDb();
   const rows = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
-  return rows[0] ?? null;
+  // Cargo e empresa saem da coluna que fica, com a antiga só tapando buraco
+  // (etapa 1 da consolidação das colunas duplicadas).
+  return rows[0] ? consolidarPerfil(rows[0]) : null;
 }
 
-// Os mesmos 10 campos da antiga saveUserProfile (matching.ts), que ficou órfã
-// quando o onboarding passou a usar este upsert — desde então o Dashboard
-// mostrava "0% Perfil completo" para todo mundo.
+/**
+ * Os campos que contam para o "Perfil completo" do Dashboard.
+ *
+ * Eram DEZ, copiados da antiga `saveUserProfile` (matching.ts), que ficou órfã
+ * quando o onboarding passou a usar este upsert. Dois deles saíram da lista em
+ * 15/09: `workStyle` e `values` foram suprimidos do cadastro (Rosber, 14/09
+ * 21:08 — ver client/src/pages/Onboarding.tsx) e nunca existiram na tela de
+ * Perfil, então nenhuma usuária tinha como preenchê-los: com eles na conta, o
+ * teto de todo mundo era 80% e a barra nunca fechava. Campo que a usuária não
+ * consegue preencher não entra na conta.
+ *
+ * Os oito que ficaram são exatamente os que o cadastro envia (`salvarPerfil` em
+ * Onboarding.tsx) e o Perfil edita. A lista é exportada para o teste conferir
+ * isso contra o schema, porque a leitura abaixo é por nome, sem tipo.
+ */
+export const CAMPOS_DA_COMPLETUDE_DO_PERFIL = [
+  "displayName", "city", "primarySpecialty", "sector",
+  "seekingTypes", "incomeRange", "bio", "experienceYears",
+] as const;
+
+/**
+ * Quanto do perfil está preenchido, de 0 a 100. O número só é EXIBIDO (Dashboard
+ * e PresidentPanel): nada no servidor compara com limiar, e quem promove a Prata
+ * é a régua de `shared/qualificacao-do-perfil.ts`, que não olha para cá — mudar
+ * a lista muda a barra, não muda nível de ninguém.
+ */
 export function computeProfileCompleteness(profile: Record<string, unknown> | null | undefined) {
   if (!profile) return 0;
-  const fields = [
-    profile.displayName, profile.city, profile.primarySpecialty,
-    profile.sector, profile.seekingTypes, profile.incomeRange,
-    profile.workStyle, profile.bio, profile.experienceYears,
-    profile.values,
-  ];
-  const filled = fields.filter(f => f !== null && f !== undefined && f !== "" && !(Array.isArray(f) && f.length === 0)).length;
-  return Math.round((filled / fields.length) * 100);
+  const preenchido = (valor: unknown) =>
+    valor !== null && valor !== undefined && valor !== "" && !(Array.isArray(valor) && valor.length === 0);
+  const filled = CAMPOS_DA_COMPLETUDE_DO_PERFIL.filter(campo => preenchido(profile[campo])).length;
+  return Math.round((filled / CAMPOS_DA_COMPLETUDE_DO_PERFIL.length) * 100);
 }
 
 export async function upsertUserProfile(userId: number, data: Record<string, unknown>) {
@@ -309,12 +334,80 @@ export async function grantGoldAccess(grantedTo: number, grantedBy: number, reas
   await db.update(users).set({ role: "gold" }).where(eq(users.id, grantedTo));
 }
 
-export async function revokeGoldAccess(grantedTo: number, revokedBy: number, reason?: string) {
+/**
+ * Revogar o Ouro devolve a pessoa ao nível que o PERFIL sustenta, pela mesma
+ * régua da promoção Bronze → Prata (shared/qualificacao-do-perfil.ts): Prata
+ * se qualificado, Bronze se não. Antes gravava 'silver' sempre, e um cadastro
+ * Bronze que recebeu Ouro (a Gestão Ouro lista Bronze e Prata) virava Prata
+ * sem ter o perfil que a Prata exige. Devolve o nível gravado.
+ */
+export async function revokeGoldAccess(grantedTo: number, revokedBy: number, reason?: string): Promise<"silver" | "bronze"> {
   const db = await exigirDb();
   await db.update(goldAccessGrants)
     .set({ revokedAt: new Date(), revokedBy, revokeReason: reason })
     .where(and(eq(goldAccessGrants.grantedTo, grantedTo)));
-  await db.update(users).set({ role: "silver" }).where(eq(users.id, grantedTo));
+  const { qualificado } = avaliarQualificacaoDoPerfil(await getUserProfile(grantedTo));
+  const nivel = qualificado ? "silver" : "bronze";
+  await db.update(users).set({ role: nivel }).where(eq(users.id, grantedTo));
+  return nivel;
+}
+
+/**
+ * Bronze → Prata pela qualidade do perfil (server/nivel-do-perfil.ts). O UPDATE
+ * leva `role = 'bronze'` no WHERE: se no meio do caminho alguém concedeu Ouro
+ * ou um admin mudou o nível à mão, nada casa e nada muda. Devolve se promoveu.
+ */
+export async function promoverBronzeAPrata(userId: number): Promise<boolean> {
+  const db = await exigirDb();
+  const resultado = await db.update(users).set({ role: "silver" })
+    .where(and(eq(users.id, userId), eq(users.role, "bronze")));
+  return linhasAfetadas(resultado) > 0;
+}
+
+/**
+ * As contas Prata de hoje, para a reavaliação única da Prata automática
+ * (server/nivel-do-perfil.ts, reavaliarPrataAutomaticaAntiga). Para cada uma,
+ * diz se o nível tem ORIGEM REGISTRADA: alguma linha em gold_access_grants
+ * (recebeu Ouro, e a Prata veio da revogação) ou alguma auditoria de
+ * `acoesQueMudamNivel` sobre a conta. Sem origem registrada, a Prata é a que o
+ * cadastro gravava para todas antes de 14/09. Lê só ids: nada pessoal sai daqui.
+ */
+export async function listarPrataParaReavaliacao(
+  acoesQueMudamNivel: readonly string[],
+): Promise<Array<{ id: number; origemRegistrada: boolean }>> {
+  const db = await exigirDb();
+  const prata = await db.select({ id: users.id }).from(users)
+    .where(eq(users.role, "silver")).orderBy(asc(users.id));
+  if (prata.length === 0) return [];
+  const ids = prata.map(p => p.id);
+
+  const comOuro = await db.selectDistinct({ id: goldAccessGrants.grantedTo }).from(goldAccessGrants)
+    .where(inArray(goldAccessGrants.grantedTo, ids));
+  const comMudancaAuditada = acoesQueMudamNivel.length === 0 ? [] : await db
+    .selectDistinct({ id: auditLogs.resourceId }).from(auditLogs)
+    .where(and(
+      eq(auditLogs.resource, "users"),
+      inArray(auditLogs.action, [...acoesQueMudamNivel]),
+      inArray(auditLogs.resourceId, ids.map(String)),
+    ));
+
+  const registradas = new Set<string>([
+    ...comOuro.map(l => String(l.id)),
+    ...comMudancaAuditada.map(l => String(l.id)),
+  ]);
+  return ids.map(id => ({ id, origemRegistrada: registradas.has(String(id)) }));
+}
+
+/**
+ * Prata → Bronze da reavaliação única. O UPDATE leva `role = 'silver'` no
+ * WHERE: se no meio do caminho alguém concedeu Ouro ou mudou o nível à mão,
+ * nada casa e nada muda. Devolve se rebaixou.
+ */
+export async function rebaixarPrataABronze(userId: number): Promise<boolean> {
+  const db = await exigirDb();
+  const resultado = await db.update(users).set({ role: "bronze" })
+    .where(and(eq(users.id, userId), eq(users.role, "silver")));
+  return linhasAfetadas(resultado) > 0;
 }
 
 // ─── Distribuidor do Smart Match ──────────────────────────────
@@ -383,8 +476,10 @@ function projecaoParaAnalise(
     isVerified: conta.isVerified,
     onboardingCompleted: conta.onboardingCompleted,
     displayName: perfil.displayName,
-    company: sql<string | null>`COALESCE(${perfil.company}, ${conta.company})`,
-    jobTitle: sql<string | null>`COALESCE(${perfil.jobTitle}, ${conta.position})`,
+    // A coluna antiga do perfil (preenchida pelo Onboarding até a consolidação)
+    // vem antes da conta: sem ela, quem só respondeu o Onboarding saía sem cargo.
+    company: sql<string | null>`COALESCE(${perfil.company}, ${perfil.currentCompany}, ${conta.company})`,
+    jobTitle: sql<string | null>`COALESCE(${perfil.jobTitle}, ${perfil.currentRole}, ${conta.position})`,
     city: perfil.city,
     country: sql<string | null>`COALESCE(${perfil.country}, ${conta.country})`,
     sector: perfil.sector,
@@ -393,6 +488,8 @@ function projecaoParaAnalise(
     whatIHave: perfil.whatIHave,
     whatINeed: perfil.whatINeed,
     seekingTypes: perfil.seekingTypes,
+    // "Outra necessidade" é necessidade declarada: sem ela o distribuidor via serviço sem demanda num par que o portão liberou por esse texto.
+    seekingOtherNeed: perfil.seekingOtherNeed,
     profileCompleteness: perfil.profileCompleteness,
   };
 }
@@ -601,9 +698,12 @@ export async function markNotificationsRead(userId: number) {
  * as duas precisam das MESMAS condições, senão "Mostrando 100 de N" mente
  * (molde de listPrivateContacts, que já conta com a tag da página).
  */
-function condicoesDeUsuarias(filters: { role?: string; search?: string }) {
+function condicoesDeUsuarias(filters: { role?: string; roles?: string[]; search?: string }) {
   const conditions: any[] = [];
   if (filters.role) conditions.push(eq(users.role, filters.role as any));
+  // Vários níveis de uma vez: a Gestão Ouro lista Bronze E Prata, porque o Ouro
+  // é adesão à categoria premium, não degrau depois da Prata (Governança, 14/09).
+  if (filters.roles && filters.roles.length > 0) conditions.push(inArray(users.role, filters.roles as any));
   if (filters.search) {
     // `%` e `_` são curingas do LIKE: sem escapar, "a_L" casava "abL" e "%"
     // casava todo mundo. O escape é `\` (o padrão do MySQL), e a barra em si
@@ -614,7 +714,7 @@ function condicoesDeUsuarias(filters: { role?: string; search?: string }) {
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
-export async function listUsers(filters: { role?: string; search?: string; limit?: number; offset?: number }) {
+export async function listUsers(filters: { role?: string; roles?: string[]; search?: string; limit?: number; offset?: number }) {
   const db = await exigirDb();
   return db.select({
     id: users.id, name: users.name, email: users.email, role: users.role,
@@ -629,7 +729,7 @@ export async function listUsers(filters: { role?: string; search?: string; limit
 }
 
 /** Quantas usuárias casam com os filtros — o total real, não o tamanho da página. */
-export async function contarUsuarias(filters: { role?: string; search?: string }) {
+export async function contarUsuarias(filters: { role?: string; roles?: string[]; search?: string }) {
   const db = await exigirDb();
   const [row] = await db
     .select({ count: sql<number>`COUNT(*)` })
@@ -677,9 +777,22 @@ export async function getAuditLogs(filters: { userId?: number; action?: string; 
  * O `aiInsight` pode ficar: o prompt que o gera (server/matching.ts) monta os
  * dois perfis só com especialidade, busca, setor e valores — nome nunca entra.
  */
+/**
+ * `souDestinataria` é `sql<boolean>`, mas o mysql2 entrega o tinyint do MySQL
+ * como 1/0 e o drizzle não converte expressão de SQL cru: o valor saía daqui
+ * como NÚMERO. Na tela isso virou um "0" solto abaixo do setor — `status ===
+ * "pending" && conn.souDestinataria` valia `0`, e o React desenha o zero. A
+ * conversão mora AQUI, na camada de dados, e não no componente: quem consumir a
+ * consulta amanhã (outro router, o exame de produção, um script) recebe o
+ * booleano que o tipo promete, sem precisar saber do driver.
+ */
+function comSouDestinatariaBooleana<T extends { souDestinataria: unknown }>(linhas: T[]): (Omit<T, "souDestinataria"> & { souDestinataria: boolean })[] {
+  return linhas.map(linha => ({ ...linha, souDestinataria: Boolean(linha.souDestinataria) }));
+}
+
 export async function getMatchesForUser(userId: number, limit = 20) {
   const db = await exigirDb();
-  return db.select({
+  const linhas = await db.select({
     matchId: matches.id,
     matchedUserId: matches.matchedUserId,
     overallScore: matches.overallScore,
@@ -729,6 +842,7 @@ export async function getMatchesForUser(userId: number, limit = 20) {
     .where(and(eq(matches.userId, userId), eq(matches.userDismissed, false)))
     .orderBy(desc(matches.overallScore))
     .limit(limit);
+  return comSouDestinatariaBooleana(linhas);
   // A13 (histórico): a `bio` era texto livre da OUTRA usuária chegando a esta, e
   // saía daqui mascarada contra telefone/e-mail. Ela deixou de ser lida — proteção
   // maior, não menor: o que não é selecionado não precisa ser mascarado. A máscara
@@ -800,7 +914,7 @@ export async function getConnectionsForUser(userId: number) {
   const db = await exigirDb();
   const outraParte = sql`CASE WHEN ${connections.requesterId} = ${userId} THEN ${connections.recipientId} ELSE ${connections.requesterId} END`;
   const aceita = sql`${connections.status} = 'accepted'`;
-  return db.select({
+  const linhas = await db.select({
     id: connections.id,
     status: connections.status,
     createdAt: connections.createdAt,
@@ -827,6 +941,7 @@ export async function getConnectionsForUser(userId: number) {
     ))
     .orderBy(desc(connections.createdAt))
     .limit(50);
+  return comSouDestinatariaBooleana(linhas);
 }
 
 /**
@@ -942,12 +1057,16 @@ export async function createPrivateContact(
 ): Promise<number> {
   const db = await exigirDb();
   const now = Date.now();
-  const [result] = await db.insert(privateContacts).values({
+  // Meu Network Inteligente (item 13): o contato nasce com o ID anônimo. A
+  // colisão do índice único, rara, grava de novo com outro código.
+  const { comCodigoAnonimo } = await import("./network-codigo-anonimo");
+  const [result] = await comCodigoAnonimo(codigoAnonimo => db.insert(privateContacts).values({
     ...data,
+    codigoAnonimo,
     ownerId,
     createdAt: now,
     updatedAt: now,
-  });
+  }));
   return (result as any).insertId as number;
 }
 
@@ -1095,6 +1214,14 @@ export async function apagarRastroDoContato(
       eq(meetingContactSuggestions.ownerId, ownerId),
       eq(meetingContactSuggestions.existingContactId, contactId),
     ));
+  // Meu Network Inteligente: as pendências da IA sobre a pessoa (Quem Sou, O
+  // Que Tenho, O Que Preciso, com o trecho da fonte) saem com ela. Nas
+  // conexões registradas o ponteiro para o contato é anulado e o ID anônimo
+  // fica: é a prova comercial de que a conexão existiu, sem dado da pessoa.
+  await db.delete(networkSugestoes)
+    .where(and(eq(networkSugestoes.ownerId, ownerId), eq(networkSugestoes.contactId, contactId)));
+  await db.update(conexoesParticipantes).set({ contactId: null, updatedAt: Date.now() })
+    .where(and(eq(conexoesParticipantes.ownerId, ownerId), eq(conexoesParticipantes.contactId, contactId)));
   // O enriquecimento: sugestões apontam o contato direto; as mensagens só
   // conhecem a sessão, então primeiro a lista de sessões, depois as mensagens
   // delas, e as sessões por último — nenhuma ordem deixa órfão se cair no meio.
@@ -1292,7 +1419,8 @@ export async function listVitrineColetiva() {
 
 export async function listContextTypes(): Promise<ContextType[]> {
   const db = await exigirDb();
-  return db.select().from(contextTypes).where(eq(contextTypes.isActive, true)).orderBy(contextTypes.sortOrder);
+  const tipos = await db.select().from(contextTypes).where(eq(contextTypes.isActive, true)).orderBy(contextTypes.sortOrder);
+  return tipos.map(tipo => ({ ...tipo, name: nomeDoTipoDeContexto(tipo.slug, tipo.name) }));
 }
 
 export async function listContexts(
@@ -1354,7 +1482,7 @@ export async function listContexts(
   return {
     data: rows.map(r => ({
       ...r.ctx,
-      typeName: r.typeName ?? undefined,
+      typeName: nomeDoTipoDeContexto(r.typeSlug, r.typeName) ?? undefined,
       typeColor: r.typeColor ?? undefined,
       // Sem o slug a tela não acha o ícone do tipo e — pior — o formulário de
       // edição abre com o tipo vazio e salvar apaga o tipo do contexto.
@@ -1402,7 +1530,7 @@ export async function getContextById(ownerId: string, contextId: string) {
     .orderBy(contextMedia.sortOrder, contextMedia.createdAt);
 
   return {
-    ...row.ctx, typeName: row.typeName, typeColor: row.typeColor, typeSlug: row.typeSlug, typeIcon: row.typeIcon,
+    ...row.ctx, typeName: nomeDoTipoDeContexto(row.typeSlug, row.typeName), typeColor: row.typeColor, typeSlug: row.typeSlug, typeIcon: row.typeIcon,
     links: links.map(l => ({ ...l, contactName: nomePorContato.get(l.contactId) ?? null })),
     participants, media,
   };
@@ -1537,7 +1665,7 @@ export async function listContextsByContact(ownerId: string, contactId: number) 
     city: r.link.city,
     country: r.link.country,
     relationshipType: r.link.relationshipType,
-    typeName: r.typeName ?? undefined,
+    typeName: nomeDoTipoDeContexto(r.typeSlug, r.typeName) ?? undefined,
     typeColor: r.typeColor ?? undefined,
     typeSlug: r.typeSlug ?? undefined,
   }));

@@ -44,6 +44,25 @@ node .claude/hooks/carimbo.mjs --status # estado da conferência (ver "Fluxo de 
 
 - **No Windows, use Git Bash**: `dev` e `start` definem `NODE_ENV` com sintaxe
   POSIX e falham no PowerShell. Se `pnpm` não estiver no PATH, `corepack pnpm`.
+- **Os scripts `.mjs` de banco NÃO leem o `.env`** (revisão do Nicolas na #97:
+  preencher o arquivo não basta). São `criar-banco.mjs`, `migrar.mjs`
+  (`pnpm db:migrate`, `--simular`) e `nivelar-banco.mjs`: leem
+  `process.env.DATABASE_URL` e param se ela não estiver no ambiente, cada um com a
+  sua mensagem — `criar-banco.mjs` imprime "DATABASE_URL não definida." seguida de
+  um exemplo de linha de comando; `migrar.mjs` e `nivelar-banco.mjs` imprimem
+  "Defina DATABASE_URL." (o `migrar.mjs` com o exemplo na linha seguinte). Passe na
+  linha de comando — `DATABASE_URL='mysql://...' node scripts/criar-banco.mjs` — ou
+  exporte o arquivo inteiro antes, no Git Bash: `set -a; . ./.env; set +a` (ali o
+  `.env` vira script do shell, então valor com espaço, `{` ou `#` precisa estar
+  entre aspas no arquivo). **`pnpm db:generate` é a exceção**: o
+  `drizzle.config.ts` também só lê `process.env.DATABASE_URL`, mas a CLI do
+  drizzle-kit carrega o `.env` do diretório atual (ela embute o `dotenv/config`)
+  antes de abrir a configuração, então para ele o arquivo basta; sem a variável em
+  lugar nenhum a mensagem é "DATABASE_URL is required to run drizzle commands", que
+  vem da configuração, não do script. Quem mais carrega o `.env` sozinho: o
+  servidor (`dotenv` em `server/_core/index.ts`, logo `pnpm dev` e `pnpm start`), a
+  suíte (`import "dotenv/config"` em `vitest.config.ts`) e o `checar-producao.mjs`,
+  que recebe o arquivo em `--env`.
 - `JWT_SECRET` é obrigatória: o servidor se recusa a iniciar sem ela
   (`requireSecret()` em `server/_core/env.ts`, chamado ao carregar `server/auth.ts`).
   `VAULT_ENCRYPTION_KEY` deve existir em produção, mas o código não a exige: sem ela,
@@ -142,8 +161,16 @@ tRPC 11 sobre Express 4 no servidor, MySQL via Drizzle.
 **Entrada e boot.** A entrada real é `server/_core/index.ts`. Ordem: migrações no
 boot (só em produção, ver "Banco"), helmet,
 compression, cabeçalhos de segurança, bloqueio de scanners, rate limit global, body
-parsers (15 MB só em `meetings.submitRecording` e `contexts.uploadMedia`, 5 MB no
-resto), proxy de storage, tRPC em `/api/trpc`, e por fim Vite em middleware (dev) ou
+parsers (5 MB por padrão e 15 MB em SEIS procedimentos de upload —
+`meetings.submitRecording`, `contexts.uploadMedia`, `network.uploadPhoto`,
+`network.uploadCard`, `dealRoom.uploadDocument` e `sivc.uploadDocument`. A lista
+cresceu por partes: `submitRecording` veio do resgate do Manus (25/08),
+`contexts.uploadMedia` entrou na etapa 5 (01/09), as duas da rede na #58 (03/09) e
+as do Deal Room e do SIVC na #59 (04/09) — só entre 01/09 e 03/09 foram dois.
+Antes deles vem `corpoGrandeParaUploads` (#79, 06/09), que reconhece esses mesmos
+procedimentos quando chegam dentro de um LOTE do tRPC — `/api/trpc/a,b` não casa com
+nenhum recorte por caminho),
+proxy de storage, tRPC em `/api/trpc`, e por fim Vite em middleware (dev) ou
 estático de `dist/public` (prod). Não há proxy de dev: front e API na mesma origem.
 
 **Fluxo de tipos ponta a ponta (tRPC).** Cada área de negócio tem um router em
@@ -182,11 +209,44 @@ CONFLICT, sem efeito; `respondToConnection` e o interesse mútuo em
 pedido FICA esperando e a presidência recebe o aviso: mesclar a fila só depois de
 conceder o poder em produção. Detalhes em docs/arquitetura/fluxos.md e privacidade.md.
 
-**Mas Ouro NÃO é staff em tudo.** A única assimetria de papel no servidor é `isStaff`
-em `oportunidade-acesso.ts`, que aceita só admin e president: uma conta Ouro APROVA
-uma oportunidade pendente e leva 403 ao tentar ABRI-LA. Some-se outra armadilha:
+**Cadastro não concluído não usa a plataforma.** `profile.completeOnboarding` exige o
+Termo Geral de Uso aceito (`server/termo-geral-de-uso.ts`) e é quem marca
+`users.onboardingCompleted`; o `protectedProcedure` (e, por herança, admin, Ouro e
+distribuidor) passa por `exigirCadastroConcluido` (`server/cadastro-concluido.ts`), que
+responde PRECONDITION_FAILED a quem tem `onboardingCompleted = false` fora de `auth`,
+`consent`, `conta`, `assistenteTexto`, `system`, `profile.get` e
+`profile.completeOnboarding`. Procedimento novo que a tela de Onboarding chame entra
+nessa lista; procedimento público novo entra em `PUBLICOS` de
+`server/cadastro-concluido.test.ts`, que varre o appRouter inteiro. No client, o
+`ProtectedRoute` manda para /onboarding (só a rota do cadastro liga
+`permitirCadastroIncompleto`). O Termo Geral não se revoga à parte (`consent.revoke`
+recusa): quem não o aceita mais exclui a conta. Contas que concluíram o cadastro antes
+do termo existir não são obrigadas a aceitá-lo: isso depende de decisão de produto.
+
+**Mas Ouro NÃO é staff em tudo.** São QUATRO os pontos em que admin e president valem
+mais que Ouro — a frase "a única assimetria é `isStaff`" era falsa e virou revisão do
+Nicolas (#97); antes de repetir qualquer contagem aqui, rode
+`grep -rn "role ===\|role !==\|users.role" server --include=*.ts` e confira:
+
+1. **Abrir oportunidade que não é sua**: `isStaff` em `oportunidade-acesso.ts` — uma
+   conta Ouro APROVA uma oportunidade pendente e leva 403 ao tentar ABRI-LA.
+2. **Rastreabilidade das conexões**: `plataformaProcedure` em
+   `routers/networkInteligente.ts` (a lista de conexões registradas de todas as donas e
+   a apuração de comissão, com auditoria `NETWORK_CONNECTIONS_READ`; a aba some do
+   Painel Ouro para Ouro sem cargo).
+3. **Bloqueio automático por eventos críticos**: `checkAutoLockThreshold` em
+   `server/security.ts` isenta president e admin — conta Ouro é desativada como
+   qualquer outra ao cruzar o limite.
+4. **Quem é avisada**: os destinatários de "oportunidade aguardando análise"
+   (`routers/opportunities.ts`) e de "não há distribuidor" (`idsDaPresidenciaAtiva`
+   em `db.ts`) são president e admin; Ouro não recebe nenhum dos dois, embora possa
+   agir sobre o primeiro.
+
+Some-se outra armadilha:
 `grantGoldAccess` grava `role = "gold"` por cima do que havia, e `revokeGoldAccess`
-grava `"silver"` — conceder Ouro a uma presidente a REBAIXA, e revogar a joga em Prata. Checagens "Ouro ou acima" ainda
+grava o nível que o perfil sustenta (`"silver"` se `avaliarQualificacaoDoPerfil` o
+qualifica, `"bronze"` se não) sem olhar o papel anterior — conceder Ouro a uma
+presidente a REBAIXA, e revogar a joga em Prata ou Bronze. Checagens "Ouro ou acima" ainda
 estão repetidas inline em `routers/dealRoom.ts`, `routers/matching.ts`,
 `routers/opportunities.ts`, `_core/storageProxy.ts` e no client (`ProtectedRoute`,
 `AppHeader`, `Connections`).
@@ -211,20 +271,56 @@ Exceções deliberadas: `system.health` (responde `ok:false` com HTTP 503) e
 
 **Três motores de match convivem.** `server/match-service.ts` cruza contatos da mesma
 dona: `scoreMatch` aplica, nesta ordem, concorrentes → 0, slug exato → 100, mesmo
-objeto do termo → 100, mesmo núcleo → 100, necessidade genérica que nomeia a família do
-serviço → 100 (só para serviço), mesma categoria → 60 (não vale para serviço); o critério semântico
+objeto do termo → 100, mesmo núcleo → 100, o mesmo serviço escrito de outro jeito → 100
+(só para serviço: a mesma especialidade na mesma família, entre consultoria e assessoria, no
+apoio que nomeia a profissão, na assessoria sobre área da profissão — "Assessoria tributária"
+diante da advocacia ou da contabilidade tributária — ou os dois lados só com a família,
+"Contabilidade" × "Contador" e "Serviços contábeis" × "Contador", também com a oferta
+dirigida só a um destinatário comum, "Contabilidade para pequenas empresas" × "Contador",
+`mesmaFamiliaEEspecialidade`),
+necessidade que nomeia só a família do serviço → 60 (`necessidadeGenericaNomeiaOServico`, que inclui a
+oferta GENÉRICA diante da necessidade da mesma família com só público ou finalidade — "Contabilidade" ×
+"Contador para pequenas empresas", "Logística" × "logística para exportar meu café": dava 0 e virou 60 na
+revisão do Nicolas de 15/09; dar 100 quando o público está em `DESTINATARIOS_COMUNS` é decisão em aberto),
+necessidade que declara o ASSUNTO do serviço sem nomeá-lo → 60 com tipo `semantic`
+(`necessidadeDeclaraOAssuntoDoServico`: vocabulário curado de tributário, internacionalização e
+regulatório sanitário, e a necessidade tem de pedir ajuda ou uma ação, sem pedir no resto a
+contraparte, o capital ou o registro de marca: "Entrada de investidor internacional" não casa),
+mesma categoria → 60 (para serviço, só no par que a regra não lê num idioma novo,
+`regraNaoLeOPar`); o critério semântico
 vale 45, abaixo do limiar 50, logo está desligado por construção e o texto não sai
 para embeddings. `server/matching.ts` cruza perfis de usuárias em 6 dimensões
 ponderadas, com LLM só no insight. `routers/profileMatches.ts` expõe esses matches no
 Dashboard com trava de consentimento dos dois lados. **Regra da demanda expressa
 (12/09/2026), nos três motores e nos prompts:** item de "o que tenho" classificado como
 SERVIÇO (`shared/tipo-da-oferta.ts`) só casa com necessidade DECLARADA em "o que
-preciso" — no motor privado a categoria em comum não vale para serviço; no de perfis o
+preciso" — no motor privado a categoria em comum não vale para serviço (salvo a exceção dos
+idiomas novos, abaixo); no de perfis o
 par sustentado só por serviço sem demanda expressa dá zero, não é gravado e a leitura da
-lista esconde a linha antiga (sem apagá-la, para a dispensa da dona sobreviver); nos dois
+lista esconde a linha antiga (sem apagá-la, para a dispensa da dona sobreviver), e com
+"o que tenho" vazio a especialidade e a área de atuação são a oferta; nos dois
 prompts de `routers/matching.ts` o modelo classifica o item,
 cita o trecho da oportunidade que declara a necessidade e
-`server/portao-da-demanda-expressa.ts` confere a citação antes de exibir. Produtos,
+`server/portao-da-demanda-expressa.ts` confere a citação, e que ela pede um serviço que o
+perfil oferece, antes de exibir (citação de contraparte — distribuidor, investidor —, de
+autodescrição da empresa ou de assunto que nenhum serviço do perfil presta é barrada);
+oportunidade que OFERECE serviço só vai a quem declarou
+algo que possa ser aquele serviço. Em "O que você busca?" (12 opções, `shared/o-que-busca.ts`)
+nenhuma opção libera serviço sozinha — "Serviço Especializado" é genérica — e o texto de
+"Outra necessidade" (`seekingOtherNeed`) vale como "o que preciso". A categoria digitada ainda decide o tipo quando o texto
+não decide (decisão do time em 14/09). **Logística, transporte, frete e armazenagem são
+serviço** (decisão do Nicolas, 14/09), inclusive a opção fixa "Logística"; galpão, armazém
+e frota continuam imóvel e ativo. Família de serviço é lema, não área,
+e a equivalência é ESTRITA: só casa o que as listas entendem (palavra desconhecida precisa
+aparecer igual dos dois lados; na IA, o que o texto não entende fica com o modelo). Exceção
+da revisão de 14/09 da #127 (portada em 15/09): em fr, de, ru, hi, ar, zh e ja, onde as listas
+são curtas, o par que só não casa por palavra que elas não leem NÃO é bloqueado nos motores
+determinísticos — vale a categoria em comum, nunca 0 por falta de regra (`regraNaoLeOPar`);
+onde há regra no idioma (lema curado, marcador de pedido, chinês e japonês lidos pelo fim do
+termo) o motor decide como em português, o pedido precisa pedir o serviço e o que ele entende
+continua barrado. pt, en e es seguem estritos, também dentro de rótulo bilíngue. Entrada
+nova no vocabulário de assunto entra com o teste negativo dela
+(`server/demanda-expressa-exemplos-da-spec.test.ts`). Produtos,
 ativos, investimento, conexões, tecnologia e imóveis não mudam.
 
 **`server/_core/` é a infraestrutura herdada do Manus** (o projeto nasceu na
@@ -322,20 +418,40 @@ vitrine no GitHub Pages. Depois de todo deploy:
   colunas pessoais: `listVitrineColetiva` em `server/db.ts` lê só id, país e cidade e
   devolve id opaco; `listAcervoOuro` exige nível 'ouro' no contato, consentimento da
   dona ao termo, `goldProcedure` e registro de auditoria. Esconder no front-end não
-  basta (ver `docs/arquitetura/privacidade.md`).
-- **Match nunca cruza por palavra solta.** Hoje as tags de possui/procura são
-  texto livre, mas o cruzamento exige tag exata, mesmo objeto em direções
-  opostas (`shared/direcao-do-termo.ts`: exportar × importar) ou mesma
-  categoria: a spec da cliente veta match por palavra parecida
-  ("exportar vinho" × "importar vinho" casam; "exportar" × "exportar" nunca).
+  basta (ver `docs/arquitetura/privacidade.md`). **Ressalva no consentimento** (revisão
+  do Nicolas, #89): ele só trava quando existe versão VIGENTE do termo publicada. Sem
+  linha `isCurrent` em `document_versions`, `hasValidConsent` e
+  `usersComConsentimento` (`server/routers/consent.ts`) respondem "sim" para todas —
+  é a única porta que libera sem consentimento, e vale para todo termo, não só o do
+  acervo. Cai só essa trava: nível 'ouro' no contato, `goldProcedure` e auditoria
+  seguem valendo. Publicar o termo (`scripts/publicar-documento.mjs`) é o que liga a
+  exigência.
+- **Match nunca cruza por palavra solta — e isso hoje só vale no motor privado.**
+  A regra da spec é essa: tag exata, mesmo objeto ou mesmo núcleo em direções
+  OPOSTAS (`shared/direcao-do-termo.ts`), ou mesma categoria; duas pontas que
+  querem a mesma coisa são concorrentes ("exportar vinho" × "importar vinho"
+  casam; "exportar" × "exportar" não). Quem a aplica é `scoreMatch`
+  (`server/match-service.ts`), que chama `saoConcorrentes` ANTES de qualquer outro
+  critério e zera o par. **O motor de perfis (`server/matching.ts`) não aplica**
+  (revisão do Nicolas, #97): `satisfaz` devolve `true` já no `have === need` e no
+  slug igual, sem passar por `saoConcorrentes`, então "exportar" × "exportar"
+  conta como necessidade atendida e ainda SOBE a complementaridade. E a
+  complementaridade é a dimensão de MAIOR peso da nota: seis dimensões somam 100
+  (complementaridade 30, setor 20, investimento 20, especialidade 15, valores 10,
+  localização 5), com corte em 40 — lá um par vira match sem nenhum termo cruzado.
+  Uniformizar os dois é decisão de produto, não ajuste local — a nota do motor de
+  perfis mudaria para todas.
 - **Serviço só casa com necessidade declarada.** Setor, porte, localização, cargo,
   atividade econômica, problemas típicos do segmento, obrigações legais ou "poderia se
   beneficiar" não são necessidade (pedido do Nicolas, 12/09/2026: "não fazemos match
   porque alguém poderia precisar; fazemos match porque alguém declarou que precisa").
   A IA não pode inferir o que ninguém declarou; essas informações só sobem a nota de um
   match que já passou pelo portão. A restrição é específica do tipo SERVIÇO — os outros
-  tipos seguem as regras de sempre. Ver `shared/tipo-da-oferta.ts` e
-  `server/portao-da-demanda-expressa.ts`.
+  tipos seguem as regras de sempre. Palavra igual não é serviço igual ("Consultoria
+  jurídica" não atende "Consultoria em marketing"), e a mesma coisa escrita de outro
+  jeito é a mesma necessidade ("Advogado tributarista" × "Advocacia tributária"). Os
+  limites aceitos da regra estão em `docs/arquitetura/README.md` §2c. Ver
+  `shared/tipo-da-oferta.ts` e `server/portao-da-demanda-expressa.ts`.
 - **Nada extraído por IA entra sozinho**: toda extração carrega origem e confiança
   e exige confirmação da usuária antes de virar dado. No enriquecimento, só
   sugestões com `confidence >= 0.7` viram pendência (`routers/enrichment.ts`);

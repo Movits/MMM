@@ -164,6 +164,8 @@ vi.mock("./db", () => ({
 }));
 const email = vi.hoisted(() => ({ sendEmail: vi.fn(async () => true) }));
 vi.mock("./_core/email", () => email);
+// O registro das conexões internas no fim do recálculo tem teste próprio (registro-de-conexoes-nos-motores.test.ts).
+vi.mock("./network-registro", () => ({ registrarConexoesInternasDepoisDoRecalculo: async () => undefined }));
 
 const { recalculatePrivateMatches, slugifyMatchTag } = await import("./match-service");
 const { aiMatchSuggestions, contactAssets, contactNeeds, privateContacts } = await import("../drizzle/schema");

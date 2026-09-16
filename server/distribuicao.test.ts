@@ -43,6 +43,7 @@ const estado = vi.hoisted(() => ({
   bloqueados: [] as number[],
   alvo: 2 as number | null,
   envio: { revelou: false, connectionId: 7, emAnalise: true } as { revelou: boolean; connectionId: number | null; emAnalise: boolean },
+  resposta: { revelou: false, contraparte: null } as { revelou: boolean; contraparte: number | null },
   distribuidoresAtivos: [] as number[],
   presidencia: [] as number[],
 }));
@@ -63,6 +64,7 @@ vi.mock("./db", () => new Proxy({}, {
       if (prop === "idsDeContasAtivas") return new Set((args[0] as number[]).filter(id => estado.ativas.includes(id)));
       if (prop === "resolverAlvoDoMatch") return estado.alvo;
       if (prop === "sendConnectionRequest") return estado.envio;
+      if (prop === "respondToConnection") return estado.resposta;
       if (prop === "idsDosDistribuidoresAtivos") return estado.distribuidoresAtivos;
       if (prop === "idsDaPresidenciaAtiva") return estado.presidencia;
       return undefined;
@@ -131,6 +133,7 @@ beforeEach(() => {
   estado.bloqueados = [];
   estado.alvo = 2;
   estado.envio = { revelou: false, connectionId: 7, emAnalise: true };
+  estado.resposta = { revelou: false, contraparte: null };
   estado.distribuidoresAtivos = [];
   estado.presidencia = [];
 });
@@ -204,6 +207,8 @@ describe("distribuicao.conceder", () => {
     expect(aviso).toMatchObject({ userId: 7, type: "system", actionUrl: "/president" });
     expect(String(aviso.title)).toMatch(/distribuidor/i);
     expect(String(aviso.body)).toMatch(/Painel Ouro/);
+    expect(String(aviso.body)).toContain("Um membro Ouro da WRW concedeu");
+    expect(String(aviso.body)).not.toMatch(/\bMMM\b/);
   });
 
   it("é idempotente: quem já tem o poder não gera gravação, auditoria nem aviso", async () => {
@@ -249,6 +254,8 @@ describe("distribuicao.revogar", () => {
     const [aviso] = avisos();
     expect(aviso).toMatchObject({ userId: 8, type: "system" });
     expect(String(aviso.body)).toContain("Saiu da equipe de distribuição");
+    expect(String(aviso.body)).toContain("por um membro Ouro da WRW");
+    expect(String(aviso.body)).not.toMatch(/\bMMM\b/);
   });
 
   it("é idempotente: revogar de quem não tem o poder não grava nem audita", async () => {
@@ -304,19 +311,51 @@ describe("connections.send — o pedido novo espera o distribuidor", () => {
     expect(chamadas("idsDosDistribuidoresAtivos")).toEqual([]);
   });
 
-  it("interesse mútuo sobre pedido já encaminhado (pending): revela e audita duas vezes, sem aviso à fila", async () => {
+  it("interesse mútuo sobre pedido já encaminhado (pending): revela, audita duas vezes e avisa só a outra parte com \"Nova conexão!\", sem aviso à fila", async () => {
     estado.envio = { revelou: true, connectionId: 7, emAnalise: false };
     const r = await connectionsRouter.createCaller(solicitante).send({ matchId: 55 });
     expect(r).toEqual({ success: true, revelou: true });
     expect(acoes()).toEqual(["MATCH_IDENTITY_REVEALED", "MATCH_IDENTITY_REVEALED"]);
     expect(estado.auditorias.map(a => (a.details as { via: string }).via)).toEqual(["interesse_mutuo", "interesse_mutuo"]);
-    expect(avisos()).toEqual([]);
+    expect(avisos()).toEqual([{
+      userId: 2, type: "interest_received", title: "Nova conexão!",
+      body: "Vocês criaram uma conexão! Os nomes já aparecem na aba Conexões.", actionUrl: "/dashboard",
+    }]);
+    expect(chamadas("idsDosDistribuidoresAtivos")).toEqual([]);
+  });
+
+  it("interesse mútuo com o sino fora do ar: a conexão continua valendo e a resposta é a mesma", async () => {
+    estado.envio = { revelou: true, connectionId: 7, emAnalise: false };
+    estado.sinoForaDoAr = true;
+    await expect(connectionsRouter.createCaller(solicitante).send({ matchId: 55 })).resolves.toEqual({ success: true, revelou: true });
+    expect(acoes()).toEqual(["MATCH_IDENTITY_REVEALED", "MATCH_IDENTITY_REVEALED"]);
   });
 
   it("sino fora do ar não desfaz o pedido: a resposta continua a mesma", async () => {
     estado.distribuidoresAtivos = [8];
     estado.sinoForaDoAr = true;
     await expect(connectionsRouter.createCaller(solicitante).send({ matchId: 55 })).resolves.toEqual({ success: true, revelou: false });
+  });
+});
+
+describe("connections.respond — o aceite da destinatária cria a conexão", () => {
+  const destinataria = ctx({ id: 3, role: "silver" });
+
+  it("aceite que revela: audita e avisa a solicitante com \"Nova conexão!\"", async () => {
+    estado.resposta = { revelou: true, contraparte: 2 };
+    await expect(connectionsRouter.createCaller(destinataria).respond({ connectionId: 7, accept: true })).resolves.toEqual({ success: true });
+    expect(estado.auditorias.map(a => [a.userId, (a.details as { via: string }).via])).toEqual([[3, "aceite"], [2, "aceite"]]);
+    expect(avisos()).toEqual([{
+      userId: 2, type: "interest_received", title: "Nova conexão!",
+      body: "Vocês criaram uma conexão! Os nomes já aparecem na aba Conexões.", actionUrl: "/dashboard",
+    }]);
+  });
+
+  it("recusa, ou aceite que não pegou a linha: nenhum aviso (recusar não vira oráculo)", async () => {
+    estado.resposta = { revelou: false, contraparte: null };
+    await connectionsRouter.createCaller(destinataria).respond({ connectionId: 7, accept: false });
+    expect(avisos()).toEqual([]);
+    expect(acoes()).toEqual([]);
   });
 });
 
@@ -372,6 +411,23 @@ describe("distribuicao.fila", () => {
     const [p] = await distribuicaoRouter.createCaller(distribuidora).fila();
     expect(p.compatibilidade).toBeNull();
     expect(p.reciprocado).toBe(false);
+  });
+
+  it("\"Outra necessidade\" chega ao distribuidor só com a opção marcada, aparada e mascarada como a bio", async () => {
+    estado.fila = [{
+      connectionId: 9, requesterId: 2, recipientId: 3, createdAt: new Date(), reciprocatedAt: null,
+      solicitante: perfil("Ana", {
+        seekingTypes: ["outra_necessidade"],
+        seekingOtherNeed: "  Consultoria para registro na Anvisa, ana@exemplo.com  ",
+      }),
+      // Desmarcada, o texto que sobrou no banco não é necessidade declarada.
+      destinataria: perfil("Bia", { seekingTypes: ["investor"], seekingOtherNeed: "Texto antigo" }),
+      compatibilidade: { overallScore: null, specialtyScore: null, objectivesScore: null, incomeScore: null, locationScore: null, valuesScore: null, aiInsight: null },
+    }];
+    const [p] = await distribuicaoRouter.createCaller(distribuidora).fila();
+    expect(p.solicitante.seekingOtherNeed).toMatch(/^Consultoria para registro na Anvisa/);
+    expect(p.solicitante.seekingOtherNeed).not.toContain("ana@exemplo.com");
+    expect(p.destinataria.seekingOtherNeed).toBeNull();
   });
 });
 
@@ -454,6 +510,11 @@ describe("distribuicao.decidir — efeitos", () => {
     expect(revelacoes.map(a => [a.userId, (a.details as { contraparte: number; via: string }).contraparte, (a.details as { via: string }).via]))
       .toEqual([[2, 3, "distribuidor"], [3, 2, "distribuidor"]]);
     expect(avisos().map(a => a.userId).sort()).toEqual([2, 3]);
+    for (const aviso of avisos()) {
+      expect(aviso).toMatchObject({ type: "interest_received", title: "Nova conexão!", actionUrl: "/dashboard" });
+      expect(String(aviso.body)).toContain("Vocês criaram uma conexão!");
+      expect(`${aviso.title} ${aviso.body}`).not.toMatch(/match/i);
+    }
   });
 
   it("não encaminhar: vira not_forwarded com a nota, avisa só a solicitante e sem o motivo; a destinatária nunca sabe", async () => {

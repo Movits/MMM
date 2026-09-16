@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
+import { opcaoDaBusca } from "@shared/o-que-busca";
+import { rotuloDoQuePreciso } from "@shared/o-que-preciso";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import {
   Shield, Users, Star, CheckCircle, XCircle, Clock,
   AlertTriangle, BarChart3, Crown, UserCheck, Globe,
-  FileText, ChevronRight, Search, Award, Lock, Share2
+  FileText, ChevronRight, Search, Award, Lock, Share2, Link2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +18,9 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from "@/components/ui/dialog";
+import { ConexoesRegistradasDaPlataforma } from "@/components/ConexoesRegistradasDaPlataforma";
 
-type Tab = "overview" | "gold" | "leaders" | "opportunities" | "compliance" | "distribuicao";
+type Tab = "overview" | "gold" | "leaders" | "opportunities" | "compliance" | "conexoes" | "distribuicao";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 // A busca vai ao SERVIDOR (LIKE em nome e e-mail), com 300 ms de espera para
@@ -116,7 +119,7 @@ function OverviewTab() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-white/60">
           {[
-            "Conceder e revogar o Selo Ouro de Exclusividade",
+            "Conceder e revogar o Status Ouro",
             "Nomear e gerenciar Líderes Nacionais",
             "Validar oportunidades estratégicas de alto valor",
             "Supervisionar o compliance geral da plataforma",
@@ -143,8 +146,11 @@ function GoldTab() {
   // keepPreviousData: enquanto a consulta do termo novo viaja, a lista do
   // termo anterior fica na tela — sem isso ela piscava "Nenhuma membra
   // encontrada." a cada busca.
+  // Bronze E Prata: o Ouro é adesão à categoria premium, não degrau depois da
+  // Prata (Governança, 14/09/2026). Antes a lista era só Prata, e um cadastro
+  // novo, que nasce Bronze, não podia receber Ouro por aqui.
   const { data: silverUsers, refetch: refetchSilver } = trpc.president.listAllUsers.useQuery(
-    { role: "silver", search: buscaSilver || undefined },
+    { roles: ["bronze", "silver"], search: buscaSilver || undefined },
     { placeholderData: keepPreviousData },
   );
   const { data: goldGrants, refetch: refetchGrants } = trpc.president.getGoldGrants.useQuery();
@@ -161,8 +167,9 @@ function GoldTab() {
   });
 
   const revokeMutation = trpc.president.revokeGold.useMutation({
-    onSuccess: () => {
-      toast.success("✅ Selo Ouro revogado. A conta do membro continua ativa como Prata.");
+    onSuccess: (r) => {
+      // O nível de volta vem do perfil: Prata se ele atende à régua, Bronze se não.
+      toast.success(`✅ Selo Ouro revogado. A conta do membro continua ativa como ${r?.novoNivel === "bronze" ? "Bronze" : "Prata"}.`);
       setRevokeDialog(null);
       setReason("");
       refetchGrants();
@@ -179,7 +186,7 @@ function GoldTab() {
       <SectionHeader
         icon={Star}
         title="Gestão do Selo Ouro"
-        subtitle="Conceda ou revogue o Selo de Exclusividade Institucional. Ele não pode ser comprado: só é concedido manualmente."
+        subtitle="Ouro é a categoria premium da rede, mediante mensalidade. Não há preço nem cobrança integrados à plataforma: por enquanto, o Status Ouro é concedido e revogado manualmente aqui."
       />
 
       {/* Membras Ouro Ativas */}
@@ -218,7 +225,7 @@ function GoldTab() {
 
       {/* Conceder Ouro */}
       <div>
-        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Conceder Selo Ouro a Membros Prata</h3>
+        <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Conceder Status Ouro a Membros Bronze e Prata</h3>
         <div className="relative mb-3">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
           <Input
@@ -260,13 +267,13 @@ function GoldTab() {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-white/70">
-              Você está concedendo o <strong className="text-amber-400">Selo de Exclusividade Institucional</strong> para <strong className="text-white">{grantDialog?.name}</strong>.
+              Você está concedendo o <strong className="text-amber-400">Status Ouro</strong>, a categoria premium da rede, para <strong className="text-white">{grantDialog?.name}</strong>.
             </p>
             {/* Mensagem automática que será enviada */}
             <div className="bg-amber-400/8 border border-amber-400/25 rounded-xl p-4">
               <p className="text-[11px] text-amber-400/70 uppercase tracking-wider font-semibold mb-2">Mensagem automática que será enviada:</p>
               <p className="text-sm text-white/80 leading-relaxed italic">
-                "Parabéns, você agora é nível OURO! Um membro Ouro do MMM reconheceu o seu potencial e concedeu a você o Selo de Exclusividade Institucional Ouro. Boas-vindas ao grupo mais seleto da plataforma!"
+                "Seu Status Ouro está ativo. Você passa a ter acesso em primeira mão a oportunidades selecionadas de negócios nacionais e internacionais e a encontros estratégicos da rede, conforme disponibilidade e regras da plataforma."
               </p>
             </div>
           </div>
@@ -298,7 +305,7 @@ function GoldTab() {
             <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-400/8 border border-blue-400/20">
               <CheckCircle size={14} className="text-blue-400 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-blue-300">
-                <strong>A conta não será excluída.</strong> O membro continuará ativo na plataforma com nível Prata e poderá receber o Selo Ouro novamente no futuro.
+                <strong>A conta não será excluída.</strong> O membro continuará ativo na plataforma, com nível Prata se o perfil atender aos critérios de qualificação ou Bronze se não atender, e poderá receber o Selo Ouro novamente no futuro.
               </p>
             </div>
           </div>
@@ -1061,6 +1068,8 @@ type PerfilDaFila = {
   company: string | null; jobTitle: string | null; city: string | null; country: string | null;
   sector: string | null; primarySpecialty: string | null; bio: string | null;
   whatIHave: unknown; whatINeed: unknown; seekingTypes: unknown; profileCompleteness: number | null;
+  /** O texto de "Outra necessidade", já filtrado (só com a opção marcada) e mascarado pelo servidor. */
+  seekingOtherNeed?: string | null;
 };
 
 function PerfilNaFila({ titulo, perfil, termoOk }: { titulo: string; perfil: PerfilDaFila; termoOk: boolean }) {
@@ -1086,8 +1095,16 @@ function PerfilNaFila({ titulo, perfil, termoOk }: { titulo: string; perfil: Per
         </span>
       </div>
       <ListaCurta rotulo="Tem" itens={perfil.whatIHave} />
-      <ListaCurta rotulo="Precisa" itens={perfil.whatINeed} />
-      <ListaCurta rotulo="Busca" itens={perfil.seekingTypes} />
+      {/* Chaves de "O que preciso" pelo título (as 17 de 14/09 e "Consultoria" dos perfis antigos). */}
+      {/* "Outra necessidade" é necessidade declarada, como nos motores: entra em "Precisa", antes das chaves. */}
+      <ListaCurta rotulo="Precisa" itens={[
+        ...(perfil.seekingOtherNeed ? [perfil.seekingOtherNeed] : []),
+        ...(Array.isArray(perfil.whatINeed) ? perfil.whatINeed.map(item => rotuloDoQuePreciso(String(item))) : []),
+      ]} />
+      {/* Chave nova (ou antiga com equivalente) sai com o rótulo; job e mentor, crus como antes. */}
+      <ListaCurta rotulo="Busca" itens={Array.isArray(perfil.seekingTypes)
+        ? perfil.seekingTypes.map(valor => opcaoDaBusca(String(valor))?.titulo ?? valor)
+        : perfil.seekingTypes} />
       {perfil.bio && <p className="text-xs text-white/50 mt-2 whitespace-pre-line">{perfil.bio}</p>}
     </div>
   );
@@ -1321,6 +1338,14 @@ export default function PresidentPanel() {
     { id: "leaders", label: "Líderes", icon: Globe },
     { id: "opportunities", label: "Validações", icon: FileText },
     { id: "compliance", label: "Compliance", icon: Shield },
+    // Meu Network Inteligente, itens 17 e 18: a rastreabilidade das conexões
+    // para a apuração de comissão. A lista atravessa a rede de todas as donas,
+    // então as rotas são só da staff (admin e presidente; ver
+    // plataformaProcedure em routers/networkInteligente.ts): Ouro sem cargo e
+    // quem só distribui não veem a aba.
+    ...(user.role === "admin" || user.role === "president"
+      ? [{ id: "conexoes" as const, label: "Conexões registradas", icon: Link2 }]
+      : []),
     abaDistribuicao,
   ] : [abaDistribuicao];
   // Quem só distribui não tem outra aba para abrir.
@@ -1342,7 +1367,7 @@ export default function PresidentPanel() {
               </div>
               <div>
                 <h1 className="text-sm font-bold text-white">Painel Ouro</h1>
-                <p className="text-xs text-amber-400/70">MMM · Backoffice Institucional</p>
+                <p className="text-xs text-amber-400/70">WRW · Backoffice Institucional</p>
               </div>
             </div>
           </div>
@@ -1387,6 +1412,7 @@ export default function PresidentPanel() {
         {abaAtiva === "leaders" && <LeadersTab />}
         {abaAtiva === "opportunities" && <OpportunitiesTab />}
         {abaAtiva === "compliance" && <ComplianceTab />}
+        {abaAtiva === "conexoes" && <ConexoesRegistradasDaPlataforma />}
         {abaAtiva === "distribuicao" && <DistribuicaoTab podeGerir={ehOuro} souDistribuidor={souDistribuidor} />}
       </div>
     </div>

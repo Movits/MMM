@@ -14,12 +14,27 @@ describe("Email Service", () => {
     expect(html).toContain("https://mmmos.space/reset-password?token=abc123");
     expect(html).toContain("Redefinição de senha");
     expect(html).toContain("1 hora");
-    expect(html).toContain("MMM");
+    // A marca é WRW desde 15/09/2026 (a URL de teste acima não é marca).
+    expect(html).toContain("WRW — Women Rocking the World");
+    expect(html).toContain("Recuperação de Senha — WRW");
+    expect(html).not.toMatch(/\bMMM\b|Mulheres que Movem/);
 
     // Verificar que o texto plano também está correto
     expect(text).toContain("Maria Silva");
     expect(text).toContain("https://mmmos.space/reset-password?token=abc123");
     expect(text).toContain("1 hora");
+    expect(text).toContain("sua conta na WRW");
+    expect(text).not.toMatch(/\bMMM\b/);
+  });
+
+  it("o remetente sai com o nome da marca e o endereço do EMAIL_FROM", async () => {
+    const { remetenteComAMarca, NOME_DO_REMETENTE } = await import("./_core/email");
+    expect(NOME_DO_REMETENTE).toBe("WRW");
+    expect(remetenteComAMarca("MMM <no-reply@exemplo.test>")).toBe("WRW <no-reply@exemplo.test>");
+    expect(remetenteComAMarca("\"MMM — Mulheres que Movem o Mundo\" <no-reply@exemplo.test>")).toBe("WRW <no-reply@exemplo.test>");
+    expect(remetenteComAMarca("  no-reply@exemplo.test ")).toBe("WRW <no-reply@exemplo.test>");
+    // Formato que não se reconhece não é reescrito: melhor o nome antigo que um remetente quebrado.
+    expect(remetenteComAMarca("remetente sem endereco")).toBe("remetente sem endereco");
   });
 
   it("sendEmail deve ser uma função assíncrona exportável", async () => {

@@ -3,6 +3,7 @@ import { getLoginUrl } from "@/const";
 import { UNAUTHED_ERR_MSG } from "@shared/const";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,7 +14,22 @@ interface ProtectedRouteProps {
   requireOpportunities?: boolean;
   /** Rota para redirecionar se não autenticado. Padrão: URL de login */
   redirectTo?: string;
+  /**
+   * Deixa entrar quem ainda não concluiu o cadastro. Só a rota /onboarding usa:
+   * é nela que o cadastro termina, com o aceite do Termo Geral de Uso.
+   */
+  permitirCadastroIncompleto?: boolean;
 }
+
+/**
+ * Cadastro não concluído (logo, sem o Termo Geral de Uso aceito) vai para
+ * /onboarding em qualquer rota protegida. A regra de verdade mora no servidor
+ * (server/cadastro-concluido.ts responde PRECONDITION_FAILED); aqui é para a
+ * tela não abrir cheia de erros quando a pessoa digita /dashboard na barra.
+ * `=== false`, como no servidor: sem o campo não há veredito para barrar.
+ */
+const cadastroIncompleto = (user?: { onboardingCompleted?: boolean | null } | null) =>
+  user?.onboardingCompleted === false;
 
 // Hierarquia de acesso
 const isGoldOrAbove = (role?: string) =>
@@ -39,7 +55,9 @@ export default function ProtectedRoute({
   requireGold = false,
   requireOpportunities = false,
   redirectTo,
+  permitirCadastroIncompleto = false,
 }: ProtectedRouteProps) {
+  const { t } = useTranslation();
   const { user, loading, isAuthenticated, error, refresh } = useAuth();
   const [tentandoDeNovo, setTentandoDeNovo] = useState(false);
 
@@ -57,6 +75,11 @@ export default function ProtectedRoute({
       return;
     }
 
+    if (!permitirCadastroIncompleto && cadastroIncompleto(user)) {
+      window.location.href = "/onboarding";
+      return;
+    }
+
     if (requireAdmin && user?.role !== "admin") {
       window.location.href = "/404";
       return;
@@ -70,7 +93,7 @@ export default function ProtectedRoute({
     if (requireOpportunities && !canAccessOpportunities(user?.role)) {
       window.location.href = "/dashboard";
     }
-  }, [loading, isAuthenticated, verificacaoFalhou, requireAdmin, requireGold, requireOpportunities, user, redirectTo]);
+  }, [loading, isAuthenticated, verificacaoFalhou, requireAdmin, requireGold, requireOpportunities, permitirCadastroIncompleto, user, redirectTo]);
 
   // Mostrar spinner enquanto verifica autenticação
   if (loading) {
@@ -78,7 +101,7 @@ export default function ProtectedRoute({
       <div className="min-h-screen flex items-center justify-center bg-[#1B1714]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 text-[#C98F70] animate-spin" />
-          <p className="text-sm text-gray-400">Verificando acesso...</p>
+          <p className="text-sm text-gray-400">{t("protectedRoute.checkingAccess")}</p>
         </div>
       </div>
     );
@@ -97,7 +120,7 @@ export default function ProtectedRoute({
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#1B1714] p-4">
         <div role="alert" className="w-full max-w-md rounded-lg bg-white p-6 text-center shadow-lg">
-          <h1 className="text-lg font-semibold text-[#1A120C]">Não foi possível verificar seu acesso</h1>
+          <h1 className="text-lg font-semibold text-[#1A120C]">{t("protectedRoute.checkFailedTitle")}</h1>
           <p className="mt-2 text-sm text-gray-600">{error.message}</p>
           <button
             type="button"
@@ -106,7 +129,7 @@ export default function ProtectedRoute({
             className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#C98F70] px-4 py-2 text-sm font-medium text-[#1A120C] hover:bg-[#b07a5c] disabled:opacity-60"
           >
             {tentandoDeNovo && <Loader2 className="w-4 h-4 animate-spin" />}
-            Tentar de novo
+            {t("protectedRoute.retry")}
           </button>
         </div>
       </div>
@@ -115,6 +138,11 @@ export default function ProtectedRoute({
 
   // Não renderizar conteúdo se não autenticado (evita flash de conteúdo)
   if (!isAuthenticated) {
+    return null;
+  }
+
+  // Cadastro não concluído: nada da página, só o redirecionamento para /onboarding.
+  if (!permitirCadastroIncompleto && cadastroIncompleto(user)) {
     return null;
   }
 

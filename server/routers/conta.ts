@@ -23,6 +23,7 @@
 // serve de nada aqui, porque este endpoint responde "senha certa/errada" para
 // quem já tem a sessão.
 
+import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -49,6 +50,86 @@ export const PAPEIS_DE_GOVERNANCA = ["admin", "president", "gold"] as const;
  * Pura, para o teste e o client concordarem sem copiar a regra.
  */
 export const PALAVRA_DE_CONFIRMACAO = "EXCLUIR";
+
+/**
+ * Quantas entradas de arquivo cabem no registro de auditoria. Existe teto porque
+ * `audit_logs.details` é uma coluna JSON numa linha só: uma conta com milhares
+ * de mídias e um bucket fora do ar geraria um registro que o driver não grava —
+ * e auditoria que falha em gravar é auditoria que não existe (`createAuditLog`
+ * engole o erro de propósito, para a falha dela nunca derrubar a exclusão). O
+ * teto é generoso para o caso real (um punhado de objetos) e a contagem
+ * completa continua em `arquivosComFalha`.
+ */
+export const TETO_DE_CHAVES_NA_AUDITORIA = 200;
+
+/**
+ * A PASTA da chave: tudo menos o nome do arquivo. É a parte que o servidor monta
+ * sozinho, só com ids — `deal-rooms/<sala>`, `sivc/<id>/<verificação>`,
+ * `contexts/<openId>/<contexto>`, `contacts/<openId>`,
+ * `meetings/<openId>/<reunião>` — e por isso é a parte que pode ser escrita.
+ */
+export function pastaDaChave(chave: string): string {
+  const corte = chave.lastIndexOf("/");
+  return corte > 0 ? chave.slice(0, corte) : "(raiz do bucket)";
+}
+
+/**
+ * A impressão digital da chave: o SHA-256 dela, cortado em 16 dígitos. Serve
+ * para ACHAR o objeto sem escrever o nome dele — quem for limpar o bucket lista
+ * a pasta, calcula o mesmo hash de cada chave que encontrar lá e apaga as que
+ * baterem. Não é segredo, é identificação: duas chaves diferentes na mesma pasta
+ * têm impressões diferentes, e é disso que o serviço precisa.
+ */
+export function impressaoDaChave(chave: string): string {
+  return createHash("sha256").update(chave).digest("hex").slice(0, 16);
+}
+
+/**
+ * O pedaço do registro de auditoria que diz O QUE ficou no bucket — pasta,
+ * quantos objetos em cada uma e a impressão digital de cada chave. Nunca a chave
+ * inteira.
+ *
+ * Duas revisões, duas correções. A primeira (15/09) mostrou que a contagem
+ * sozinha não serve: contagem não apaga arquivo, e quem for limpar o bucket à
+ * mão depois precisa saber ONDE está o objeto — nesse momento as linhas do banco
+ * que apontavam para cada um já saíram junto com a conta. A segunda (o revisor,
+ * no mesmo dia) mostrou que a lista de chaves cruas, que entrou como remédio,
+ * carrega dado pessoal: o comentário anterior afirmava que a chave "não carrega
+ * nome nem e-mail", e isso é FALSO para três dos cinco prefixos, porque o nome
+ * do arquivo enviado vira parte da chave —
+ * `deal-rooms/<sala>/<carimbo>-<nome do arquivo>` (routers/dealRoom.ts),
+ * `sivc/<id>/<verificação>/<carimbo>-<nome do arquivo>` (routers/sivc.ts) e
+ * `contexts/<openId>/<contexto>/<nome do arquivo>` (routers/contexts.ts).
+ * "rg-ana-souza.jpg" diz o documento e a pessoa; um contrato anexado na sala diz
+ * as duas partes. `audit_logs` é imutável por desenho e sobrevive à conta, então
+ * gravar isso seria deixar dado pessoal da usuária no banco DEPOIS de ela pedir
+ * a exclusão — exatamente o que esta rota existe para impedir.
+ *
+ * Pelo lado seguro, então: a pasta (só ids) fica escrita, o nome do arquivo vira
+ * hash. O serviço continua possível — listar a pasta, hashear, comparar — e o
+ * registro não vaza conteúdo. A chave inteira ainda existe no `console.error` do
+ * processo (server/exclusao-de-conta.ts), que é log operacional de curta vida,
+ * não registro permanente em banco.
+ */
+export function chavesParaAuditoria(chaves: string[]): Record<string, unknown> {
+  if (!chaves.length) return {};
+  const porPasta = new Map<string, number>();
+  for (const chave of chaves) {
+    const pasta = pastaDaChave(chave);
+    porPasta.set(pasta, (porPasta.get(pasta) ?? 0) + 1);
+  }
+  const pastas: [string, number][] = [];
+  porPasta.forEach((arquivos, pasta) => pastas.push([pasta, arquivos]));
+  pastas.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  const pastasGravadas = pastas.slice(0, TETO_DE_CHAVES_NA_AUDITORIA);
+  const impressoes = chaves.slice(0, TETO_DE_CHAVES_NA_AUDITORIA).map(impressaoDaChave);
+  return {
+    pastasQueFicaramNoBucket: pastasGravadas.map(([pasta, arquivos]) => ({ pasta, arquivos })),
+    impressoesDasChaves: impressoes,
+    ...(pastas.length > pastasGravadas.length ? { pastasOmitidas: pastas.length - pastasGravadas.length } : {}),
+    ...(chaves.length > impressoes.length ? { chavesOmitidas: chaves.length - impressoes.length } : {}),
+  };
+}
 
 export function confirmacaoEsperada(email: string | null | undefined): string {
   const limpo = (email ?? "").trim();
@@ -169,7 +250,9 @@ export const contaRouter = router({
 
       // O registro da exclusão nasce DEPOIS de apagar: o passo de `audit_logs`
       // levaria embora uma linha escrita antes. `details` não guarda nome nem
-      // e-mail — contagens e nomes de tabela, nada mais.
+      // e-mail — contagens, nomes de tabela e, dos objetos que o bucket recusou
+      // apagar, a pasta e a impressão digital da chave, nunca a chave inteira
+      // (o porquê está em `chavesParaAuditoria`).
       await createAuditLog({
         userId: ctx.user.id,
         action: ACAO_EXCLUSAO,
@@ -178,6 +261,7 @@ export const contaRouter = router({
           linhasApagadas: relatorio.linhasApagadas,
           arquivosApagados: relatorio.arquivosApagados,
           arquivosComFalha: relatorio.arquivosComFalha.length,
+          ...chavesParaAuditoria(relatorio.arquivosComFalha),
           passos: relatorio.passos.map(passo => `${passo.nome}=${passo.linhas}`),
         },
         ipAddress,

@@ -3,7 +3,8 @@ import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { opportunitySectorLabel } from "@/lib/opportunity-sectors";
-import { rotuloDeInteresse } from "@/lib/interesses";
+import { rotuloDaBusca, rotuloDeInteresse } from "@/lib/interesses";
+import { ehChaveDeSetor, rotuloDoSetor } from "@shared/setores";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,16 +27,48 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Briefcase, ShieldCheck, Users, User, MapPin, Mic, Brain, Sparkles, Crown,
-  Menu as MenuIcon, ChevronDown, LogOut,
+  Menu as MenuIcon, ChevronDown, LogOut, Network,
 } from "lucide-react";
+
+// ─── Faixas de compatibilidade ───────────────────────────────────────────────
+// Item 12 do reteste v4 (Gabriel): os anéis dos cartões pintavam em TRÊS cores
+// (80+ verde, 60+ marrom, o resto azul) e o gráfico de distribuição da MESMA
+// tela em CINCO — 65% saía marrom no anel e azul na barra 60–80, e a leitura
+// "que cor é boa?" mudava de um componente para o outro. Daqui em diante há uma
+// função só, pela mesma faixa de 20 em 20 com que o `statsQuery` monta o
+// gráfico (`Math.min(4, Math.floor(score / 20))`).
+export const CORES_DAS_FAIXAS = ["#ef4444", "#f97316", "#c98f70", "#3b82f6", "#10b981"] as const;
+const ROTULOS_DAS_FAIXAS = [
+  "dashboard.scoreBandVeryLow", "dashboard.scoreBandLow", "dashboard.scoreBandMedium",
+  "dashboard.scoreBandHigh", "dashboard.scoreBandVeryHigh",
+] as const;
+
+export function faixaDeCompatibilidade(score: number): number {
+  if (!Number.isFinite(score)) return 0;
+  return Math.min(4, Math.max(0, Math.floor(score / 20)));
+}
+
+export function corDaFaixaDeCompatibilidade(score: number): string {
+  return CORES_DAS_FAIXAS[faixaDeCompatibilidade(score)];
+}
+
+// Acessibilidade: a cor não pode ser o único indicador da faixa — quem não
+// distingue o marrom do azul (ou lê num print em cinza) precisa do rótulo.
+export function rotuloDaFaixaDeCompatibilidade(t: (k: string) => string, score: number): string {
+  return t(ROTULOS_DAS_FAIXAS[faixaDeCompatibilidade(score)]);
+}
 
 // ─── Animated Score Ring ─────────────────────────────────────────────────────
 function ScoreRing({ score, size = 64, animate = false }: { score: number; size?: number; animate?: boolean }) {
+  const { t } = useTranslation();
   const [displayed, setDisplayed] = useState(animate ? 0 : score);
   const r = (size - 8) / 2;
   const circ = 2 * Math.PI * r;
   const dash = (displayed / 100) * circ;
-  const color = displayed >= 80 ? "#10b981" : displayed >= 60 ? "#c98f70" : "#3b82f6";
+  const color = corDaFaixaDeCompatibilidade(displayed);
+  // A cor do rótulo segue a nota FINAL: o anel varre as faixas enquanto anima e
+  // o texto ficaria piscando de vermelho a verde.
+  const corDaFaixa = corDaFaixaDeCompatibilidade(score);
 
   useEffect(() => {
     if (!animate) return;
@@ -53,16 +86,21 @@ function ScoreRing({ score, size = 64, animate = false }: { score: number; size?
   }, [score, animate]);
 
   return (
-    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={5} />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={5}
-        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-        style={{ transition: "stroke-dasharray 0.05s linear, stroke 0.3s ease" }} />
-      <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central"
-        style={{ transform: `rotate(90deg)`, transformOrigin: `${size/2}px ${size/2}px`, fill: color, fontSize: size * 0.22, fontWeight: "bold" }}>
-        {displayed}%
-      </text>
-    </svg>
+    <div className="flex flex-shrink-0 flex-col items-center gap-1">
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={5} />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={5}
+          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+          style={{ transition: "stroke-dasharray 0.05s linear, stroke 0.3s ease" }} />
+        <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central"
+          style={{ transform: `rotate(90deg)`, transformOrigin: `${size/2}px ${size/2}px`, fill: color, fontSize: size * 0.22, fontWeight: "bold" }}>
+          {displayed}%
+        </text>
+      </svg>
+      <span className="text-[10px] font-semibold leading-none" style={{ color: corDaFaixa }}>
+        {rotuloDaFaixaDeCompatibilidade(t, score)}
+      </span>
+    </div>
   );
 }
 
@@ -119,7 +157,9 @@ function DistributionChart({ data }: { data: number[] }) {
   const [animated, setAnimated] = useState(false);
   const max = Math.max(...data, 1);
   const labels = ["0–20", "20–40", "40–60", "60–80", "80+"];
-  const colors = ["#ef4444", "#f97316", "#c98f70", "#3b82f6", "#10b981"];
+  // A MESMA paleta dos anéis de compatibilidade (item 12): a barra e o anel de
+  // uma nota de 65% não podem sair de cores diferentes na mesma tela.
+  const colors = CORES_DAS_FAIXAS;
 
   useEffect(() => {
     const t = setTimeout(() => setAnimated(true), 200);
@@ -184,6 +224,76 @@ function sectorLabel(t: (k: string, o?: Record<string, unknown>) => string, i18n
   const direto = t(`onboarding.sectors.${valor}`, { defaultValue: "" });
   if (direto) return direto;
   return optionLabel(t, valor);
+}
+
+// ─── Lista de conexões: normalização e agrupamento (item 13 do reteste v4) ───
+// Setor e cidade são texto livre digitado no onboarding, e a lista mostrava o
+// que estava gravado: "tecnologia", "SÃO PAULO - sp", "belo horizonte/mg".
+// A caixa só é refeita quando o valor veio TODO em minúsculas ou TODO em
+// maiúsculas — "TI e Telecom" e "Tecnologia & Software" já vêm certos e não
+// podem virar "Ti E Telecom".
+const PALAVRAS_MINUSCULAS = new Set(["de", "da", "do", "das", "dos", "e", "del", "di", "du", "la", "le", "van", "von", "y"]);
+
+// Caixa alta e caixa baixa são conceito da escrita LATINA. O chinês e o japonês
+// não têm caixa, então "可持续发展与ESG" é igual a si mesmo em toLocaleUpperCase:
+// a regra abaixo o tomava por "veio todo em maiúsculas", refazia a caixa e
+// achatava a sigla latina de dentro ("可持续发展与esg").
+// A faixa aceita é Latim básico, Latin-1, Latim estendido A/B e adicional, mais
+// pontuação geral e símbolos de moeda. QUALQUER caractere fora dela (ideograma,
+// kana, cirílico, grego, árabe, hangul, emoji) e o texto volta como foi
+// digitado. Faixas de código, e não `\p{Script=Latin}`: o tsconfig do projeto
+// não fixa `target`, e o TypeScript recusa a flag `u` em ES5.
+const FORA_DO_ALFABETO_LATINO = /[^\u0000-\u024F\u1E00-\u1EFF\u2000-\u206F\u20A0-\u20BF]/;
+
+export function normalizarCaixa(valor?: string | null): string {
+  const texto = (valor ?? "").trim().replace(/\s+/g, " ");
+  if (!texto) return "";
+  if (FORA_DO_ALFABETO_LATINO.test(texto)) return texto;
+  const caixaUniforme = texto === texto.toLocaleLowerCase() || texto === texto.toLocaleUpperCase();
+  if (!caixaUniforme) return texto;
+  return texto.split(" ").map((palavra, i) => {
+    const minuscula = palavra.toLocaleLowerCase();
+    if (i > 0 && PALAVRAS_MINUSCULAS.has(minuscula)) return minuscula;
+    return minuscula.charAt(0).toLocaleUpperCase() + minuscula.slice(1);
+  }).join(" ");
+}
+
+// "Cidade, UF" quando a sigla vem colada depois de vírgula, hífen ou barra.
+// Duas letras no fim são exigidas: "Porto Alegre" e "Mogi-Mirim" passam inteiras.
+export function normalizarCidade(valor?: string | null): string {
+  const texto = (valor ?? "").trim();
+  if (!texto) return "";
+  const comSigla = texto.match(/^(.+?)\s*[,/–-]\s*([A-Za-z]{2})$/);
+  if (comSigla) return `${normalizarCaixa(comSigla[1])}, ${comSigla[2].toLocaleUpperCase()}`;
+  return normalizarCaixa(texto);
+}
+
+// Os grupos da lista, nesta ordem: primeiro o que espera por mim, por último o
+// que já acabou. O rótulo "Aguardando resposta" servia para os dois lados do
+// pedido e não dizia de quem era a vez (item 13.2); "Em análise" fica só para o
+// que ainda está com a distribuidora.
+const GRUPOS_DE_CONEXAO = [
+  { chave: "aguardando-voce", titulo: "dashboard.awaitingYourReply" },
+  { chave: "em-analise", titulo: "dashboard.inReview" },
+  { chave: "aguardando-outro", titulo: "dashboard.awaitingOtherReply" },
+  { chave: "efetivadas", titulo: "dashboard.connectionsEstablished" },
+  { chave: "encerradas", titulo: "dashboard.groupClosed" },
+] as const;
+
+function grupoDaConexao(conexao: { status: string; souDestinataria: boolean }): string {
+  if (conexao.status === "accepted") return "efetivadas";
+  if (conexao.status === "in_review") return "em-analise";
+  if (conexao.status === "pending") return conexao.souDestinataria ? "aguardando-voce" : "aguardando-outro";
+  return "encerradas";
+}
+
+// `souDestinataria` é `sql<boolean>` nas duas consultas de server/db.ts, mas o
+// driver do MySQL entrega 1/0: `status === "pending" && conn.souDestinataria`
+// valia `0` e o React desenhava o zero solto abaixo do setor (item 6.2). A
+// lista inteira é normalizada na entrada, uma vez, para nenhum uso novo cair
+// na mesma armadilha.
+function comSouDestinatariaBooleana<T extends { souDestinataria: unknown }>(linhas: T[]) {
+  return linhas.map(linha => ({ ...linha, souDestinataria: Boolean(linha.souDestinataria) }));
 }
 
 // ─── Banner de Promoção Ouro ───
@@ -272,11 +382,27 @@ function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, i
   const values = Array.isArray(match.values) ? match.values as string[] : [];
 
   // Combina seekingTypes + businessInterests, resolve sinônimos e remove
-  // duplicatas. O sinônimo é procurado no termo CRU, antes de traduzir
-  // (lib/interesses.ts); sem sinônimo, a chave de opção do onboarding
-  // ("investor") vira o rótulo do idioma da tela e texto livre passa intacto.
+  // duplicatas. Três vocabulários convivem na mesma coluna e cada um tem a sua
+  // vez, nesta ordem:
+  //
+  //  1. CHAVE DE SETOR (`construcao`, `logistica`): é o que "Interesses de
+  //     negócio" volta a gravar, e o rótulo tem de ser o MESMO que a usuária
+  //     marcou no cadastro — por isso vem de `shared/setores.ts`, a fonte
+  //     daquela tela, e não de um vocabulário paralelo. Sem este passo a chave
+  //     saía CRUA no cartão ("construcao"), porque nenhum dos dois de baixo a
+  //     conhece.
+  //  2. sinônimo do termo CRU, antes de traduzir (lib/interesses.ts): é o que
+  //     casa o dado antigo — as chaves em inglês (`tech`) e os rótulos já
+  //     gravados ("Alimentos & Bebidas").
+  //  3. "O que você busca?", que tem rótulo próprio, inclusive para as chaves
+  //     antigas (investor → Investimento / Capital; job e mentor com o rótulo
+  //     de antes); depois a chave de opção do onboarding ("investor" vira o
+  //     rótulo do idioma da tela). Texto livre não bate com nada e passa
+  //     intacto, que é como o dado antigo continua legível.
   const allInterests = Array.from(new Set(
-    [...seekingTypes, ...businessInterests].map(k => rotuloDeInteresse(t, k, termo => optionLabel(t, termo)))
+    [...seekingTypes, ...businessInterests].map(k => ehChaveDeSetor(k)
+      ? rotuloDoSetor(t, k)
+      : rotuloDeInteresse(t, k, termo => rotuloDaBusca(t, termo) ?? optionLabel(t, termo)))
   )).slice(0, 5);
 
   useEffect(() => {
@@ -455,8 +581,12 @@ function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, i
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ label, value, color, icon, index }: {
-  label: string; value: number | string; color: string; icon: string; index: number;
+// `suffix` existia no AnimatedNumber e o StatCard não repassava: a
+// "Compatibilidade Média" saía "72", um número sem unidade nenhuma ao lado de
+// três contagens (item 6.3 do reteste v4). O traço de consulta que falhou não
+// ganha sufixo — o AnimatedNumber devolve texto não numérico intacto.
+function StatCard({ label, value, color, icon, index, suffix = "" }: {
+  label: string; value: number | string; color: string; icon: string; index: number; suffix?: string;
 }) {
   const [entered, setEntered] = useState(false);
   useEffect(() => {
@@ -476,7 +606,7 @@ function StatCard({ label, value, color, icon, index }: {
         <div className="w-1.5 h-1.5 rounded-full opacity-60" style={{ background: color }} />
       </div>
       <div className={`text-2xl font-black mb-1 transition-colors duration-300`} style={{ color }}>
-        {entered ? <AnimatedNumber value={value} /> : "0"}
+        {entered ? <AnimatedNumber value={value} suffix={suffix} /> : "0"}
       </div>
       <div className="text-xs text-white/35">{label}</div>
     </div>
@@ -573,9 +703,6 @@ function RecommendedOpportunities() {
     distribution: t("opportunitiesPage.typeDistribution"), other: t("opportunitiesPage.typeOther"),
   };
 
-  const getScoreColor = (score: number) =>
-    score >= 80 ? "#10b981" : score >= 60 ? "#c98f70" : "#3b82f6";
-
   return (
     <div className="mt-10" style={{
       opacity: entered ? 1 : 0,
@@ -638,7 +765,7 @@ function RecommendedOpportunities() {
           {recommendedQuery.data.map((opp, i) => {
             const level = (opp.complianceLevel ?? "pending") as string;
             const compliance = COMPLIANCE_COLORS[level] ?? COMPLIANCE_COLORS.pending;
-            const scoreColor = getScoreColor(opp.compatibilityScore);
+            const scoreColor = corDaFaixaDeCompatibilidade(opp.compatibilityScore);
             return (
               <div key={opp.id}
                 style={{
@@ -687,7 +814,12 @@ function RecommendedOpportunities() {
                           {opp.compatibilityScore}%
                         </text>
                       </svg>
-                      <span className="text-[9px] font-semibold" style={{ color: scoreColor }}>{t("dashboard.compatible")}</span>
+                      {/* A faixa por escrito ao lado da cor (item 12): o anel
+                          sozinho obriga a distinguir marrom de azul. */}
+                      <span className="text-[9px] font-semibold text-center leading-tight" style={{ color: scoreColor }}>
+                        {t("dashboard.compatible")}
+                        <span className="block text-white/45">{rotuloDaFaixaDeCompatibilidade(t, opp.compatibilityScore)}</span>
+                      </span>
                     </div>
                   </div>
 
@@ -848,12 +980,76 @@ export default function Dashboard() {
   const redeQuery = trpc.matches.redeAguardando.useQuery(undefined, { enabled: isAuthenticated });
   const statsQuery = trpc.matches.list.useQuery({ limit: 50 }, { enabled: isAuthenticated, select: (data) => ({
     total: data.length,
-    unseen: data.filter(m => !m.userSeen).length,
     highScore: data.filter(m => m.overallScore >= 80).length,
     avgScore: data.length > 0 ? Math.round(data.reduce((s, m) => s + m.overallScore, 0) / data.length) : 0,
     distribution: [0,1,2,3,4].map(b => data.filter(m => Math.min(4, Math.floor(m.overallScore / 20)) === b).length),
   }) });
   const connectionsQuery = trpc.connections.list.useQuery(undefined, { enabled: isAuthenticated });
+  // QUEM PEDIU VÊ O ACEITE SEM F5 (achado do Nicolas na #136). O aceite manda um
+  // aviso `interest_received` para a solicitante, e o sino relê a lista de
+  // avisos a cada 30 s — mas o Dashboard não escutava nada disso, então o cartão
+  // dela continuava anônimo até o F5. Aqui a tela observa o aviso e relê as duas
+  // listas que desenham o nome.
+  //
+  // A comparação é pelo maior id JÁ VISTO, e não pelo tamanho da lista: aviso de
+  // outro tipo não relê nada, e a primeira leitura também não — senão toda
+  // abertura do Dashboard faria duas consultas a mais, e quem nunca teve um
+  // aceite pagaria por isso.
+  const avisosDeInteresse = trpc.notifications.list.useQuery(undefined, { enabled: isAuthenticated, staleTime: 30_000 });
+  const maiorAvisoVisto = useRef<number | null>(null);
+  useEffect(() => {
+    const ids = (avisosDeInteresse.data ?? [])
+      .filter((aviso: { type: string }) => aviso.type === "interest_received")
+      .map((aviso: { id: number }) => aviso.id);
+    if (!ids.length) return;
+    const maior = Math.max(...ids);
+    const anterior = maiorAvisoVisto.current;
+    maiorAvisoVisto.current = maior;
+    if (anterior !== null && maior > anterior) {
+      void connectionsQuery.refetch();
+      void matchesQuery.refetch();
+    }
+    // As duas consultas ficam fora das dependências de propósito: a identidade
+    // delas muda a cada render, e o que decide a releitura é o aviso novo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avisosDeInteresse.data]);
+  // Números da plataforma inteira. É a MESMA consulta que alimentava os quatro
+  // indicadores da Hero (stats.platform, em server/routers/stats.ts), que saíram
+  // da página pública: nenhum cálculo novo, nenhum número fixo no código.
+  const plataformaQuery = trpc.stats.platform.useQuery(undefined, { enabled: isAuthenticated });
+  // Meu Network Inteligente: minutos usados no mês e limite por reunião no atalho.
+  const minutosDoNetwork = trpc.networkInteligente.minutos.useQuery(undefined, { enabled: isAuthenticated });
+  // Membros Bronze, Prata e Ouro (Governança, itens 1 e 12): saíram da Home e
+  // só aparecem aqui. Consulta de quem está logada, com contagens reais por nível.
+  const niveisQuery = trpc.stats.membrosPorNivel.useQuery(undefined, { enabled: isAuthenticated });
+
+  // O número do aviso de novidades, CONGELADO na carga em que apareceu. A tela
+  // se refaz o tempo todo (demonstrar interesse, aceitar, dispensar, marcar como
+  // vista) e cada refetch traz `userSeen` já verdadeiro — o aviso sumia dois
+  // segundos depois de aparecer, debaixo do olho de quem estava lendo.
+  //
+  // O que solta o congelamento é a lista trazer SUGESTÃO QUE AINDA NÃO FOI
+  // CONTADA — um `matchId` que nunca apareceu nesta carga —, e só isso. Antes
+  // quem soltava era o `onSuccess` do "Reanalisar", zerando o número à mão: só
+  // que o refetch dele demora, a tela se redesenha na hora com a lista VELHA já
+  // marcada como vista, e o aviso piscava e sumia mesmo quando o servidor não
+  // tinha achado sugestão nenhuma. Pelo conteúdo, os dois casos ficam certos:
+  // "Reanalisar" que encontra sugestões novas anuncia quantas (os ids novos
+  // entram), e o que não encontra nada deixa o número quieto — como deixam
+  // dispensar, aceitar e responder, que só encurtam a lista.
+  //
+  // Na carga seguinte (outro acesso, F5) o número já nasce menor, que é o que o
+  // item 6.4 pedia: o servidor guardou `userSeen` no caminho silencioso abaixo.
+  const novidadesDaCarga = useRef<number | null>(null);
+  const sugestoesJaContadas = useRef<Set<number> | null>(null);
+  if (matchesQuery.data) {
+    const contadas = sugestoesJaContadas.current;
+    const temSugestaoNova = !contadas || matchesQuery.data.some(m => !contadas.has(m.matchId));
+    if (temSugestaoNova) {
+      novidadesDaCarga.current = matchesQuery.data.filter(m => !m.userSeen).length;
+      sugestoesJaContadas.current = new Set(matchesQuery.data.map(m => m.matchId));
+    }
+  }
 
   const dismissMutation = trpc.matches.dismiss.useMutation({
     onSuccess: () => { matchesQuery.refetch(); toast.success(t("dashboard.dismiss")); },
@@ -861,7 +1057,13 @@ export default function Dashboard() {
   const interestMutation = trpc.connections.send.useMutation({
     // `matchesQuery` também: o estado do cartão ("em análise") vem do servidor,
     // e sem este refetch o botão continuava "Demonstrar Interesse" até o F5.
-    onSuccess: () => { toast.success(t("dashboard.interestSent")); connectionsQuery.refetch(); matchesQuery.refetch(); },
+    // `revelou`: a outra pessoa já tinha um pedido encaminhado para mim (o cartão
+    // aberto estava velho), e este clique fechou o interesse mútuo. O aviso é o
+    // da conexão criada, não "interesse enviado, o distribuidor confere".
+    onSuccess: (data) => {
+      toast.success(data?.revelou ? t("dashboard.connectionAccepted") : t("dashboard.interestSent"));
+      connectionsQuery.refetch(); matchesQuery.refetch();
+    },
     onError: (err) => toast.error(err.message || t("dashboard.interestError")),
   });
   const respondMutation = trpc.connections.respond.useMutation({
@@ -870,15 +1072,51 @@ export default function Dashboard() {
     onSuccess: (_, vars) => { toast.success(vars.accept ? t("dashboard.connectionAccepted") : t("dashboard.connectionDeclined")); connectionsQuery.refetch(); matchesQuery.refetch(); },
   });
   const regenerateMutation = trpc.matches.regenerate.useMutation({
-    onSuccess: (data) => { toast.success(data.count > 0 ? t("dashboard.newMatches", { count: data.count }) : t("dashboard.analysisDone")); matchesQuery.refetch(); },
+    // Quantas vieram está no aviso desta mutation (`dashboard.newMatches`). O
+    // número da saudação NÃO é zerado aqui: ele se refaz sozinho quando o
+    // refetch trouxer sugestão com id novo (ver `novidadesDaCarga`, acima).
+    // Zerar à mão fazia o aviso piscar enquanto o refetch não voltava.
+    onSuccess: (data) => {
+      toast.success(data.count > 0 ? t("dashboard.newMatches", { count: data.count }) : t("dashboard.analysisDone"));
+      matchesQuery.refetch();
+    },
   });
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => { logout(); navigate("/"); },
   });
 
+  // Reteste v4 (item 6.4): "N novas conexões sugeridas esperando pela sua
+  // atenção" nunca baixava — `userSeen` nasce false e nada marcava a linha como
+  // vista. Quando a lista de sugestões aparece na tela, avisamos o servidor UMA
+  // VEZ por carga: o ref guarda os ids já enviados, então o efeito pode
+  // reexecutar à vontade (troca de aba, re-render, refetch) sem virar laço, e
+  // sugestão nova que chegar depois entra sozinha na próxima leva.
+  const vistasEnviadas = useRef(new Set<number>());
+  // A marcação é SILENCIOSA: o servidor grava `userSeen` e a tela não se refaz
+  // por causa disso. A primeira versão pedia `matchesQuery.refetch()` aqui, e a
+  // lista voltava com `userSeen` verdadeiro enquanto a pessoa ainda lia a
+  // saudação — o aviso piscava e sumia. Quem precisa do valor novo é a carga
+  // SEGUINTE, que já o lê do banco.
+  const marcarVistasMutation = trpc.matches.marcarVistas.useMutation();
   useEffect(() => {
-    if (!loading && isAuthenticated && profileQuery.data === null) navigate("/onboarding");
-  }, [loading, isAuthenticated, profileQuery.data, navigate]);
+    if (activeTab !== "matches") return;
+    const naoVistas = (matchesQuery.data ?? [])
+      .filter(m => !m.userSeen && !vistasEnviadas.current.has(m.matchId))
+      .map(m => m.matchId);
+    if (naoVistas.length === 0) return;
+    for (const id of naoVistas) vistasEnviadas.current.add(id);
+    marcarVistasMutation.mutate({ matchIds: naoVistas });
+    // A mutation fica fora das dependências de propósito: sua identidade muda a
+    // cada render e o que decide a chamada é o conteúdo da lista.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, matchesQuery.data]);
+
+  // Cadastro não concluído não chega aqui: o ProtectedRoute manda para
+  // /onboarding (user.onboardingCompleted === false) e o servidor recusa
+  // (server/cadastro-concluido.ts). Havia aqui um redirecionamento por
+  // `profileQuery.data === null` que nunca disparava, porque profile.get sempre
+  // devolve { user, profile }. Perfil ausente com cadastro concluído (conta
+  // criada por script) fica no Dashboard, com o convite da aba Perfil.
 
   const switchTab = (tab: typeof activeTab) => {
     if (tab === activeTab) return;
@@ -911,12 +1149,24 @@ export default function Dashboard() {
   }
 
   const stats = statsQuery.data;
+  const plataforma = plataformaQuery.data;
   const matches = matchesQuery.data || [];
+  // O número do aviso sai da lista que a tela DESENHA — as mesmas linhas que o
+  // efeito acima manda marcar como vistas. Contar a janela inteira (statsQuery,
+  // 50) deixava o aviso alto para sempre em quem tem mais sugestões do que a
+  // lista mostra: ninguém chega a ver as de fora para "zerá-las". E o valor é o
+  // congelado, que só se refaz quando chega sugestão de id novo.
+  const novidades = novidadesDaCarga.current ?? 0;
   const aguardandoTermo = Boolean(consentQuery.data?.document) && !consentQuery.data?.accepted;
-  const connections = connectionsQuery.data || [];
+  const connections = comSouDestinatariaBooleana(connectionsQuery.data || []);
   const profileData = profileQuery.data;
   const profile = profileData?.profile;
-  const pendingConnections = connections.filter((c) => c.status === "pending" && c.souDestinataria);
+  const pendingConnections = connections.filter((c) => c.status === "pending" && Boolean(c.souDestinataria));
+  // Item 6.1: o cartão de resumo contava as efetivadas e a aba contava todas as
+  // linhas da MESMA consulta — dois números para a mesma coisa na mesma tela.
+  // Vale a regra do cartão nos dois lugares (decisão do Roberto), e o rótulo
+  // passou a dizer o que está sendo contado.
+  const conexoesEfetivadas = connections.filter(c => c.status === "accepted").length;
 
   return (
     <div className="min-h-screen bg-transparent text-white">
@@ -962,8 +1212,8 @@ export default function Dashboard() {
               nunca por sufixo concatenado: "novo{s} match{es}" só existe em
               português. A parte destacada e o complemento são duas chaves. */}
           <p className="text-white/40">
-            {stats?.unseen
-              ? <><span className="text-[#c98f70] font-semibold">{t("dashboard.greetingUnseen", { count: stats.unseen })}</span> {t("dashboard.greetingUnseenSuffix")}</>
+            {novidades > 0
+              ? <><span className="text-[#c98f70] font-semibold">{t("dashboard.greetingUnseen", { count: novidades })}</span> {t("dashboard.greetingUnseenSuffix")}</>
               : stats?.total && stats.total > 0
                 ? t("dashboard.greetingTotal", { count: stats.total })
                 // Em erro, nada de convite a "gerar os primeiros matches": eles podem existir.
@@ -976,19 +1226,97 @@ export default function Dashboard() {
           {[
             // Consulta falhou não é "0 matches": o traço diz que o número não veio
             // (o erro com "tentar de novo" está na aba de matches, logo abaixo).
-            { label: t("dashboard.matches"), value: statsQuery.isError ? "—" : stats?.total ?? 0, color: "#c98f70", icon: "🎯" },
-            { label: t("dashboard.compatibility"), value: statsQuery.isError ? "—" : stats?.avgScore ?? 0, color: "#3b82f6", icon: "📊" },
-            { label: t("dashboard.topMatches"), value: statsQuery.isError ? "—" : stats?.highScore ?? 0, color: "#10b981", icon: "⭐" },
-            { label: t("dashboard.connections"), value: connectionsQuery.isError ? "—" : connections.filter(c => c.status === "accepted").length, color: "#8b5cf6", icon: "🤝" },
+            { label: t("dashboard.matches"), value: statsQuery.isError ? "—" : stats?.total ?? 0, color: "#c98f70", icon: "🎯", suffix: "" },
+            // O único dos quatro que é porcentagem, e o único que saía sem
+            // unidade nenhuma ao lado de três contagens (item 6.3).
+            { label: t("dashboard.compatibility"), value: statsQuery.isError ? "—" : stats?.avgScore ?? 0, color: "#3b82f6", icon: "📊", suffix: "%" },
+            { label: t("dashboard.topMatches"), value: statsQuery.isError ? "—" : stats?.highScore ?? 0, color: "#10b981", icon: "⭐", suffix: "" },
+            { label: t("dashboard.connectionsEstablished"), value: connectionsQuery.isError ? "—" : conexoesEfetivadas, color: "#8b5cf6", icon: "🤝", suffix: "" },
           ].map((s, i) => (
             <StatCard key={s.label} {...s} index={i} />
           ))}
         </div>
 
+        {/* ─── A REDE INTEIRA ───
+            Os quatro indicadores que ficavam na Hero pública. Aqui eles fazem
+            sentido: quem já entrou lê o tamanho da rede em que está, em vez de
+            ver o número servir de vitrine na primeira tela.
+            O título existe porque a grade acima também tem um cartão
+            "Conexões" — lá é a da usuária, aqui é a da plataforma; sem a
+            separação os dois números pareceriam o mesmo, contraditório.
+            Mesmo StatCard, mesmas quatro cores e mesma grade da grade de cima:
+            nenhum componente novo, nenhuma cor fora da identidade. O índice
+            começa em 4 para a entrada escalonada continuar a de cima em vez de
+            recomeçar. */}
+        <div className="mb-8">
+          <div className="flex items-baseline gap-3 mb-3 flex-wrap">
+            {/* Mesmo corpo do título "Oportunidades Recomendadas" (linha 592), que é
+                a outra seção fora de cartão. Sem a classe de tamanho, o h2 cai no
+                padrão do navegador e sai com 36 px — medido: gritava mais alto que
+                os indicadores da própria usuária, que nem título têm. */}
+            <h2 className="font-black text-white text-lg leading-tight">{t("dashboard.networkTitle")}</h2>
+            <p className="text-xs text-white/35">{t("dashboard.networkDesc")}</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              // Mesma convenção da grade de cima: consulta que falhou não é
+              // "0 pessoas cadastradas" — o traço diz que o número não veio.
+              { label: t("stats.users"), value: plataforma?.users ?? 0, color: "#c98f70", icon: "👥" },
+              { label: t("stats.opportunities"), value: plataforma?.opportunities ?? 0, color: "#3b82f6", icon: "💼" },
+              { label: t("stats.connections"), value: plataforma?.connections ?? 0, color: "#10b981", icon: "🔗" },
+              { label: t("stats.countries"), value: plataforma?.countries ?? 0, color: "#8b5cf6", icon: "🌍" },
+            ].map((s, i) => (
+              <StatCard key={s.label} {...s} value={plataformaQuery.isError ? "—" : s.value} index={4 + i} />
+            ))}
+          </div>
+          {/* Membros por nível: mesma seção, mesmo StatCard e a mesma convenção
+              do traço quando a consulta falha. Ouro soma presidente e admin
+              ("Ouro = Presidente = administradora"), no servidor. */}
+          <h3 className="mt-5 mb-3 text-sm font-bold text-white/70">{t("governanca.dashboard.title")}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { label: t("governanca.dashboard.bronze"), value: niveisQuery.data?.bronze ?? 0, color: "#c98f70", icon: "🥉" },
+              { label: t("governanca.dashboard.silver"), value: niveisQuery.data?.silver ?? 0, color: "#cbd5e1", icon: "🥈" },
+              { label: t("governanca.dashboard.gold"), value: niveisQuery.data?.gold ?? 0, color: "#fbbf24", icon: "🥇" },
+            ].map((s, i) => (
+              <StatCard key={s.label} {...s} value={niveisQuery.isError ? "—" : s.value} index={8 + i} />
+            ))}
+          </div>
+        </div>
+
+        {/* ─── MEU NETWORK INTELIGENTE ───
+            Entrada do painel da rede particular (pedido do Nicolas, 13/09/2026).
+            Spec da Glenda de 14/09, item 19 e validação 24: o Dashboard mostra
+            o consumo e o limite de minutos — a consulta leve de
+            networkInteligente.minutos; o resto dos números mora no painel. */}
+        <Link href="/meu-network-inteligente"
+          className="mb-8 flex items-center gap-4 rounded-2xl border border-[#c98f70]/25 bg-[#c98f70]/[0.06] p-5 transition-colors duration-200 hover:border-[#c98f70]/45">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#c98f70]/30 bg-[#c98f70]/15">
+            <Network className="h-5 w-5 text-[#c98f70]" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold text-white">{t("networkPanel.title")}</span>
+            <span className="mt-0.5 block text-sm text-white/50">{t("networkPanel.dashboardCard")}</span>
+            {minutosDoNetwork.data && (
+              <span className="mt-1 block text-xs font-semibold text-[#efcba8]">
+                {t("networkInteligente.dashboard.minutesLine", {
+                  usados: minutosDoNetwork.data.usadosNoMesSegundos > 0 ? Math.max(1, Math.round(minutosDoNetwork.data.usadosNoMesSegundos / 60)) : 0,
+                  limite: Math.round(minutosDoNetwork.data.limitePorReuniaoSegundos / 60),
+                })}
+                {!minutosDoNetwork.data.ampliacao.disponivel && ` · ${t("networkInteligente.dashboard.expandSoon")}`}
+              </span>
+            )}
+          </span>
+          <span className="shrink-0 text-sm font-semibold text-[#c98f70]">{t("networkPanel.open")}</span>
+        </Link>
+
         {/* ─── TABS ─── */}
         <div className="flex gap-1 mb-6 bg-white/4 rounded-xl p-1 w-fit border border-white/5 flex-wrap">
           {(["matches", "connections", "dealrooms", "profile"] as const).map(tab => (
             <button key={tab} onClick={() => switchTab(tab as any)}
+              // O número da aba Conexões conta as EFETIVADAS, como o cartão de
+              // resumo; o título diz isso a quem passa o mouse.
+              title={tab === "connections" ? t("dashboard.connectionsEstablished") : undefined}
               className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                 activeTab === tab
                   ? "bg-[#c98f70] text-[#151312] font-bold shadow-md shadow-[#c98f70]/20"
@@ -997,7 +1325,7 @@ export default function Dashboard() {
               {tab === "matches"
                 ? `${t("dashboard.matches")}${matches.length > 0 ? ` (${matches.length})` : ""}`
                 : tab === "connections"
-                  ? `${t("dashboard.connections")}${connections.length > 0 ? ` (${connections.length})` : ""}`
+                  ? `${t("dashboard.connections")}${conexoesEfetivadas > 0 ? ` (${conexoesEfetivadas})` : ""}`
                   : tab === "dealrooms"
                   ? `🔐 ${t("dashboard.dealRooms")}`
                   : t("dashboard.profile")}
@@ -1103,58 +1431,97 @@ export default function Dashboard() {
                     {t("dashboard.matches")}
                   </button>
                 </div>
-              ) : connections.map((conn, i) => (
-                <div key={conn.id}
-                  style={{
-                    opacity: 1,
-                    animation: `fadeInScale 0.35s cubic-bezier(0.23,1,0.32,1) ${i * 0.06}s both`,
-                  }}
-                  className="bg-[#1b1714] border border-white/8 rounded-2xl p-5 flex items-center gap-4 hover:border-white/15 transition-colors duration-200">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-[#151312] font-black flex-shrink-0"
-                    style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }}>
-                    {conn.displayName
-                      ? conn.displayName[0].toUpperCase()
-                      : <User className="w-5 h-5 opacity-60" strokeWidth={2.5} aria-label={t("dashboard.anonAvatarAlt")} />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold">{conn.displayName || t("dashboard.anonTitle")}</div>
-                    <div className="text-sm text-white/40">{optionLabel(t, conn.primarySpecialty)} · {conn.city}</div>
-                    {conn.message && <div className="text-xs text-white/25 mt-1 truncate">"{conn.message}"</div>}
-                    {conn.status === "pending" && conn.souDestinataria && (
-                      <div className="text-xs text-white/35 mt-1">{t("dashboard.acceptRevealHint")}</div>
-                    )}
-                    {conn.status === "accepted" && (
-                      <div className="text-xs text-emerald-400/70 mt-1">{t("dashboard.revealedNote")}</div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {conn.status === "pending" && conn.souDestinataria ? (
-                      <>
-                        <button onClick={() => respondMutation.mutate({ connectionId: conn.id, accept: true })}
-                          className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-400 hover:bg-emerald-500 text-black transition-all duration-200 active:scale-95">
-                          {t("dashboard.acceptReveal")}
-                        </button>
-                        <button onClick={() => respondMutation.mutate({ connectionId: conn.id, accept: false })}
-                          className="px-4 py-2 rounded-xl text-xs font-medium border border-white/15 text-white/50 hover:border-white/30 hover:text-white transition-all duration-200">
-                          {t("dashboard.decline")}
-                        </button>
-                      </>
-                    ) : (
-                      <Badge className={
-                        conn.status === "accepted" ? "bg-emerald-400/15 text-emerald-400 border-emerald-400/25"
-                          : conn.status === "pending" || conn.status === "in_review" ? "bg-[#c98f70]/15 text-[#c98f70] border-[#c98f70]/25"
-                            : "bg-white/8 text-white/35 border-white/15"
-                      }>
-                        {conn.status === "accepted" ? t("dashboard.connected")
-                          : conn.status === "pending" ? t("dashboard.pending")
-                            : conn.status === "in_review" ? t("dashboard.inReview")
-                              : conn.status === "not_forwarded" ? t("dashboard.notForwarded")
-                                : t("dashboard.declined")}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
+              ) : GRUPOS_DE_CONEXAO.map(grupo => {
+                // Item 13.4: a lista era uma pilha única em que o pedido que
+                // espera por mim ficava entre uma conexão velha e uma recusada.
+                const doGrupo = connections.filter(c => grupoDaConexao(c) === grupo.chave);
+                if (doGrupo.length === 0) return null;
+                return (
+                  <section key={grupo.chave} className="space-y-3">
+                    <h3 className="mt-6 text-xs font-bold uppercase tracking-wide text-white/40 first:mt-0">
+                      <span>{t(grupo.titulo)}</span>{" "}
+                      <span className="text-white/25">({doGrupo.length})</span>
+                    </h3>
+                    {doGrupo.map((conn, i) => {
+                      // Item 13.1: o que está gravado é texto livre do onboarding.
+                      const setor = normalizarCaixa(optionLabel(t, conn.primarySpecialty));
+                      const cidade = normalizarCidade(conn.city);
+                      const esperaPorMim = conn.status === "pending" && Boolean(conn.souDestinataria);
+                      // Conexão ACEITA sem apelido aparecia como "Membro da rede",
+                      // mesmo com o servidor já mandando o nome da conta: o
+                      // `userName` vem atrás do mesmo CASE WHEN que libera o
+                      // resto, ou seja, só depois do aceite (server/db.ts:930).
+                      // Achado do Nicolas na #136, item 4 da validação da #108.
+                      const nomeVisivel = conn.displayName || (conn as { userName?: string | null }).userName || null;
+                      const pedidoEm = conn.createdAt ? new Date(conn.createdAt) : null;
+                      return (
+                        <div key={conn.id}
+                          style={{
+                            opacity: 1,
+                            animation: `fadeInScale 0.35s cubic-bezier(0.23,1,0.32,1) ${i * 0.06}s both`,
+                          }}
+                          className="bg-[#1b1714] border border-white/8 rounded-2xl p-5 flex items-center gap-4 hover:border-white/15 transition-colors duration-200">
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center text-[#151312] font-black flex-shrink-0"
+                            style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }}>
+                            {nomeVisivel
+                              ? nomeVisivel[0].toUpperCase()
+                              : <User className="w-5 h-5 opacity-60" strokeWidth={2.5} aria-label={t("dashboard.anonAvatarAlt")} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold">{nomeVisivel || t("dashboard.anonTitle")}</div>
+                            {/* Sem o filtro, uma cidade em branco deixava um " · " solto. */}
+                            <div className="text-sm text-white/40">{[setor, cidade].filter(Boolean).join(" · ")}</div>
+                            {conn.message && <div className="text-xs text-white/25 mt-1 truncate">"{conn.message}"</div>}
+                            {/* Item 6.2: `Boolean` porque o driver entrega 1/0 e o `&&`
+                                desenhava o zero na tela. */}
+                            {esperaPorMim && (
+                              <div className="text-xs text-white/35 mt-1">{t("dashboard.acceptRevealHint")}</div>
+                            )}
+                            {conn.status === "accepted" && (
+                              <div className="text-xs text-emerald-400/70 mt-1">{t("dashboard.revealedNote")}</div>
+                            )}
+                            {/* Item 13.3: a data já vinha de getConnectionsForUser e não
+                                era mostrada — sem ela, "aguardando" não tem tamanho. */}
+                            {pedidoEm && !Number.isNaN(pedidoEm.getTime()) && (
+                              <div className="text-xs text-white/25 mt-1">
+                                {t("dashboard.requestedOn", { data: pedidoEm.toLocaleDateString(i18n.language) })}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {esperaPorMim ? (
+                              <>
+                                <button onClick={() => respondMutation.mutate({ connectionId: conn.id, accept: true })}
+                                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-400 hover:bg-emerald-500 text-black transition-all duration-200 active:scale-95">
+                                  {t("dashboard.acceptReveal")}
+                                </button>
+                                <button onClick={() => respondMutation.mutate({ connectionId: conn.id, accept: false })}
+                                  className="px-4 py-2 rounded-xl text-xs font-medium border border-white/15 text-white/50 hover:border-white/30 hover:text-white transition-all duration-200">
+                                  {t("dashboard.decline")}
+                                </button>
+                              </>
+                            ) : (
+                              <Badge className={
+                                conn.status === "accepted" ? "bg-emerald-400/15 text-emerald-400 border-emerald-400/25"
+                                  : conn.status === "pending" || conn.status === "in_review" ? "bg-[#c98f70]/15 text-[#c98f70] border-[#c98f70]/25"
+                                    : "bg-white/8 text-white/35 border-white/15"
+                              }>
+                                {/* Item 13.2: "Aguardando resposta" servia para os dois
+                                    lados. Aqui só chega o que espera o OUTRO membro. */}
+                                {conn.status === "accepted" ? t("dashboard.connected")
+                                  : conn.status === "pending" ? t("dashboard.awaitingOtherReply")
+                                    : conn.status === "in_review" ? t("dashboard.inReview")
+                                      : conn.status === "not_forwarded" ? t("dashboard.notForwarded")
+                                        : t("dashboard.declined")}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </section>
+                );
+              })}
             </div>
           )}
 
@@ -1180,7 +1547,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1">
                         <h2 className="text-xl font-black">{profile.displayName}</h2>
-                        <div className="text-white/40 text-sm">{profile.currentRole}{profile.currentRole && profile.city && " · "}{profile.city}</div>
+                        <div className="text-white/40 text-sm">{profile.jobTitle}{profile.jobTitle && profile.city && " · "}{profile.city}</div>
                         <div className="text-xs text-white/25 mt-0.5">{optionLabel(t, profile.primarySpecialty)}</div>
                       </div>
                         <div className="text-right">
@@ -1229,7 +1596,14 @@ export default function Dashboard() {
                   </div>
 
                   <div className="flex gap-3">
-                    <Link href="/onboarding" className="flex-1">
+                    {/* "Editar perfil" leva ao PERFIL, não ao cadastro. Mandava
+                        para /onboarding, e quem já tinha conta era obrigada a
+                        refazer as oito etapas e, no fim delas, a aceitar o Termo
+                        Geral — que conta antiga não precisa aceitar (janela B da
+                        revisão do Nicolas na #135). Quem ainda não tem perfil
+                        continua indo para /onboarding, logo abaixo: lá o
+                        cadastro é o caminho certo. */}
+                    <Link href="/profile" className="flex-1">
                       <button className="w-full py-3 px-4 rounded-xl font-medium text-sm border border-white/15 text-white/60 hover:border-white/30 hover:text-white transition-all duration-200">
                         ✏️ {t("dashboard.editProfile")}
                       </button>
@@ -1239,6 +1613,19 @@ export default function Dashboard() {
                       {regenerateMutation.isPending ? t("dashboard.analyzing") : t("dashboard.reanalyze")}
                     </button>
                   </div>
+
+                  {/* O Perfil edita quase tudo, mas não a especialidade, o setor,
+                      a experiência, a escolaridade e "O que você busca?": esses
+                      cinco só existem no cadastro. Sem este segundo caminho, o
+                      conserto da janela B trocaria uma armadilha (refazer tudo
+                      sem querer) por um beco sem saída (não ter como mexer neles).
+                      O aviso diz o preço: refazer o cadastro passa de novo pelo
+                      Termo Geral. */}
+                  <Link href="/onboarding">
+                    <button className="mt-2 w-full text-center text-xs text-white/35 hover:text-white/60 transition-colors">
+                      {t("dashboard.redoOnboarding")}
+                    </button>
+                  </Link>
                 </>
               ) : (
                 <div className="text-center py-20 animate-fade-in-up">

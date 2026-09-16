@@ -143,7 +143,7 @@ código conseguia assinar uma sessão válida.
 | `LLM_API_URL` | matches, enriquecimento, transcrição | `https://generativelanguage.googleapis.com/v1beta/openai` |
 | `LLM_API_KEY` | a chave do endpoint acima | Google AI Studio |
 | `RESEND_API_KEY` | e-mail de recuperação de senha | resend.com |
-| `EMAIL_FROM` | remetente | `MMM <nao-responda@seudominio>` |
+| `EMAIL_FROM` | remetente | `nao-responda@seudominio` (o nome WRW é posto pelo código) |
 | `LLM_AUDIO_MODEL_RESERVA` | opcional: modelo reserva da transcrição (assume no 503/cota) | padrão `gemini-3.5-flash-lite`; sempre id concreto, nunca alias |
 
 `PORT` o Railway injeta sozinho. Não defina na mão.
@@ -191,6 +191,65 @@ ela redirecionava qualquer requisição anônima para a URL assinada.
 de até 15 MB em uma requisição e transcreve com LLM dentro dela. Um request pode
 durar minutos. Confirmar o limite de tempo do host antes de contar essa etapa
 como pronta.
+
+## Termo Geral de Uso: publicar logo depois do deploy da 0013
+
+**Passo obrigatório. Nenhuma migração, boot ou deploy grava o termo.** O
+cadastro só conclui com o Termo Geral de Uso, Proteção de Dados e Intermediação
+Digital aceito, e sem versão publicada `profile.completeOnboarding` recusa
+(`server/termo-geral-de-uso.ts`). Então, sem o termo publicado, toda conta nova
+fica presa na última etapa do `/onboarding` com "ainda não foi publicado".
+
+Quem **já tem conta** não fica: "Editar perfil", no Dashboard, leva a `/profile`,
+que salva sem passar pelo termo — antes ele apontava para `/onboarding` e
+obrigava a refazer as oito etapas para esbarrar na mesma parede (janela B da
+revisão da #135). A trava do Termo Geral é para quem ainda não concluiu o
+cadastro.
+
+A migração 0013 só acrescenta o valor `termo_geral_de_uso` ao enum de
+`document_versions`. Antes dela aplicada, o banco recusa a publicação. Por isso a
+ordem é esta:
+
+1. Merge na `main`. O Render sobe e aplica a 0013 no boot.
+2. Confirmar que a 0013 entrou. No exame, a linha "migrações pendentes: nenhuma"
+   precisa sair OK.
+3. Logo em seguida, com autorização do Roberto (é escrita no banco de produção).
+   **O script não aceita `--env`**: ele lê `process.env.DATABASE_URL` e morre com
+   "Defina DATABASE_URL." Use o preload do dotenv, que não passa a URL pelo shell
+   (a do Aiven tem JSON no parâmetro de SSL e o shell a quebraria):
+   ```bash
+   DOTENV_CONFIG_PATH=.env.producao node -r dotenv/config scripts/publicar-documento.mjs termo_geral_de_uso docs/termos/termo-geral-de-uso.md --simular
+   DOTENV_CONFIG_PATH=.env.producao node -r dotenv/config scripts/publicar-documento.mjs termo_geral_de_uso docs/termos/termo-geral-de-uso.md --confirmo-producao
+   ```
+   Na simulação, confira quatro coisas: `vigente: nenhuma`, `nova: versão 1`, o
+   tamanho em caracteres e a linha do aviso suprimido.
+   Só o cadastro pede este aceite, e o aviso no sino mandaria quem já tem conta a
+   um `/dashboard` sem tela para aceitar. Para `termo_geral_de_uso` o script
+   suprime o aviso sozinho (`TIPOS_SEM_AVISO` em `scripts/publicar-documento.mjs`),
+   com ou sem `--sem-aviso`.
+4. Rodar o exame. A linha "Termo Geral de Uso vigente" sai FALHA enquanto não
+   houver exatamente uma versão vigente.
+
+**Antes do passo 1, conte quantas contas o portão do cadastro tranca.** Toda conta
+com `onboardingCompleted = 0` fica presa em `/onboarding` a partir deste deploy
+(`server/cadastro-concluido.ts`), e a carga de participantes
+(`scripts/importar-participantes.mjs`) grava exatamente isso. É leitura pura:
+
+```bash
+DOTENV_CONFIG_PATH=.env.producao node -r dotenv/config -e "const m=require('mysql2/promise');m.createConnection(process.env.DATABASE_URL).then(async c=>{const [r]=await c.query('SELECT COUNT(*) AS trancadas FROM users WHERE onboardingCompleted = 0');console.log(r[0]);await c.end();})"
+```
+
+Diferente de zero significa que essas pessoas terão de passar pelo cadastro para
+aceitar o Termo. O formulário delas abre PREENCHIDO com o que a planilha trouxe
+(nome, cidade, país, bio, empresa, cargo, setor, o que tem e o que precisa), então
+é conferir e aceitar — mas ainda é uma etapa que elas não esperavam.
+
+Entre os passos 1 e 3, o cadastro novo não conclui. Para zerar essa janela,
+aplique a migração antes do merge (`node scripts/migrar.mjs` contra produção, com
+autorização do Roberto) e publique o termo em seguida. Isso só é seguro se o SQL
+da migração for aditivo, e isso precisa ser conferido. O código antigo ignora
+tabela, coluna e valor de enum novos, e o `migrar.mjs` do boot não reclama de
+migração já aplicada.
 
 ## Verificar antes de mandar o link
 

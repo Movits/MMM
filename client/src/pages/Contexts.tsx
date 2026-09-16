@@ -66,8 +66,21 @@ function TypeBadge({ name, color, slug }: { name?: string; color?: string; slug?
   );
 }
 
+// O tipo de relação vem do banco como "pessoal" | "profissional" | "ambos" e
+// era mostrado CRU na lista de participantes do contexto — em todos os idiomas.
+// As traduções já existiam (`contexts.relTipo*`, usadas no formulário de
+// vínculo, noutro componente): aqui está o mapa do valor para a chave.
+const REL_TYPE_KEYS: Record<string, string> = {
+  pessoal: "contexts.relTipoPessoal",
+  profissional: "contexts.relTipoProfissional",
+  ambos: "contexts.relTipoAmbos",
+};
+
 // ─── Card de contexto ─────────────────────────────────────────────────────────
 function ContextCard({ ctx, onClick }: { ctx: Ctx; onClick: () => void }) {
+  // Só para a data: o cartão não tem texto próprio, mas a data saía sempre no
+  // formato brasileiro, em qualquer um dos dez idiomas.
+  const { i18n } = useTranslation();
   return (
     <div onClick={onClick}
       className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-amber-500/30 transition-all duration-200 cursor-pointer group flex items-start gap-3">
@@ -89,7 +102,7 @@ function ContextCard({ ctx, onClick }: { ctx: Ctx; onClick: () => void }) {
         <div className="flex items-center gap-3 mt-1 flex-wrap">
           {ctx.eventDate && (
             <span className="flex items-center gap-1 text-xs text-white/35">
-              <Calendar size={10} /> {new Date(ctx.eventDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+              <Calendar size={10} /> {new Date(ctx.eventDate + "T12:00:00").toLocaleDateString(i18n.language, { day: "2-digit", month: "short", year: "numeric" })}
             </span>
           )}
           {(ctx.city || ctx.country) && (
@@ -378,7 +391,7 @@ function LinkContactModal({ contextId, contextName, links, onClose, onLinked }: 
 function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
   contextId: string; onEdit: () => void; onClose: () => void; onRefresh: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showParticipantForm, setShowParticipantForm] = useState(false);
   const [partName, setPartName] = useState(""); const [partCompany, setPartCompany] = useState(""); const [partRole, setPartRole] = useState("");
@@ -493,7 +506,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
             {ctx.typeName && <TypeBadge name={ctx.typeName} color={ctx.typeColor} slug={ctx.typeSlug} />}
             {ctx.eventDate && (
               <span className="flex items-center gap-1 text-xs text-white/50">
-                <Calendar size={11} /> {new Date(ctx.eventDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+                <Calendar size={11} /> {new Date(ctx.eventDate + "T12:00:00").toLocaleDateString(i18n.language, { day: "2-digit", month: "long", year: "numeric" })}
               </span>
             )}
             {(ctx.city || ctx.country) && (
@@ -528,7 +541,7 @@ function ContextDetail({ contextId, onEdit, onClose, onRefresh }: {
                     </div>
                     <div>
                       <p className="text-sm text-white">{link.contactName ?? t("contexts.contatoFallback", { id: link.contactId })}</p>
-                      <p className="text-xs text-white/40">{link.relationshipType}{link.city ? ` · ${link.city}` : ""}</p>
+                      <p className="text-xs text-white/40">{REL_TYPE_KEYS[link.relationshipType] ? t(REL_TYPE_KEYS[link.relationshipType]) : link.relationshipType}{link.city ? ` · ${link.city}` : ""}</p>
                     </div>
                   </div>
                   <button onClick={() => unlinkMut.mutate({ linkId: link.id })}
@@ -726,7 +739,7 @@ export default function Contexts() {
   return (
     <div className="min-h-screen bg-[#151312] text-white">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#151312]/95 backdrop-blur-sm border-b border-white/8 px-4 sm:px-6 py-4">
+      <div className="sticky top-16 z-10 bg-[#151312]/95 backdrop-blur-sm border-b border-white/8 px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="text-white/40 hover:text-white/70 transition-colors">
