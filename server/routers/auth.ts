@@ -99,7 +99,24 @@ export const authRouter = router({
           sql`${passwordResetRequests.createdAt} >= ${windowStart}`,
         ));
       // A mesma resposta é retornada ao exceder o limite para não revelar informações.
-      if (Number(rateWindow?.count ?? 0) >= PASSWORD_RESET_RATE_LIMIT) return genericResponse;
+      if (Number(rateWindow?.count ?? 0) >= PASSWORD_RESET_RATE_LIMIT) {
+        // ...mas o limite não pode ser invisível para NÓS. Sem esta linha, o
+        // pedido recusado some sem deixar rastro: a tela mostra a mesma frase
+        // tranquilizadora ("você receberá instruções em breve"), nenhum e-mail
+        // sai, e não há nada no log do Render que explique o silêncio. Quem
+        // testa o fluxo tenta de novo — o que é o comportamento natural de quem
+        // não recebeu o e-mail — e a partir da quarta tentativa em 15 minutos
+        // nada mais acontece, sem aviso. Foi relatado como "o esqueci a senha
+        // não chega" (Gabriel, reteste de 15/09).
+        //
+        // O log NÃO leva o IP nem o e-mail: quem investiga precisa saber que o
+        // limite disparou, não quem o disparou, e a tabela
+        // `password_reset_requests` já guarda o IP para quem precisar auditar.
+        console.warn(
+          `[PasswordReset] Pedido recusado pelo limite de ${PASSWORD_RESET_RATE_LIMIT} por IP em ${PASSWORD_RESET_RATE_WINDOW_MS / 60_000} min.`,
+        );
+        return genericResponse;
+      }
       await db.insert(passwordResetRequests).values({ id: crypto.randomUUID(), ipAddress });
 
       const normalizedEmail = input.email.trim().toLowerCase();

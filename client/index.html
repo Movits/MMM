@@ -15,10 +15,20 @@
     <meta property="og:title" content="WRW — Women Rocking the World" />
     <meta property="og:description" content="WRW — CRM inteligente de networking para mulheres empreendedoras e líderes de negócios." />
     <meta property="og:type" content="website" />
-    <!-- Trocar pela URL absoluta quando o domínio de produção existir (D6):
-         crawlers de Open Graph ignoram caminhos relativos. -->
-    <meta property="og:image" content="/brand/og-image.png" />
+    <meta property="og:site_name" content="WRW" />
+    <!-- URL ABSOLUTA, e não caminho: crawler de Open Graph (WhatsApp, LinkedIn,
+         Facebook) não resolve caminho relativo, e o link compartilhado aparecia
+         sem imagem nenhuma. O lembrete que estava aqui esperava o domínio de
+         produção existir (D6); ele existe desde 16/09/2026, quando wrwglobal.org
+         passou a ser o endereço definitivo. A imagem é 1200×630, a proporção que
+         esses crawlers esperam. -->
+    <meta property="og:url" content="https://wrwglobal.org/" />
+    <meta property="og:image" content="https://wrwglobal.org/brand/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="WRW — Women Rocking the World" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://wrwglobal.org/brand/og-image.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />

@@ -110,14 +110,14 @@ export default function Login() {
                 {t("auth.email")}
               </Label>
               <div className="relative group">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-amber-400 transition-colors" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60 group-focus-within:text-amber-400 transition-colors" />
                 <Input
                   id="email"
                   type="email"
                   placeholder={t("auth.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-amber-400/60 focus:ring-amber-400/20 h-11 transition-all"
+                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/50 focus:border-amber-400/60 focus:ring-amber-400/20 h-11 transition-all"
                   autoComplete="email"
                   disabled={loginMutation.isPending}
                 />
@@ -131,27 +131,27 @@ export default function Login() {
                   {t("auth.password")}
                 </Label>
                 <Link href="/forgot-password">
-                  <span className="text-xs text-slate-500 hover:text-amber-400 cursor-pointer transition-colors">
+                  <span className="text-xs text-white/60 hover:text-amber-400 cursor-pointer transition-colors">
                     {t("auth.forgotPassword")}
                   </span>
                 </Link>
               </div>
               <div className="relative group">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-amber-400 transition-colors" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60 group-focus-within:text-amber-400 transition-colors" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-amber-400/60 focus:ring-amber-400/20 h-11 transition-all"
+                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-white/50 focus:border-amber-400/60 focus:ring-amber-400/20 h-11 transition-all"
                   autoComplete="current-password"
                   disabled={loginMutation.isPending}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-slate-300 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -179,14 +179,14 @@ export default function Login() {
           </form>
 
           {/* Segurança */}
-          <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-center gap-2 text-xs text-slate-600">
+          <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-center gap-2 text-xs text-white/50">
             <Shield className="w-3.5 h-3.5 text-amber-500/50" />
             <span>{t("auth.securityNote")}</span>
           </div>
         </div>
 
         {/* Link de volta */}
-        <p className="text-center mt-6 text-xs text-slate-600">
+        <p className="text-center mt-6 text-xs text-white/50">
           <Link href="/">
             <span className="hover:text-slate-400 cursor-pointer transition-colors">← {t("auth.backToHome")}</span>
           </Link>
