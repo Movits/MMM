@@ -41,10 +41,10 @@ const duble = vi.hoisted(() => {
     // O que concluir gravou no auth.me em cache, e o que já havia sido gravado
     // quando a tela navegou (a ordem importa: navegar antes volta a /onboarding).
     authMe: [] as unknown[],
-    navegacoes: [] as Array<{ destino: string; authMeNaHora: unknown[] }>,
-    navigate: (_destino: string) => {},
+    navegacoes: [] as Array<{ destino: string; opcoes?: unknown; authMeNaHora: unknown[] }>,
+    navigate: (_destino: string, _opcoes?: unknown) => {},
   };
-  d.navigate = destino => { d.navegacoes.push({ destino, authMeNaHora: [...d.authMe] }); };
+  d.navigate = (destino, opcoes) => { d.navegacoes.push({ destino, opcoes, authMeNaHora: [...d.authMe] }); };
   return d;
 });
 
@@ -243,7 +243,11 @@ describe("uma etapa de termos só — o Termo Geral substituiu 'Termos e Condiç
 
     const concluido = { id: 7, role: "bronze", onboardingCompleted: true };
     expect(duble.authMe).toEqual([concluido]);
-    expect(duble.navegacoes).toEqual([{ destino: "/dashboard", authMeNaHora: [concluido] }]);
+    // A ida ao Dashboard espera o history.go que tira as etapas do "voltar"
+    // (Onboarding.navegacao-no-celular.test.tsx); a rede de segurança de 1 s não
+    // pode navegar de novo.
+    act(() => { vi.advanceTimersByTime(2000); });
+    expect(duble.navegacoes).toEqual([{ destino: "/dashboard", opcoes: { replace: true }, authMeNaHora: [concluido] }]);
   });
 });
 

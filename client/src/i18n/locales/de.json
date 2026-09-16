@@ -44,11 +44,11 @@
     "badge": "Weltweites Business-Netzwerk unter Mitgliedern • +30 Länder • unendliche Möglichkeiten",
     "headline1": "Intelligenz, die Geschäfte verbindet, ",
     "headline2": "die zustande kommen",
-    "subtitle": "Stellen Sie sich ein Netzwerk vor, das erkennt, wen Sie kennenlernen sollten — und wer Sie kennenlernen sollte.",
+    "subtitle": "Stellen Sie sich ein Netzwerk vor, das erkennen kann: wen Sie kennenlernen sollten und wer Sie kennenlernen sollte.",
     "globalBefore": "Mit Botschafterinnen in ",
     "globalHighlight": "mehr als 30 Ländern",
     "globalAfter": " verbinden wir Sie mit Menschen, Chancen und Geschäften in einem globalen Netzwerk ohne Grenzen.",
-    "ai": "Unsere künstliche Intelligenz gleicht Profile, Interessen, Bedürfnisse und Chancen ab und macht strategische Verbindungen sichtbar, die Sie allein vielleicht nie gefunden hätten.",
+    "ai": "Unsere künstliche Intelligenz gleicht Profile, Interessen, Bedürfnisse und Chancen ab und macht strategische Verbindungen sichtbar, die vielleicht nie gefunden worden wären.",
     "hook": "Ihr nächstes großes Geschäft könnte schon hier sein.",
     "discover": "Entdecken Sie, wer, wo und welche Chance zu Ihnen passt.",
     "closing": "Finden Sie Ihren Business Match.",
@@ -336,6 +336,7 @@
       "home": "Startseite",
       "continue": "Weiter",
       "analyzing": "Analysiere...",
+      "carregando": "Ihre Registrierung wird geladen…",
       "findMatches": "Speichern und meine Verbindungen ansehen"
     },
     "fields": {

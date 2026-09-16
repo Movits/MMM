@@ -292,7 +292,11 @@ describe("21:13 — porte da empresa em seleção múltipla", () => {
     expect(portesMarcados()).toEqual([pt.onboarding.companySize.medium]);
     unmount();
 
+    // Visita nova, em outra aba: sem o rascunho guardado, sem o da aba e sem a
+    // entrada do histórico (que reabriria na etapa em que o teste parou).
     window.localStorage.clear();
+    window.sessionStorage.clear();
+    window.history.replaceState(null, "");
     duble.perfil = { user: { id: 7 }, profile: { preferredCompanySize: "small,medium" } };
     render(<Onboarding />);
     irAtePasso(4);

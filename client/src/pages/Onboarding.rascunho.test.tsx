@@ -159,6 +159,17 @@ function concluir() {
   fireEvent.click(botaoFinal());
 }
 
+/**
+ * Fechar a aba e abrir o cadastro de novo, numa aba nova: o localStorage fica,
+ * mas o sessionStorage e a entrada do histórico são da aba que fechou. Sem isto,
+ * o remontar do teste é um RECARREGAR da mesma aba, que reabre na etapa em que a
+ * pessoa estava (ver Onboarding.navegacao-no-celular.test.tsx).
+ */
+function fecharAAba() {
+  window.sessionStorage.clear();
+  window.history.replaceState(null, "");
+}
+
 const perfilEnviado = () => {
   const chamada = duble.chamadas.find(([nome]) => nome === "profile.completeOnboarding");
   expect(chamada, "profile.completeOnboarding não foi chamado").toBeTruthy();
@@ -169,6 +180,8 @@ beforeEach(() => {
   vi.useFakeTimers();
   Object.defineProperty(window, "scrollTo", { value: () => {}, writable: true, configurable: true });
   window.localStorage.clear();
+  window.sessionStorage.clear();
+  window.history.replaceState(null, "");
   duble.perfil = perfilDe(USUARIA_7, null);
   duble.status = { data: { document: TERMO, accepted: false, acceptedAt: null, pendingText: false, previousVersion: null }, isLoading: false, isError: false };
   duble.chamadas.length = 0;
@@ -224,6 +237,7 @@ describe("janela C — rascunho do cadastro em localStorage, por usuária", () =
     avancar();
     clicarCartao(pt.onboarding.specialties.tech);
     unmount();
+    fecharAAba();
 
     render(<Onboarding />);
     expect(campoNome()).toHaveValue("Fulana de Teste");
@@ -248,11 +262,13 @@ describe("janela C — rascunho do cadastro em localStorage, por usuária", () =
     render(<Onboarding />);
     irAteAUltimaEtapa();
     expect(window.localStorage.getItem(CHAVE_DA_7), "o rascunho devia existir antes de concluir").not.toBeNull();
+    expect(window.sessionStorage.getItem(CHAVE_DA_7), "o rascunho da aba devia existir antes de concluir").not.toBeNull();
 
     concluir();
 
     expect(duble.chamadas.some(([nome]) => nome === "profile.completeOnboarding")).toBe(true);
     expect(window.localStorage.getItem(CHAVE_DA_7)).toBeNull();
+    expect(window.sessionStorage.getItem(CHAVE_DA_7)).toBeNull();
   });
 
   it("a caixa do Termo Geral não entra no rascunho: o aceite é ato da sessão que conclui", () => {
@@ -262,10 +278,19 @@ describe("janela C — rascunho do cadastro em localStorage, por usuária", () =
     expect(botaoFinal()).toBeEnabled();
     unmount();
 
+    // Recarregar a mesma aba reabre direto na última etapa (16/09), e mesmo
+    // assim a caixa volta desmarcada: nem o rascunho da aba guarda o aceite.
+    const { unmount: fecharDeNovo } = render(<Onboarding />);
+    expect(screen.getByText("8 / 8")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(botaoFinal()).toBeDisabled();
+    fecharDeNovo();
+    fecharAAba();
+
     render(<Onboarding />);
-    // O rascunho já preencheu as 7 primeiras etapas: só "Continuar" até a
-    // última — fora a faixa de renda, que não fica no rascunho e a etapa 3
-    // exige de novo.
+    // Numa aba nova, o rascunho já preencheu as 7 primeiras etapas: só
+    // "Continuar" até a última — fora a faixa de renda, que não fica no
+    // localStorage e a etapa 3 exige de novo.
     avancar(); // 1 → 2
     avancar(); // 2 → 3
     clicarCartao(pt.onboarding.income.under_3k);
@@ -292,6 +317,7 @@ describe("janela C — rascunho do cadastro em localStorage, por usuária", () =
     fireEvent.change(campoNome(), { target: { value: "Fulana de Teste" } });
 
     expect(window.localStorage.length).toBe(0);
+    expect(window.sessionStorage.length).toBe(0);
   });
 
   it("rascunho corrompido ou de outra forma é ignorado sem quebrar a tela", () => {
@@ -314,7 +340,7 @@ describe("janela C — rascunho do cadastro em localStorage, por usuária", () =
 describe("revisão do rascunho — o que não pode ficar no localStorage, e por quanto tempo", () => {
   const DIA_MS = 24 * 60 * 60 * 1000;
 
-  it("faixa de renda, capacidade de investimento e Número de Cadastro Empresarial ficam fora do rascunho", () => {
+  it("faixa de renda, capacidade de investimento e Número de Cadastro Empresarial ficam fora do localStorage", () => {
     const { unmount } = render(<Onboarding />);
     fireEvent.change(campoNome(), { target: { value: "Fulana de Teste" } });
     fireEvent.change(campoCidade(), { target: { value: "Brasília" } });
@@ -336,9 +362,16 @@ describe("revisão do rascunho — o que não pode ficar no localStorage, e por 
     expect(bruto).not.toContain("under_3k");
     expect(typeof gravado.salvoEm, "o rascunho leva a data em que foi gravado").toBe("number");
 
-    // Ao voltar, a pessoa redigita: o cadastro empresarial está em branco e a
-    // renda não vem marcada (o resto do rascunho volta normalmente).
+    // Os três ficam só no rascunho DA ABA (sessionStorage, 16/09), que some ao
+    // fechar a aba: é o que deixa o recarregar voltar à etapa 3 sem pedir de novo.
+    const daAba = JSON.parse(window.sessionStorage.getItem(CHAVE_DA_7)!) as Record<string, unknown>;
+    expect(daAba).toMatchObject({ etapa: 3, incomeRange: "under_3k", companyCnpj: "12345678000190" });
+    expect(daAba).not.toHaveProperty("displayName");
+
+    // Numa aba nova, a pessoa redigita: o cadastro empresarial está em branco e
+    // a renda não vem marcada (o resto do rascunho volta normalmente).
     unmount();
+    fecharAAba();
     render(<Onboarding />);
     avancar();
     expect(screen.getByText(pt.profile.business.legalEntity).closest("button")).toHaveClass("border-[#c98f70]");
@@ -476,7 +509,10 @@ describe("sair da conta apaga os rascunhos do cadastro (computador compartilhado
     unmount();
     window.localStorage.setItem("mmm.onboarding.rascunho.8", JSON.stringify({ displayName: "Beltrana", salvoEm: Date.now() }));
     window.localStorage.setItem("i18nextLng", "pt-BR");
+    window.sessionStorage.setItem("mmm.onboarding.rascunho.8", JSON.stringify({ etapa: 3, incomeRange: "under_3k" }));
+    window.sessionStorage.setItem("outra.chave.da.aba", "fica");
     expect(window.localStorage.getItem(CHAVE_DA_7)).toContain("Fulana de Teste");
+    expect(window.sessionStorage.getItem(CHAVE_DA_7), "o rascunho da aba da 7 devia existir").not.toBeNull();
 
     const { result } = renderHook(() => useAuth());
     await act(async () => { await result.current.logout(); });
@@ -485,5 +521,9 @@ describe("sair da conta apaga os rascunhos do cadastro (computador compartilhado
     expect(window.localStorage.getItem(CHAVE_DA_7)).toBeNull();
     expect(window.localStorage.getItem("mmm.onboarding.rascunho.8")).toBeNull();
     expect(window.localStorage.getItem("i18nextLng")).toBe("pt-BR");
+    // O rascunho da aba (etapa, renda, cadastro empresarial) vai junto.
+    expect(window.sessionStorage.getItem(CHAVE_DA_7)).toBeNull();
+    expect(window.sessionStorage.getItem("mmm.onboarding.rascunho.8")).toBeNull();
+    expect(window.sessionStorage.getItem("outra.chave.da.aba")).toBe("fica");
   });
 });

@@ -206,3 +206,42 @@ describe("PresidentPanel — Líderes usa a mesma busca", () => {
     expect(screen.getByText("Bia Souza")).toBeInTheDocument();
   });
 });
+
+describe("PresidentPanel — abas no celular (print de 16/09, 360 px)", () => {
+  // As abas se desenhavam umas por cima das outras: a regra global
+  // `.flex { min-width: 0 }` (index.css) deixava cada botão encolher abaixo do
+  // próprio rótulo. O jsdom não calcula layout, então o teste prende as classes
+  // que impedem o encolhimento e dão a área de toque; a medição fica no smoke.
+  const ABAS = ["Visão Geral", "Gestão Ouro", "Líderes", "Validações", "Compliance", "Conexões registradas", "Distribuição"];
+
+  it("cada aba não encolhe, não quebra e tem 44 px de altura mínima; a fileira rola na horizontal", () => {
+    render(<PresidentPanel />);
+    const botoes = ABAS.map(nome => screen.getByRole("button", { name: nome }));
+    for (const botao of botoes) {
+      expect(botao, botao.textContent ?? "").toHaveClass("shrink-0", "whitespace-nowrap", "min-h-11");
+      expect(botao.querySelector("svg"), botao.textContent ?? "").toHaveClass("shrink-0");
+    }
+    const fileira = botoes[0].parentElement as HTMLElement;
+    expect(botoes.every(botao => botao.parentElement === fileira)).toBe(true);
+    expect(fileira).toHaveClass("flex", "overflow-x-auto");
+    expect(fileira).not.toHaveClass("flex-wrap");
+  });
+
+  it("o \"← Dashboard\" do cabeçalho também não encolhe", () => {
+    render(<PresidentPanel />);
+    expect(screen.getByRole("button", { name: /Dashboard/ })).toHaveClass("shrink-0", "whitespace-nowrap");
+  });
+
+  it("o cabeçalho quebra linha em vez de passar da tela (Ouro ou admin que também distribui: dois selos)", () => {
+    // Medido com o CSS compilado: a 360 px os dois selos terminavam em 406 px e a
+    // página rolava 46 px para o lado, com o quadrado da coroa espremido a 15 px.
+    render(<PresidentPanel />);
+    const titulo = screen.getByRole("heading", { name: "Painel Ouro" });
+    const linha = titulo.closest(".max-w-6xl") as HTMLElement;
+    expect(linha).toHaveClass("flex", "flex-wrap");
+    // O quadrado da coroa não encolhe, e a legenda decorativa só aparece a partir de 640 px.
+    const grupo = titulo.parentElement!.parentElement as HTMLElement;
+    expect(grupo.firstElementChild).toHaveClass("shrink-0", "w-8", "h-8");
+    expect(screen.getByText("WRW · Backoffice Institucional")).toHaveClass("hidden", "sm:block");
+  });
+});

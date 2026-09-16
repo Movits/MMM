@@ -44,11 +44,11 @@
     "badge": "Global business network among members • +30 countries • endless possibilities",
     "headline1": "Intelligence that connects ",
     "headline2": "deals that happen",
-    "subtitle": "Imagine a network that can identify who you need to meet — and who needs to meet you.",
+    "subtitle": "Imagine a network that can identify: who you need to meet and who needs to meet you.",
     "globalBefore": "With ambassadors in ",
     "globalHighlight": "more than 30 countries",
     "globalAfter": ", we connect you to people, opportunities and business in a borderless global network.",
-    "ai": "Our artificial intelligence cross-references profiles, interests, needs and opportunities to reveal strategic connections you might never find on your own.",
+    "ai": "Our artificial intelligence cross-references profiles, interests, needs and opportunities to reveal strategic connections that might never be found.",
     "hook": "Your next big deal may already be here.",
     "discover": "Discover who, where and which opportunity is right for you.",
     "closing": "Find your Business Match.",
@@ -336,6 +336,7 @@
       "home": "Home",
       "continue": "Continue",
       "analyzing": "Analyzing...",
+      "carregando": "Loading your sign-up…",
       "findMatches": "Save and see my connections"
     },
     "fields": {

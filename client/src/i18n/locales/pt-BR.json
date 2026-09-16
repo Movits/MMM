@@ -44,11 +44,11 @@
     "badge": "Rede mundial de negócios entre membros • +30 países • infinitas possibilidades",
     "headline1": "Inteligência que conecta ",
     "headline2": "negócios que acontecem",
-    "subtitle": "Imagine uma rede capaz de identificar quem você precisa conhecer — e quem precisa conhecer você.",
+    "subtitle": "Imagine uma rede capaz de identificar: Quem você precisa conhecer e quem precisa conhecer você.",
     "globalBefore": "Com embaixadoras em ",
     "globalHighlight": "mais de 30 países",
     "globalAfter": ", conectamos você a pessoas, oportunidades e negócios em uma rede global sem fronteiras.",
-    "ai": "Nossa inteligência artificial cruza perfis, interesses, necessidades e oportunidades para revelar conexões estratégicas que talvez você nunca encontrasse sozinho.",
+    "ai": "Nossa inteligência artificial cruza perfis, interesses, necessidades e oportunidades para revelar conexões estratégicas que talvez nunca fossem encontradas.",
     "hook": "Seu próximo grande negócio pode já estar aqui.",
     "discover": "Descubra quem, onde e qual oportunidade combina com você.",
     "closing": "Encontre o seu Business Match.",
@@ -336,6 +336,7 @@
       "home": "Início",
       "continue": "Continuar",
       "analyzing": "Analisando...",
+      "carregando": "Carregando seu cadastro…",
       "findMatches": "Salvar e ver minhas conexões"
     },
     "fields": {

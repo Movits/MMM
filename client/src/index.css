@@ -354,6 +354,16 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Cadastro (pages/Onboarding.tsx liga a classe enquanto a tela está aberta):
+     no celular, puxar a página para baixo estando no topo recarregava o
+     cadastro (Rosber, 16/09). `contain` no documento desliga o "puxar para
+     atualizar" do Chrome e do Samsung Internet sem travar a rolagem. Vai no
+     html E no body porque cada navegador lê o valor de um deles. */
+  html.cadastro-sem-puxar-para-atualizar,
+  html.cadastro-sem-puxar-para-atualizar body {
+    overscroll-behavior-y: contain;
+  }
+
   /* Selection color */
   ::selection {
     background: rgba(201,143,112, 0.25);

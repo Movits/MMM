@@ -44,11 +44,11 @@
     "badge": "Réseau mondial d'affaires entre membres • +30 pays • possibilités infinies",
     "headline1": "L'intelligence qui connecte ",
     "headline2": "des affaires qui se concrétisent",
-    "subtitle": "Imaginez un réseau capable d'identifier qui vous devez rencontrer — et qui doit vous rencontrer.",
+    "subtitle": "Imaginez un réseau capable d'identifier : qui vous devez rencontrer et qui doit vous rencontrer.",
     "globalBefore": "Avec des ambassadrices dans ",
     "globalHighlight": "plus de 30 pays",
     "globalAfter": ", nous vous connectons à des personnes, des opportunités et des affaires au sein d'un réseau mondial sans frontières.",
-    "ai": "Notre intelligence artificielle croise profils, intérêts, besoins et opportunités pour révéler des connexions stratégiques que vous n'auriez peut-être jamais trouvées par vous-même.",
+    "ai": "Notre intelligence artificielle croise profils, intérêts, besoins et opportunités pour révéler des connexions stratégiques qui n'auraient peut-être jamais été trouvées.",
     "hook": "Votre prochaine grande affaire est peut-être déjà ici.",
     "discover": "Découvrez qui, où et quelle opportunité vous correspond.",
     "closing": "Trouvez votre Business Match.",
@@ -336,6 +336,7 @@
       "home": "Accueil",
       "continue": "Continuer",
       "analyzing": "Analyse...",
+      "carregando": "Chargement de votre inscription…",
       "findMatches": "Enregistrer et voir mes connexions"
     },
     "fields": {
