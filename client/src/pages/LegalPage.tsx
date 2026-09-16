@@ -75,11 +75,21 @@ export function PrivacyPage() {
 export function TermsPage() {
   const termo = trpc.consent.termoGeralPublico.useQuery(undefined, {
     refetchOnWindowFocus: false,
+    // Uma tentativa a mais e pronto. O padrão do React Query são três, com
+    // espera crescente: numa falha de rede a página ficaria quase dez segundos
+    // dizendo "carregando" antes de admitir que não conseguiu, e quem veio ler
+    // o contrato merece o "tentar de novo" na mão mais cedo.
+    retry: 1,
   });
 
   return (
     <LegalShell title="Termos de Uso" largo>
-      {termo.isLoading && (
+      {/* `isPending`, e não `isLoading`: no React Query 5 o `isLoading` é
+          `isPending && isFetching`, então ele fica FALSO nos intervalos entre as
+          tentativas de recarga. Com `isLoading` a página piscava "a versão
+          vigente ainda não está publicada" enquanto a consulta ainda tentava —
+          foi o que apareceu no primeiro smoke desta tela. */}
+      {termo.isPending && !termo.isError && (
         <p className="flex items-center gap-2 text-white/40">
           <Loader2 size={14} className="animate-spin" /> Carregando o termo vigente...
         </p>
@@ -101,7 +111,7 @@ export function TermsPage() {
 
       {/* Sem versão publicada a página diz isso, em vez de mostrar um texto
           antigo escrito no código. */}
-      {!termo.isLoading && !termo.isError && !termo.data && (
+      {!termo.isPending && !termo.isError && !termo.data && (
         <>
           <p>
             O Termo Geral de Uso, Proteção de Dados e Intermediação Digital é o

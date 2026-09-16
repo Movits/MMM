@@ -47,6 +47,8 @@ vi.mock("./db", () => new Proxy({}, {
       if (prop === "respondToConnection") return estado.resposta;
       if (prop === "lerPedidoDeMatch") return estado.pedido;
       if (prop === "idsDeContasAtivas") return new Set((args[0] as number[]).filter(id => estado.ativas.includes(id)));
+      if (prop === "resolverAlvoDoMatch") return 2;
+      if (prop === "sendConnectionRequest") return { revelou: false, connectionId: 7, emAnalise: true };
       if (prop === "idsDosDistribuidoresAtivos" || prop === "idsDaPresidenciaAtiva") return [];
       return undefined;
     };
@@ -134,5 +136,34 @@ describe("aceitar um pedido de interesse", () => {
 
     await expect(aceitar()).resolves.toEqual({ success: true });
     expect(estado.chamadas).toContain("respondToConnection");
+  });
+});
+
+/**
+ * A MESMA TRAVA NO OUTRO CAMINHO.
+ *
+ * `connections.send` também vira aceite quando o alvo já tinha pedido e o
+ * pedido foi encaminhado: `sendConnectionRequest` acha a linha invertida em
+ * `pending`, grava `accepted` e revela os dois nomes. Ele conferia o termo do
+ * alvo, mas não a conta — então a conexão tinha duas portas com travas
+ * diferentes, e a de trás revelava o nome de quem teve a conta desativada.
+ * Achado da revisão de privacidade de 16/09, depois que o `respond` ganhou a
+ * trava; esta é a outra metade.
+ */
+describe("demonstrar interesse quando o outro lado já tinha pedido", () => {
+  const demonstrar = () => connectionsRouter.createCaller(ctx(1)).send({ matchId: 55 });
+
+  it("conta do alvo desativada: recusa, sem revelar nem avisar", async () => {
+    // O alvo é a conta 2 (`resolverAlvoDoMatch` no dublê).
+    estado.ativas = [1];
+
+    await expect(demonstrar()).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(estado.chamadas).not.toContain("sendConnectionRequest");
+    expect(estado.chamadas).not.toContain("createNotification");
+  });
+
+  it("com a conta ativa e o termo aceito, segue como sempre", async () => {
+    await expect(demonstrar()).resolves.toBeDefined();
+    expect(estado.chamadas).toContain("sendConnectionRequest");
   });
 });

@@ -48,7 +48,7 @@ const TERMO = {
 
 describe("página pública de Termos", () => {
   it("mostra o texto e a versão do documento vigente", async () => {
-    duble.resposta = { data: TERMO, isLoading: false, isError: false, refetch: () => {} };
+    duble.resposta = { data: TERMO, isPending: false, isLoading: false, isError: false, refetch: () => {} };
 
     render(<TermsPage />);
 
@@ -58,7 +58,7 @@ describe("página pública de Termos", () => {
   });
 
   it("não promete mais um termo futuro quando o termo já existe", async () => {
-    duble.resposta = { data: TERMO, isLoading: false, isError: false, refetch: () => {} };
+    duble.resposta = { data: TERMO, isPending: false, isLoading: false, isError: false, refetch: () => {} };
 
     render(<TermsPage />);
 
@@ -67,7 +67,7 @@ describe("página pública de Termos", () => {
   });
 
   it("tira a linha da caixa de aceite, que na tela é a caixa de verdade do cadastro", async () => {
-    duble.resposta = { data: TERMO, isLoading: false, isError: false, refetch: () => {} };
+    duble.resposta = { data: TERMO, isPending: false, isLoading: false, isError: false, refetch: () => {} };
 
     render(<TermsPage />);
 
@@ -76,7 +76,7 @@ describe("página pública de Termos", () => {
   });
 
   it("sem versão publicada, diz que não há o que mostrar em vez de inventar um texto", () => {
-    duble.resposta = { data: null, isLoading: false, isError: false, refetch: () => {} };
+    duble.resposta = { data: null, isPending: false, isLoading: false, isError: false, refetch: () => {} };
 
     render(<TermsPage />);
 
@@ -84,7 +84,7 @@ describe("página pública de Termos", () => {
   });
 
   it("enquanto carrega, avisa que está buscando o termo vigente", () => {
-    duble.resposta = { data: undefined, isLoading: true, isError: false, refetch: () => {} };
+    duble.resposta = { data: undefined, isPending: true, isLoading: true, isError: false, refetch: () => {} };
 
     render(<TermsPage />);
 
@@ -95,12 +95,27 @@ describe("página pública de Termos", () => {
     // Banco fora do ar é ERRO, nunca "sem dados": afirmar que o documento não
     // foi publicado, quando ele existe e a consulta é que caiu, seria mentir
     // para quem veio ler o contrato.
-    duble.resposta = { data: undefined, isLoading: false, isError: true, refetch: () => {} };
+    duble.resposta = { data: undefined, isPending: false, isLoading: false, isError: true, refetch: () => {} };
 
     render(<TermsPage />);
 
     expect(screen.getByText(/N[ãa]o consegui carregar o termo agora/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Tentar de novo/i })).toBeInTheDocument();
+    expect(document.body.textContent ?? "").not.toMatch(/ainda n[ãa]o est[áa] publicada/i);
+  });
+});
+
+describe("a tela entre uma tentativa e outra", () => {
+  it("no intervalo entre as tentativas, continua dizendo que está carregando", () => {
+    // No React Query 5, `isLoading` é `isPending && isFetching`: entre duas
+    // tentativas ele fica FALSO, com os dados ainda indefinidos. A tela pisca
+    // "a versão vigente ainda não está publicada" se olhar só para `isLoading`.
+    // Foi o que o primeiro smoke desta tela mostrou.
+    duble.resposta = { data: undefined, isPending: true, isLoading: false, isError: false, refetch: () => {} };
+
+    render(<TermsPage />);
+
+    expect(screen.getByText(/Carregando o termo vigente/i)).toBeInTheDocument();
     expect(document.body.textContent ?? "").not.toMatch(/ainda n[ãa]o est[áa] publicada/i);
   });
 });

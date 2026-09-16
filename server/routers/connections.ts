@@ -131,6 +131,15 @@ export const connectionsRouter = router({
       const { usersComConsentimento } = await import("./consent");
       const comTermo = await usersComConsentimento([alvo], "termo_smart_match");
       if (!comTermo.has(alvo)) throw new TRPCError({ code: "NOT_FOUND", message: "Conexão sugerida não encontrada" });
+      // E a CONTA do alvo tem de estar ativa, como no `respond`. Este clique
+      // também é um aceite quando o alvo já tinha pedido e o pedido foi
+      // encaminhado: sem esta linha, o caminho do "Demonstrar interesse"
+      // revelava os dois nomes de uma conta desativada, enquanto o botão
+      // "Aceitar e revelar" recusava — a mesma conexão com duas portas de
+      // travas diferentes (achado da revisão de privacidade de 16/09).
+      const { idsDeContasAtivas } = await import("../db");
+      const ativas = await idsDeContasAtivas([alvo]);
+      if (!ativas.has(alvo)) throw new TRPCError({ code: "NOT_FOUND", message: "Conexão sugerida não encontrada" });
 
       const resultado = await sendConnectionRequest(ctx.user.id, alvo);
       if (resultado.revelou) {
