@@ -35,11 +35,19 @@ import { cortarSemPartirEmoji, LIMITE_DA_BIO_GRAVADA, LIMITE_DA_BIO_NO_CADASTRO 
  * essa edição tem de valer.
  */
 async function bioCortadaPeloFormulario(userId: number, bioRecebida: string | undefined): Promise<string | null> {
+  if (bioRecebida === undefined) return null;
   // Um corte tem o tamanho do teto, ou um a menos quando o último code point
-  // ocupa duas unidades UTF-16 e não coube. Abaixo disso nem consulta o perfil.
-  if (bioRecebida === undefined || bioRecebida.length < LIMITE_DA_BIO_NO_CADASTRO - 1) return null;
+  // ocupa duas unidades UTF-16 e não coube. Texto de tamanho médio não é
+  // corte nem apagamento, e nem consulta o perfil.
+  const podeSerCorte = bioRecebida.length >= LIMITE_DA_BIO_NO_CADASTRO - 1;
+  if (!podeSerCorte && bioRecebida.trim() !== "") return null;
   const perfil = (await getUserProfile(userId)) as { bio?: string | null } | null;
   const salva = perfil?.bio ?? "";
+  // Bio VAZIA com apresentação gravada: é o bundle publicado da main, que
+  // manda `bio` sempre e nunca pré-preenche o campo. Concluir o cadastro não
+  // é o lugar de apagar uma apresentação que a pessoa não viu — quem quer
+  // limpar o texto faz isso no Perfil, onde ele está à vista.
+  if (bioRecebida.trim() === "") return salva.length > 0 ? salva : null;
   if (salva.length <= LIMITE_DA_BIO_NO_CADASTRO) return null;
   return bioRecebida === cortarSemPartirEmoji(salva, LIMITE_DA_BIO_NO_CADASTRO) ? salva : null;
 }
@@ -164,7 +172,10 @@ export const profileRouter = router({
  completeOnboarding: protectedProcedure
    .input(z.object({
      displayName: z.string().min(2).max(100),
-     bio: z.string().max(LIMITE_DA_BIO_NO_CADASTRO).optional(),
+     // O campo mostra a apresentação inteira, inclusive a da carga, que passa
+     // do teto do cadastro: com o teto menor aqui, concluir devolveria o texto
+     // gravado e o zod derrubaria a mutation inteira.
+     bio: z.string().max(LIMITE_DA_BIO_GRAVADA).optional(),
      city: z.string().max(100),
      country: z.string().length(2).default("BR"),
      sectors: z.array(z.string()).min(1).max(5).optional(),

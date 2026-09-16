@@ -27,14 +27,15 @@
  * conexões, tecnologia e imóveis nada muda: o portão só atua no tipo
  * "servico".
  */
-import { nomeiamAMesmaCoisa, slugDoTermo, tokensDoTermo } from "@shared/direcao-do-termo";
+import { nomeiamAMesmaCoisa, normalizar, slugDoTermo, tokensDoTermo } from "@shared/direcao-do-termo";
 import { CHAVE_OUTRA_NECESSIDADE, CHAVE_QUERO_MENTORAR, opcaoDaBusca } from "@shared/o-que-busca";
 import {
   CATEGORIAS_CUJA_DESCRICAO_E_OFERTA, chavesQueValemComoNecessidade, demandaValida, lerDemandas, necessidadesDasDemandas, qualificadoresDaDemanda,
   rotuloDoQuePreciso,
 } from "@shared/o-que-preciso";
 import {
-  citacaoPedeServicoOferecido, classificarOferta, ehServico, ehServicoDeAssessoria, familiaDoServico, mesmaFamiliaEEspecialidade, necessidadeNomeiaOServico,
+  citacaoPedeServicoOferecido, classificarOferta, ehServico, ehServicoDeAssessoria, familiaDoServico, mesmaFamiliaEEspecialidade,
+  necessidadeGenericaNomeiaOServico, necessidadeNomeiaOServico,
   necessidadeDeclaraOAssuntoDoServico, necessidadePedeImovel, PALAVRAS_DE_SERVICO, regraNaoLeOPar, PALAVRAS_VAZIAS_DA_CITACAO, PAPEIS_DE_COMERCIO, servicoDoTermo, TIPOS_DA_OFERTA, trechoNomeiaServicoAtendido, type TipoDaOferta,
 } from "@shared/tipo-da-oferta";
 
@@ -199,27 +200,58 @@ function frasesDaFonte(fonte: string): string[][] {
 /** O pedaço citado casa com o da fonte: igual, ou contido nele quando é escrita sem espaço ("東京" em "東京の支店"). */
 const casaComAFonte = (pedaco: string, daFonte: string) => (ESCRITA_SEM_ESPACO.test(pedaco) ? daFonte.includes(pedaco) : daFonte === pedaco);
 
-/** Negação que vem ANTES do termo em escrita sem espaço: "不需要", "没有". */
+/** Negação ANTES do termo em chinês: "不需要", "不再需要", "不太需要", "没有". */
 const NEGACOES_ANTES_SEM_ESPACO = new Set(Array.from("不沒没無无未非"));
+/** Quantos caracteres antes do termo a negação ainda o alcança ("不再", "不太", "暂时不"). */
+const ALCANCE_DA_NEGACAO_ANTES = 3;
+/** Negação DEPOIS do termo, que é como o japonês nega: "必要ありません", "必要ない". */
+const NEGACOES_DEPOIS_SEM_ESPACO = ["ありません", "ございません", "ありませんが", "ません", "ない", "不要", "無用", "无需"];
+/** Quantos caracteres depois do termo a negação ainda o alcança. */
+const ALCANCE_DA_NEGACAO_DEPOIS = 8;
+/**
+ * Fim de oração PARA ESTA CONFERÊNCIA: além do fim de frase, a vírgula
+ * ideográfica e a barra com que `textoEscritoPelaPessoa` junta título, tags e
+ * descrição. Sem elas, dois pedaços de campos diferentes (ou de orações
+ * opostas separadas por 、) viravam uma citação só — a montagem do relato, com
+ * outra pontuação.
+ */
+const FIM_DE_ORACAO_NO_TEXTO = new RegExp("[.!?;\\u2026\\n\\u3002\\uFF01\\uFF1F\\uFF1B\\u3001\\uFF0C,|\\uFF5C]+");
+
+/** O termo está negado na oração: negação encostada antes (zh) ou logo depois (ja)? */
+function estaNegado(frase: string, inicio: number, tamanho: number): boolean {
+  const antes = frase.slice(Math.max(0, inicio - ALCANCE_DA_NEGACAO_ANTES), inicio);
+  if (Array.from(antes).some(caractere => NEGACOES_ANTES_SEM_ESPACO.has(caractere))) return true;
+  const depois = frase.slice(inicio + tamanho, inicio + tamanho + ALCANCE_DA_NEGACAO_DEPOIS);
+  return NEGACOES_DEPOIS_SEM_ESPACO.some(negacao => depois.includes(negacao));
+}
 
 /**
- * A ordem conferida por POSIÇÃO NO TEXTO da frase, que é o que faz sentido em
+ * A ordem conferida por POSIÇÃO NO TEXTO da oração, que é o que faz sentido em
  * escrita sem espaço: ali a oração inteira é um token só, e dois pedaços
  * citados da mesma oração nunca se encontram na janela de tokens de
  * `emOrdemNumaFrase` — ela só olha tokens posteriores ao que casou.
  *
- * O pedaço arrancado de uma NEGAÇÃO não conta como citado: era essa a
- * montagem do relato ("需要 税务咨询" tirado de "我们不需要税务咨询", que diz o
- * contrário). Ordem sozinha não vê negação, e foi por isso que a primeira
- * correção recusou junto a citação honesta.
+ * O pedaço NEGADO não conta como citado: era essa a montagem do relato
+ * ("需要 税务咨询" tirado de "我们不需要税务咨询", que diz o contrário, e
+ * "弁護士 必要" de "弁護士は必要ありません"). Ordem sozinha não vê negação, e foi
+ * por isso que a primeira correção recusou junto a citação honesta.
+ *
+ * A busca é no texto NORMALIZADO, porque os pedaços vêm de `tokensDoTermo`, que
+ * baixa a caixa e tira o diacrítico: procurar no texto cru fazia a citação
+ * exata "SAP 税务咨询" não se achar na própria fonte.
  */
 function emOrdemNoTextoDaFrase(pedacos: readonly string[], fonte: string): boolean {
   if (pedacos.length === 0) return false;
-  return fonte.split(FIM_DE_FRASE).some(frase => {
+  // A negação só desqualifica o pedaço numa citação MONTADA (dois pedaços ou
+  // mais). Citar UM trecho que está literalmente na fonte continua valendo,
+  // como já valia antes desta regra — ali quem confere se o trecho pede o
+  // serviço do perfil é `citacaoAmarradaAoPerfil`.
+  const conferirNegacao = pedacos.length > 1;
+  return normalizar(fonte).split(FIM_DE_ORACAO_NO_TEXTO).some(frase => {
     let posicao = 0;
     for (const pedaco of pedacos) {
       let achou = frase.indexOf(pedaco, posicao);
-      while (achou > 0 && NEGACOES_ANTES_SEM_ESPACO.has(frase[achou - 1])) achou = frase.indexOf(pedaco, achou + 1);
+      while (achou >= 0 && conferirNegacao && estaNegado(frase, achou, pedaco.length)) achou = frase.indexOf(pedaco, achou + 1);
       if (achou < 0) return false;
       posicao = achou + pedaco.length;
     }
@@ -380,13 +412,29 @@ function descricaoNomeiaOQueOPerfilOferece(perfil: PerfilNoPortao, descricao: st
  * mas "Planejamento tributário para investidores estrangeiros" passava e voltava a valer 50 no motor de perfis
  * (validação de 16/09 na #135).
  *
- * O que NÃO entra aqui, de propósito: o palpite de família (`necessidadeGenericaNomeiaOServico`, 60). Ele faz
- * o par casar, mas não prova que o texto é a oferta — e usá-lo apagava a necessidade de quem declara a área
- * como família pura ("Advocacia" × "Advogado para causas do trabalho").
+ * NÃO é paridade com `satisfaz`, e não pode ser: `satisfaz` responde "este par casa?" e esta guarda responde
+ * "este texto É a oferta?". Casar não prova ser. Ficam de fora, de propósito, dois ramos de `satisfaz`:
+ *   - o palpite de família (`necessidadeGenericaNomeiaOServico`, 60) QUANDO A OFERTA É A FAMÍLIA PURA: ali ele
+     apagava necessidade declarada ("Advocacia" × "Advogado para causas do trabalho"). Com a oferta
+     especializada o palpite CONTA: "Consultoria tributária" diante do texto "Consultoria" é a própria oferta
+     contada de novo, e é o caso que originou a guarda;
+ *   - `slugDoTermo(need) === "consultoria" && ehServicoDeAssessoria(have)` (server/matching.ts:258): a palavra
+     genérica "Consultoria" escrita no texto livre não é a oferta de quem presta assessoria contada de novo —
+     é a mesma coisa que a OPÇÃO fixa "Consultoria" da tela, que segue valendo como necessidade por decisão de
+     produto (`chavesQueValemComoNecessidade`). Filtrar o texto livre e não a opção seria tratar a mesma
+     declaração de dois jeitos conforme onde a pessoa clicou.
  * O `regraNaoLeOPar` acompanha `satisfaz`: par que a regra não lê num idioma novo não conta de nenhum lado.
  */
 function ofertaAtenderiaOTexto(oferta: string, texto: string): boolean {
   if (mesmaFamiliaEEspecialidade(oferta, null, texto)) return true;
+  // O palpite de família conta quando a oferta NÃO é a família pura: quem
+  // presta "Consultoria tributária" e escreve "Consultoria" no texto livre
+  // está contando a própria oferta de novo — é o caso que originou a guarda.
+  // Só a oferta genérica fica de fora: ali o palpite apagava necessidade
+  // declarada ("Advocacia" × "Advogado para causas do trabalho").
+  const servico = servicoDoTermo(oferta);
+  const ofertaEhFamiliaPura = servico !== null && servico.especialidades.length === 0;
+  if (!ofertaEhFamiliaPura && necessidadeGenericaNomeiaOServico(oferta, null, texto)) return true;
   return necessidadeDeclaraOAssuntoDoServico(oferta, null, texto) && !regraNaoLeOPar(oferta, null, texto);
 }
 
@@ -525,7 +573,16 @@ export function exigeCitacao(item: ItemComPortao, perfil?: PerfilNoPortao): bool
   // por cima uma citação que a regra 6 do prompt PROÍBE fora do tipo "servico".
   const declarouOutraBase = lista(perfil.whatIHave).some(oferta => !ehServico(oferta));
   // E o tipo RECONHECIDO não-serviço em qualquer oferta (inclusive a área) continua soltando
-  // a exigência, como no motor de perfis: "outros" não é tipo reconhecido e não conta.
+  // a exigência: "outros" não é tipo reconhecido e não conta.
+  //
+  // Isto NÃO é a regra do motor de perfis, e a divergência é deliberada: lá
+  // (server/matching.ts, `soOfereceServicoPresumido`) um item lido como "outros"
+  // nunca é outra base. Aqui ele é, quando a pessoa o DECLAROU em "O que tenho"
+  // — o botão "Outros" grava texto livre, e o classificador lê "Linha de
+  // produção" como "outros". Exigir citação nesse perfil suprimiria o match, e
+  // ainda seria uma citação que a regra 6 do prompt PROÍBE fora do tipo
+  // "servico". O preço da divergência: item declarado que o classificador não
+  // lê (inclusive digitação sem sentido) solta a exigência aqui e não solta lá.
   const ofereceOutroTipo = ofertas.some(oferta => {
     const tipo = classificarOferta(oferta);
     return tipo !== "servico" && tipo !== "outros";

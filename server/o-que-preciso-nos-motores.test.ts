@@ -262,6 +262,30 @@ describe("a descrição que nomeia o serviço que o próprio perfil OFERECE não
     const repetindoAOferta = { ...comArea("Advocacia tributária"), seekingOtherNeed: "Advocacia tributária para indústrias farmacêuticas" };
     expect(necessidadesEscritasDoPerfil(repetindoAOferta)).toEqual([]);
   });
+
+  it("quem TEM a especialidade e escreve a FAMÍLIA dela está contando a própria oferta", () => {
+    // O outro sentido do palpite de família, e o caso que originou a #135: a
+    // consultora tributária que escreve "Consultoria" em texto livre não precisa
+    // de consultoria — ela presta. Sem isso, duas prestadoras do mesmo serviço
+    // eram conectadas sem nenhuma declarar precisar dele.
+    const comOferta = (whatIHave: string[], texto: string) => ({
+      whatIHave,
+      whatINeed: ["outra_necessidade"],
+      seekingTypes: ["outra_necessidade"],
+      seekingOtherNeed: texto,
+    });
+
+    for (const texto of ["Consultoria", "Preciso de consultoria", "Consultor"]) {
+      expect(necessidadesEscritasDoPerfil(comOferta(["Consultoria tributária"], texto)), texto).toEqual([]);
+    }
+    for (const texto of ["Advogado", "Preciso de um advogado"]) {
+      expect(necessidadesEscritasDoPerfil(comOferta(["Advocacia tributária"], texto)), texto).toEqual([]);
+    }
+
+    // E a oferta que é a família pura continua sem apagar necessidade declarada.
+    expect(necessidadesEscritasDoPerfil(comOferta(["Advocacia"], "Advogado para causas do trabalho")))
+      .toContain("Advogado para causas do trabalho");
+  });
 });
 
 describe("categoria de serviço SEM descrição não casa", () => {

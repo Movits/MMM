@@ -309,6 +309,32 @@ describe("a rastreabilidade da plataforma exige administradora", () => {
    * contagem sozinha, a dona 31 não consegue saber que a conexão dela saiu
    * nesta leitura — a resposta depende de a trilha dizer de quem era.
    */
+  it("o telefone escrito dentro do rótulo do contato não chega à lista da staff", async () => {
+    // O rótulo é texto livre da dona e fica gravado inteiro (ela é quem lê o
+    // cartão do outro lado). Quem atravessa as redes de todas as donas é esta
+    // leitura, e é aqui que a máscara entra — sem estragar o dado no banco.
+    estado.responder = sql => {
+      if (/from `conexoes_registradas`/.test(sql)) {
+        return [[
+          "c-1", "PRIVATE_NETWORK_MATCH",
+          "NW-AAAAAA tem Vinho Malbec — chamar no (11) 98888-7777, que NW-BBBBBB procura.",
+          JSON.stringify([{ tem: "Vinho Malbec — chamar no (11) 98888-7777", precisa: "Vinho — ana.souza@vinhos.com.br", deCodigo: "NW-AAAAAA", paraCodigo: "NW-BBBBBB" }]),
+          100, "identificada", null, null, null, null, "sem_negocio", 1000,
+        ]];
+      }
+      return undefined;
+    };
+
+    const lista = await chamar("president").admin.conexoes();
+
+    const texto = JSON.stringify(lista);
+    expect(texto).not.toContain("98888-7777");
+    expect(texto).not.toContain("ana.souza@vinhos.com.br");
+    // O que a conexão diz continua legível para a staff.
+    expect(texto).toContain("Vinho Malbec");
+    expect(texto).toContain("NW-AAAAAA");
+  });
+
   it("a trilha diz de QUEM eram as conexões lidas, sem nada de contato", async () => {
     conexaoDeDuasDonas();
     await chamar("admin").admin.conexoes();

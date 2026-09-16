@@ -358,8 +358,15 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Governança: a membra Bronze vê o que falta para a Prata. */}
-        <QualificacaoDoPerfil role={user?.role} perfil={profile} onCompletar={editing ? undefined : startEditing} />
+        {/* Governança: quem é Bronze vê o que falta para a Prata. Em edição, a
+            régua lê a apresentação que está SENDO digitada: com o perfil salvo,
+            o número ficava parado ao lado do texto que a pessoa reescrevia para
+            justamente sair da recusa (revisão de 16/09 na #135, item 8). */}
+        <QualificacaoDoPerfil
+          role={user?.role}
+          perfil={editing ? { ...(profile ?? {}), bio } : profile}
+          onCompletar={editing ? undefined : startEditing}
+        />
 
         {/* ── SEÇÃO 1: QUEM SOU ── */}
         <Section

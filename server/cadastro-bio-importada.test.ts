@@ -149,6 +149,26 @@ describe("bio maior que o campo do cadastro", () => {
     expect(dadosGravados().bio).toBe(encurtada);
   });
 
+  it("bio VAZIA não apaga a apresentação gravada: é o que o bundle publicado manda", async () => {
+    // O bundle da main manda `bio` sempre e nunca pré-preenche o campo: para
+    // conta da carga, ele chega vazio. Concluir o cadastro não é o lugar de
+    // apagar uma apresentação que a pessoa nem viu — quem quer limpar o texto
+    // faz isso no Perfil, onde ele está à vista.
+    perfilSalvo.mockReturnValue({ bio: BIO_IMPORTADA });
+
+    await caller().profile.completeOnboarding({ ...CADASTRO_MINIMO, bio: "" });
+
+    expect(dadosGravados().bio).toBe(BIO_IMPORTADA);
+  });
+
+  it("bio vazia em conta SEM apresentação gravada continua vazia", async () => {
+    perfilSalvo.mockReturnValue({ bio: null });
+
+    await caller().profile.completeOnboarding({ ...CADASTRO_MINIMO, bio: "" });
+
+    expect(dadosGravados().bio).toBe("");
+  });
+
   it("bio curta nem chega a consultar o perfil", async () => {
     perfilSalvo.mockReturnValue({ bio: BIO_IMPORTADA });
 

@@ -89,11 +89,11 @@ describe("registro — a chave do par e o motivo", () => {
     expect(motivoAnonimo({ matchType: "mutual", matchedAssets: [], matchedNeeds: [] }, "NW-A", "NW-B").motivo).toContain("se completam");
   });
 
-  it("telefone e e-mail escritos dentro do rótulo saem mascarados do motivo e dos itens", () => {
-    // O rótulo é texto livre da dona e a linha registrada é lida pela staff
-    // (Painel Ouro) e sobrevive ao contato: o ID anônimo não protege nada com
-    // o telefone escrito DENTRO do que o contato tem. A rede global já
-    // mascarava antes de gravar; a conexão interna, não.
+  it("o rótulo é gravado como a dona escreveu: a máscara é da LEITURA da staff, não da escrita", () => {
+    // Mascarar na escrita destrói o dado no banco, e num PRIVATE_NETWORK_MATCH
+    // os dois lados são contatos da MESMA dona: ela leria a própria anotação
+    // borrada, contra o contrato do módulo da máscara. E há falso positivo que
+    // estragaria o registro ("Café arábica 14 6000-8000 sacas").
     const { motivo, itens } = motivoAnonimo(
       {
         matchType: "exact",
@@ -103,12 +103,8 @@ describe("registro — a chave do par e o motivo", () => {
       "NW-AAAAAA", "NW-BBBBBB",
     );
 
-    const registrado = JSON.stringify({ motivo, itens });
-    expect(registrado).not.toContain("98888-7777");
-    expect(registrado).not.toContain("ana.souza@vinhos.com.br");
-    // O que a conexão diz continua legível.
-    expect(motivo).toContain("Vinho Malbec");
-    expect(itens[0].precisa).toContain("Vinho importado");
+    expect(motivo).toContain("(11) 98888-7777");
+    expect(itens[0].precisa).toContain("ana.souza@vinhos.com.br");
   });
 });
 

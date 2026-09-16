@@ -555,8 +555,36 @@ describe("Portão da IA — citação montada fora de ordem (item 2 da lista do 
     // ordem certa, mas a oração diz o CONTRÁRIO do que a citação sugere.
     expect(citacaoConfere("需要 税务咨询", "我们不需要税务咨询")).toBe(false);
     expect(citacaoConfere("需要 税务咨询", "我们没需要税务咨询")).toBe(false);
+    // A negação não precisa encostar no termo: 不再, 不太, 暂时不.
+    expect(citacaoConfere("需要 税务咨询", "我们不再需要税务咨询")).toBe(false);
+    expect(citacaoConfere("需要 税务咨询", "我们不太需要税务咨询")).toBe(false);
     // Sem a negação, a mesma citação é honesta.
     expect(citacaoConfere("需要 税务咨询", "我们需要税务咨询")).toBe(true);
+  });
+
+  it("o japonês nega DEPOIS do termo, e isso também desqualifica a citação", () => {
+    // 必要ありません / 必要ない: quem lê só o caractere anterior não vê negação
+    // nenhuma, e o perfil que oferece 弁護士 passava o portão de uma fonte que
+    // diz não precisar de advogado.
+    expect(citacaoConfere("弁護士 必要", "弁護士は必要ありません。物流の会社を探しています")).toBe(false);
+    expect(citacaoConfere("弁護士 必要", "弁護士は必要ない")).toBe(false);
+    // E a citação honesta da mesma fonte continua passando.
+    expect(citacaoConfere("物流の会社を探しています", "弁護士は必要ありません。物流の会社を探しています")).toBe(true);
+  });
+
+  it("a citação que junta CAMPOS ou orações separadas é montagem, como em português", () => {
+    // `textoEscritoPelaPessoa` junta título, tags e descrição com " | "; a vírgula
+    // ideográfica separa orações. Sem contá-las como fim de oração, dois pedaços
+    // de lugares opostos do texto viravam uma citação só.
+    expect(citacaoConfere("税务咨询 分销商", "我们不需要税务咨询 | 我们需要非洲的分销商")).toBe(false);
+    expect(citacaoConfere("税务咨询 分销商", "我们不需要税务咨询、我们在扩张、我们需要非洲的分销商")).toBe(false);
+  });
+
+  it("citação exata com letra latina maiúscula se acha na fonte (a busca é normalizada)", () => {
+    // Os pedaços vêm de `tokensDoTermo`, que baixa a caixa e tira o diacrítico.
+    // Procurar no texto CRU fazia a citação exata não se achar na própria fonte.
+    expect(citacaoConfere("SAP 税务咨询", "Parceiro SAP | 我们需要SAP 税务咨询")).toBe(true);
+    expect(citacaoConfere("sap 税务咨询", "Parceiro SAP | 我们需要SAP 税务咨询")).toBe(true);
   });
 });
 
