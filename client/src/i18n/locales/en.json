@@ -1750,7 +1750,7 @@
       "nome": "Display name",
       "cidade": "City",
       "atuacao": "Your field of work",
-      "apresentacao": "An introduction with at least {{minimo}} words saying who you are and what you do",
+      "apresentacao": "About you: at least {{minimo}} words saying who you are and what you do",
       "apresentacaoContagem": "About you: {{contadas}} of {{minimo}} different content words; short words like 'of' and 'for', and repeated ones, don't count",
       "apresentacaoRepeticao": "About you: the text repeats the same words a lot — say who you are and what you do in different words",
       "apresentacaoContagemERepeticao": "About you: {{contadas}} of {{minimo}} different content words, and the text still repeats a lot — add something new, in different words",

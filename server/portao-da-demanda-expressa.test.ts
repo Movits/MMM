@@ -535,6 +535,29 @@ describe("Portão da IA — citação montada fora de ordem (item 2 da lista do 
     expect(citacaoConfere("探しています 弁護士", fonteJaponesa)).toBe(false);
     expect(citacaoConfere("物流の会社を探しています", fonteJaponesa)).toBe(true);
   });
+
+  it("citação honesta de DOIS pedaços da mesma oração em chinês e japonês continua passando", () => {
+    // A conferência de ordem por janela de TOKENS não serve a esta escrita: a
+    // oração inteira é um token só, e a janela só olha tokens posteriores — com
+    // ela, TODA citação de dois pedaços em zh/ja era recusada, inclusive a
+    // honesta, enquanto a latina equivalente passava. A ordem aqui é por
+    // posição no texto da frase.
+    expect(citacaoConfere("弁護士 探しています", "弁護士を探しています")).toBe(true);
+    expect(citacaoConfere("税務 コンサルティング", "税務コンサルティングを探しています")).toBe(true);
+    expect(citacaoConfere("非洲的分销商 物流服务", "我们需要非洲的分销商和物流服务")).toBe(true);
+    // E o que é montagem continua barrado, inclusive dentro de uma oração só.
+    expect(citacaoConfere("探しています 弁護士", "弁護士を探しています")).toBe(false);
+    expect(citacaoConfere("物流服务 非洲的分销商", "我们需要非洲的分销商和物流服务")).toBe(false);
+  });
+
+  it("pedaço arrancado de uma negação não conta como citado (不需要 não é 需要)", () => {
+    // É o que a ordem sozinha não vê: os dois pedaços estão na mesma oração e na
+    // ordem certa, mas a oração diz o CONTRÁRIO do que a citação sugere.
+    expect(citacaoConfere("需要 税务咨询", "我们不需要税务咨询")).toBe(false);
+    expect(citacaoConfere("需要 税务咨询", "我们没需要税务咨询")).toBe(false);
+    // Sem a negação, a mesma citação é honesta.
+    expect(citacaoConfere("需要 税务咨询", "我们需要税务咨询")).toBe(true);
+  });
 });
 
 

@@ -320,11 +320,14 @@ export const networkInteligenteRouter = router({
         // pergunta não tem resposta. Nada de contato vai junto — nome, telefone
         // e e-mail nunca entram nesta lista, e o teto de 200 conexões da
         // consulta limita o tamanho do registro.
-        const donas = Array.from(new Set(lista.flatMap(conexao => conexao.lados.map(lado => lado.conta?.id))
-          .filter((id): id is number => typeof id === "number"))).sort((a, b) => a - b);
+        const contas = lista.flatMap(conexao => conexao.lados.map(lado => lado.conta?.id));
+        const donas = Array.from(new Set(contas.filter((id): id is number => typeof id === "number"))).sort((a, b) => a - b);
+        // Lado cuja conta não resolve (linha legada, conta apagada) sairia da
+        // lista em silêncio, e a leitura pareceria ter coberto todas as donas.
+        const ladosSemConta = contas.filter(id => typeof id !== "number").length;
         await createAuditLog({
           userId: ctx.user.id, action: "NETWORK_CONNECTIONS_READ", resource: "conexoes_registradas",
-          details: { origem: input?.origem ?? null, status: input?.status ?? null, conexoes: lista.length, donas },
+          details: { origem: input?.origem ?? null, status: input?.status ?? null, conexoes: lista.length, donas, ladosSemConta },
           status: "success", riskLevel: "medium",
         });
         return lista;

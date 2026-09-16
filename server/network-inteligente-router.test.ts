@@ -299,7 +299,7 @@ describe("a rastreabilidade da plataforma exige administradora", () => {
     expect(leitura.sql).not.toContain("chave_do_par");
     expect(createAuditLog).toHaveBeenCalledWith(expect.objectContaining({
       userId: 9, action: "NETWORK_CONNECTIONS_READ", resource: "conexoes_registradas",
-      details: { origem: "PRIVATE_NETWORK_MATCH", status: null, conexoes: 1, donas: [31, 32] },
+      details: { origem: "PRIVATE_NETWORK_MATCH", status: null, conexoes: 1, donas: [31, 32], ladosSemConta: 0 },
     }));
   });
 
@@ -313,13 +313,38 @@ describe("a rastreabilidade da plataforma exige administradora", () => {
     conexaoDeDuasDonas();
     await chamar("admin").admin.conexoes();
 
-    const registro = createAuditLog.mock.calls.at(-1)![0] as { details: { donas: number[]; conexoes: number } };
+    const registro = createAuditLog.mock.calls.at(-1)![0] as { details: { donas: number[]; conexoes: number; ladosSemConta: number } };
     expect(registro.details.donas).toEqual([31, 32]);
     expect(registro.details.conexoes).toBe(1);
+    expect(registro.details.ladosSemConta).toBe(0);
     const trilha = JSON.stringify(registro.details);
     expect(trilha).not.toContain("NW-AAAAAA");
     expect(trilha).not.toContain("dona-1");
     expect(trilha).not.toContain("Ana");
+  });
+
+  it("lado cuja conta não resolve é contado, não sumido em silêncio", () => {
+    // Linha legada ou conta apagada: `lado.conta` vem null. Sem contar, a
+    // leitura pareceria ter coberto todas as donas envolvidas.
+    estado.responder = sql => {
+      if (/from `conexoes_registradas`/.test(sql)) {
+        return [["c-1", "PRIVATE_NETWORK_MATCH", "NW-AAAAAA tem Vinho, que NW-BBBBBB procura.", "[]", 100, "identificada", null, null, null, null, "sem_negocio", 1000]];
+      }
+      if (/from `conexoes_participantes`/.test(sql)) {
+        return [
+          [1, "c-1", "a", "contato", "dona-1", null, 11, "NW-AAAAAA", true, "sem_negocio", 1000, 1000, null, null],
+          [2, "c-1", "b", "contato", "dona-sumida", null, 99, "NW-BBBBBB", true, "sem_negocio", 1000, 1000, null, null],
+        ];
+      }
+      if (/from `users`/.test(sql)) return [[31, "dona-1", "Ana"]];
+      return undefined;
+    };
+
+    return chamar("admin").admin.conexoes().then(() => {
+      const registro = createAuditLog.mock.calls.at(-1)![0] as { details: { donas: number[]; ladosSemConta: number } };
+      expect(registro.details.donas).toEqual([31]);
+      expect(registro.details.ladosSemConta).toBe(1);
+    });
   });
 
   it("administradora lista; apurar antes do fechamento é conflito", async () => {

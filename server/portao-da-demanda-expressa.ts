@@ -199,6 +199,34 @@ function frasesDaFonte(fonte: string): string[][] {
 /** O pedaço citado casa com o da fonte: igual, ou contido nele quando é escrita sem espaço ("東京" em "東京の支店"). */
 const casaComAFonte = (pedaco: string, daFonte: string) => (ESCRITA_SEM_ESPACO.test(pedaco) ? daFonte.includes(pedaco) : daFonte === pedaco);
 
+/** Negação que vem ANTES do termo em escrita sem espaço: "不需要", "没有". */
+const NEGACOES_ANTES_SEM_ESPACO = new Set(Array.from("不沒没無无未非"));
+
+/**
+ * A ordem conferida por POSIÇÃO NO TEXTO da frase, que é o que faz sentido em
+ * escrita sem espaço: ali a oração inteira é um token só, e dois pedaços
+ * citados da mesma oração nunca se encontram na janela de tokens de
+ * `emOrdemNumaFrase` — ela só olha tokens posteriores ao que casou.
+ *
+ * O pedaço arrancado de uma NEGAÇÃO não conta como citado: era essa a
+ * montagem do relato ("需要 税务咨询" tirado de "我们不需要税务咨询", que diz o
+ * contrário). Ordem sozinha não vê negação, e foi por isso que a primeira
+ * correção recusou junto a citação honesta.
+ */
+function emOrdemNoTextoDaFrase(pedacos: readonly string[], fonte: string): boolean {
+  if (pedacos.length === 0) return false;
+  return fonte.split(FIM_DE_FRASE).some(frase => {
+    let posicao = 0;
+    for (const pedaco of pedacos) {
+      let achou = frase.indexOf(pedaco, posicao);
+      while (achou > 0 && NEGACOES_ANTES_SEM_ESPACO.has(frase[achou - 1])) achou = frase.indexOf(pedaco, achou + 1);
+      if (achou < 0) return false;
+      posicao = achou + pedaco.length;
+    }
+    return true;
+  });
+}
+
 /** Os pedaços aparecem nesta ordem numa frase só, com até INTERCALADAS_NA_CITACAO pedaços de conteúdo entre cada par? */
 function emOrdemNumaFrase(pedacos: readonly string[], frases: readonly (readonly string[])[]): boolean {
   if (pedacos.length === 0) return false;
@@ -229,8 +257,10 @@ export function citacaoConfere(citacao: unknown, fonte: string): boolean {
       // A ordem vale aqui também: este ramo devolvia antes da conferência e
       // aceitava montagem em chinês e japonês ("需要 税务咨询" sobre uma fonte que
       // diz o contrário), enquanto o equivalente latino era barrado — validação
-      // de 16/09 na #135.
-      return emOrdemNumaFrase(conteudo, frasesDaFonte(fonte));
+      // de 16/09 na #135. A conferência é pelo TEXTO da frase, não pela janela
+      // de tokens: nesta escrita a oração é um token só, e a janela recusava
+      // toda citação de dois pedaços, honesta inclusive.
+      return emOrdemNoTextoDaFrase(conteudo, fonte);
     }
   }
   if (palavras.length < 2) return false;
