@@ -44,6 +44,25 @@ node .claude/hooks/carimbo.mjs --status # estado da conferência (ver "Fluxo de 
 
 - **No Windows, use Git Bash**: `dev` e `start` definem `NODE_ENV` com sintaxe
   POSIX e falham no PowerShell. Se `pnpm` não estiver no PATH, `corepack pnpm`.
+- **Os scripts `.mjs` de banco NÃO leem o `.env`** (revisão do Nicolas na #97:
+  preencher o arquivo não basta). São `criar-banco.mjs`, `migrar.mjs`
+  (`pnpm db:migrate`, `--simular`) e `nivelar-banco.mjs`: leem
+  `process.env.DATABASE_URL` e param se ela não estiver no ambiente, cada um com a
+  sua mensagem — `criar-banco.mjs` imprime "DATABASE_URL não definida." seguida de
+  um exemplo de linha de comando; `migrar.mjs` e `nivelar-banco.mjs` imprimem
+  "Defina DATABASE_URL." (o `migrar.mjs` com o exemplo na linha seguinte). Passe na
+  linha de comando — `DATABASE_URL='mysql://...' node scripts/criar-banco.mjs` — ou
+  exporte o arquivo inteiro antes, no Git Bash: `set -a; . ./.env; set +a` (ali o
+  `.env` vira script do shell, então valor com espaço, `{` ou `#` precisa estar
+  entre aspas no arquivo). **`pnpm db:generate` é a exceção**: o
+  `drizzle.config.ts` também só lê `process.env.DATABASE_URL`, mas a CLI do
+  drizzle-kit carrega o `.env` do diretório atual (ela embute o `dotenv/config`)
+  antes de abrir a configuração, então para ele o arquivo basta; sem a variável em
+  lugar nenhum a mensagem é "DATABASE_URL is required to run drizzle commands", que
+  vem da configuração, não do script. Quem mais carrega o `.env` sozinho: o
+  servidor (`dotenv` em `server/_core/index.ts`, logo `pnpm dev` e `pnpm start`), a
+  suíte (`import "dotenv/config"` em `vitest.config.ts`) e o `checar-producao.mjs`,
+  que recebe o arquivo em `--env`.
 - `JWT_SECRET` é obrigatória: o servidor se recusa a iniciar sem ela
   (`requireSecret()` em `server/_core/env.ts`, chamado ao carregar `server/auth.ts`).
   `VAULT_ENCRYPTION_KEY` deve existir em produção, mas o código não a exige: sem ela,
@@ -142,8 +161,16 @@ tRPC 11 sobre Express 4 no servidor, MySQL via Drizzle.
 **Entrada e boot.** A entrada real é `server/_core/index.ts`. Ordem: migrações no
 boot (só em produção, ver "Banco"), helmet,
 compression, cabeçalhos de segurança, bloqueio de scanners, rate limit global, body
-parsers (15 MB só em `meetings.submitRecording` e `contexts.uploadMedia`, 5 MB no
-resto), proxy de storage, tRPC em `/api/trpc`, e por fim Vite em middleware (dev) ou
+parsers (5 MB por padrão e 15 MB em SEIS procedimentos de upload —
+`meetings.submitRecording`, `contexts.uploadMedia`, `network.uploadPhoto`,
+`network.uploadCard`, `dealRoom.uploadDocument` e `sivc.uploadDocument`. A lista
+cresceu por partes: `submitRecording` veio do resgate do Manus (25/08),
+`contexts.uploadMedia` entrou na etapa 5 (01/09), as duas da rede na #58 (03/09) e
+as do Deal Room e do SIVC na #59 (04/09) — só entre 01/09 e 03/09 foram dois.
+Antes deles vem `corpoGrandeParaUploads` (#79, 06/09), que reconhece esses mesmos
+procedimentos quando chegam dentro de um LOTE do tRPC — `/api/trpc/a,b` não casa com
+nenhum recorte por caminho),
+proxy de storage, tRPC em `/api/trpc`, e por fim Vite em middleware (dev) ou
 estático de `dist/public` (prod). Não há proxy de dev: front e API na mesma origem.
 
 **Fluxo de tipos ponta a ponta (tRPC).** Cada área de negócio tem um router em
@@ -196,12 +223,26 @@ nessa lista; procedimento público novo entra em `PUBLICOS` de
 recusa): quem não o aceita mais exclui a conta. Contas que concluíram o cadastro antes
 do termo existir não são obrigadas a aceitá-lo: isso depende de decisão de produto.
 
-**Mas Ouro NÃO é staff em tudo.** Há duas assimetrias de papel no servidor, as duas
-aceitando só admin e president: `isStaff` em `oportunidade-acesso.ts` (uma conta Ouro
-APROVA uma oportunidade pendente e leva 403 ao tentar ABRI-LA) e `plataformaProcedure`
-em `routers/networkInteligente.ts` (a lista de conexões registradas de todas as donas e
-a apuração de comissão, com auditoria `NETWORK_CONNECTIONS_READ`; a aba some do Painel
-Ouro para Ouro sem cargo). Some-se outra armadilha:
+**Mas Ouro NÃO é staff em tudo.** São QUATRO os pontos em que admin e president valem
+mais que Ouro — a frase "a única assimetria é `isStaff`" era falsa e virou revisão do
+Nicolas (#97); antes de repetir qualquer contagem aqui, rode
+`grep -rn "role ===\|role !==\|users.role" server --include=*.ts` e confira:
+
+1. **Abrir oportunidade que não é sua**: `isStaff` em `oportunidade-acesso.ts` — uma
+   conta Ouro APROVA uma oportunidade pendente e leva 403 ao tentar ABRI-LA.
+2. **Rastreabilidade das conexões**: `plataformaProcedure` em
+   `routers/networkInteligente.ts` (a lista de conexões registradas de todas as donas e
+   a apuração de comissão, com auditoria `NETWORK_CONNECTIONS_READ`; a aba some do
+   Painel Ouro para Ouro sem cargo).
+3. **Bloqueio automático por eventos críticos**: `checkAutoLockThreshold` em
+   `server/security.ts` isenta president e admin — conta Ouro é desativada como
+   qualquer outra ao cruzar o limite.
+4. **Quem é avisada**: os destinatários de "oportunidade aguardando análise"
+   (`routers/opportunities.ts`) e de "não há distribuidor" (`idsDaPresidenciaAtiva`
+   em `db.ts`) são president e admin; Ouro não recebe nenhum dos dois, embora possa
+   agir sobre o primeiro.
+
+Some-se outra armadilha:
 `grantGoldAccess` grava `role = "gold"` por cima do que havia, e `revokeGoldAccess`
 grava o nível que o perfil sustenta (`"silver"` se `avaliarQualificacaoDoPerfil` o
 qualifica, `"bronze"` se não) sem olhar o papel anterior — conceder Ouro a uma
@@ -374,12 +415,29 @@ vitrine no GitHub Pages. Depois de todo deploy:
   colunas pessoais: `listVitrineColetiva` em `server/db.ts` lê só id, país e cidade e
   devolve id opaco; `listAcervoOuro` exige nível 'ouro' no contato, consentimento da
   dona ao termo, `goldProcedure` e registro de auditoria. Esconder no front-end não
-  basta (ver `docs/arquitetura/privacidade.md`).
-- **Match nunca cruza por palavra solta.** Hoje as tags de possui/procura são
-  texto livre, mas o cruzamento exige tag exata, mesmo objeto em direções
-  opostas (`shared/direcao-do-termo.ts`: exportar × importar) ou mesma
-  categoria: a spec da cliente veta match por palavra parecida
-  ("exportar vinho" × "importar vinho" casam; "exportar" × "exportar" nunca).
+  basta (ver `docs/arquitetura/privacidade.md`). **Ressalva no consentimento** (revisão
+  do Nicolas, #89): ele só trava quando existe versão VIGENTE do termo publicada. Sem
+  linha `isCurrent` em `document_versions`, `hasValidConsent` e
+  `usersComConsentimento` (`server/routers/consent.ts`) respondem "sim" para todas —
+  é a única porta que libera sem consentimento, e vale para todo termo, não só o do
+  acervo. Cai só essa trava: nível 'ouro' no contato, `goldProcedure` e auditoria
+  seguem valendo. Publicar o termo (`scripts/publicar-documento.mjs`) é o que liga a
+  exigência.
+- **Match nunca cruza por palavra solta — e isso hoje só vale no motor privado.**
+  A regra da spec é essa: tag exata, mesmo objeto ou mesmo núcleo em direções
+  OPOSTAS (`shared/direcao-do-termo.ts`), ou mesma categoria; duas pontas que
+  querem a mesma coisa são concorrentes ("exportar vinho" × "importar vinho"
+  casam; "exportar" × "exportar" não). Quem a aplica é `scoreMatch`
+  (`server/match-service.ts`), que chama `saoConcorrentes` ANTES de qualquer outro
+  critério e zera o par. **O motor de perfis (`server/matching.ts`) não aplica**
+  (revisão do Nicolas, #97): `satisfaz` devolve `true` já no `have === need` e no
+  slug igual, sem passar por `saoConcorrentes`, então "exportar" × "exportar"
+  conta como necessidade atendida e ainda SOBE a complementaridade. E a
+  complementaridade é a dimensão de MAIOR peso da nota: seis dimensões somam 100
+  (complementaridade 30, setor 20, investimento 20, especialidade 15, valores 10,
+  localização 5), com corte em 40 — lá um par vira match sem nenhum termo cruzado.
+  Uniformizar os dois é decisão de produto, não ajuste local — a nota do motor de
+  perfis mudaria para todas.
 - **Serviço só casa com necessidade declarada.** Setor, porte, localização, cargo,
   atividade econômica, problemas típicos do segmento, obrigações legais ou "poderia se
   beneficiar" não são necessidade (pedido do Nicolas, 12/09/2026: "não fazemos match

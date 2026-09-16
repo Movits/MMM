@@ -4,29 +4,29 @@
 
 1.1. Este instrumento (“Termo”) regula, de forma unificada, o acesso e a utilização da plataforma digital WOMEN ROCKING THE WORLD — WRW (“PLATAFORMA”), de titularidade da GK Gestão Administrativa e de Negócios LTDA, sociedade empresária limitada, inscrita no CNPJ sob o nº 62.982.808/0001-79, Inscrição Estadual nº 08.433.860/001-01, com sede em Brasília/DF, que atuará como CONTROLADORA dos dados pessoais nos tratamentos em que determinar as finalidades e os meios de tratamento, podendo atuar como OPERADORA quando realizar tratamento em nome de terceiro, conforme a legislação aplicável.
 
-1.2. A PLATAFORMA disponibiliza ambiente digital integrado destinado à aproximação, conexão, interação e desenvolvimento de relacionamentos entre pessoas físicas e jurídicas que apresentem interesses negociais, empresariais, profissionais, institucionais, comerciais, de investimento ou de cooperação potencialmente compatíveis.
+1.2. A PLATAFORMA disponibiliza ambiente digital integrado destinado à aproximação, ao contato, à interação e ao desenvolvimento de relacionamentos entre pessoas físicas e jurídicas que apresentem interesses negociais, empresariais, profissionais, institucionais, comerciais, de investimento ou de cooperação potencialmente compatíveis.
 
 Para o cumprimento de suas finalidades, a PLATAFORMA poderá disponibilizar, entre outras, funcionalidades destinadas à:
 
-(a) identificação inteligente de potenciais compatibilidades, conexões, parceiros e oportunidades por meio da ferramenta SMART MATCH, a partir do cruzamento de informações previamente cadastradas pelos USUÁRIOS;
+(a) identificação inteligente de potenciais compatibilidades, CONEXÕES, parceiros e oportunidades por meio da ferramenta SMART MATCH, a partir do cruzamento de informações previamente cadastradas pelos USUÁRIOS;
 
-(b) criação, organização, gestão e catalogação, em área restrita, da rede de relacionamentos e do networking do USUÁRIO, inclusive contatos, empresas, instituições, potenciais parceiros e demais conexões profissionais ou negociais;
+(b) criação, organização, gestão e catalogação, em área restrita, da rede de relacionamentos e do networking do USUÁRIO, inclusive contatos, empresas, instituições, potenciais parceiros e demais vínculos profissionais ou negociais;
 
 (c) cadastramento, organização, registro e acompanhamento de oportunidades, demandas, ofertas, necessidades, interesses comerciais, empresariais, profissionais, institucionais, de investimento, parceria ou cooperação;
 
 (d) utilização de recursos tecnológicos, algoritmos, modelos estatísticos, automação e inteligência artificial para cruzamento das informações previamente fornecidas pelos USUÁRIOS, especialmente aquelas relacionadas ao que possuem, oferecem, buscam ou necessitam;
 
-(e) comunicação e interação entre USUÁRIOS e demais participantes autorizados, inclusive para desenvolvimento de conexões e tratativas decorrentes das aproximações realizadas por meio da PLATAFORMA;
+(e) comunicação e interação entre USUÁRIOS e demais participantes autorizados, inclusive para o desenvolvimento de relacionamentos e tratativas decorrentes das aproximações realizadas por meio da PLATAFORMA;
 
 (f) agendamento, realização, registro e, quando aplicável e observadas as condições previstas neste Termo e na legislação aplicável, gravação de reuniões em áudio e/ou vídeo;
 
-(g) organização e manutenção do histórico de oportunidades, demandas, conexões, reuniões, interações, negociações e demais registros relacionados à utilização da PLATAFORMA;
+(g) organização e manutenção do histórico de oportunidades, demandas, CONEXÕES, reuniões, interações, negociações e demais registros relacionados à utilização da PLATAFORMA;
 
-(h) acompanhamento das tratativas e negociações eventualmente decorrentes das conexões realizadas por intermédio da PLATAFORMA;
+(h) acompanhamento das tratativas e negociações eventualmente decorrentes das CONEXÕES realizadas por intermédio da PLATAFORMA;
 
 (i) registro, estruturação, acompanhamento e, quando a funcionalidade estiver disponível, formalização de negócios, parcerias, operações comerciais e demais relações econômicas eventualmente decorrentes das aproximações promovidas pela PLATAFORMA; e
 
-(j) disponibilização de outras ferramentas tecnológicas destinadas a aprimorar a experiência do USUÁRIO, facilitar a gestão de sua rede de relacionamentos e potencializar a identificação e o desenvolvimento de conexões e oportunidades compatíveis com as finalidades da PLATAFORMA.
+(j) disponibilização de outras ferramentas tecnológicas destinadas a aprimorar a experiência do USUÁRIO, facilitar a gestão de sua rede de relacionamentos e potencializar a identificação e o desenvolvimento de CONEXÕES e oportunidades compatíveis com as finalidades da PLATAFORMA.
 
 1.2.1. As funcionalidades disponibilizadas poderão variar conforme o perfil do USUÁRIO, a região de utilização, a disponibilidade tecnológica e a evolução dos serviços oferecidos pela PLATAFORMA, podendo ser incluídas, aperfeiçoadas, substituídas ou descontinuadas na forma prevista neste Termo.
 
@@ -42,13 +42,13 @@ Para os fins deste Termo:
 
 **OPORTUNIDADE.** Oferta, produto, serviço, competência, ativo, possibilidade de negócio, parceria, investimento, operação comercial, fornecimento, prestação de serviços ou outro interesse econômico, empresarial, profissional ou institucional previamente existente e cadastrado pelo USUÁRIO na PLATAFORMA, para fins de identificação de potenciais compatibilidades.
 
-**DEMANDA.** Necessidade, procura, interesse, requisito ou objetivo econômico, empresarial, profissional ou institucional previamente existente e cadastrado pelo USUÁRIO na PLATAFORMA, relacionado àquilo que busca, necessita ou pretende encontrar por meio das funcionalidades de conexão da PLATAFORMA.
+**DEMANDA.** Necessidade, procura, interesse, requisito ou objetivo econômico, empresarial, profissional ou institucional previamente existente e cadastrado pelo USUÁRIO na PLATAFORMA, relacionado àquilo que busca, necessita ou pretende encontrar por meio das funcionalidades de aproximação da PLATAFORMA.
 
 **SMART MATCH.** Ferramenta tecnológica que utiliza critérios, regras, algoritmos, modelos estatísticos, automação e/ou inteligência artificial para realizar o cruzamento de informações previamente cadastradas pelos USUÁRIOS, especialmente oportunidades, demandas, ofertas, necessidades, interesses, competências e demais elementos relevantes, com a finalidade de identificar potenciais compatibilidades.
 
-**MATCH.** Potencial compatibilidade identificada pela PLATAFORMA, por meio do SMART MATCH, a partir do cruzamento de informações previamente cadastradas pelos USUÁRIOS, cuja efetiva aproximação dependerá de confirmação, validação e/ou manifestação de interesse das partes envolvidas.
+**CONEXÃO.** Potencial compatibilidade identificada pela PLATAFORMA, por meio do SMART MATCH, a partir do cruzamento de informações previamente cadastradas pelos USUÁRIOS, cuja efetiva aproximação dependerá de confirmação, validação e/ou manifestação de interesse das partes envolvidas.
 
-**NEGÓCIO DECORRENTE DO MATCH.** Qualquer negócio ou relação econômica celebrado entre partes cuja identificação, conexão ou aproximação tenha ocorrido em razão de compatibilidade identificada pelo SMART MATCH.
+**NEGÓCIO DECORRENTE DA CONEXÃO.** Qualquer negócio ou relação econômica celebrado entre partes cuja identificação, apresentação ou aproximação tenha ocorrido em razão de compatibilidade identificada pelo SMART MATCH.
 
 **CONTATO DE TERCEIRO.** Pessoa, empresa ou instituição vinculada à rede de relacionamentos do USUÁRIO e eventualmente registrada em sua área restrita, ainda que não cadastrada como USUÁRIO da PLATAFORMA.
 
@@ -92,7 +92,7 @@ Para os fins deste Termo:
 
 5.5. A PLATAFORMA não utilizará dados pessoais sensíveis como critério de compatibilidade, salvo quando houver fundamento jurídico específico e observância das exigências legais.
 
-5.6. O USUÁRIO permanece responsável por sua própria decisão de confirmar o interesse, prosseguir ou não com o MATCH e desenvolver eventual negociação.
+5.6. O USUÁRIO permanece responsável por sua própria decisão de confirmar o interesse, prosseguir ou não com a CONEXÃO e desenvolver eventual negociação.
 
 5.7. O tratamento de dados relacionado ao SMART MATCH observará as disposições da Cláusula 7, inclusive quanto aos direitos do USUÁRIO em relação a decisões automatizadas.
 
@@ -102,13 +102,13 @@ Para os fins deste Termo:
 
 ## 5-A. ÁREA PRIVADA DE NETWORKING, OPORTUNIDADES E DEMANDAS
 
-5-A.1. A PLATAFORMA poderá disponibilizar ao USUÁRIO área restrita destinada à organização e gestão de sua rede de relacionamentos, contatos, oportunidades, demandas, interesses comerciais, necessidades empresariais e demais informações relacionadas ao desenvolvimento de negócios e conexões profissionais ou institucionais.
+5-A.1. A PLATAFORMA poderá disponibilizar ao USUÁRIO área restrita destinada à organização e gestão de sua rede de relacionamentos, contatos, oportunidades, demandas, interesses comerciais, necessidades empresariais e demais informações relacionadas ao desenvolvimento de negócios e vínculos profissionais ou institucionais.
 
 5-A.2. O funcionamento do SMART MATCH pressupõe o prévio cadastramento pelos USUÁRIOS de informações relativas às oportunidades, demandas, ofertas, produtos, serviços, competências, interesses, necessidades e demais elementos relevantes à identificação de potenciais compatibilidades.
 
 5-A.3. As oportunidades, demandas e interesses submetidos ao SMART MATCH são previamente existentes e cadastrados pelos próprios USUÁRIOS, cabendo à PLATAFORMA utilizar recursos tecnológicos, algoritmos e inteligência artificial para realizar o cruzamento dessas informações e identificar potenciais compatibilidades.
 
-5-A.4. Para fins de SMART MATCH, a PLATAFORMA poderá ter acesso às informações necessárias à identificação da compatibilidade, tais como natureza da oportunidade ou demanda, setor de atuação, produto ou serviço envolvido, mercado de interesse, localização, características da operação, oferta, necessidade, interesse comercial e demais elementos pertinentes à lógica de conexão.
+5-A.4. Para fins de SMART MATCH, a PLATAFORMA poderá ter acesso às informações necessárias à identificação da compatibilidade, tais como natureza da oportunidade ou demanda, setor de atuação, produto ou serviço envolvido, mercado de interesse, localização, características da operação, oferta, necessidade, interesse comercial e demais elementos pertinentes à lógica de aproximação.
 
 5-A.5. A identidade da empresa, instituição, pessoa ou contato relacionado à oportunidade, demanda ou interesse cadastrado permanecerá, sempre que tecnicamente aplicável, dissociada das informações submetidas ao processo de identificação de compatibilidades, mediante IDENTIFICADOR INTERNO — ID — ou mecanismo técnico equivalente, permitindo que o SMART MATCH realize o cruzamento das informações sem exposição imediata da identidade da parte relacionada.
 
@@ -126,7 +126,7 @@ Para os fins deste Termo:
 
 ## 6. RELAÇÃO ENTRE OS USUÁRIOS E ENTRE ESTES E A PLATAFORMA
 
-6.1. O MATCH não constitui sociedade, joint venture, mandato, representação, agência ou vínculo trabalhista entre os USUÁRIOS.
+6.1. A CONEXÃO não constitui sociedade, joint venture, mandato, representação, agência ou vínculo trabalhista entre os USUÁRIOS.
 
 6.2. Este Termo tampouco constitui sociedade, joint venture, mandato, agência ou relação de emprego entre a PLATAFORMA e o USUÁRIO, tratando-se de relação contratual autônoma de intermediação digital, nos termos da Cláusula 12.
 
@@ -138,13 +138,13 @@ Para os fins deste Termo:
 
 7.2. Poderão ser tratados dados de: (a) USUÁRIOS pessoas físicas; (b) representantes de USUÁRIOS pessoas jurídicas; (c) sócios; (d) administradores; (e) empregados; (f) prestadores de serviços; (g) participantes de reuniões; (h) visitantes dos Sites; e, quando aplicável, (i) pessoas naturais relacionadas a CONTATOS DE TERCEIROS inseridos legitimamente pelos USUÁRIOS.
 
-7.3. Poderão ser tratados, entre outros: nome, e-mail, telefone, profissão, cargo, empresa, informações profissionais, interesses negociais, objetivos, competências, informações de perfil, oportunidades, demandas, categorias e características negociais associadas a identificadores internos, registros de utilização, endereço IP, informações técnicas, MATCHs, reuniões e, quando aplicável, áudio e vídeo, nos termos da Cláusula 8.
+7.3. Poderão ser tratados, entre outros: nome, e-mail, telefone, profissão, cargo, empresa, informações profissionais, interesses negociais, objetivos, competências, informações de perfil, oportunidades, demandas, categorias e características negociais associadas a identificadores internos, registros de utilização, endereço IP, informações técnicas, CONEXÕES, reuniões e, quando aplicável, áudio e vídeo, nos termos da Cláusula 8.
 
 7.4. Quando uma empresa utilizar a PLATAFORMA, os dados pessoais de seus REPRESENTANTES serão tratados apenas na medida necessária às funcionalidades contratadas e às demais finalidades legítimas previstas nesta Cláusula. A empresa será responsável por possuir base jurídica adequada para fornecer à PLATAFORMA dados pessoais de terceiros que inserir no sistema.
 
 7.5. O USUÁRIO que inserir informações relativas a terceiros, inclusive em sua área restrita de networking, deverá possuir legitimidade e fundamento jurídico adequado para fazê-lo, observando os princípios da finalidade, adequação e necessidade.
 
-7.6. Os dados poderão ser tratados para: cadastro; autenticação; funcionamento do serviço; organização da área restrita de networking; cadastramento e gestão de oportunidades e demandas; processamento e cruzamento de informações pelo SMART MATCH; aproximação de USUÁRIOS; validação de potenciais compatibilidades; comunicação; realização de reuniões; gravação, quando autorizada ou legitimamente fundamentada; segurança; prevenção de fraude; cobrança; comprovação de MATCH e de intermediação; exercício de direitos; cumprimento de obrigações legais; melhoria da PLATAFORMA; pesquisas e estatísticas; e desenvolvimento de funcionalidades.
+7.6. Os dados poderão ser tratados para: cadastro; autenticação; funcionamento do serviço; organização da área restrita de networking; cadastramento e gestão de oportunidades e demandas; processamento e cruzamento de informações pelo SMART MATCH; aproximação de USUÁRIOS; validação de potenciais compatibilidades; comunicação; realização de reuniões; gravação, quando autorizada ou legitimamente fundamentada; segurança; prevenção de fraude; cobrança; comprovação de CONEXÃO e de intermediação; exercício de direitos; cumprimento de obrigações legais; melhoria da PLATAFORMA; pesquisas e estatísticas; e desenvolvimento de funcionalidades.
 
 Cada finalidade será vinculada à respectiva base legal aplicável, observados os princípios da finalidade, adequação, necessidade, transparência e não discriminação. Dados pessoais não serão utilizados para finalidade incompatível com aquela informada ao titular sem fundamento jurídico que a autorize e, quando exigível, sem nova informação ou consentimento.
 
@@ -152,7 +152,7 @@ Cada finalidade será vinculada à respectiva base legal aplicável, observados 
 
 Quando o tratamento se fundamentar no legítimo interesse, a PLATAFORMA realizará avaliação de necessidade e balanceamento entre seus interesses legítimos e os direitos e liberdades do titular, podendo disponibilizar informações sobre essa avaliação nos termos da legislação aplicável.
 
-7.8. A PLATAFORMA poderá compartilhar dados pessoais, conforme a necessidade de cada finalidade, com: (a) a contraparte de um MATCH, apenas quanto aos dados necessários à aproximação e após observância do fluxo de validação aplicável; (b) prestadores de serviços de tecnologia, hospedagem, armazenamento, suporte e segurança; (c) processadores de pagamento e prestadores profissionais; (d) autoridades públicas, quando houver obrigação ou requisição legalmente válida; (e) terceiros necessários ao exercício regular de direitos; e (f) adquirentes ou sucessores em operações societárias, observado o princípio da necessidade.
+7.8. A PLATAFORMA poderá compartilhar dados pessoais, conforme a necessidade de cada finalidade, com: (a) a contraparte de uma CONEXÃO, apenas quanto aos dados necessários à aproximação e após observância do fluxo de validação aplicável; (b) prestadores de serviços de tecnologia, hospedagem, armazenamento, suporte e segurança; (c) processadores de pagamento e prestadores profissionais; (d) autoridades públicas, quando houver obrigação ou requisição legalmente válida; (e) terceiros necessários ao exercício regular de direitos; e (f) adquirentes ou sucessores em operações societárias, observado o princípio da necessidade.
 
 A PLATAFORMA não comercializará dados pessoais para finalidade incompatível com este Termo e não compartilhará dados com terceiros para publicidade própria ou de terceiros sem base legal adequada e, quando exigido, consentimento específico.
 
@@ -220,7 +220,7 @@ As transferências internacionais serão realizadas somente quando houver hipót
 
 9.4. O descumprimento desta Cláusula sujeitará o USUÁRIO às medidas previstas na Cláusula 19 (Suspensão e Encerramento), sem prejuízo de outras sanções legais e contratuais cabíveis.
 
-9.5. É vedado ao USUÁRIO utilizar a PLATAFORMA, os Matches realizados ou as informações de contato de outros USUÁRIOS obtidos por meio dela para aliciar ou migrar USUÁRIOS para plataforma concorrente, construir base paralela destinada a substituir a atuação da PLATAFORMA ou contornar sua atividade de intermediação, sem prejuízo do disposto na Cláusula 15.
+9.5. É vedado ao USUÁRIO utilizar a PLATAFORMA, as CONEXÕES realizadas ou as informações de contato de outros USUÁRIOS obtidos por meio dela para aliciar ou migrar USUÁRIOS para plataforma concorrente, construir base paralela destinada a substituir a atuação da PLATAFORMA ou contornar sua atividade de intermediação, sem prejuízo do disposto na Cláusula 15.
 
 9.6. A restrição prevista no item 9.5 não transforma contatos ou relacionamentos previamente pertencentes à rede própria do USUÁRIO em propriedade da PLATAFORMA, sem prejuízo da aplicação das regras de remuneração e não circunvenção quando a contraparte efetivamente envolvida no negócio tiver sido identificada, conectada ou aproximada por meio do SMART MATCH.
 
@@ -248,43 +248,43 @@ A licença limita-se às finalidades necessárias à prestação, segurança, ma
 
 ## 12. INTERMEDIAÇÃO DIGITAL E NATUREZA DA REMUNERAÇÃO
 
-12.1. A PLATAFORMA disponibilizará ambiente tecnológico destinado ao cadastramento e processamento de oportunidades e demandas previamente existentes, à identificação de compatibilidades e à aproximação e conexão de potenciais parceiros negociais.
+12.1. A PLATAFORMA disponibilizará ambiente tecnológico destinado ao cadastramento e processamento de oportunidades e demandas previamente existentes, à identificação de compatibilidades e à aproximação e apresentação de potenciais parceiros negociais.
 
 12.2. A atividade de intermediação da PLATAFORMA não consiste na criação da oportunidade ou demanda, mas na identificação, mediante SMART MATCH ou outra funcionalidade tecnológica, de potencial contraparte compatível e na viabilização da aproximação entre as partes.
 
-12.3. O USUÁRIO pagará à PLATAFORMA a remuneração pactuada em proposta comercial, plano contratado ou instrumento específico aplicável quando a atividade de identificação, conexão ou aproximação resultar em negócio, nos termos das Cláusulas 13 e 14.
+12.3. O USUÁRIO pagará à PLATAFORMA a remuneração pactuada em proposta comercial, plano contratado ou instrumento específico aplicável quando a atividade de identificação, apresentação ou aproximação resultar em negócio, nos termos das Cláusulas 13 e 14.
 
 12.4. A remuneração possui natureza de contraprestação pela atividade de aproximação e intermediação digital, e não de comissão mercantil ou corretagem em sentido estrito, uma vez que a PLATAFORMA não celebra negócios em nome próprio, atuando na identificação tecnológica de compatibilidades e na aproximação das partes.
 
-12.5. O fato gerador da remuneração será a celebração de NEGÓCIO DECORRENTE DO MATCH, salvo se o plano ou instrumento específico contratado estabelecer regramento diverso.
+12.5. O fato gerador da remuneração será a celebração de NEGÓCIO DECORRENTE DA CONEXÃO, salvo se o plano ou instrumento específico contratado estabelecer regramento diverso.
 
-## 13. NEGÓCIO DECORRENTE DO MATCH E NEGÓCIOS REALIZADOS FORA DA PLATAFORMA
+## 13. NEGÓCIO DECORRENTE DA CONEXÃO E NEGÓCIOS REALIZADOS FORA DA PLATAFORMA
 
-13.1. A retirada da negociação do ambiente digital não afasta a remuneração devida à PLATAFORMA quando o negócio decorrer da conexão ou aproximação originada por MATCH realizado por seu intermédio, ainda que a contratação ocorra fora da PLATAFORMA, por e-mail, telefone, presencialmente, aplicativo de mensagens ou por intermédio de terceiro.
+13.1. A retirada da negociação do ambiente digital não afasta a remuneração devida à PLATAFORMA quando o negócio decorrer da apresentação ou aproximação originada por CONEXÃO realizada por seu intermédio, ainda que a contratação ocorra fora da PLATAFORMA, por e-mail, telefone, presencialmente, aplicativo de mensagens ou por intermédio de terceiro.
 
-13.2. O USUÁRIO não poderá utilizar mecanismos destinados a ocultar ou descaracterizar negócio originado da conexão estabelecida por MATCH para evitar a remuneração, observado o regime da Cláusula 15.
+13.2. O USUÁRIO não poderá utilizar mecanismos destinados a ocultar ou descaracterizar negócio originado da aproximação estabelecida por CONEXÃO para evitar a remuneração, observado o regime da Cláusula 15.
 
-13.3. A remuneração será devida quando o negócio for celebrado por empresa controladora, controlada, coligada ou outra pessoa jurídica vinculada ao USUÁRIO, desde que a identificação ou aproximação da contraparte tenha decorrido do MATCH.
+13.3. A remuneração será devida quando o negócio for celebrado por empresa controladora, controlada, coligada ou outra pessoa jurídica vinculada ao USUÁRIO, desde que a identificação ou aproximação da contraparte tenha decorrido da CONEXÃO.
 
 ## 14. REMUNERAÇÃO, APURAÇÃO, COMUNICAÇÃO E PAGAMENTO
 
-14.1. As modalidades de remuneração aplicáveis ao USUÁRIO — tais como mensalidade, assinatura, valor por funcionalidade, remuneração por MATCH ou percentual sobre a operação — constarão de proposta comercial, tabela de planos vigentes ou instrumento específico de contratação.
+14.1. As modalidades de remuneração aplicáveis ao USUÁRIO — tais como mensalidade, assinatura, valor por funcionalidade, remuneração por CONEXÃO ou percentual sobre a operação — constarão de proposta comercial, tabela de planos vigentes ou instrumento específico de contratação.
 
 14.2. As condições de faturamento, prazos de vencimento, incidência de encargos por atraso e eventuais valores mínimos serão regidos pelo plano contratado ou instrumento próprio.
 
 14.3. Eventual alteração das condições econômicas gerais será comunicada previamente ao USUÁRIO.
 
-14.4. O USUÁRIO comunicará à PLATAFORMA a celebração de NEGÓCIO DECORRENTE DO MATCH no prazo e na forma estabelecidos em seu contrato específico ou plano contratado, sendo certo que a ausência de comunicação não afastará a obrigação de pagamento.
+14.4. O USUÁRIO comunicará à PLATAFORMA a celebração de NEGÓCIO DECORRENTE DA CONEXÃO no prazo e na forma estabelecidos em seu contrato específico ou plano contratado, sendo certo que a ausência de comunicação não afastará a obrigação de pagamento.
 
 14.5. A PLATAFORMA poderá solicitar documentos razoavelmente necessários para apuração da remuneração devida, respeitados o sigilo empresarial e a legislação de proteção de dados.
 
 14.6. O inadimplemento das obrigações financeiras acarretará a incidência dos encargos moratórios e das penalidades previstos no instrumento específico de contratação ou na proposta comercial.
 
-14.7. O USUÁRIO é responsável pelos tributos incidentes sobre sua própria operação econômica decorrente do NEGÓCIO DECORRENTE DO MATCH, não incluídos na remuneração devida à PLATAFORMA, salvo disposição em contrário no contrato específico.
+14.7. O USUÁRIO é responsável pelos tributos incidentes sobre sua própria operação econômica decorrente do NEGÓCIO DECORRENTE DA CONEXÃO, não incluídos na remuneração devida à PLATAFORMA, salvo disposição em contrário no contrato específico.
 
 ## 15. PRAZO DE PROTEÇÃO, EXCLUSIVIDADE E NÃO CIRCUNVENÇÃO
 
-15.1. Pelo prazo de 24 (vinte e quatro) meses contado do MATCH (“Prazo de Proteção”), o USUÁRIO reconhece a participação econômica da PLATAFORMA em qualquer negócio celebrado com contraparte cuja identificação, conexão ou aproximação tenha ocorrido por meio do MATCH, limitado às partes efetivamente aproximadas pela PLATAFORMA.
+15.1. Pelo prazo de 24 (vinte e quatro) meses contado da CONEXÃO (“Prazo de Proteção”), o USUÁRIO reconhece a participação econômica da PLATAFORMA em qualquer negócio celebrado com contraparte cuja identificação, apresentação ou aproximação tenha ocorrido por meio da CONEXÃO, limitado às partes efetivamente aproximadas pela PLATAFORMA.
 
 15.2.  Este Termo não impede o USUÁRIO de contratar livremente com terceiros que não tenham sido identificados ou apresentados pela PLATAFORMA como contraparte compatível para a respectiva oportunidade ou demanda.
 
@@ -302,7 +302,7 @@ A licença limita-se às finalidades necessárias à prestação, segurança, ma
 
 (f) praticar qualquer ato destinado a impedir a apuração da remuneração.
 
-15.4. Durante o Prazo de Proteção, negócios posteriores entre as mesmas partes estarão sujeitos à remuneração prevista no instrumento de contratação específico quando decorrerem da relação originada pelo MATCH.
+15.4. Durante o Prazo de Proteção, negócios posteriores entre as mesmas partes estarão sujeitos à remuneração prevista no instrumento de contratação específico quando decorrerem da relação originada pela CONEXÃO.
 
 15.5. A violação desta Cláusula sujeitará o USUÁRIO ao pagamento da remuneração integral devida, sem prejuízo de multas e penalidades pactuadas no instrumento específico de contratação e de perdas e danos suplementares cabíveis.
 
@@ -314,15 +314,15 @@ A licença limita-se às finalidades necessárias à prestação, segurança, ma
 
 16.2. A PLATAFORMA poderá, a seu critério e independentemente de aviso prévio quando a urgência assim exigir, remover, ocultar, sinalizar ou editar conteúdo que viole este Termo, a legislação aplicável ou direitos de terceiros, bem como suspender temporariamente sua utilização.
 
-## 17. REGISTROS ELETRÔNICOS, PROVA E CERTIFICADO DO MATCH
+## 17. REGISTROS ELETRÔNICOS, PROVA E CERTIFICADO DA CONEXÃO
 
-17.1. A PLATAFORMA poderá registrar: cadastro; aceite deste Termo; versão do documento aceito; oportunidades e demandas cadastradas; respectivos identificadores internos; processamento pelo SMART MATCH; match; validações; reuniões; interações; alterações cadastrais; negociações; e informações técnicas necessárias à segurança e comprovação das operações.
+17.1. A PLATAFORMA poderá registrar: cadastro; aceite deste Termo; versão do documento aceito; oportunidades e demandas cadastradas; respectivos identificadores internos; processamento pelo SMART MATCH; CONEXÃO; validações; reuniões; interações; alterações cadastrais; negociações; e informações técnicas necessárias à segurança e comprovação das operações.
 
 Esses registros poderão ser utilizados como elementos de prova da relação contratual, sem prejuízo do direito do USUÁRIO de produzir prova em contrário.
 
-17.2. A cada MATCH, a PLATAFORMA poderá gerar registro eletrônico individualizado (“Certificado do Match”), contendo, no mínimo, conforme tecnicamente disponível:
+17.2. A cada CONEXÃO, a PLATAFORMA poderá gerar registro eletrônico individualizado (“Certificado da Conexão”), contendo, no mínimo, conforme tecnicamente disponível:
 
-(a) identificador único do MATCH;
+(a) identificador único da CONEXÃO;
 
 (b) identificação criptografada ou pseudonimizada dos USUÁRIOS envolvidos;
 
@@ -336,9 +336,9 @@ Esses registros poderão ser utilizados como elementos de prova da relação con
 
 (g) versão deste Termo aceita pelos respectivos USUÁRIOS.
 
-17.3. O Certificado do Match e os demais registros poderão compor cadeia probatória destinada a demonstrar, conforme o caso:
+17.3. O Certificado da Conexão e os demais registros poderão compor cadeia probatória destinada a demonstrar, conforme o caso:
 
-cadastro/adesão → aceite → cadastramento prévio da oportunidade e/ou demanda → processamento pelo SMART MATCH → identificação da compatibilidade → MATCH → validação → aproximação → reunião → negociação → negócio → remuneração.
+cadastro/adesão → aceite → cadastramento prévio da oportunidade e/ou demanda → processamento pelo SMART MATCH → identificação da compatibilidade → CONEXÃO → validação → aproximação → reunião → negociação → negócio → remuneração.
 
 17.4. A existência do registro eletrônico não impede o USUÁRIO de produzir prova em contrário.
 
@@ -358,7 +358,7 @@ cadastro/adesão → aceite → cadastramento prévio da oportunidade e/ou deman
 
 19.1. A PLATAFORMA poderá suspender ou encerrar contas em caso de fraude, violação deste Termo, informações falsas, utilização ilícita, risco de segurança ou determinação legal ou judicial.
 
-19.2. O encerramento da conta não extinguirá obrigações constituídas anteriormente, permanecendo exigíveis as remunerações decorrentes de MATCHs realizados antes do encerramento, inclusive as constituídas dentro do Prazo de Proteção.
+19.2. O encerramento da conta não extinguirá obrigações constituídas anteriormente, permanecendo exigíveis as remunerações decorrentes de CONEXÕES realizadas antes do encerramento, inclusive as constituídas dentro do Prazo de Proteção.
 
 19.3. Encerrada a conta, a PLATAFORMA poderá manter os dados e registros associados por até 90 (noventa) dias, prazo que poderá ser estendido quando necessário para cumprimento de obrigação legal, exercício regular de direitos, prevenção de fraude ou comprovação de obrigações contratuais.
 
@@ -366,7 +366,7 @@ cadastro/adesão → aceite → cadastramento prévio da oportunidade e/ou deman
 
 ## 20. ISENÇÃO DE GARANTIAS E AUSÊNCIA DE GARANTIA DE RESULTADO
 
-20.1. A PLATAFORMA não garante que o SMART MATCH, o MATCH ou a aproximação produzirá negócio e não responde pela execução, inadimplemento ou resultado econômico do negócio celebrado entre as partes, salvo quando houver responsabilidade legal própria.
+20.1. A PLATAFORMA não garante que o SMART MATCH, a CONEXÃO ou a aproximação produzirá negócio e não responde pela execução, inadimplemento ou resultado econômico do negócio celebrado entre as partes, salvo quando houver responsabilidade legal própria.
 
 20.2. A USUÁRIA UTILIZA A PLATAFORMA POR SUA CONTA E RISCO. RESSALVADAS AS HIPÓTESES EM QUE A LEI VEDE A LIMITAÇÃO DE GARANTIAS, A PLATAFORMA É DISPONIBILIZADA “NO ESTADO EM QUE SE ENCONTRA”, SEM GARANTIAS DE QUALQUER NATUREZA QUANTO A RESULTADOS ESPECÍFICOS, INTERRUPÇÕES, ERROS OU AUSÊNCIA TOTAL DE FALHAS, NA MAIOR EXTENSÃO PERMITIDA PELA LEGISLAÇÃO APLICÁVEL.
 
@@ -378,7 +378,7 @@ cadastro/adesão → aceite → cadastramento prévio da oportunidade e/ou deman
 
 21.2. Não estão abrangidos pela limitação do item 21.1 os danos decorrentes de dolo, fraude ou violação de disposições legais que não admitam limitação contratual de responsabilidade.
 
-21.3. Em nenhuma hipótese a PLATAFORMA responderá por lucros cessantes, perda de negócios ou danos indiretos decorrentes da decisão do USUÁRIO de celebrar ou deixar de celebrar negócio com contraparte identificada ou aproximada por MATCH, ressalvadas as hipóteses em que a lei dispuser de forma diversa.
+21.3. Em nenhuma hipótese a PLATAFORMA responderá por lucros cessantes, perda de negócios ou danos indiretos decorrentes da decisão do USUÁRIO de celebrar ou deixar de celebrar negócio com contraparte identificada ou aproximada por CONEXÃO, ressalvadas as hipóteses em que a lei dispuser de forma diversa.
 
 ## 22. INDENIZAÇÃO
 
