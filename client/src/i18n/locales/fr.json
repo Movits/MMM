@@ -2009,7 +2009,7 @@
       "discardConfirmText": "Cette action est irréversible : la connexion reste écartée pour vous et ne peut plus passer à une autre étape.",
       "discardConfirmButton": "Écarter la connexion",
       "discardConfirmCancel": "Annuler",
-      "reasonPlatformMatch": "Suggérée par le moteur de profils entre deux membres de la plateforme, toutes deux ayant accepté les conditions du Smart Match : compatibilité de {{pontuacao}} %.",
+      "reasonPlatformMatch": "Suggérée par le moteur de profils entre deux membres qui avaient accepté les conditions du Smart Match au moment de l’enregistrement : compatibilité de {{pontuacao}} %.",
       "reasonNoAuthorization": "L’autre partie a retiré son autorisation ; les détails de cette connexion ne sont donc plus affichés."
     },
     "global": {

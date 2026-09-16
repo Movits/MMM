@@ -2009,7 +2009,7 @@
       "discardConfirmText": "放弃后无法撤销：该连接对您将保持已放弃状态，无法再进入下一阶段。",
       "discardConfirmButton": "放弃连接",
       "discardConfirmCancel": "取消",
-      "reasonPlatformMatch": "由资料匹配引擎在两位均已接受 Smart Match 条款的平台会员之间建议：匹配度 {{pontuacao}}%。",
+      "reasonPlatformMatch": "由资料匹配引擎在两位会员之间建议；记录该连接时，双方均已接受 Smart Match 条款：匹配度 {{pontuacao}}%。",
       "reasonNoAuthorization": "对方已撤回授权，因此该连接的详情不再显示。"
     },
     "global": {

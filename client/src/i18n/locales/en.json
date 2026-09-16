@@ -2009,7 +2009,7 @@
       "discardConfirmText": "Discarding cannot be undone: the connection stays discarded for you and can no longer move to another stage.",
       "discardConfirmButton": "Discard connection",
       "discardConfirmCancel": "Cancel",
-      "reasonPlatformMatch": "Suggested by the profile engine between two platform members, both having accepted the Smart Match terms: {{pontuacao}}% compatibility.",
+      "reasonPlatformMatch": "Suggested by the profile engine between two members who had accepted the Smart Match terms when the connection was recorded: {{pontuacao}}% compatibility.",
       "reasonNoAuthorization": "The other side withdrew their authorisation, so the details of this connection are no longer shown."
     },
     "global": {

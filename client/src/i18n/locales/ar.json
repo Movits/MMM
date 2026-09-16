@@ -2009,7 +2009,7 @@
       "discardConfirmText": "لا يمكن التراجع عن الاستبعاد: يبقى الاتصال مستبعدًا بالنسبة إليكِ ولا يمكن نقله إلى مرحلة أخرى.",
       "discardConfirmButton": "استبعاد الاتصال",
       "discardConfirmCancel": "إلغاء",
-      "reasonPlatformMatch": "اقترحها محرّك الملفات الشخصية بين عضوتين في المنصة قبلتا شروط Smart Match: توافق بنسبة {{pontuacao}}%.",
+      "reasonPlatformMatch": "اقترحها محرّك الملفات الشخصية بين عضوتين كانتا قد قبلتا شروط Smart Match عند تسجيل الاتصال: توافق بنسبة {{pontuacao}}%.",
       "reasonNoAuthorization": "سحب الطرف الآخر إذنه، لذلك لم تعد تفاصيل هذا الاتصال تظهر."
     },
     "global": {

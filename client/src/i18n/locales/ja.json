@@ -2009,7 +2009,7 @@
       "discardConfirmText": "見送りは取り消せません。このコネクションはあなたにとって見送りのままとなり、次の段階に進めることはできなくなります。",
       "discardConfirmButton": "コネクションを見送る",
       "discardConfirmCancel": "キャンセル",
-      "reasonPlatformMatch": "Smart Match の規約に同意した二人のメンバーの間で、プロフィール・エンジンが提案しました：適合度 {{pontuacao}}%。",
+      "reasonPlatformMatch": "接続が記録された時点で Smart Match の規約に同意していた二人のメンバーの間で、プロフィール・エンジンが提案しました：適合度 {{pontuacao}}%。",
       "reasonNoAuthorization": "相手が承認を取り消したため、この接続の詳細は表示されなくなりました。"
     },
     "global": {

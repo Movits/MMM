@@ -2009,7 +2009,7 @@
       "discardConfirmText": "O descarte não pode ser desfeito: a conexão fica como descartada para você e não volta a avançar de etapa.",
       "discardConfirmButton": "Descartar conexão",
       "discardConfirmCancel": "Cancelar",
-      "reasonPlatformMatch": "Sugerida pelo motor de perfis entre duas membras da plataforma, com o termo do Smart Match aceito pelas duas: compatibilidade de {{pontuacao}}%.",
+      "reasonPlatformMatch": "Sugerida pelo motor de perfis entre duas membras que tinham o termo do Smart Match aceito quando a conexão foi registrada: compatibilidade de {{pontuacao}}%.",
       "reasonNoAuthorization": "O outro lado retirou a autorização, então os detalhes desta conexão deixaram de aparecer."
     },
     "global": {
