@@ -86,7 +86,9 @@ describe("Conexão registrada — descartar pede confirmação", () => {
     renderizar(conexao({ id: "c-negociacao", status: "negociacao" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Descartar" }));
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Descartar conexão" }));
+    // O botão nomeia a conexão: quem descarta age sobre uma referência, não sobre
+    // um cartão que parece igual ao de baixo.
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Descartar " + referenciaDaConexao("c-negociacao") }));
 
     expect(duble.mutate).toHaveBeenCalledTimes(1);
     expect(duble.mutate).toHaveBeenCalledWith({ conexaoId: "c-negociacao", etapa: "descartada" });
@@ -190,6 +192,19 @@ describe("Conexão entre duas membras — qual cartão é qual", () => {
     renderizar(entreMembras({ id: PAR_A, ...MESMA_RODADA, outroLadoSemAutorizacao: true }));
 
     expect(screen.getByText(/retirou a autorização para a rede/)).toBeInTheDocument();
+  });
+
+  it("a confirmação avisa que o outro lado é anônimo e nomeia o que vai embora", () => {
+    // O relato: "quem usa descarta um par que não consegue identificar — e o
+    // descarte é irreversível". A plataforma não pode dizer quem é a outra
+    // membra; pode, e passou a, dizer isso na cara e amarrar a ação à referência.
+    renderizar(entreMembras({ id: PAR_A, ...MESMA_RODADA }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Descartar" }));
+
+    const dialogo = screen.getByRole("dialog");
+    expect(within(dialogo).getByText(/O outro lado continua anônimo/)).toBeInTheDocument();
+    expect(within(dialogo).getByRole("button", { name: "Descartar " + referenciaDaConexao(PAR_A) })).toBeInTheDocument();
   });
 
   it("a confirmação diz qual conexão vai ser descartada", () => {

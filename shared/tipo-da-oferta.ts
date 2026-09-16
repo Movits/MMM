@@ -892,6 +892,7 @@ const tipoNaoServico = (palavra: string): TipoDaOferta | null => {
 /** Verbos de quem pede, que saem da frente do termo como os marcadores fracos. */
 const VERBOS_DE_NECESSIDADE = new Set([
   "precisamos", "buscamos", "procuramos", "queremos", "necessitamos", "desejamos", "gostariamos",
+  "preciso", "busco", "procuro", "quero", "necessito", "desejo", "necesito", "busca", "procura",
   "contratar", "contratamos", "contrata", "contratando", "estamos", "estou", "gostaria", "se",
   "necesitamos", "necesitan", "we", "are", "am",
   // Nos idiomas novos (e6ddfa4 da #127): sem estes, "Suche Steuerberater" lia "suche" como especialidade.
@@ -1940,7 +1941,7 @@ function cobrePublico(oferecida: EspecialidadeDoServico, pedida: EspecialidadeDo
     && exigidos.every(lema => oferecida.publico.has(lema) || (!FAMILIAS_CONHECIDAS.has(lema) && oferecida.lemas.has(lema)));
 }
 
-function atendeEspecialidades(oferecido: ServicoNomeado, pedido: ServicoNomeado): boolean {
+function atendeEspecialidades(oferecido: ServicoNomeado, pedido: ServicoNomeado, pedeAlgo = false): boolean {
   if (ehGenerico(pedido)) return true;
   // Oferta genérica diante de pedido que só diz PARA QUEM ou PARA QUÊ
   // ("Logística" × "logística para exportar meu café", "Contabilidade" ×
@@ -1970,10 +1971,20 @@ function atendeEspecialidades(oferecido: ServicoNomeado, pedido: ServicoNomeado)
   // ("logística de exportação"), que a leitura entrega como especialidade e
   // nenhuma lista distingue de uma especialidade de verdade.
   if (ehGenerico(oferecido)) {
-    return pedido.especialidades.some(pedida => {
+    if (pedido.especialidades.some(pedida => {
       if (pedida.lemas.size === 0) return pedida.publico.size > 0;
       return pedida.servicos.size === 0 && Array.from(pedida.lemas).every(lema => DESTINATARIOS_COMUNS.has(lema));
-    });
+    })) return true;
+    // A FINALIDADE escrita sem "para" ("Preciso de logística DE EXPORTAÇÃO para
+    // meu café"): o lema cai em `lemas`, mas não é especialidade — as listas
+    // curadas não o conhecem. Vale só quando o texto PEDE alguma coisa e
+    // NENHUMA alternativa do pedido nomeia especialidade curada ou outro
+    // serviço: "Juristische Person" e "Consultor que une ventas y marketing"
+    // também têm lema desconhecido, e ali ninguém está pedindo a família.
+    return pedeAlgo && pedido.especialidades.length > 0 && pedido.especialidades.every(pedida =>
+      pedida.servicos.size === 0
+      && pedida.lemas.size > 0
+      && Array.from(pedida.lemas).every(lema => !pedida.conhecidos.has(lema)));
   }
   return pedido.especialidades.some(pedida => (pedida.lemas.size > 0
     ? oferecido.especialidades.some(oferecida => cobre(oferecida, pedida))
@@ -2015,8 +2026,13 @@ function naoAconselha(especialidade: EspecialidadeDoServico, lista: ReadonlySet<
  *      tributária") é atendida pela advocacia e pela contabilidade que cobrem a
  *      área (`AREAS_DAS_PROFISSOES`, exemplo 1 da spec da Glenda, 14/09).
  */
-function umServicoAtende(oferecido: ServicoNomeado, pedido: ServicoNomeado): boolean {
-  if (oferecido.familia === pedido.familia) return atendeEspecialidades(oferecido, pedido);
+/** O texto do pedido traz verbo de necessidade ("Preciso de...", "Procuramos...")? */
+function pedidoPedeAlgo(necessidade: string): boolean {
+  return tokensDoTermo(necessidade).some(palavra => VERBOS_DE_NECESSIDADE.has(palavra));
+}
+
+function umServicoAtende(oferecido: ServicoNomeado, pedido: ServicoNomeado, pedeAlgo = false): boolean {
+  if (oferecido.familia === pedido.familia) return atendeEspecialidades(oferecido, pedido, pedeAlgo);
   if (FAMILIAS_DE_APOIO.has(pedido.familia) && PROFISSOES_PELO_ADJETIVO.has(oferecido.familia)) {
     const comoProfissao = pedido.especialidades.filter(pedida => pedida.lemas.has(oferecido.familia)).map(pedida => semOLema(pedida, oferecido.familia));
     const restantes = comoProfissao.filter(pedida => pedida.lemas.size > 0 || pedida.publico.size > 0);
@@ -2096,6 +2112,7 @@ function comoAtende(oferta: string, categoriaDaOferta: string | null | undefined
   // Chinês e japonês entram pela leitura do serviço (`entenderServico`), com a especialidade de antes do serviço
   // (e6ddfa4 da #127): "律师事务所" oferecido é a advocacia sem especialidade, "税务咨询" a consultoria tributária.
   const oferecidos = servicosDoRotulo(oferta);
+  const pedeAlgo = pedidoPedeAlgo(necessidade);
   // Os DOIS lados nomeiam a família e nada além dela: "Contabilidade" oferecida diante de "Contador" procurado,
   // "Advocacia" diante de "Advogado", "Empresa de consultoria" diante de "Procura consultoria". Não há o que
   // distinguir — a necessidade nomeia exatamente o que está sendo oferecido, e não uma família da qual a oferta
@@ -2132,7 +2149,7 @@ function comoAtende(oferta: string, categoriaDaOferta: string | null | undefined
       : pedido.especialidades.map(especialidade => ({ familia: pedido.familia, especialidades: [especialidade] }));
     for (const oferecido of oferecidos) {
       for (const alternativa of alternativas) {
-        if (!umServicoAtende(oferecido, alternativa)) continue;
+        if (!umServicoAtende(oferecido, alternativa, pedeAlgo)) continue;
         const soAFamilia = alternativa.especialidades.every(especialidade =>
           especialidade.publico.size === 0 && Array.from(especialidade.lemas).every(lema => lema === oferecido.familia));
         // Quem oferece a família inteira não provou NADA do que o pedido

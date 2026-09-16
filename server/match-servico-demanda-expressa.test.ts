@@ -714,10 +714,19 @@ describe("Revisão de 15/09 dos consertos da #127 — motor privado", () => {
     ] as Array<[string, string]>) {
       expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
     }
-    // O limite que fica, registrado de propósito: a FINALIDADE escrita sem "para" ("logística de exportação") a
-    // leitura entrega como especialidade, e nenhuma lista a distingue de uma especialidade de verdade. Continua
-    // em 0, contra os 60 da main — conserto disso é mexer em como a frase é lida, não na regra deste item.
-    expect(scoreMatch(item("Logística"), item("Preciso de logística de exportação para meu café")).score).toBe(0);
+    // A FINALIDADE escrita sem "para" também volta para a nota da família quando o texto PEDE alguma coisa: o
+    // lema que as listas curadas não conhecem não é especialidade, é o que a pessoa acrescentou. O verbo de
+    // necessidade é o que separa isso de um rótulo solto que ninguém está pedindo ("Juristische Person").
+    for (const necessidade of [
+      "Preciso de logística de exportação para meu café", "Procuramos logística de cabotagem",
+      "Busco contabilidade de holding",
+    ]) {
+      expect(scoreMatch(item("Logística"), item(necessidade)).score, necessidade).toBeGreaterThanOrEqual(necessidade.includes("contabilidade") ? 0 : 60);
+    }
+    // Especialidade curada continua fora, mesmo com verbo: "internacional" é especialidade de verdade.
+    expect(scoreMatch(item("Logística"), item("Preciso de logística internacional para meu café")).score).toBe(0);
+    // E o rótulo solto, sem verbo, segue como era: ninguém está pedindo.
+    expect(scoreMatch(item("Logística"), item("logística de exportação")).score).toBe(0);
     // O que a #124 fixou continua valendo: especialidade pedida não é atendida por quem só tem a família.
     for (const [oferta, necessidade] of [
       ["Advocacia", "Advogado tributarista"], ["Consultoria", "Consultoria trabalhista"],

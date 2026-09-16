@@ -1897,6 +1897,7 @@
       "mySide": "Tu lado",
       "reference": "Referencia {{codigo}}",
       "otherSideWithdrew": "La otra parte de esta conexión retiró la autorización para la red: lo que tiene y lo que busca ya no aparece aquí. El registro de la conexión sigue con la plataforma.",
+      "otherSideAnonymous": "La otra parte sigue anónima: la plataforma no muestra quién es. Revisa la referencia de arriba — es lo que identifica esta conexión, y descartar no tiene vuelta atrás.",
       "contactSide": "Contacto de otro network ({{codigo}})",
       "itemLine": "Tiene: {{tem}} · Necesita: {{precisa}}",
       "registeredAt": "Registrada el {{data}}",
@@ -1933,7 +1934,7 @@
       "closingAwaiting": "Confirmaste el cierre. Falta la confirmación de la otra parte.",
       "discardConfirmTitle": "¿Descartar esta conexión?",
       "discardConfirmText": "El descarte no se puede deshacer: la conexión queda descartada para ti y ya no puede avanzar de etapa.",
-      "discardConfirmButton": "Descartar conexión",
+      "discardConfirmButton": "Descartar {{codigo}}",
       "discardConfirmCancel": "Cancelar"
     },
     "global": {

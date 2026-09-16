@@ -1897,6 +1897,7 @@
       "mySide": "您这一方",
       "reference": "编号 {{codigo}}",
       "otherSideWithdrew": "这条连接的另一方撤回了对人脉网络的授权：对方拥有和需要的内容不再显示在这里。连接记录仍保留在平台。",
+      "otherSideAnonymous": "另一方保持匿名：平台不会显示对方是谁。请核对上面的编号——它是识别这条连接的依据，而且丢弃无法撤销。",
       "contactSide": "其他人脉中的联系人（{{codigo}}）",
       "itemLine": "拥有：{{tem}} · 需要：{{precisa}}",
       "registeredAt": "记录于 {{data}}",
@@ -1933,7 +1934,7 @@
       "closingAwaiting": "您已确认成交，正在等待另一方确认。",
       "discardConfirmTitle": "放弃此连接？",
       "discardConfirmText": "放弃后无法撤销：该连接对您将保持已放弃状态，无法再进入下一阶段。",
-      "discardConfirmButton": "放弃连接",
+      "discardConfirmButton": "丢弃 {{codigo}}",
       "discardConfirmCancel": "取消"
     },
     "global": {

@@ -170,6 +170,10 @@ export function ConexaoRegistrada({ conexao }: { conexao: ConexaoNaTela }) {
             <p className="mt-1 font-mono text-white/75">{t("networkInteligente.connections.reference", { codigo: referencia })}</p>
             <p className="mt-1 text-white/45">{t("networkInteligente.connections.registeredAt", { data: registradaEm })}</p>
           </div>
+          {/* Entre membras o outro lado não tem nome nem código: a plataforma não o
+              mostra, por desenho. Quem descarta precisa saber disso e agir sobre a
+              referência, não sobre um cartão que parece igual ao de baixo. */}
+          <p className="text-xs text-white/50">{t("networkInteligente.connections.otherSideAnonymous")}</p>
           <DialogFooter>
             <button type="button" disabled={avancar.isPending} onClick={() => setConfirmandoDescarte(false)}
               className="rounded-xl border border-white/15 px-4 py-2 text-sm text-white/60 hover:bg-white/8 disabled:opacity-50">
@@ -177,7 +181,7 @@ export function ConexaoRegistrada({ conexao }: { conexao: ConexaoNaTela }) {
             </button>
             <button type="button" disabled={avancar.isPending || !podeDescartar} onClick={() => avancar.mutate({ conexaoId: conexao.id, etapa: "descartada" })}
               className="rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-400 disabled:opacity-50">
-              {t("networkInteligente.connections.discardConfirmButton")}
+              {t("networkInteligente.connections.discardConfirmButton", { codigo: referencia })}
             </button>
           </DialogFooter>
         </DialogContent>

@@ -1897,6 +1897,7 @@
       "mySide": "Your side",
       "reference": "Reference {{codigo}}",
       "otherSideWithdrew": "The other side of this connection withdrew their network authorization: what they have and need no longer appears here. The connection record stays with the platform.",
+      "otherSideAnonymous": "The other side stays anonymous: the platform does not show who it is. Check the reference above — it is what identifies this connection, and discarding cannot be undone.",
       "contactSide": "Contact from another network ({{codigo}})",
       "itemLine": "Has: {{tem}} · Needs: {{precisa}}",
       "registeredAt": "Recorded on {{data}}",
@@ -1933,7 +1934,7 @@
       "closingAwaiting": "You confirmed the closing. Waiting for the other side to confirm.",
       "discardConfirmTitle": "Discard this connection?",
       "discardConfirmText": "Discarding cannot be undone: the connection stays discarded for you and can no longer move to another stage.",
-      "discardConfirmButton": "Discard connection",
+      "discardConfirmButton": "Discard {{codigo}}",
       "discardConfirmCancel": "Cancel"
     },
     "global": {

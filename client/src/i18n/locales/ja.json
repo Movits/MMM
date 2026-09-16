@@ -1897,6 +1897,7 @@
       "mySide": "あなたの側",
       "reference": "参照番号 {{codigo}}",
       "otherSideWithdrew": "このつながりの相手がネットワークへの許可を取り消しました。相手が持っているものと探しているものは、ここには表示されません。つながりの記録はプラットフォームに残ります。",
+      "otherSideAnonymous": "相手は匿名のままです。プラットフォームは誰かを表示しません。上の参照番号を確認してください。それがこのつながりを特定するものであり、破棄は取り消せません。",
       "contactSide": "別のネットワークの連絡先（{{codigo}}）",
       "itemLine": "持っている：{{tem}} ・ 必要：{{precisa}}",
       "registeredAt": "{{data}} に記録",
@@ -1933,7 +1934,7 @@
       "closingAwaiting": "成約を確認しました。相手側の確認を待っています。",
       "discardConfirmTitle": "このコネクションを見送りますか？",
       "discardConfirmText": "見送りは取り消せません。このコネクションはあなたにとって見送りのままとなり、次の段階に進めることはできなくなります。",
-      "discardConfirmButton": "コネクションを見送る",
+      "discardConfirmButton": "{{codigo}} を破棄",
       "discardConfirmCancel": "キャンセル"
     },
     "global": {

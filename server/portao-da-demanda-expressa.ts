@@ -438,11 +438,9 @@ function descricaoNomeiaOQueOPerfilOferece(perfil: PerfilNoPortao, descricao: st
      apagava necessidade declarada ("Advocacia" × "Advogado para causas do trabalho"). Com a oferta
      especializada o palpite CONTA: "Consultoria tributária" diante do texto "Consultoria" é a própria oferta
      contada de novo, e é o caso que originou a guarda;
- *   - `slugDoTermo(need) === "consultoria" && ehServicoDeAssessoria(have)` (server/matching.ts:258): a palavra
-     genérica "Consultoria" escrita no texto livre não é a oferta de quem presta assessoria contada de novo —
-     é a mesma coisa que a OPÇÃO fixa "Consultoria" da tela, que segue valendo como necessidade por decisão de
-     produto (`chavesQueValemComoNecessidade`). Filtrar o texto livre e não a opção seria tratar a mesma
-     declaração de dois jeitos conforme onde a pessoa clicou.
+ * Fica de fora só o palpite de família com oferta genérica. A OPÇÃO fixa "Consultoria" da tela continua
+ * valendo como necessidade por decisão de produto (`chavesQueValemComoNecessidade`): ali a pessoa escolheu de
+ * uma lista, não descreveu a própria oferta.
  * O `regraNaoLeOPar` acompanha `satisfaz`: par que a regra não lê num idioma novo não conta de nenhum lado.
  */
 function ofertaAtenderiaOTexto(oferta: string, texto: string): boolean {
@@ -457,6 +455,10 @@ function ofertaAtenderiaOTexto(oferta: string, texto: string): boolean {
   // outra de especialidade. `especialidadeDoServico` é o acessor que faz isso.
   const ofertaEhFamiliaPura = servicoDoTermo(oferta) !== null && especialidadeDoServico(oferta).length === 0;
   if (!ofertaEhFamiliaPura && necessidadeGenericaNomeiaOServico(oferta, null, texto)) return true;
+  // O último ramo de `satisfaz` (server/matching.ts): a palavra genérica "Consultoria"
+  // diante de quem presta assessoria. É o que fazia o par casar sem a guarda ver,
+  // e a oferta contada de novo voltava a valer como necessidade declarada.
+  if (slugDoTermo(texto) === "consultoria" && ehServicoDeAssessoria(oferta)) return true;
   return necessidadeDeclaraOAssuntoDoServico(oferta, null, texto) && !regraNaoLeOPar(oferta, null, texto);
 }
 
@@ -577,13 +579,27 @@ export function perfilDeclarouPrecisarDoServico(perfil: PerfilNoPortao, servico:
  * "busco investimento" (não há outra base possível), ou quando o tipo veio
  * irreconhecível e há serviço no perfil (na dúvida, fecha).
  */
+/**
+ * Rótulos que, NO CAMPO ÁREA DE ATUAÇÃO, nomeiam a área de um serviço — o
+ * classificador os lê como "outros" porque em texto livre são ambíguos
+ * ("lado direito", "Direito de família"). Aqui o campo é dedicado: quem
+ * escreve "Direito" na área está dizendo de que serviço vive, e tratar isso
+ * como outra base soltava a exigência de citação de quem só presta serviço
+ * (item 3 da validação de 16/09 na #135).
+ */
+const AREAS_QUE_NOMEIAM_SERVICO = new Set(["direito", "juridico", "juridica", "advocacia", "contabilidade", "consultoria", "assessoria", "auditoria"]);
+const nomeiaServicoNaArea = (oferta: string) => {
+  const palavras = tokensDoTermo(oferta);
+  return palavras.length > 0 && palavras.every(palavra => AREAS_QUE_NOMEIAM_SERVICO.has(palavra));
+};
+
 export function exigeCitacao(item: ItemComPortao, perfil?: PerfilNoPortao): boolean {
   const tipo = reconhecerTipo(item.tipoDaOferta);
   if (tipo === "servico") return true;
   if (!perfil) return false;
   const ofertas = ofertasDoPerfil(perfil);
   if (ofertas.length === 0) return false;
-  const servicos = ofertas.filter(oferta => ehServico(oferta));
+  const servicos = ofertas.filter(oferta => ehServico(oferta) || nomeiaServicoNaArea(oferta));
   if (tipo === null && servicos.length > 0) return true;
   // Outra base possível é QUALQUER oferta que não seja serviço — inclusive a que
   // o classificador não sabe ler ("outros"). O piso existe para quem não tem
@@ -603,7 +619,7 @@ export function exigeCitacao(item: ItemComPortao, perfil?: PerfilNoPortao): bool
   // "outros", nenhum serviço). Separar um do outro é decidir o que o
   // classificador lê como área, não regra deste portão. O motor de perfis, que
   // é onde o relato mediu o 41, já fechou o caso literal (server/matching.ts).
-  const ofereceOutraBase = ofertas.some(oferta => !ehServico(oferta));
+  const ofereceOutraBase = ofertas.some(oferta => !ehServico(oferta) && !nomeiaServicoNaArea(oferta));
   return servicos.length > 0 && !ofereceOutraBase && !temNecessidadeDeclarada(perfil);
 }
 

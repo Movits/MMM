@@ -1897,6 +1897,7 @@
       "mySide": "Votre côté",
       "reference": "Référence {{codigo}}",
       "otherSideWithdrew": "L'autre partie de cette connexion a retiré son autorisation pour le réseau : ce qu'elle a et ce qu'elle cherche n'apparaît plus ici. L'enregistrement de la connexion reste avec la plateforme.",
+      "otherSideAnonymous": "L'autre partie reste anonyme : la plateforme ne montre pas de qui il s'agit. Vérifiez la référence ci-dessus — c'est elle qui identifie cette connexion, et l'écarter est irréversible.",
       "contactSide": "Contact d'un autre réseau ({{codigo}})",
       "itemLine": "A : {{tem}} · Cherche : {{precisa}}",
       "registeredAt": "Enregistrée le {{data}}",
@@ -1933,7 +1934,7 @@
       "closingAwaiting": "Vous avez confirmé la conclusion. En attente de la confirmation de l'autre partie.",
       "discardConfirmTitle": "Écarter cette connexion ?",
       "discardConfirmText": "Cette action est irréversible : la connexion reste écartée pour vous et ne peut plus passer à une autre étape.",
-      "discardConfirmButton": "Écarter la connexion",
+      "discardConfirmButton": "Écarter {{codigo}}",
       "discardConfirmCancel": "Annuler"
     },
     "global": {
