@@ -326,7 +326,8 @@ describe("3 — recarregar (inclusive o puxar para atualizar) não perde a etapa
     continuar(); // 8
     expect(window.sessionStorage.getItem(CHAVE_DA_7)).toContain("\"etapa\":8");
 
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("checkbox", { name: ptBR.termoGeral.aceite }));
+    fireEvent.click(screen.getByRole("checkbox", { name: ptBR.termoGeral.maioridade }));
     fireEvent.click(screen.getByRole("button", { name: new RegExp(pt.onboarding.nav.findMatches) }));
 
     expect(duble.chamadas.some(([nome]) => nome === "profile.completeOnboarding")).toBe(true);
@@ -378,7 +379,8 @@ describe("4 — revisão de 16/09: recarregar, concluir e voltar rápido", () =>
     continuar(); continuar(); continuar(); continuar();
     expect(window.history.state).toMatchObject({ etapaDoCadastro: 8 });
 
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("checkbox", { name: ptBR.termoGeral.aceite }));
+    fireEvent.click(screen.getByRole("checkbox", { name: ptBR.termoGeral.maioridade }));
     fireEvent.click(screen.getByRole("button", { name: new RegExp(pt.onboarding.nav.findMatches) }));
     // A ida ao Dashboard espera o history.go chegar à entrada 1.
     expect(duble.navegacoes).toEqual([]);

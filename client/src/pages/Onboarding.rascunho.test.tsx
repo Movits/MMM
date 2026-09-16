@@ -154,8 +154,12 @@ function irAteAUltimaEtapa() {
   avancar(); // 7 → 8: Termo Geral de Uso
 }
 
+const caixaDoAceite = () => screen.getByRole("checkbox", { name: ptBR.termoGeral.aceite });
+const caixaDaMaioridade = () => screen.getByRole("checkbox", { name: ptBR.termoGeral.maioridade });
+
 function concluir() {
-  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(caixaDoAceite());
+  fireEvent.click(caixaDaMaioridade());
   fireEvent.click(botaoFinal());
 }
 
@@ -271,18 +275,21 @@ describe("janela C — rascunho do cadastro em localStorage, por usuária", () =
     expect(window.sessionStorage.getItem(CHAVE_DA_7)).toBeNull();
   });
 
-  it("a caixa do Termo Geral não entra no rascunho: o aceite é ato da sessão que conclui", () => {
+  it("as caixas do Termo Geral e da maioridade não entram no rascunho: são atos da sessão que conclui", () => {
     const { unmount } = render(<Onboarding />);
     irAteAUltimaEtapa();
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(caixaDoAceite());
+    fireEvent.click(caixaDaMaioridade());
     expect(botaoFinal()).toBeEnabled();
     unmount();
 
     // Recarregar a mesma aba reabre direto na última etapa (16/09), e mesmo
-    // assim a caixa volta desmarcada: nem o rascunho da aba guarda o aceite.
+    // assim as caixas voltam desmarcadas: nem o rascunho da aba guarda o aceite
+    // ou a declaração.
     const { unmount: fecharDeNovo } = render(<Onboarding />);
     expect(screen.getByText("8 / 8")).toBeInTheDocument();
-    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(caixaDoAceite()).not.toBeChecked();
+    expect(caixaDaMaioridade()).not.toBeChecked();
     expect(botaoFinal()).toBeDisabled();
     fecharDeNovo();
     fecharAAba();
@@ -296,7 +303,8 @@ describe("janela C — rascunho do cadastro em localStorage, por usuária", () =
     clicarCartao(pt.onboarding.income.under_3k);
     for (let etapa = 3; etapa < 8; etapa++) avancar();
     expect(screen.getByText("8 / 8")).toBeInTheDocument();
-    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(caixaDoAceite()).not.toBeChecked();
+    expect(caixaDaMaioridade()).not.toBeChecked();
     expect(botaoFinal()).toBeDisabled();
   });
 

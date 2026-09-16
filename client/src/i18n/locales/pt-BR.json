@@ -1781,7 +1781,10 @@
     "naoPublicado": "O Termo Geral de Uso ainda não está disponível.",
     "naoPublicadoDica": "Sem ele o cadastro não pode ser concluído. Avise o suporte e tente de novo mais tarde; o que você preencheu continua nesta tela.",
     "versaoMudou": "O termo foi atualizado enquanto você lia. Leia a versão nova e marque o aceite de novo.",
-    "erroAceite": "Não foi possível registrar o aceite do termo. Nada foi gravado; tente de novo."
+    "erroAceite": "Não foi possível registrar o aceite do termo. Nada foi gravado; tente de novo.",
+    "maioridade": "Declaro que tenho 18 anos ou mais.",
+    "maioridadeObrigatoria": "Sem esta declaração o cadastro não pode ser concluído: a plataforma é exclusiva para maiores de 18 anos.",
+    "maioridadeRecusada": "O cadastro não foi concluído: marque a declaração de que você tem 18 anos ou mais e tente de novo."
   },
   "assistenteTexto": {
     "gravar": "Gravar áudio",

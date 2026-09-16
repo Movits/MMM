@@ -37,7 +37,13 @@ vi.mock("./db", async (original) => ({
 // próprio; aqui só não podem atrapalhar o caminho até a escrita.
 vi.mock("./termo-geral-de-uso", async (original) => ({
   ...(await original<Record<string, unknown>>()),
-  exigirAceiteDoTermoGeral: async () => {},
+  exigirAceiteDoTermoGeral: async () => ({ id: "termo-v1", version: 1 }),
+}));
+// A declaração de maioridade tem teste próprio (maioridade.test.ts); aqui a
+// checagem é a real e só a linha de auditoria não é gravada.
+vi.mock("./maioridade", async (original) => ({
+  ...(await original<Record<string, unknown>>()),
+  registrarDeclaracaoDeMaioridade: vi.fn(async () => {}),
 }));
 vi.mock("./nivel-do-perfil", async (original) => ({
   ...(await original<Record<string, unknown>>()),
@@ -52,7 +58,7 @@ import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
 /** O mínimo que o cadastro exige; nada aqui menciona idiomas. */
-const CADASTRO_MINIMO = { displayName: "Ana Souza", city: "Porto Alegre" };
+const CADASTRO_MINIMO = { displayName: "Ana Souza", city: "Porto Alegre", declaraMaioridade: true };
 
 function caller() {
   const ctx = {

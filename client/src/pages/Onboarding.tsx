@@ -23,6 +23,7 @@ import { rotuloDaBusca } from "@/lib/interesses";
 import { EditorDoQuePreciso } from "@/components/OQuePreciso";
 import { categoriasPendentes, demandasParaGravar, type DemandaDetalhada } from "@shared/o-que-preciso";
 import { PREFIXO_DO_RASCUNHO_DO_CADASTRO } from "@/_core/hooks/useAuth";
+import { MENSAGEM_MAIORIDADE_NAO_DECLARADA } from "@shared/maioridade";
 
 // Tetos do servidor (routers/profile.ts) para os campos livres: o ditado pode
 // passar deles, e sem contador o erro só aparecia no último passo.
@@ -188,7 +189,9 @@ const INITIAL: FormData = {
 // mudança; volta ao abrir de novo e é apagado ao concluir com sucesso. Sem
 // usuária conhecida nada é gravado: uma chave sem dona mostraria o cadastro de
 // uma conta para outra no mesmo navegador. A caixa do Termo Geral fica de fora:
-// o aceite é ato da sessão que conclui (e a versão exibida pode ter mudado).
+// o aceite é ato da sessão que conclui (e a versão exibida pode ter mudado). A
+// declaração de maioridade, pela mesma razão, nem está no FormData: é um estado
+// à parte (`declarouMaioridade`), que nenhum dos dois rascunhos lê nem grava.
 //
 // Privacidade (mesma razão da nota V-03 em _core/hooks/useAuth.ts, que tirou
 // dado de usuária do localStorage): faixa de renda, capacidade de investimento
@@ -389,7 +392,7 @@ function levarAoTopo(painel: HTMLElement | null) {
  * ou o "avançar" do navegador, só leva a uma etapa se todas as anteriores
  * estiverem completas (ver etapaAlcancavel).
  */
-function etapaCompleta(etapa: number, form: FormData, aceitouTermoGeral: boolean): boolean {
+function etapaCompleta(etapa: number, form: FormData, ultimaEtapaMarcada: boolean): boolean {
   // O teto do passo é o que a plataforma GRAVA: a bio da carga passa do teto
   // do cadastro e travava o "Continuar" da etapa 1 — a conta não concluía.
   if (etapa === 1) return form.displayName.trim().length >= 2 && form.city.trim().length >= 2 && form.bio.length <= LIMITE_DA_BIO_GRAVADA;
@@ -412,7 +415,8 @@ function etapaCompleta(etapa: number, form: FormData, aceitouTermoGeral: boolean
   // "O que preciso": marcar nada continua valendo, mas categoria marcada precisa
   // de ao menos uma demanda detalhada e válida — a seleção sozinha não gera conexão.
   if (etapa === 6) return categoriasPendentes(form.whatINeed, form.whatINeedDetails).length === 0;
-  if (etapa === ETAPA_TERMO_GERAL) return aceitouTermoGeral;
+  // Última etapa: o aceite do Termo Geral E a declaração de maioridade (quem chama junta as duas).
+  if (etapa === ETAPA_TERMO_GERAL) return ultimaEtapaMarcada;
   // Etapas profissionais e de ativos são opcionais — sempre pode avançar
   return true;
 }
@@ -590,6 +594,11 @@ export default function Onboarding() {
   const [animDir, setAnimDir] = useState<"forward" | "back">("forward");
   const [visible, setVisible] = useState(true);
   const [form, setForm] = useState<FormData>(INITIAL);
+  // "Declaro que tenho 18 anos ou mais." (cláusula 3.4 do Termo Geral), na última
+  // etapa. Fora do FormData de propósito: o rascunho grava o formulário inteiro
+  // menos CAMPOS_FORA_DO_RASCUNHO, e uma declaração não pode voltar marcada de
+  // um rascunho — recarregou, marca de novo.
+  const [declarouMaioridade, setDeclarouMaioridade] = useState(false);
   const [cityOptions, setCityOptions] = useState<string[]>([]);
   const municipiosRef = useRef<string[] | null>(null);
   const prefilled = useRef(false);
@@ -1046,9 +1055,17 @@ export default function Onboarding() {
   // O aceite que deixa rastro no servidor (IP, user-agent, hash do texto) é o do
   // Termo Geral, registrado em handleSubmit ANTES de salvar o perfil. O cadastro
   // não registra mais o contrato_comissao: a etapa dele saiu (Rosber, 14/09 21:34).
+  // A declaração de maioridade é conferida no servidor (server/maioridade.ts). Se
+  // ele recusar, a mensagem dele é em português: a tela reconhece a recusa pelo
+  // texto, mostra a versão traduzida e desmarca a caixa para a pessoa marcar de novo.
   const saveOnboarding = trpc.profile.completeOnboarding.useMutation({
     onSuccess: concluir,
     onError: (err: { message: string }) => {
+      if (err.message === MENSAGEM_MAIORIDADE_NAO_DECLARADA) {
+        setDeclarouMaioridade(false);
+        toast.error(t("termoGeral.maioridadeRecusada"));
+        return;
+      }
       toast.error(t("onboarding.errorMsg") + " " + (err.message || ""));
     },
   });
@@ -1106,7 +1123,8 @@ export default function Onboarding() {
     trocarEtapa(step - 1);
   };
 
-  const canProceed = () => etapaCompleta(step, form, aceitouTermoGeral);
+  // Na última etapa, o botão final só habilita com as duas caixas marcadas.
+  const canProceed = () => etapaCompleta(step, form, aceitouTermoGeral && declarouMaioridade);
 
   // Ordem: primeiro o aceite do Termo Geral (com a versão que a tela mostrou),
   // depois o perfil. Ao contrário, o perfil ficaria salvo e o cadastro marcado
@@ -1135,6 +1153,9 @@ export default function Onboarding() {
   const salvarPerfil = () => {
     const selectedSpecialties = normalizePrimarySpecialties(form.primarySpecialties, form.customSpecialty);
     saveOnboarding.mutate({
+      // A caixa "Declaro que tenho 18 anos ou mais.": sem `true` o servidor não
+      // conclui o cadastro (cláusula 3.4 do Termo Geral).
+      declaraMaioridade: declarouMaioridade,
       displayName: form.displayName, city: form.city, country: form.country,
       // Em branco, o campo não vai: `bio: ""` apagava a bio importada, e o
       // servidor (upsertUserProfile → UPDATE do Drizzle) não toca na coluna
@@ -1669,6 +1690,8 @@ export default function Onboarding() {
                 documento={documentoTermoGeral}
                 aceito={aceitouTermoGeral}
                 onAceitoChange={aceito => set("termoGeralAceitoId", aceito && documentoTermoGeral ? documentoTermoGeral.id : null)}
+                maioridadeDeclarada={declarouMaioridade}
+                onMaioridadeChange={setDeclarouMaioridade}
                 onTentarDeNovo={() => { void termoGeralQuery.refetch(); }}
               />
             )}
