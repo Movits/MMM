@@ -622,7 +622,8 @@
     "scoreBandHigh": "Hoch",
     "scoreBandVeryHigh": "Sehr hoch",
     "notForwarded": "✕ Nicht weitergeleitet",
-    "viewConnection": "Verbindung ansehen"
+    "viewConnection": "Verbindung ansehen",
+    "redoOnboarding": "Die vollständige Anmeldung wiederholen (Spezialgebiet, Branche, Erfahrung und was Sie suchen) — geht erneut durch die Allgemeinen Bedingungen"
   },
   "auth": {
     "login": "Anmelden",
@@ -2007,7 +2008,9 @@
       "discardConfirmTitle": "Diese Verbindung verwerfen?",
       "discardConfirmText": "Das Verwerfen kann nicht rückgängig gemacht werden: Die Verbindung bleibt für Sie verworfen und kann in keine weitere Phase mehr übergehen.",
       "discardConfirmButton": "Verbindung verwerfen",
-      "discardConfirmCancel": "Abbrechen"
+      "discardConfirmCancel": "Abbrechen",
+      "reasonPlatformMatch": "Vom Profil-Motor zwischen zwei Mitgliedern der Plattform vorgeschlagen, die beide die Smart-Match-Bedingungen akzeptiert haben: {{pontuacao}} % Übereinstimmung.",
+      "reasonNoAuthorization": "Die andere Seite hat ihre Zustimmung zurückgezogen, deshalb werden die Details dieser Verbindung nicht mehr angezeigt."
     },
     "global": {
       "description": "Freigegebene Kontakte werden mit Plattformmitgliedern und anderen autorisierten Netzwerken abgeglichen — nur über anonyme ID, Was Ich Habe und Was Ich Brauche. Name, Telefon, E-Mail, Audio, Transkript und Notizen verlassen nie die Plattform.",

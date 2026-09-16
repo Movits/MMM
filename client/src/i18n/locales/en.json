@@ -622,7 +622,8 @@
     "scoreBandHigh": "High",
     "scoreBandVeryHigh": "Very high",
     "notForwarded": "✕ Not forwarded",
-    "viewConnection": "View connection"
+    "viewConnection": "View connection",
+    "redoOnboarding": "Redo the full sign-up (specialty, sector, experience and what you are looking for) — goes through the General Terms again"
   },
   "auth": {
     "login": "Log in",
@@ -2007,7 +2008,9 @@
       "discardConfirmTitle": "Discard this connection?",
       "discardConfirmText": "Discarding cannot be undone: the connection stays discarded for you and can no longer move to another stage.",
       "discardConfirmButton": "Discard connection",
-      "discardConfirmCancel": "Cancel"
+      "discardConfirmCancel": "Cancel",
+      "reasonPlatformMatch": "Suggested by the profile engine between two platform members, both having accepted the Smart Match terms: {{pontuacao}}% compatibility.",
+      "reasonNoAuthorization": "The other side withdrew their authorisation, so the details of this connection are no longer shown."
     },
     "global": {
       "description": "Contacts you make available are cross-referenced with platform members and other authorized networks — only by anonymous ID, What I Have and What I Need. Name, phone, email, audio, transcript and notes never leave.",

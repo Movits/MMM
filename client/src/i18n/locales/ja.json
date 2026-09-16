@@ -622,7 +622,8 @@
     "scoreBandHigh": "高い",
     "scoreBandVeryHigh": "非常に高い",
     "notForwarded": "✕ 届けられず",
-    "viewConnection": "つながりを見る"
+    "viewConnection": "つながりを見る",
+    "redoOnboarding": "登録をやり直す（専門分野・業種・経験・お探しのもの）— 利用規約に再度同意します"
   },
   "auth": {
     "login": "ログイン",
@@ -2007,7 +2008,9 @@
       "discardConfirmTitle": "このコネクションを見送りますか？",
       "discardConfirmText": "見送りは取り消せません。このコネクションはあなたにとって見送りのままとなり、次の段階に進めることはできなくなります。",
       "discardConfirmButton": "コネクションを見送る",
-      "discardConfirmCancel": "キャンセル"
+      "discardConfirmCancel": "キャンセル",
+      "reasonPlatformMatch": "Smart Match の規約に同意した二人のメンバーの間で、プロフィール・エンジンが提案しました：適合度 {{pontuacao}}%。",
+      "reasonNoAuthorization": "相手が承認を取り消したため、この接続の詳細は表示されなくなりました。"
     },
     "global": {
       "description": "公開した連絡先は、プラットフォームのメンバーや許可された他のネットワークと照合されます。使われるのは匿名ID、「持っているもの」、「必要なもの」だけです。氏名、電話番号、メール、音声、文字起こし、メモは外に出ません。",

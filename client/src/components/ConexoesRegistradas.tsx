@@ -29,8 +29,17 @@ export type ConexaoNaTela = {
    * Por que esta conexão existe, nas palavras que o servidor gravou. A tela só
    * o mostra quando NÃO há itens (ver abaixo): com itens, ele repetiria o que
    * já está escrito logo acima.
+   *
+   * O texto é escrito em português no servidor. Para os dois casos em que ele
+   * NÃO depende do que a dona escreveu — conexão entre membras e autorização
+   * retirada — a tela monta a frase traduzida e ignora este campo; ele só
+   * aparece cru quando a frase vem da rede da própria dona, que já é dela.
    */
   motivo?: string | null;
+  /** A nota que sustentou a conexão, para a frase traduzida do par entre membras. */
+  pontuacao?: number | null;
+  /** `false` quando o outro lado retirou a autorização (ver server/network-registro.ts). */
+  detalhesVisiveis?: boolean;
   itens: Array<{ tem: string; precisa: string; deCodigo: string | null; paraCodigo: string | null }>;
   status: string;
   statusComissao: string;
@@ -99,12 +108,22 @@ export function ConexaoRegistrada({ conexao }: { conexao: ConexaoNaTela }) {
       {/* Sem itens, o cartão ficava só com origem, status e data: duas conexões
           entre membras viravam dois cartões IDÊNTICOS, e a dona não tinha como
           saber qual era qual nem por que existiam (item 7 da revisão do Nicolas
-          na #135). O motivo é o que as distingue — para conexão entre membras
-          ele traz a compatibilidade, e quando o outro lado tirou a autorização
-          ele diz justamente isso, que era o cartão vazio sem explicação. Com
-          itens na tela o motivo não aparece: repetiria o que já está escrito. */}
-      {conexao.itens.length === 0 && conexao.motivo && (
-        <p className="mt-2 text-sm text-white/60">{conexao.motivo}</p>
+          na #135). A linha abaixo é o que as distingue.
+
+          Os dois casos que não dependem do que a dona escreveu saem TRADUZIDOS,
+          montados aqui: o par entre membras (a frase é sempre a mesma, e o que
+          varia é a compatibilidade) e a autorização retirada pelo outro lado.
+          O motivo cru só aparece quando ele descreve a rede da própria dona —
+          texto que já é dela, no idioma em que ela escreveu. Com itens na tela
+          nada disso aparece: repetiria o que já está escrito logo acima. */}
+      {conexao.itens.length === 0 && (
+        <p className="mt-2 text-sm text-white/60">
+          {conexao.detalhesVisiveis === false
+            ? t("networkInteligente.connections.reasonNoAuthorization")
+            : conexao.origem === "PLATFORM_MATCH"
+              ? t("networkInteligente.connections.reasonPlatformMatch", { pontuacao: Math.round(conexao.pontuacao ?? 0) })
+              : conexao.motivo}
+        </p>
       )}
 
       <p className="mt-2 text-xs text-white/45">

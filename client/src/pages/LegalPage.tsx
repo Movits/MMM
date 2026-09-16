@@ -85,9 +85,23 @@ export function TermsPage() {
         </p>
       )}
 
-      {/* Sem versão publicada (ou com o banco fora do ar) a página diz o que
-          houve, em vez de mostrar um texto antigo escrito no código. */}
-      {!termo.isLoading && !termo.data && (
+      {/* Banco fora do ar é ERRO, nunca "não há termo": dizer que o documento
+          não foi publicado quando ele existe e a consulta é que falhou seria
+          mentir para quem veio ler o contrato (ver "Acesso a dados" no
+          CLAUDE.md). Por isso o erro tem ramo próprio, com "tentar de novo". */}
+      {termo.isError && (
+        <>
+          <p>Não consegui carregar o termo agora.</p>
+          <button type="button" onClick={() => void termo.refetch()}
+            className="rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white/70 hover:border-white/40 hover:text-white">
+            Tentar de novo
+          </button>
+        </>
+      )}
+
+      {/* Sem versão publicada a página diz isso, em vez de mostrar um texto
+          antigo escrito no código. */}
+      {!termo.isLoading && !termo.isError && !termo.data && (
         <>
           <p>
             O Termo Geral de Uso, Proteção de Dados e Intermediação Digital é o

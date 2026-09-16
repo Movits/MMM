@@ -305,6 +305,13 @@ export type ConexaoVisivel = {
   id: string;
   origem: OrigemDaConexao;
   motivo: string;
+  /**
+   * `false` quando o outro lado retirou a autorização: aí `motivo` é a frase
+   * padrão e `itens` vem vazio. A tela lê esta bandeira para escrever a
+   * explicação no idioma de quem está lendo, em vez de mostrar a frase em
+   * português a uma conta em outro idioma.
+   */
+  detalhesVisiveis: boolean;
   itens: ItemDaConexao[];
   pontuacao: number;
   /** A etapa PARA quem pergunta: quem descartou vê 'descartada', ainda que o outro lado siga (avancarConexao). */
@@ -426,6 +433,11 @@ export async function listarConexoesDaSolicitante(quem: Solicitante, opcoes: { c
       id: cabecalho.id,
       origem: cabecalho.origem,
       motivo: detalhesVisiveis ? cabecalho.motivo : MOTIVO_SEM_AUTORIZACAO_DO_OUTRO_LADO,
+      // A TELA precisa saber POR QUE o cartão está sem detalhe, e não só ler a
+      // frase: o motivo é escrito aqui em português, e o cartão é traduzido nos
+      // dez idiomas. Com esta bandeira ela escreve a explicação no idioma de
+      // quem está lendo, em vez de mostrar português a uma conta em árabe.
+      detalhesVisiveis,
       itens: detalhesVisiveis && Array.isArray(cabecalho.itens) ? cabecalho.itens : [],
       pontuacao: cabecalho.pontuacao,
       status: descartadaPorMim ? "descartada" as const : cabecalho.status,

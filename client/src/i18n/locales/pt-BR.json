@@ -622,7 +622,8 @@
     "scoreBandHigh": "Alta",
     "scoreBandVeryHigh": "Muito alta",
     "notForwarded": "✕ Não encaminhado",
-    "viewConnection": "Ver conexão"
+    "viewConnection": "Ver conexão",
+    "redoOnboarding": "Refazer o cadastro completo (especialidade, setor, experiência e o que você busca) — passa de novo pelo Termo Geral"
   },
   "auth": {
     "login": "Fazer login",
@@ -2007,7 +2008,9 @@
       "discardConfirmTitle": "Descartar esta conexão?",
       "discardConfirmText": "O descarte não pode ser desfeito: a conexão fica como descartada para você e não volta a avançar de etapa.",
       "discardConfirmButton": "Descartar conexão",
-      "discardConfirmCancel": "Cancelar"
+      "discardConfirmCancel": "Cancelar",
+      "reasonPlatformMatch": "Sugerida pelo motor de perfis entre duas membras da plataforma, com o termo do Smart Match aceito pelas duas: compatibilidade de {{pontuacao}}%.",
+      "reasonNoAuthorization": "O outro lado retirou a autorização, então os detalhes desta conexão deixaram de aparecer."
     },
     "global": {
       "description": "Contatos que você disponibilizar entram no cruzamento com as membras da plataforma e com outros networks autorizados — só pelo ID anônimo, O Que Tenho e O Que Preciso. Nome, telefone, e-mail, áudio, transcrição e notas nunca saem.",

@@ -28,7 +28,7 @@ export function AssistenteDeTexto({ valor, onChange, desabilitado = false }: {
         <BotaoDitarTexto desabilitado={desabilitado} onTexto={ditado => onChange(juntarTextoDitado(valor, ditado))} />
         <BotaoRevisarTexto desabilitado={desabilitado} texto={valor} onAceitar={onChange} />
       </div>
-      <p className="mt-1.5 text-[11px] leading-snug text-white/30">{t("assistenteTexto.avisoIA")}</p>
+      <p className="mt-1.5 text-[11px] leading-snug text-white/45">{t("assistenteTexto.avisoIA")}</p>
     </div>
   );
 }

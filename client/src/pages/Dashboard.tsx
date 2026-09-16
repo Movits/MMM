@@ -1579,6 +1579,19 @@ export default function Dashboard() {
                       {regenerateMutation.isPending ? t("dashboard.analyzing") : t("dashboard.reanalyze")}
                     </button>
                   </div>
+
+                  {/* O Perfil edita quase tudo, mas não a especialidade, o setor,
+                      a experiência, a escolaridade e "O que você busca?": esses
+                      cinco só existem no cadastro. Sem este segundo caminho, o
+                      conserto da janela B trocaria uma armadilha (refazer tudo
+                      sem querer) por um beco sem saída (não ter como mexer neles).
+                      O aviso diz o preço: refazer o cadastro passa de novo pelo
+                      Termo Geral. */}
+                  <Link href="/onboarding">
+                    <button className="mt-2 w-full text-center text-xs text-white/35 hover:text-white/60 transition-colors">
+                      {t("dashboard.redoOnboarding")}
+                    </button>
+                  </Link>
                 </>
               ) : (
                 <div className="text-center py-20 animate-fade-in-up">

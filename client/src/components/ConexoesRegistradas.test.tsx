@@ -120,11 +120,14 @@ describe("Conexão registrada — descartar pede confirmação", () => {
  * por que existiam.
  */
 describe("cartão sem itens mostra o motivo", () => {
-  it("entre membras, o motivo distingue um cartão do outro", () => {
+  it("entre membras, a compatibilidade distingue um cartão do outro", () => {
+    // A frase é montada AQUI, traduzida, e não vem do servidor: o motivo
+    // gravado lá é português fixo, e este cartão é lido nos dez idiomas.
     renderizar(conexao({
       origem: "PLATFORM_MATCH",
       itens: [],
-      motivo: "Conexão sugerida pelo motor de perfis entre duas membras da plataforma, com o termo do Smart Match aceito pelas duas: compatibilidade de 72%.",
+      pontuacao: 72,
+      motivo: "Conexão sugerida pelo motor de perfis entre duas membras da plataforma: compatibilidade de 72%.",
     }));
 
     expect(screen.getByText(/compatibilidade de 72%/)).toBeInTheDocument();
@@ -134,7 +137,8 @@ describe("cartão sem itens mostra o motivo", () => {
     renderizar(conexao({
       origem: "NETWORK_NETWORK_MATCH",
       itens: [],
-      motivo: "A outra dona retirou a autorização; os detalhes deixaram de aparecer.",
+      detalhesVisiveis: false,
+      motivo: "frase em português que o servidor grava e a tela não usa aqui",
     }));
 
     expect(screen.getByText(/retirou a autoriza[çc][ãa]o/)).toBeInTheDocument();

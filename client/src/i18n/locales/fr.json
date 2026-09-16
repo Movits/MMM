@@ -622,7 +622,8 @@
     "scoreBandHigh": "Élevée",
     "scoreBandVeryHigh": "Très élevée",
     "notForwarded": "✕ Non transmis",
-    "viewConnection": "Voir la connexion"
+    "viewConnection": "Voir la connexion",
+    "redoOnboarding": "Refaire l’inscription complète (spécialité, secteur, expérience et ce que vous cherchez) — repasse par les Conditions générales"
   },
   "auth": {
     "login": "Se connecter",
@@ -2007,7 +2008,9 @@
       "discardConfirmTitle": "Écarter cette connexion ?",
       "discardConfirmText": "Cette action est irréversible : la connexion reste écartée pour vous et ne peut plus passer à une autre étape.",
       "discardConfirmButton": "Écarter la connexion",
-      "discardConfirmCancel": "Annuler"
+      "discardConfirmCancel": "Annuler",
+      "reasonPlatformMatch": "Suggérée par le moteur de profils entre deux membres de la plateforme, toutes deux ayant accepté les conditions du Smart Match : compatibilité de {{pontuacao}} %.",
+      "reasonNoAuthorization": "L’autre partie a retiré son autorisation ; les détails de cette connexion ne sont donc plus affichés."
     },
     "global": {
       "description": "Les contacts que vous rendez disponibles sont croisés avec les membres de la plateforme et d'autres réseaux autorisés — uniquement par l'ID anonyme, Ce Que J'ai et Ce Dont J'ai Besoin. Nom, téléphone, e-mail, audio, transcription et notes ne sortent jamais.",
