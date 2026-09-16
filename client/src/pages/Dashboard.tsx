@@ -1465,14 +1465,20 @@ export default function Dashboard() {
                             opacity: 1,
                             animation: `fadeInScale 0.35s cubic-bezier(0.23,1,0.32,1) ${i * 0.06}s both`,
                           }}
-                          className="bg-[#1b1714] border border-white/8 rounded-2xl p-5 flex items-center gap-4 hover:border-white/15 transition-colors duration-200">
+                          className="bg-[#1b1714] border border-white/8 rounded-2xl p-5 flex flex-wrap items-center gap-4 hover:border-white/15 transition-colors duration-200">
                           <div className="w-12 h-12 rounded-full flex items-center justify-center text-[#151312] font-black flex-shrink-0"
                             style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }}>
                             {nomeVisivel
                               ? nomeVisivel[0].toUpperCase()
                               : <User className="w-5 h-5 opacity-60" strokeWidth={2.5} aria-label={t("dashboard.anonAvatarAlt")} />}
                           </div>
-                          <div className="flex-1 min-w-0">
+                          {/* Celular (print do Severo, 16/09): o selo "Aguardando resposta do
+                              outro membro" é whitespace-nowrap e ficava na mesma linha, então a
+                              coluna do texto encolhia a ~50 px e o nome saía uma palavra por
+                              linha, com o selo por cima. Com flex-wrap e um mínimo para o texto,
+                              o selo (ou os botões de aceitar e recusar) desce para a linha de
+                              baixo quando não cabe; na tela larga tudo continua numa linha só. */}
+                          <div className="flex-1 min-w-[10rem]">
                             <div className="font-bold">{nomeVisivel || t("dashboard.anonTitle")}</div>
                             {/* Sem o filtro, uma cidade em branco deixava um " · " solto. */}
                             <div className="text-sm text-white/40">{[setor, cidade].filter(Boolean).join(" · ")}</div>
@@ -1493,7 +1499,7 @@ export default function Dashboard() {
                               </div>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
                             {esperaPorMim ? (
                               <>
                                 <button onClick={() => respondMutation.mutate({ connectionId: conn.id, accept: true })}
