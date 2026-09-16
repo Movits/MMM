@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
-import { protectedProcedure, router } from "../_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { exigirDb } from "../db";
 import { consents, documentVersions } from "../../drizzle/schema";
 import { getRequestIp } from "../password-reset-security";
@@ -113,6 +113,31 @@ function ehDuplicidade(erro: unknown) {
 }
 
 export const consentRouter = router({
+  /**
+   * O texto do Termo Geral de Uso vigente, SEM sessão.
+   *
+   * A página /termos é pública: quem ainda não tem conta precisa poder ler o
+   * que vai aceitar, e o rodapé do site aponta para ela desde sempre. Até aqui
+   * essa página dizia que o termo "está em elaboração", o que deixou de ser
+   * verdade quando o texto do Dr. Ronei virou a última etapa do cadastro — e
+   * a usuária que clicasse no rodapé lia o contrário do que o cadastro mostra.
+   *
+   * O que sai daqui é só o documento publicado: tipo, versão, data e texto.
+   * Nenhum dado de usuária passa por este procedimento, e por isso ele não
+   * exige sessão; `status`, que diz se VOCÊ aceitou, continua protegido.
+   * Sem versão vigente devolve `null`, e a tela diz que o texto ainda não foi
+   * publicado em vez de inventar um.
+   */
+  termoGeralPublico: publicProcedure.query(async () => {
+    const documento = await getCurrentDocument("termo_geral_de_uso");
+    if (!documento) return null;
+    return {
+      version: documento.version,
+      text: documento.text,
+      publishedAt: documento.publishedAt,
+    };
+  }),
+
   /** Texto vigente do documento e a situação da usuária diante dele. */
   status: protectedProcedure
     .input(z.object({ type: documentTypeInput }))

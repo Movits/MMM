@@ -44,7 +44,9 @@ export function textoDoTermoParaExibir(texto: string): string {
 // Tailwind 4 não gera as classes internas do Streamdown (node_modules não é
 // escaneado) e o preflight zera títulos e parágrafos: sem isto o termo sairia
 // num bloco só, ilegível no celular.
-const TIPOGRAFIA_DO_TERMO =
+// Exportada porque a página pública /termos mostra o MESMO documento e precisa
+// da mesma tipografia: duas cópias divergiriam na primeira mudança.
+export const TIPOGRAFIA_DO_TERMO =
   "text-[15px] leading-relaxed text-white/80 break-words " +
   "[&_h1]:mb-4 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:leading-snug [&_h1]:text-white " +
   "[&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-white " +

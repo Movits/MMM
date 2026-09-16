@@ -1,12 +1,35 @@
+import { lazy, Suspense } from "react";
 import { Link } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { TIPOGRAFIA_DO_TERMO, textoDoTermoParaExibir } from "@/components/TermoGeralDeUso";
 
-// Páginas de Privacidade e Termos. O conteúdo definitivo vem dos textos
-// jurídicos da cliente (previstos para 03/09); até lá, as rotas existem para o
-// footer não apontar para o nada, e deixam claro que o documento está em
-// elaboração. Trocar o conteúdo aqui quando os textos chegarem.
+// Páginas públicas de Privacidade e Termos, para onde o rodapé aponta.
+//
+// Até 15/09 as duas diziam que os textos "estão em elaboração com a assessoria
+// jurídica". Isso deixou de ser verdade para os TERMOS quando o Termo Geral de
+// Uso, Proteção de Dados e Intermediação Digital (Dr. Ronei, 14/09) virou a
+// última etapa do cadastro: quem clicava no rodapé lia o contrário do que o
+// cadastro mostra, e quem ainda não tem conta não tinha como ler o que vai
+// aceitar. Agora /termos mostra o documento PUBLICADO, o mesmo texto e a mesma
+// versão que o aceite registra, por um procedimento público que não devolve
+// dado de usuária nenhuma (consent.termoGeralPublico).
+//
+// A Política de Privacidade continua pendente de verdade — é a tarefa "Receber
+// os textos jurídicos da Cris", em aberto no quadro do projeto —, então aquela
+// página segue dizendo que o documento próprio virá, mas para de prometer o que
+// não existe e aponta para as cláusulas de dados do Termo Geral, que estão em
+// vigor hoje.
+//
+// As duas telas seguem em pt-BR fixo, como o resto desta página sempre esteve
+// (ver CLAUDE.md): o documento jurídico só existe em português, e traduzir a
+// moldura em volta de um texto que não se traduz confundiria mais que ajudaria.
 
-function LegalShell({ title, children }: { title: string; children: React.ReactNode }) {
+// Mesmo carregamento tardio do cadastro: o Streamdown traz KaTeX, Shiki e
+// Mermaid, peso que só faz sentido baixar em quem abre o termo.
+const Streamdown = lazy(() => import("streamdown").then(modulo => ({ default: modulo.Streamdown })));
+
+function LegalShell({ title, children, largo = false }: { title: string; children: React.ReactNode; largo?: boolean }) {
   return (
     <div className="min-h-screen bg-[#151312] text-white antialiased">
       <nav className="border-b border-white/[0.05] px-6 py-4">
@@ -16,7 +39,7 @@ function LegalShell({ title, children }: { title: string; children: React.ReactN
           </span>
         </Link>
       </nav>
-      <main className="max-w-2xl mx-auto px-6 py-16">
+      <main className={`${largo ? "max-w-3xl" : "max-w-2xl"} mx-auto px-6 py-16`}>
         <h1 className="text-3xl font-extrabold mb-6">{title}</h1>
         <div className="space-y-4 text-white/60 text-sm leading-relaxed">{children}</div>
       </main>
@@ -28,36 +51,70 @@ export function PrivacyPage() {
   return (
     <LegalShell title="Política de Privacidade">
       <p>
-        A versão completa desta política está em elaboração com a assessoria
-        jurídica da plataforma e será publicada nesta página.
+        A política de privacidade em documento próprio está sendo redigida pela
+        assessoria jurídica da plataforma e será publicada nesta página.
       </p>
       <p>
-        Enquanto isso, valem os princípios que orientam o produto desde o
-        desenho: a sua base de contatos é privada e nunca é exposta a outros
-        usuários; dados sensíveis ficam guardados de forma cifrada; e nenhuma
-        informação sua é vendida ou compartilhada com terceiros.
+        O que já vale hoje, e vale juridicamente, é o{" "}
+        <Link href="/termos">
+          <span className="text-[#c98f70] underline cursor-pointer">Termo Geral de Uso, Proteção de Dados e Intermediação Digital</span>
+        </Link>
+        , aceito por toda usuária no cadastro: ele trata do tratamento de dados
+        pessoais, da base legal, do prazo de guarda e dos seus direitos.
       </p>
       <p>
-        Dúvidas sobre os seus dados podem ser tratadas diretamente com a equipe
-        da plataforma enquanto o canal oficial de contato não é publicado.
+        Na prática, e por desenho do produto: a sua base de contatos é privada e
+        nunca é exposta a outras usuárias; o que você escolhe disponibilizar na
+        rede global vai sem nome e sem contato; dados sensíveis ficam guardados
+        de forma cifrada; e nenhuma informação sua é vendida.
       </p>
     </LegalShell>
   );
 }
 
 export function TermsPage() {
+  const termo = trpc.consent.termoGeralPublico.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
+
   return (
-    <LegalShell title="Termos de Uso">
-      <p>
-        Os termos completos estão em elaboração com a assessoria jurídica da
-        plataforma e serão publicados nesta página antes da abertura ao público.
-      </p>
-      <p>
-        Em resumo do que já vale hoje: a plataforma destina-se a conexões de
-        negócio entre pessoas empreendedoras; oportunidades publicadas passam
-        por análise e validação; e acordos fechados a partir das conexões devem
-        respeitar as regras de intermediação da comunidade.
-      </p>
+    <LegalShell title="Termos de Uso" largo>
+      {termo.isLoading && (
+        <p className="flex items-center gap-2 text-white/40">
+          <Loader2 size={14} className="animate-spin" /> Carregando o termo vigente...
+        </p>
+      )}
+
+      {/* Sem versão publicada (ou com o banco fora do ar) a página diz o que
+          houve, em vez de mostrar um texto antigo escrito no código. */}
+      {!termo.isLoading && !termo.data && (
+        <>
+          <p>
+            O Termo Geral de Uso, Proteção de Dados e Intermediação Digital é o
+            documento que rege a plataforma, e é aceito por toda usuária na
+            última etapa do cadastro.
+          </p>
+          <p>
+            A versão vigente ainda não está publicada nesta página. Se você
+            precisa do texto agora, fale com a equipe da plataforma.
+          </p>
+        </>
+      )}
+
+      {termo.data && (
+        <>
+          <p className="text-white/40 text-xs">
+            Versão {termo.data.version}, publicada em{" "}
+            {new Date(termo.data.publishedAt).toLocaleDateString("pt-BR")}. É o
+            mesmo texto que o cadastro apresenta para aceite.
+          </p>
+          <div lang="pt-BR" className={`pt-2 ${TIPOGRAFIA_DO_TERMO}`}>
+            <Suspense fallback={<div className="whitespace-pre-wrap">{textoDoTermoParaExibir(termo.data.text)}</div>}>
+              <Streamdown>{textoDoTermoParaExibir(termo.data.text)}</Streamdown>
+            </Suspense>
+          </div>
+        </>
+      )}
     </LegalShell>
   );
 }

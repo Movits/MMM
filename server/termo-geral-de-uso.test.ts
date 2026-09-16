@@ -258,3 +258,47 @@ describe("O que você busca? — Outra necessidade", () => {
       .resolves.toMatchObject({ success: true });
   });
 });
+
+/**
+ * A página pública /termos mostra o MESMO documento que o cadastro apresenta.
+ *
+ * Até 15/09 ela dizia que o termo "está em elaboração", texto escrito no
+ * código, enquanto o cadastro já exigia o aceite do documento do Dr. Ronei:
+ * quem clicava no rodapé lia o contrário do que a plataforma fazia. O
+ * procedimento é público de propósito — quem ainda não tem conta precisa poder
+ * ler o que vai aceitar — e por isso a conferência mais importante aqui é a de
+ * que ele não devolve NADA além do documento.
+ */
+describe("termo vigente na página pública", () => {
+  it("devolve versão, texto e data sem nenhuma sessão", async () => {
+    leituras.set(documentVersions, [[TERMO]]);
+
+    const publico = await consentRouter.createCaller({
+      user: null,
+      req: { headers: {}, socket: { remoteAddress: "127.0.0.1" } },
+      res: { cookie: () => {} },
+    } as never).termoGeralPublico();
+
+    expect(publico).toEqual({
+      version: TERMO.version,
+      text: TERMO.text,
+      publishedAt: TERMO.publishedAt,
+    });
+  });
+
+  it("não deixa escapar id do documento nem dado de usuária", async () => {
+    leituras.set(documentVersions, [[TERMO]]);
+
+    const publico = await consentRouter.createCaller({ user: null, req: { headers: {} }, res: {} } as never).termoGeralPublico();
+
+    expect(Object.keys(publico ?? {}).sort()).toEqual(["publishedAt", "text", "version"]);
+  });
+
+  it("sem versão publicada devolve null, e a tela diz isso em vez de inventar texto", async () => {
+    leituras.set(documentVersions, [[]]);
+
+    const publico = await consentRouter.createCaller({ user: null, req: { headers: {} }, res: {} } as never).termoGeralPublico();
+
+    expect(publico).toBeNull();
+  });
+});
