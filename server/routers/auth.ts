@@ -15,13 +15,16 @@ import { createAuditLog, invalidateSession } from "../security";
 import { users, passwordResetTokens, passwordResetRequests } from "../../drizzle/schema";
 import { registerUser, loginUser, toPublicUser } from "../auth";
 import {
-  getRequestIp,
   hashPasswordResetToken,
+  PASSWORD_RESET_ACCOUNT_LIMIT,
   PASSWORD_RESET_GENERIC_MESSAGE,
   PASSWORD_RESET_RATE_LIMIT,
   PASSWORD_RESET_RATE_WINDOW_MS,
   PASSWORD_RESET_TTL_MS,
 } from "../password-reset-security";
+import { criarTeto } from "../assistente-de-texto";
+import { chaveDeRede, ipDaCliente } from "../ip-da-cliente";
+import { filaDoBcrypt } from "../fila-do-bcrypt";
 
 // ============================================================
 // AUTENTICAÇÃO
@@ -32,6 +35,67 @@ import {
 // mensagem para a usuária: relançado cru, o middleware de _core/trpc.ts traduz
 // a queda em "banco indisponível" e o errorFormatter mascara o SQL dos demais.
 const ehErroDeBanco = (err: unknown) => ehErroDeBancoIndisponivel(err) || ehErroDoDriverDeBanco(err);
+
+// Tetos em memória pela rede real (ip-da-cliente.ts: CF-Connecting-IP, IPv6
+// no /56), contados POR CHAMADA: um único HTTP em lote do tRPC
+// ("/api/trpc/auth.register,auth.register,...") carrega quantas chamadas
+// quiser, e o limite por minuto só enxerga o HTTP. A vaga é reservada ANTES do
+// primeiro await: o que o banco conta (bloqueio de login, pedidos de
+// recuperação) só é gravado depois de vários awaits, e chamadas simultâneas
+// liam todas a contagem antiga.
+//
+// Os valores são chamadas, não pessoas: contam erro de digitação, clique
+// duplo, "e-mail já cadastrado" e "conta sem senha". Para o lançamento de
+// 16/09 (~200 pessoas no mesmo wi-fi, parte delas importadas que tentam
+// entrar antes de pedir o link) a folga é de ~2 vezes. O custo de CPU de uma
+// rajada fica na fila do bcrypt (fila-do-bcrypt.ts), não nestes números.
+export const JANELA_DOS_TETOS_DE_AUTH_MS = 15 * 60_000;
+export const CADASTROS_POR_REDE = 400;
+export const LOGINS_POR_REDE = 600;
+/**
+ * Força bruta contra UMA conta: 10 tentativas a cada 15 min por rede + e-mail.
+ * O bloqueio do banco (5 falhas por hora, server/security.ts) lê a contagem e
+ * grava +1 sem trava — tentativas simultâneas passavam todas. Este teto não
+ * atinge outra pessoa do mesmo wi-fi: a chave inclui o e-mail.
+ */
+export const LOGINS_POR_REDE_E_EMAIL = 10;
+
+export const tetoDeCadastro = criarTeto(
+  CADASTROS_POR_REDE,
+  JANELA_DOS_TETOS_DE_AUTH_MS,
+  "Muitos cadastros a partir desta rede. Aguarde alguns minutos e tente de novo.",
+);
+export const tetoDeLogin = criarTeto(
+  LOGINS_POR_REDE,
+  JANELA_DOS_TETOS_DE_AUTH_MS,
+  "Muitas tentativas de entrada a partir desta rede. Aguarde alguns minutos e tente de novo.",
+);
+export const tetoDeLoginPorEmail = criarTeto(
+  LOGINS_POR_REDE_E_EMAIL,
+  JANELA_DOS_TETOS_DE_AUTH_MS,
+  "Muitas tentativas de entrada com este e-mail. Aguarde alguns minutos e tente de novo.",
+);
+/**
+ * "Esqueci minha senha", na memória e antes de qualquer await, com os mesmos
+ * números das contagens do banco (que ficam: sobrevivem ao deploy). O da rede
+ * responde TOO_MANY_REQUESTS com mensagem — vem antes de buscar a conta, então
+ * não revela se ela existe. O do e-mail responde a frase genérica de sempre:
+ * um erro ali contaria a quem pede quantos pedidos OUTRA pessoa fez para
+ * aquele endereço.
+ */
+export const tetoDeRecuperacaoPorRede = criarTeto(
+  PASSWORD_RESET_RATE_LIMIT,
+  PASSWORD_RESET_RATE_WINDOW_MS,
+  "Muitos pedidos de recuperação de senha a partir desta rede. Aguarde alguns minutos e tente de novo.",
+);
+export const tetoDeRecuperacaoPorEmail = criarTeto(
+  PASSWORD_RESET_ACCOUNT_LIMIT,
+  PASSWORD_RESET_RATE_WINDOW_MS,
+  PASSWORD_RESET_GENERIC_MESSAGE,
+);
+
+/** E-mail como chave de teto: normalizado e curto (o zod não limita o tamanho). */
+const chaveDoEmail = (email: string) => email.trim().toLowerCase().slice(0, 320);
 
 export const authRouter = router({
   // Público de propósito: sem sessão, devolve null e a tela manda para o login.
@@ -52,12 +116,15 @@ export const authRouter = router({
       email: z.string().email(),
       password: z.string().min(8),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Fora do try: o catch abaixo transformaria o TOO_MANY_REQUESTS em BAD_REQUEST.
+      tetoDeCadastro.reservar(chaveDeRede(ipDaCliente(ctx.req)));
       try {
         const { userId } = await registerUser(input);
         return { success: true, userId };
       } catch (err: any) {
-        if (ehErroDeBanco(err)) throw err;
+        // A fila do bcrypt cheia (TOO_MANY_REQUESTS) chega à tela como é.
+        if (err instanceof TRPCError || ehErroDeBanco(err)) throw err;
         throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
       }
     }),
@@ -68,16 +135,25 @@ export const authRouter = router({
       password: z.string().min(1),
     }))
     .mutation(async ({ ctx, input }) => {
-      const ip = (ctx.req.headers["x-forwarded-for"] as string) || (ctx.req.socket as any)?.remoteAddress;
+      // Antes era o X-Forwarded-For cru, e loginUser usava o primeiro item —
+      // escrito pelo cliente. Trocá-lo a cada tentativa driblava o bloqueio por
+      // e-mail + IP.
+      const ip = ipDaCliente(ctx.req);
+      const rede = chaveDeRede(ip);
       const ua = ctx.req.headers["user-agent"];
+      // Fora do try: o catch abaixo transformaria o TOO_MANY_REQUESTS em UNAUTHORIZED.
+      tetoDeLogin.reservar(rede);
+      tetoDeLoginPorEmail.reservar(`${rede}|${chaveDoEmail(input.email)}`);
       try {
-        const { token, user, expiresAt } = await loginUser({ email: input.email, password: input.password, ip, userAgent: ua });
+        // O bloqueio do banco conta pela rede (/56); a sessão guarda o IP cru.
+        const { token, user, expiresAt } = await loginUser({ email: input.email, password: input.password, ip, chaveDoBloqueio: rede, userAgent: ua });
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: 8 * 60 * 60 * 1000 });
         await createAuditLog({ userId: user.id, action: "LOGIN", resource: "auth", ipAddress: ip, userAgent: ua, status: "success", riskLevel: "low" });
         return { success: true, user: { id: user.id, name: user.name, email: user.email, role: user.role, onboardingCompleted: user.onboardingCompleted } };
       } catch (err: any) {
-        if (ehErroDeBanco(err)) throw err;
+        // A fila do bcrypt cheia (TOO_MANY_REQUESTS) chega à tela como é.
+        if (err instanceof TRPCError || ehErroDeBanco(err)) throw err;
         throw new TRPCError({ code: "UNAUTHORIZED", message: err.message });
       }
     }),
@@ -87,10 +163,26 @@ export const authRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const genericResponse = { success: true, message: PASSWORD_RESET_GENERIC_MESSAGE };
+      // IP real, e IPv6 agrupado no /56 (ip-da-cliente.ts). Era o primeiro item
+      // do X-Forwarded-For: forjável por quem abusa e, para o público honesto
+      // do mesmo wi-fi, um balde só de 3 pedidos.
+      const ipAddress = chaveDeRede(ipDaCliente(ctx.req)).slice(0, 64);
+      // Os tetos em memória vêm ANTES do primeiro await. As contagens do banco
+      // abaixo leem e só gravam depois de outros awaits: 100 pedidos
+      // simultâneos (um HTTP em lote basta) liam todos "zero" e mandavam 100
+      // e-mails para a mesma caixa.
+      tetoDeRecuperacaoPorRede.reservar(ipAddress);
+      try {
+        tetoDeRecuperacaoPorEmail.reservar(chaveDoEmail(input.email));
+      } catch {
+        console.warn(
+          `[PasswordReset] Pedido recusado pelo limite de ${PASSWORD_RESET_ACCOUNT_LIMIT} por e-mail em ${PASSWORD_RESET_RATE_WINDOW_MS / 60_000} min.`,
+        );
+        return genericResponse;
+      }
       const db = await exigirDb();
 
-      const genericResponse = { success: true, message: PASSWORD_RESET_GENERIC_MESSAGE };
-      const ipAddress = getRequestIp(ctx.req.headers["x-forwarded-for"], ctx.req.socket?.remoteAddress);
       const windowStart = new Date(Date.now() - PASSWORD_RESET_RATE_WINDOW_MS);
       const [rateWindow] = await db.select({ count: sql<number>`COUNT(*)` })
         .from(passwordResetRequests)
@@ -127,6 +219,22 @@ export const authRouter = router({
         .limit(1);
       // Sempre retornar sucesso para não revelar se o e-mail existe (segurança)
       if (!user) return genericResponse;
+      // Limite por CONTA: com o IP afrouxado para o evento, é ele que impede
+      // encher de e-mails a caixa de uma pessoa. Conta só o que gera e-mail
+      // (conta que existe); a resposta é a mesma, então não vira oráculo, e o
+      // log não leva e-mail nem IP.
+      const [pedidosDaConta] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(passwordResetTokens)
+        .where(and(
+          eq(passwordResetTokens.userId, user.id),
+          sql`${passwordResetTokens.createdAt} >= ${windowStart}`,
+        ));
+      if (Number(pedidosDaConta?.count ?? 0) >= PASSWORD_RESET_ACCOUNT_LIMIT) {
+        console.warn(
+          `[PasswordReset] Pedido recusado pelo limite de ${PASSWORD_RESET_ACCOUNT_LIMIT} por conta em ${PASSWORD_RESET_RATE_WINDOW_MS / 60_000} min (userId ${user.id}).`,
+        );
+        return genericResponse;
+      }
       // Invalidar tokens anteriores do mesmo usuário
       await db.update(passwordResetTokens)
         .set({ usedAt: new Date() })
@@ -199,9 +307,9 @@ export const authRouter = router({
       if (!resetToken) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Token inválido ou expirado. Solicite um novo link de recuperação." });
       }
-      // Atualizar senha
+      // Atualizar senha (na fila do bcrypt, como o cadastro e o login)
       const bcrypt = await import("bcryptjs");
-      const passwordHash = await bcrypt.hash(input.newPassword, 12);
+      const passwordHash = await filaDoBcrypt.executar(() => bcrypt.hash(input.newPassword, 12));
       await db.update(users).set({ passwordHash }).where(eq(users.id, resetToken.userId));
       // Marcar token como usado
       await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, resetToken.id));

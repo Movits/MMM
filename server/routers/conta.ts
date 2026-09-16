@@ -19,9 +19,9 @@
 //    interface.
 //
 // Tentativa de senha errada é registrada e, passando de LIMITE_DE_TENTATIVAS na
-// janela, o procedimento fecha: o rate limit global (100 req/min por IP) não
-// serve de nada aqui, porque este endpoint responde "senha certa/errada" para
-// quem já tem a sessão.
+// janela, o procedimento fecha: o limite por minuto da API (por conta, ver
+// server/_core/limite-de-requisicoes.ts) não serve de nada aqui, porque este
+// endpoint responde "senha certa/errada" para quem já tem a sessão.
 
 import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";

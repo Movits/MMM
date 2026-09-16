@@ -13,6 +13,7 @@ import {
   createSecurityEvent,
   detectSessionAnomaly,
 } from "../security";
+import { ipDaCliente } from "../ip-da-cliente";
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
@@ -142,9 +143,11 @@ class SDKServer {
       throw ForbiddenError("Esta conta foi desativada. Entre em contato com o suporte.");
     }
 
-    const ipAddress = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
-      || (req.socket as any)?.remoteAddress
-      || "unknown";
+    // O MESMO IP que o login grava na sessão (ipDaCliente): com o primeiro item
+    // do X-Forwarded-For aqui e o CF-Connecting-IP lá, quem está atrás de um
+    // proxy que acrescenta X-Forwarded-For pareceria vir de IP novo em toda
+    // requisição, com um SUSPICIOUS_ACCESS de risco alto a cada uma.
+    const ipAddress = ipDaCliente(req);
     const userAgent = req.headers["user-agent"] || "unknown";
 
     // HARDENING V-CRITICAL: Validar sessão no banco de dados (revogação real)
