@@ -238,6 +238,30 @@ describe("a descrição que nomeia o serviço que o próprio perfil OFERECE não
     const precisaDeContador = tributarista("Preciso de um contador para fechar o balanço");
     expect(necessidadesEscritasDoPerfil(precisaDeContador)).toContain("Preciso de um contador para fechar o balanço");
   });
+
+  it("palpite de família não apaga necessidade declarada (validação de 16/09)", () => {
+    // Quem declara a área como a FAMÍLIA pura e escreve que precisa daquela
+    // família com outra finalidade não está repetindo a própria oferta: pela
+    // regra da casa, oferecer a família não prova a especialidade — vale 60, um
+    // bom palpite. Usar esse palpite na guarda apagava a necessidade de quem
+    // escreveu "Advogado para causas do trabalho" só por ter a área "Advocacia",
+    // enquanto a mesma frase sobrevivia para quem declara a área especializada.
+    const comArea = (activityArea: string) => ({
+      whatIHave: [],
+      whatINeed: ["outra_necessidade"],
+      seekingTypes: ["outra_necessidade"],
+      seekingOtherNeed: "Advogado para causas do trabalho",
+      activityArea,
+    });
+
+    for (const area of ["Advocacia", "Advocacia tributária"]) {
+      expect(necessidadesEscritasDoPerfil(comArea(area)), area).toContain("Advogado para causas do trabalho");
+    }
+
+    // E o que a guarda existe para pegar continua pego: a mesma especialidade escrita de novo.
+    const repetindoAOferta = { ...comArea("Advocacia tributária"), seekingOtherNeed: "Advocacia tributária para indústrias farmacêuticas" };
+    expect(necessidadesEscritasDoPerfil(repetindoAOferta)).toEqual([]);
+  });
 });
 
 describe("categoria de serviço SEM descrição não casa", () => {

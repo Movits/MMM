@@ -34,7 +34,7 @@ import {
   rotuloDoQuePreciso,
 } from "@shared/o-que-preciso";
 import {
-  citacaoPedeServicoOferecido, classificarOferta, ehServico, ehServicoDeAssessoria, familiaDoServico, necessidadeNomeiaOServico,
+  citacaoPedeServicoOferecido, classificarOferta, ehServico, ehServicoDeAssessoria, familiaDoServico, mesmaFamiliaEEspecialidade, necessidadeNomeiaOServico,
   necessidadeDeclaraOAssuntoDoServico, necessidadePedeImovel, PALAVRAS_DE_SERVICO, regraNaoLeOPar, PALAVRAS_VAZIAS_DA_CITACAO, PAPEIS_DE_COMERCIO, servicoDoTermo, TIPOS_DA_OFERTA, trechoNomeiaServicoAtendido, type TipoDaOferta,
 } from "@shared/tipo-da-oferta";
 
@@ -325,9 +325,11 @@ export function necessidadesEscritasDoPerfil(perfil: PerfilNoPortao): string[] {
  * serviço que o próprio perfil oferece não é necessidade — é a oferta contada de novo. A consultora tributária
  * que escreve em "Expansão / Internacionalização" "Consultoria tributária para indústrias do Nordeste" não
  * precisa de consultoria tributária: ela a presta; lida como "preciso", a frase conectava duas prestadoras do
- * mesmo serviço sem nenhuma declarar precisar dele. O critério é o mesmo que faria o par casar
- * (`necessidadeNomeiaOServico`, o que o motor de perfis aceita: família ou especialidade): se o que ela oferece
- * atenderia o que ela escreveu, o texto descreve a oferta. As ofertas são TUDO o que o perfil declara: "O que
+ * mesmo serviço sem nenhuma declarar precisar dele. O critério é `ofertaAtenderiaOTexto`: o texto nomeia o
+ * serviço COM a especialidade, ou declara o assunto dele. Um palpite de FAMÍLIA não basta — quem declara a área
+ * "Advocacia" e escreve que precisa de "Advogado para causas do trabalho" não está repetindo a oferta: pela
+ * regra da casa, oferecer a família não prova a especialidade (vale 60, um bom palpite), e palpite não pode
+ * apagar necessidade declarada. As ofertas são TUDO o que o perfil declara: "O que
  * tenho" E a área de atuação E a especialidade (`tudoOQueOPerfilOferece`), não o "um ou outro" de
  * `ofertasDoPerfil`: a tela grava ids fixos em "O que tenho" (nenhum é serviço), então com "canais_comerciais"
  * ali o serviço mora na área, e o fallback deixava a guarda cega. A chave da categoria segue valendo como necessidade;
@@ -342,14 +344,19 @@ function descricaoNomeiaOQueOPerfilOferece(perfil: PerfilNoPortao, descricao: st
 }
 
 /**
- * O mesmo criterio de `satisfaz` (server/matching.ts): o par casa quando a necessidade NOMEIA o servico ou
- * quando DECLARA O ASSUNTO dele sem nomear. A guarda usava so o primeiro, e bastava trocar a redacao para
- * escapar dela: "Advocacia tributaria para industrias" era barrado, mas "Planejamento tributario para
- * investidores estrangeiros" passava e voltava a valer 50 no motor de perfis (validacao de 16/09 na #135).
- * O `regraNaoLeOPar` acompanha `satisfaz`: par que a regra nao le num idioma novo nao conta de nenhum lado.
+ * O texto é a própria oferta contada de novo. Duas maneiras, as duas de `satisfaz` (server/matching.ts):
+ * o texto nomeia o serviço com a MESMA especialidade, ou declara o ASSUNTO dele sem nomear. A guarda usava só
+ * a primeira, e bastava trocar a redação para escapar dela: "Advocacia tributária para indústrias" era barrado,
+ * mas "Planejamento tributário para investidores estrangeiros" passava e voltava a valer 50 no motor de perfis
+ * (validação de 16/09 na #135).
+ *
+ * O que NÃO entra aqui, de propósito: o palpite de família (`necessidadeGenericaNomeiaOServico`, 60). Ele faz
+ * o par casar, mas não prova que o texto é a oferta — e usá-lo apagava a necessidade de quem declara a área
+ * como família pura ("Advocacia" × "Advogado para causas do trabalho").
+ * O `regraNaoLeOPar` acompanha `satisfaz`: par que a regra não lê num idioma novo não conta de nenhum lado.
  */
 function ofertaAtenderiaOTexto(oferta: string, texto: string): boolean {
-  if (necessidadeNomeiaOServico(oferta, null, texto)) return true;
+  if (mesmaFamiliaEEspecialidade(oferta, null, texto)) return true;
   return necessidadeDeclaraOAssuntoDoServico(oferta, null, texto) && !regraNaoLeOPar(oferta, null, texto);
 }
 
@@ -478,16 +485,22 @@ export function exigeCitacao(item: ItemComPortao, perfil?: PerfilNoPortao): bool
   if (ofertas.length === 0) return false;
   const servicos = ofertas.filter(oferta => ehServico(oferta));
   if (tipo === null && servicos.length > 0) return true;
-  // A mesma regra do motor de perfis (`soOfereceServicoPresumido`): ALGUMA oferta é
-  // serviço e NENHUMA é de outro tipo reconhecido. Era `servicos.length === ofertas.length`,
-  // e bastava um item que o classificador lê como "outros" ("vendas" na especialidade,
-  // "Direito" na área) para soltar a exigência de citação — o mesmo `every` que o motor já
-  // tinha abandonado (validação de 16/09 na #135).
+  // Outra base possível é o que a pessoa DECLAROU ter, não o rótulo da área. Era
+  // `servicos.length === ofertas.length` sobre tudo (inclusive área e especialidade), e
+  // bastava a área que o classificador lê como "outros" ("Direito") ou como outro tipo
+  // ("Tecnologia") para soltar a exigência de citação de quem só presta serviço — o caso
+  // do item 3 da validação de 16/09. Olhar só "O que tenho" resolve isso sem fechar o
+  // portão de quem tem base de verdade: quem declara um ativo ("Linha de produção") ao
+  // lado de um serviço tem outra base, e exigir dela a citação suprimiria o match — ainda
+  // por cima uma citação que a regra 6 do prompt PROÍBE fora do tipo "servico".
+  const declarouOutraBase = lista(perfil.whatIHave).some(oferta => !ehServico(oferta));
+  // E o tipo RECONHECIDO não-serviço em qualquer oferta (inclusive a área) continua soltando
+  // a exigência, como no motor de perfis: "outros" não é tipo reconhecido e não conta.
   const ofereceOutroTipo = ofertas.some(oferta => {
     const tipo = classificarOferta(oferta);
     return tipo !== "servico" && tipo !== "outros";
   });
-  return servicos.length > 0 && !ofereceOutroTipo && !temNecessidadeDeclarada(perfil);
+  return servicos.length > 0 && !declarouOutraBase && !ofereceOutroTipo && !temNecessidadeDeclarada(perfil);
 }
 
 

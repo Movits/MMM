@@ -1941,16 +1941,24 @@ function cobrePublico(oferecida: EspecialidadeDoServico, pedida: EspecialidadeDo
 
 function atendeEspecialidades(oferecido: ServicoNomeado, pedido: ServicoNomeado): boolean {
   if (ehGenerico(pedido)) return true;
-  // Oferta genérica diante de necessidade com finalidade ou público
-  // ("Logística" × "logística para exportar meu café"): quem oferece a família
-  // atende quem pede aquela família. Sem esta linha o par dava 0 e nem era
-  // gravado, embora na main valesse 60 pela categoria em comum. A NOTA certa
-  // sai em comoAtende, que devolve "familia" quando a oferta é genérica.
-  // Só quando o pedido diz apenas PARA QUEM ou PARA QUÊ ("logística para
-  // exportar meu café", "Contador para MEI"): aí a família inteira atende.
-  // Pedido com especialidade ("Advogado tributarista", "Consultoria
-  // trabalhista") continua sem casar — quem oferece a família não provou a
-  // especialidade, e é essa a regra que a #124 fixou.
+  // Oferta genérica diante de pedido que só diz PARA QUEM ou PARA QUÊ
+  // ("Logística" × "logística para exportar meu café", "Contabilidade" ×
+  // "Contador para MEI", "Advocacia" × "Advogado para causas do trabalho"):
+  // quem oferece a família atende quem pede aquela família. Sem esta linha o
+  // par dava 0 e nem era gravado (abaixo do SAVE_THRESHOLD), embora na main
+  // valesse 60 pela categoria em comum — perda de match, em silêncio.
+  //
+  // A NOTA sai em comoAtende e é SEMPRE a da família (60): a família não
+  // provou nem a especialidade nem o público, e 60 é o que a #124 fixou para
+  // o bom palpite. Dar 100 passaria do EMAIL_THRESHOLD (70) e poria a família
+  // na frente de quem tem a especialidade.
+  //
+  // Pedido com ESPECIALIDADE continua sem casar, e é regra da casa, congelada
+  // em teste: "Advocacia" não atende "Advogado tributarista" (defeito c da
+  // #101). O limite disso é de LEITURA, e fica registrado: o que vem depois de
+  // "de", "em" ou justaposto ("Contador de MEI", "logística de exportação") é
+  // lido como especialidade, não como público, então esses pares seguem em 0 —
+  // mudar isso é mexer em como a frase é lida, não neste item.
   if (ehGenerico(oferecido)) return pedido.especialidades.some(pedida => pedida.lemas.size === 0 && pedida.publico.size > 0);
   return pedido.especialidades.some(pedida => (pedida.lemas.size > 0
     ? oferecido.especialidades.some(oferecida => cobre(oferecida, pedida))
@@ -2112,13 +2120,14 @@ function comoAtende(oferta: string, categoriaDaOferta: string | null | undefined
         if (!umServicoAtende(oferecido, alternativa)) continue;
         const soAFamilia = alternativa.especialidades.every(especialidade =>
           especialidade.publico.size === 0 && Array.from(especialidade.lemas).every(lema => lema === oferecido.familia));
-        // Quem oferece a família inteira não provou a especialidade pedida:
-        // "Logística" diante de "logística para exportar meu café" fica na
-        // nota da família (60), como valia antes desta PR. A exceção é o
-        // pedido que só nomeia destinatário comum ("Contador para MEI"): a
-        // família atende esse público por inteiro, e o par vale 100.
+        // Quem oferece a família inteira não provou NADA do que o pedido
+        // acrescenta — nem especialidade, nem finalidade, nem público:
+        // "Logística" diante de "logística para exportar meu café" e
+        // "Contabilidade" diante de "Contador para MEI" ficam na nota da
+        // família (60), que é o que o motor dava antes desta PR. Dar 100 aqui
+        // passaria do EMAIL_THRESHOLD (70) e mandaria e-mail por um palpite,
+        // e ainda poria a família na frente de quem tem a especialidade.
         if (!soAFamilia && ehGenerico(oferecido)) {
-          if (soDestinatarioComum(alternativa)) return "especifico";
           melhor = "familia";
           continue;
         }

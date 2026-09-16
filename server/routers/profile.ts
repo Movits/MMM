@@ -16,35 +16,32 @@ import {
   VALORES_ACEITOS_EM_SEEKING_TYPES,
 } from "../../shared/o-que-busca";
 import { esquemaDasDemandas, esquemaDoWhatINeed, prepararOQuePreciso } from "../o-que-preciso";
+import { cortarSemPartirEmoji, LIMITE_DA_BIO_GRAVADA, LIMITE_DA_BIO_NO_CADASTRO } from "../../shared/apresentacao";
 
 // ============================================================
 // PERFIL DO USUÁRIO
 // ============================================================
 
 /**
- * O teto da apresentação no formulário do cadastro (o mesmo do
- * `LIMITE_BIO` em client/src/pages/Onboarding.tsx). A importação da
- * planilha grava até 2000 caracteres, então existe bio maior do que este
- * campo consegue mostrar — ver a guarda em `completeOnboarding`.
+ * A bio gravada quando o texto que chegou é EXATAMENTE o corte que o
+ * formulário do cadastro faz nela — o retrato de um envio que devolveu o que
+ * a tela mostrou, e não do que a pessoa escreveu. Devolve null em todo o
+ * resto (bio ausente, bio que cabe no campo, ou qualquer texto editado), e aí
+ * a escrita segue normal.
+ *
+ * A comparação é por IGUALDADE com `cortarSemPartirEmoji`, a mesma função da
+ * tela, e não por "começa com": um começo com folga descarta edição legítima
+ * — quem apaga o pedaço pendurado no fim do texto cortado está editando, e
+ * essa edição tem de valer.
  */
-const TETO_DA_BIO_NO_CADASTRO = 1000;
-const MARGEM_DO_CORTE = 16;
-
-/**
- * A bio gravada quando ela é maior do que o formulário do cadastro mostra E o
- * texto que chegou é só o começo dela — o retrato de um envio com o texto
- * cortado. Devolve null quando não é esse caso (bio ausente, bio que cabe no
- * campo, ou texto reescrito), e aí a escrita segue normal.
- */
-async function bioMaiorQueOFormulario(userId: number, bioRecebida: string | undefined): Promise<string | null> {
-  // Só o texto que chega colado no teto pode ser um corte do formulário: bio
-  // curta nem chega a consultar o perfil. A margem existe porque o corte da
-  // tela (`cortarSemPartirEmoji`) para alguns caracteres antes para não
-  // partir um emoji ao meio.
-  if (bioRecebida === undefined || bioRecebida.length < TETO_DA_BIO_NO_CADASTRO - MARGEM_DO_CORTE) return null;
+async function bioCortadaPeloFormulario(userId: number, bioRecebida: string | undefined): Promise<string | null> {
+  // Um corte tem o tamanho do teto, ou um a menos quando o último code point
+  // ocupa duas unidades UTF-16 e não coube. Abaixo disso nem consulta o perfil.
+  if (bioRecebida === undefined || bioRecebida.length < LIMITE_DA_BIO_NO_CADASTRO - 1) return null;
   const perfil = (await getUserProfile(userId)) as { bio?: string | null } | null;
   const salva = perfil?.bio ?? "";
-  return salva.length > TETO_DA_BIO_NO_CADASTRO && salva.startsWith(bioRecebida) ? salva : null;
+  if (salva.length <= LIMITE_DA_BIO_NO_CADASTRO) return null;
+  return bioRecebida === cortarSemPartirEmoji(salva, LIMITE_DA_BIO_NO_CADASTRO) ? salva : null;
 }
 
 // Aceita "meusite.com.br" e completa o protocolo. Antes, z.string().url()
@@ -97,7 +94,10 @@ export const profileRouter = router({
  update: protectedProcedure
    .input(z.object({
      displayName: z.string().min(2).max(100).optional(),
-     bio: z.string().max(1000).optional(),
+     // O Perfil edita o que JÁ ESTÁ gravado, e a carga da planilha grava mais
+     // do que o formulário do cadastro mostra: com o teto do cadastro aqui, a
+     // mutation inteira era recusada e a pessoa não conseguia nem encurtar.
+     bio: z.string().max(LIMITE_DA_BIO_GRAVADA).optional(),
      city: z.string().max(100).optional(),
      country: z.string().length(2).optional(),
      sectors: z.array(z.string()).optional(),
@@ -164,7 +164,7 @@ export const profileRouter = router({
  completeOnboarding: protectedProcedure
    .input(z.object({
      displayName: z.string().min(2).max(100),
-     bio: z.string().max(TETO_DA_BIO_NO_CADASTRO).optional(),
+     bio: z.string().max(LIMITE_DA_BIO_NO_CADASTRO).optional(),
      city: z.string().max(100),
      country: z.string().length(2).default("BR"),
      sectors: z.array(z.string()).min(1).max(5).optional(),
@@ -238,16 +238,15 @@ export const profileRouter = router({
       // é gravado e o cadastro não conclui (server/termo-geral-de-uso.ts).
       await exigirAceiteDoTermoGeral(ctx.user.id);
       const { company, position, jobTitle, currentRole, currentCompany, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed: _whatINeed, whatINeedDetails: _whatINeedDetails, personType, companySize, companyCnpj, seekingOtherNeed, ...profileData } = input;
-      // Concluir o cadastro nunca ENCURTA uma apresentação que já era maior do
-      // que o campo consegue mostrar. O formulário corta a bio no teto para
-      // caber na tela; a trava de não reenviar esse corte é do cliente, e um
-      // bundle antigo em cache durante o deploy volta a mandar o texto cortado
-      // — o upsert gravaria por cima e uma bio importada de 1500 caracteres
-      // perderia 500, em silêncio e sem histórico da coluna. Quando o que
-      // chega é só o COMEÇO do que está gravado, a coluna fica como está.
-      // Texto reescrito grava normalmente, e o Perfil (que mostra a bio
-      // inteira) continua podendo encurtar.
-      const bioPreservada = await bioMaiorQueOFormulario(ctx.user.id, input.bio);
+      // Concluir o cadastro não regrava o corte que a própria tela mostrou. O
+      // formulário corta a bio no teto para caber; a trava de não reenviar
+      // esse corte é do cliente, e um bundle antigo em cache durante o deploy
+      // volta a mandar o texto cortado — o upsert gravaria por cima e uma bio
+      // importada de 1500 caracteres perderia 500, em silêncio e sem
+      // histórico da coluna. Só o texto IDÊNTICO ao corte é ignorado:
+      // qualquer edição, inclusive apagar o pedaço pendurado no fim do texto
+      // cortado, grava normalmente.
+      const bioPreservada = await bioCortadaPeloFormulario(ctx.user.id, input.bio);
       await upsertUserProfile(ctx.user.id, {
         ...profileData,
         ...(bioPreservada !== null ? { bio: bioPreservada } : {}),

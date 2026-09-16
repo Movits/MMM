@@ -1752,7 +1752,8 @@
       "atuacao": "Your field of work",
       "apresentacao": "An introduction with at least {{minimo}} words saying who you are and what you do",
       "apresentacaoContagem": "About you: {{contadas}} of {{minimo}} different content words; short words like 'of' and 'for', and repeated ones, don't count",
-      "apresentacaoRepeticao": "About you: {{contadas}} content words, but most of them repeat — write it with different words",
+      "apresentacaoRepeticao": "About you: the text repeats the same words a lot — say who you are and what you do in different words",
+      "apresentacaoContagemERepeticao": "About you: {{contadas}} of {{minimo}} different content words, and the text still repeats a lot — add something new, in different words",
       "oQueTenho": "At least one item in What I have",
       "oQuePreciso": "At least one item in What I need"
     }
@@ -1894,6 +1895,8 @@
       "internalAlert": "We found an opportunity within your own network.",
       "memberSide": "Platform member",
       "mySide": "Your side",
+      "reference": "Reference {{codigo}}",
+      "otherSideWithdrew": "The other side of this connection withdrew their network authorization: what they have and need no longer appears here. The connection record stays with the platform.",
       "contactSide": "Contact from another network ({{codigo}})",
       "itemLine": "Has: {{tem}} · Needs: {{precisa}}",
       "registeredAt": "Recorded on {{data}}",

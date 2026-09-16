@@ -203,6 +203,20 @@ describe("rede global — contato escrito no texto livre não atravessa donas (A
     expect(projetado.codigoAnonimo).toBe("NW-BBBBBB");
   });
 
+  it("a categoria também é texto digitado: sai pela mesma máscara", () => {
+    // O campo de categoria é um input aberto (IntelligentMatches), e a
+    // projeção promete que "os itens passam pela máscara" — os itens inteiros.
+    const projetado = projecaoAnonima({
+      codigoAnonimo: "NW-BBBBBB",
+      tenho: [{ label: "Advocacia tributária", category: `falar com Ana ${TELEFONE}` }],
+      preciso: [{ label: "Distribuidores", category: EMAIL }],
+    });
+
+    const saida = JSON.stringify(projetado);
+    expect(saida).not.toContain(TELEFONE);
+    expect(saida).not.toContain(EMAIL);
+  });
+
   it("procurar na rede global: nem a resposta nem o que é gravado leva o contato que a membra escreveu", async () => {
     redeDeTeste({ membraSoComOutraNecessidade: true, ativoDaDona: "Advocacia tributária", outraNecessidadeDaMembra: DEMANDA_COM_CONTATO });
     const resposta = await procurarConexoesNaRedeGlobal({ id: 10, openId: DONA });

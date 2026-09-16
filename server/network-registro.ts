@@ -6,6 +6,7 @@ import {
 import { ehErroDeBancoIndisponivel } from "./banco-indisponivel";
 import { exigirDb } from "./db";
 import { garantirCodigosAnonimos } from "./network-codigo-anonimo";
+import { mascararContatosEmTexto } from "../shared/contato-em-texto";
 
 /**
  * Registro das conexões que podem originar negócio — Meu Network Inteligente,
@@ -125,12 +126,18 @@ const rotulosDe = (guardado: unknown) =>
  * O motivo de uma conexão interna SEM nome de ninguém. A sugestão do motor
  * privado diz "Ana possui X, que Bia procura" — texto que só a dona vê. O
  * registro é da plataforma e fala pelos IDs anônimos.
+ *
+ * Os rótulos de "O que tenho"/"O que preciso" são texto livre da dona e vão
+ * para uma linha que a staff lê (Painel Ouro) e que sobrevive ao contato: o
+ * ID anônimo não protege nada com o telefone escrito DENTRO do rótulo. Por
+ * isso passam pela mesma máscara que a rede global aplica antes de gravar
+ * (`encontrosEntre`, server/network-rede-global.ts).
  */
 export function motivoAnonimo(sugestao: {
   matchType: string; matchedAssets: unknown; matchedNeeds: unknown;
 }, codigoDe: string, codigoPara: string): { motivo: string; itens: ItemDaConexao[] } {
-  const tem = listar(rotulosDe(sugestao.matchedAssets));
-  const precisa = listar(rotulosDe(sugestao.matchedNeeds));
+  const tem = mascararContatosEmTexto(listar(rotulosDe(sugestao.matchedAssets)));
+  const precisa = mascararContatosEmTexto(listar(rotulosDe(sugestao.matchedNeeds)));
   if (sugestao.matchType === "mutual") {
     return {
       motivo: `${codigoDe} e ${codigoPara} se completam: cada um tem o que o outro procura (${tem}).`,
@@ -307,6 +314,12 @@ export type ConexaoVisivel = {
   motivo: string;
   itens: ItemDaConexao[];
   pontuacao: number;
+  /**
+   * O outro lado retirou a autorização (item 26): motivo e itens somem. O
+   * sinalizador existe porque a tela de quem usa é traduzida em 10 idiomas e
+   * não pode depender do texto em português de `motivo` para dizer isso.
+   */
+  outroLadoSemAutorizacao: boolean;
   /** A etapa PARA quem pergunta: quem descartou vê 'descartada', ainda que o outro lado siga (avancarConexao). */
   status: EtapaDaConexao;
   apresentacaoEm: number | null;
@@ -426,6 +439,7 @@ export async function listarConexoesDaSolicitante(quem: Solicitante, opcoes: { c
       id: cabecalho.id,
       origem: cabecalho.origem,
       motivo: detalhesVisiveis ? cabecalho.motivo : MOTIVO_SEM_AUTORIZACAO_DO_OUTRO_LADO,
+      outroLadoSemAutorizacao: !detalhesVisiveis,
       itens: detalhesVisiveis && Array.isArray(cabecalho.itens) ? cabecalho.itens : [],
       pontuacao: cabecalho.pontuacao,
       status: descartadaPorMim ? "descartada" as const : cabecalho.status,

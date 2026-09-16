@@ -1752,7 +1752,8 @@
       "atuacao": "Votre domaine d'activité",
       "apresentacao": "Une présentation d'au moins {{minimo}} mots qui disent qui vous êtes et ce que vous faites",
       "apresentacaoContagem": "Présentation : {{contadas}} mots de contenu différents sur {{minimo}} ; les mots courts comme « de » et « pour », et les répétitions, ne comptent pas",
-      "apresentacaoRepeticao": "Présentation : {{contadas}} mots de contenu, mais la plupart se répètent — écrivez-la avec des mots différents",
+      "apresentacaoRepeticao": "Présentation : le texte répète beaucoup les mêmes mots — dites avec des mots différents qui vous êtes et ce que vous faites",
+      "apresentacaoContagemERepeticao": "Présentation : {{contadas}} mots de contenu différents sur {{minimo}}, et le texte se répète encore beaucoup — ajoutez du nouveau, avec des mots différents",
       "oQueTenho": "Au moins un élément dans Ce que j'ai",
       "oQuePreciso": "Au moins un élément dans Ce dont j'ai besoin"
     }
@@ -1894,6 +1895,8 @@
       "internalAlert": "Nous avons trouvé une opportunité au sein de votre propre réseau.",
       "memberSide": "Membre de la plateforme",
       "mySide": "Votre côté",
+      "reference": "Référence {{codigo}}",
+      "otherSideWithdrew": "L'autre partie de cette connexion a retiré son autorisation pour le réseau : ce qu'elle a et ce qu'elle cherche n'apparaît plus ici. L'enregistrement de la connexion reste avec la plateforme.",
       "contactSide": "Contact d'un autre réseau ({{codigo}})",
       "itemLine": "A : {{tem}} · Cherche : {{precisa}}",
       "registeredAt": "Enregistrée le {{data}}",

@@ -106,7 +106,12 @@ export async function definirDisponibilidade(ownerId: string, contactId: number,
  * máscara que `encontrosEntre` aplica antes de gravar motivo e itens.
  */
 export function projecaoAnonima(contato: ContatoAnonimo): ContatoAnonimo {
-  const semContato = ({ label, category }: ItemDeNegocio) => ({ label: mascararContatosEmTexto(label), category });
+  // A categoria também é digitada pela dona (o campo é um input aberto): sem
+  // a mesma máscara, um telefone escrito ali sairia inteiro.
+  const semContato = ({ label, category }: ItemDeNegocio) => ({
+    label: mascararContatosEmTexto(label),
+    category: typeof category === "string" ? mascararContatosEmTexto(category) : category,
+  });
   return {
     codigoAnonimo: contato.codigoAnonimo,
     tenho: contato.tenho.map(semContato),

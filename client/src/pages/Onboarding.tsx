@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { BrainCircuit, CheckCircle } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
+import { cortarSemPartirEmoji, LIMITE_DA_BIO_NO_CADASTRO } from "@shared/apresentacao";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
 import { exigeCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
@@ -25,21 +26,8 @@ import { PREFIXO_DO_RASCUNHO_DO_CADASTRO } from "@/_core/hooks/useAuth";
 
 // Tetos do servidor (routers/profile.ts) para os campos livres: o ditado pode
 // passar deles, e sem contador o erro só aparecia no último passo.
-const LIMITE_BIO = 1000;
+const LIMITE_BIO = LIMITE_DA_BIO_NO_CADASTRO;
 const LIMITE_META = 2000;
-
-/** Corta o texto para caber em `limite` unidades UTF-16 (a medida de `.length`,
- *  a mesma do zod no servidor e de LIMITE_BIO) sem partir um emoji ao meio:
- *  percorre por code point (Array.from) e para antes do que não cabe. */
-function cortarSemPartirEmoji(texto: string, limite: number): string {
-  if (texto.length <= limite) return texto;
-  let cortado = "";
-  for (const caractere of Array.from(texto)) {
-    if (cortado.length + caractere.length > limite) break;
-    cortado += caractere;
-  }
-  return cortado;
-}
 
 /**
  * Última etapa: o Termo Geral de Uso (components/TermoGeralDeUso.tsx). É a
@@ -434,9 +422,14 @@ export default function Onboarding() {
     // dentro a segunda passagem recebe o estado já preenchido e o sinalizador zerava.
     const bioSalva = profile?.bio ?? "";
     const bioDoRascunho = (rascunho as { bio?: string } | null)?.bio ?? "";
-    const bioMostrada = bioDoRascunho || cortarSemPartirEmoji(bioSalva, LIMITE_BIO);
+    const corteDoSalvo = cortarSemPartirEmoji(bioSalva, LIMITE_BIO);
+    const bioMostrada = bioDoRascunho || corteDoSalvo;
     bioPrePreenchida.current = bioMostrada;
-    bioSalvaEraMaior.current = !bioDoRascunho && bioSalva.length > bioMostrada.length;
+    // O rascunho guarda a bio, e o que ele guardou na primeira visita foi o
+    // CORTE que esta mesma tela pré-preencheu. Tratar esse corte como texto
+    // da pessoa fazia a trava valer uma visita só: da segunda em diante o
+    // corte voltava a ser enviado e o resto da apresentação era apagado.
+    bioSalvaEraMaior.current = (!bioDoRascunho || bioDoRascunho === corteDoSalvo) && bioSalva.length > corteDoSalvo.length;
     setForm(prev => {
       const base = rascunho ? { ...prev, ...rascunho } : prev;
       return {

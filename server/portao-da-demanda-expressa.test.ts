@@ -195,6 +195,21 @@ describe("passaNoPortao — só serviço precisa de citação", () => {
     expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: ["fazenda"], activityArea: "Advocacia tributária" })).toBe(false);
   });
 
+  it("quem DECLAROU um ativo ao lado do serviço tem outra base: o piso não exige citação", () => {
+    // "Linha de produção" é ativo declarado em O que tenho; o piso existe para
+    // quem não tem outra base possível. Exigir a citação aqui suprimiria o
+    // match — e seria uma citação que a regra 6 do prompt PROÍBE fora do tipo
+    // "servico", que é quando o modelo diz que o match se apoia em serviço.
+    const comAtivoDeclarado = { whatIHave: ["logistica", "Linha de produção"] };
+    for (const tipoDaOferta of ["ativo", "produto", "conexao", "nenhuma"]) {
+      expect(exigeCitacao({ tipoDaOferta }, comAtivoDeclarado), tipoDaOferta).toBe(false);
+    }
+    // O match que o próprio modelo diz apoiado em serviço continua exigindo.
+    expect(exigeCitacao({ tipoDaOferta: "servico" }, comAtivoDeclarado)).toBe(true);
+    // E quem só tem serviço continua com o piso de pé.
+    expect(exigeCitacao({ tipoDaOferta: "ativo" }, { whatIHave: ["logistica"] })).toBe(true);
+  });
+
   it("nos dois sentidos: oportunidade que OFERECE um serviço só passa para quem declarou precisar de algo", () => {
     const oferta = { type: "offer", title: "Assessoria tributária para indústrias" };
     const item = { tipoDaOferta: "nenhuma", necessidadeExpressa: "" };

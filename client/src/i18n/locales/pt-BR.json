@@ -1752,7 +1752,8 @@
       "atuacao": "Sua área de atuação",
       "apresentacao": "Uma apresentação com pelo menos {{minimo}} palavras que digam quem você é e o que faz",
       "apresentacaoContagem": "Apresentação: {{contadas}} de {{minimo}} palavras de conteúdo diferentes; palavras curtas como 'de' e 'para', e as repetidas, não contam",
-      "apresentacaoRepeticao": "Apresentação: {{contadas}} palavras de conteúdo, mas a maior parte se repete — escreva com palavras diferentes",
+      "apresentacaoRepeticao": "Apresentação: o texto repete muito as mesmas palavras — conte com palavras diferentes quem você é e o que faz",
+      "apresentacaoContagemERepeticao": "Apresentação: {{contadas}} de {{minimo}} palavras de conteúdo diferentes, e o texto ainda repete muito — acrescente coisas novas, com palavras diferentes",
       "oQueTenho": "Pelo menos um item em O que tenho",
       "oQuePreciso": "Pelo menos um item em O que preciso"
     }
@@ -1894,6 +1895,8 @@
       "internalAlert": "Encontramos uma oportunidade dentro do seu próprio network.",
       "memberSide": "Membra da plataforma",
       "mySide": "Seu lado",
+      "reference": "Referência {{codigo}}",
+      "otherSideWithdrew": "O outro lado desta conexão retirou a autorização para a rede: o que essa pessoa tem e procura não aparece mais aqui. O registro da conexão segue com a plataforma.",
       "contactSide": "Contato de outro network ({{codigo}})",
       "itemLine": "Tem: {{tem}} · Precisa: {{precisa}}",
       "registeredAt": "Registrada em {{data}}",

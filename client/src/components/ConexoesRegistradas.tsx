@@ -25,13 +25,10 @@ type Lado = { lado: "a" | "b"; tipo: "contato" | "membro"; contactId: number | n
 export type ConexaoNaTela = {
   id: string;
   origem: string;
-  /**
-   * Por que a plataforma juntou os dois lados, sem dado pessoal — o servidor
-   * monta em motivoAnonimo/motivoEntreMembras e troca pelo aviso quando o
-   * outro lado retira a autorização. Entre duas membras não há código anônimo
-   * para mostrar: é o motivo que diferencia um cartão do outro.
-   */
-  motivo: string;
+  /** A nota do cruzamento. Não é desenhada aqui: nesta tela não entra percentual. */
+  pontuacao?: number;
+  /** O outro lado retirou a autorização: sem itens, e a tela avisa (item 26). */
+  outroLadoSemAutorizacao?: boolean;
   itens: Array<{ tem: string; precisa: string; deCodigo: string | null; paraCodigo: string | null }>;
   status: string;
   statusComissao: string;
@@ -41,6 +38,17 @@ export type ConexaoNaTela = {
   lados: Lado[];
 };
 
+/**
+ * A referência que identifica UMA conexão na tela. Sai do id da própria linha
+ * (que o cliente já tem, e que não é dado de ninguém), e existe porque entre
+ * duas membras não há mais nada para distinguir: os dois lados são "membra da
+ * plataforma", os itens ficam vazios de propósito e duas conexões da mesma
+ * rodada têm a mesma nota arredondada e o mesmo minuto de registro. Sem ela,
+ * descartar — que não volta atrás — vira sorteio.
+ */
+export function referenciaDaConexao(id: string): string {
+  return id.replace(/[^0-9a-zA-Z]/g, "").slice(-6).toUpperCase();
+}
 const PROXIMA: Record<string, "apresentacao" | "negociacao" | "fechada" | undefined> = {
   identificada: "apresentacao",
   apresentacao: "negociacao",
@@ -67,6 +75,19 @@ export function ConexaoRegistrada({ conexao }: { conexao: ConexaoNaTela }) {
   const podeDescartar = conexao.status !== "fechada" && conexao.status !== "descartada";
   const meuOriginador = conexao.lados.find(lado => lado.meu && lado.originador);
   const registradaEm = new Date(conexao.criadaEm).toLocaleString(i18n.language, { dateStyle: "short", timeStyle: "short" });
+  const referencia = referenciaDaConexao(conexao.id);
+  // O que identifica a conexão na tela, em qualquer idioma. Não é o `motivo`
+  // do servidor (frase em português fixo, gravada na linha — ela serve ao
+  // Painel Ouro, não a esta tela, que roda em 10 idiomas) nem a nota: aqui
+  // não entra percentual nenhum, porque a comissão é status e o aviso ao pé
+  // do cartão promete que nenhum percentual aparece.
+  const identificacao = (
+    <p className="mt-2 text-xs text-white/60">
+      <span className="rounded-md border border-white/10 px-2 py-0.5 font-mono text-[#efcba8]">
+        {t("networkInteligente.connections.reference", { codigo: referencia })}
+      </span>
+    </p>
+  );
 
   return (
     <li className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
@@ -94,7 +115,11 @@ export function ConexaoRegistrada({ conexao }: { conexao: ConexaoNaTela }) {
         ))}
       </ul>
 
-      <p className="mt-2 text-sm text-white/75">{conexao.motivo}</p>
+      {identificacao}
+
+      {conexao.outroLadoSemAutorizacao && (
+        <p className="mt-2 text-sm text-white/60">{t("networkInteligente.connections.otherSideWithdrew")}</p>
+      )}
 
       <ul className="mt-2 space-y-1">
         {conexao.itens.map((item, indice) => (
@@ -138,9 +163,11 @@ export function ConexaoRegistrada({ conexao }: { conexao: ConexaoNaTela }) {
             <DialogTitle className="text-white">{t("networkInteligente.connections.discardConfirmTitle")}</DialogTitle>
             <DialogDescription className="text-sm text-white/60">{t("networkInteligente.connections.discardConfirmText")}</DialogDescription>
           </DialogHeader>
+          {/* Qual conexão vai embora: a referência é o único campo que nunca
+              empata entre dois cartões, e o descarte não volta atrás. */}
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs">
             <p className="font-bold uppercase tracking-wider text-[#efcba8]">{t(`networkInteligente.connections.origin.${conexao.origem}`)}</p>
-            <p className="mt-1 text-white/75">{conexao.motivo}</p>
+            <p className="mt-1 font-mono text-white/75">{t("networkInteligente.connections.reference", { codigo: referencia })}</p>
             <p className="mt-1 text-white/45">{t("networkInteligente.connections.registeredAt", { data: registradaEm })}</p>
           </div>
           <DialogFooter>

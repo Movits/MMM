@@ -411,6 +411,36 @@ describe("item 10 — bio importada maior que o teto de 1000 do servidor", () =>
     concluir();
     expect(perfilEnviado().bio).toBe("Consultora de exportação para o Mercosul");
   });
+
+  it("na SEGUNDA visita a trava continua valendo: o rascunho guardou o corte, não um texto escrito", () => {
+    // O rascunho grava a bio a cada mudança, e o que ele guardou na primeira
+    // visita foi o corte que a própria tela pré-preencheu. Tratar isso como
+    // texto da pessoa fazia a trava valer uma visita só — da segunda em
+    // diante o corte voltava a ser enviado e apagava o resto.
+    const bioLonga = "Consultora tributária com 15 anos de estrada. " + "a".repeat(1400);
+    duble.perfil = perfilDe(USUARIA_7, { displayName: "Fulana Importada", city: "Recife", country: "BR", bio: bioLonga });
+    window.localStorage.setItem(CHAVE_DA_7, JSON.stringify({ bio: bioLonga.slice(0, 1000), salvoEm: Date.now() }));
+
+    render(<Onboarding />);
+    expect(campoBio()).toHaveValue(bioLonga.slice(0, 1000));
+    irAteAUltimaEtapa();
+    concluir();
+
+    expect(perfilEnviado().bio).toBeUndefined();
+  });
+
+  it("rascunho com texto de verdade continua sendo enviado, mesmo com bio salva maior que o teto", () => {
+    // A trava é contra o corte que a tela mostrou, não contra o que a pessoa
+    // escreveu e deixou pela metade numa visita anterior.
+    duble.perfil = perfilDe(USUARIA_7, { displayName: "Fulana Importada", city: "Recife", country: "BR", bio: "a".repeat(1400) });
+    window.localStorage.setItem(CHAVE_DA_7, JSON.stringify({ bio: "Consultora de exportação para o Mercosul", salvoEm: Date.now() }));
+
+    render(<Onboarding />);
+    irAteAUltimaEtapa();
+    concluir();
+
+    expect(perfilEnviado().bio).toBe("Consultora de exportação para o Mercosul");
+  });
 });
 
 describe("sair da conta apaga os rascunhos do cadastro (computador compartilhado)", () => {

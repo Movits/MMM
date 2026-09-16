@@ -26,14 +26,19 @@ export function QualificacaoDoPerfil({ role, perfil, onCompletar }: {
   const { qualificado, pendencias, detalhes } = avaliarQualificacaoDoPerfil(perfil);
   const { apresentacao } = detalhes;
 
-  // Três motivos de recusa, três textos: faltam palavras de conteúdo, sobra
-  // repetição, ou o campo está vazio. A tela dizia "pelo menos 6 palavras" nos
-  // três casos, e quem escrevia 26 palavras repetidas não entendia a recusa
-  // (validação de 16/09 na #135, item 8).
+  // Quatro textos, e a ordem importa: a recusa pode ter DOIS motivos ao mesmo
+  // tempo (faltam palavras diferentes E o texto se repete), e quem só ouve o
+  // primeiro completa as palavras e leva uma segunda recusa sem aviso. O texto
+  // geral fica só para o campo vazio — com texto escrito ele esconde a
+  // contagem, que é justamente o que explica a recusa (validação de 16/09 na
+  // #135, item 8).
   const textoDaPendencia = (pendencia: PendenciaDoPerfil) => {
     if (pendencia !== "apresentacao") return t(`governanca.pendencias.${pendencia}`, { minimo: apresentacao.minimo });
+    if (apresentacao.vazia) return t("governanca.pendencias.apresentacao", { minimo: apresentacao.minimo });
+    const faltamPalavras = apresentacao.contadas < apresentacao.minimo;
+    if (faltamPalavras && apresentacao.repetida) return t("governanca.pendencias.apresentacaoContagemERepeticao", apresentacao);
+    if (faltamPalavras) return t("governanca.pendencias.apresentacaoContagem", apresentacao);
     if (apresentacao.repetida) return t("governanca.pendencias.apresentacaoRepeticao", apresentacao);
-    if (apresentacao.contadas > 0 && apresentacao.contadas < apresentacao.minimo) return t("governanca.pendencias.apresentacaoContagem", apresentacao);
     return t("governanca.pendencias.apresentacao", { minimo: apresentacao.minimo });
   };
 

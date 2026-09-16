@@ -1752,7 +1752,8 @@
       "atuacao": "您的业务领域",
       "apresentacao": "一段至少 {{minimo}} 个词的自我介绍，说明您是谁、做什么",
       "apresentacaoContagem": "自我介绍：{{contadas}}/{{minimo}} 个不同的有内容的词；两个不同的汉字算一个词，数字、符号和重复的词不计",
-      "apresentacaoRepeticao": "自我介绍：有 {{contadas}} 个实词，但大多是重复的——请用不同的词来写",
+      "apresentacaoRepeticao": "自我介绍：文字重复太多相同的词——请用不同的词说说你是谁、你做什么",
+      "apresentacaoContagemERepeticao": "自我介绍：{{contadas}}/{{minimo}} 个不同的有内容的词，而且重复仍然太多——请用不同的词补充一些新内容",
       "oQueTenho": "“我拥有什么”中至少一项",
       "oQuePreciso": "“我需要什么”中至少一项"
     }
@@ -1894,6 +1895,8 @@
       "internalAlert": "我们在您自己的人脉中发现了一个机会。",
       "memberSide": "平台成员",
       "mySide": "您这一方",
+      "reference": "编号 {{codigo}}",
+      "otherSideWithdrew": "这条连接的另一方撤回了对人脉网络的授权：对方拥有和需要的内容不再显示在这里。连接记录仍保留在平台。",
       "contactSide": "其他人脉中的联系人（{{codigo}}）",
       "itemLine": "拥有：{{tem}} · 需要：{{precisa}}",
       "registeredAt": "记录于 {{data}}",

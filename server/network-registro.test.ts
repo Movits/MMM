@@ -88,6 +88,28 @@ describe("registro — a chave do par e o motivo", () => {
     expect(itens).toEqual([{ tem: "Distribuição farmacêutica", precisa: "Distribuidores", deCodigo: "NW-AAAAAA", paraCodigo: "NW-BBBBBB" }]);
     expect(motivoAnonimo({ matchType: "mutual", matchedAssets: [], matchedNeeds: [] }, "NW-A", "NW-B").motivo).toContain("se completam");
   });
+
+  it("telefone e e-mail escritos dentro do rótulo saem mascarados do motivo e dos itens", () => {
+    // O rótulo é texto livre da dona e a linha registrada é lida pela staff
+    // (Painel Ouro) e sobrevive ao contato: o ID anônimo não protege nada com
+    // o telefone escrito DENTRO do que o contato tem. A rede global já
+    // mascarava antes de gravar; a conexão interna, não.
+    const { motivo, itens } = motivoAnonimo(
+      {
+        matchType: "exact",
+        matchedAssets: [{ slug: "v", label: "Vinho Malbec — chamar no (11) 98888-7777" }],
+        matchedNeeds: [{ slug: "v", label: "Vinho importado — ana.souza@vinhos.com.br" }],
+      },
+      "NW-AAAAAA", "NW-BBBBBB",
+    );
+
+    const registrado = JSON.stringify({ motivo, itens });
+    expect(registrado).not.toContain("98888-7777");
+    expect(registrado).not.toContain("ana.souza@vinhos.com.br");
+    // O que a conexão diz continua legível.
+    expect(motivo).toContain("Vinho Malbec");
+    expect(itens[0].precisa).toContain("Vinho importado");
+  });
 });
 
 describe("registro — toda conexão interna é informada à plataforma (item 16)", () => {

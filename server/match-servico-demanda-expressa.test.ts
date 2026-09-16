@@ -696,12 +696,22 @@ describe("Revisão de 15/09 dos consertos da #127 — motor privado", () => {
     ] as Array<[string, string]>) {
       expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
     }
-    // Público comum dos dois lados: a família atende o destinatário por inteiro, como já valia no sentido inverso.
+    // Público também fica na nota da família: a oferta genérica não provou atender AQUELE público, e 100 aqui
+    // passaria do EMAIL_THRESHOLD (70) — e-mail por um palpite — além de pôr a família na frente de quem tem a
+    // especialidade ("Contabilidade tributária" diante do mesmo pedido).
     for (const [oferta, necessidade] of [
       ["Contabilidade", "Contador para MEI"], ["Contabilidade", "Contador para pequenas empresas"],
       ["Advocacia", "Advogado para empresas"],
     ] as Array<[string, string]>) {
-      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 100, type: "exact" });
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
+    }
+    // O limite da leitura, registrado de propósito: escrito com "de", "em" ou justaposto, o mesmo público é
+    // lido como ESPECIALIDADE, e o par segue em 0. É regressão contra a main que não se conserta aqui — mexe em
+    // como a frase é lida (`PREPOSICOES_DE_ASSUNTO`), não na regra deste item.
+    for (const [oferta, necessidade] of [
+      ["Contabilidade", "Contador de MEI"], ["Contabilidade", "Contador MEI"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)).score, `${oferta} × ${necessidade}`).toBe(0);
     }
     // O que a #124 fixou continua valendo: especialidade pedida não é atendida por quem só tem a família.
     for (const [oferta, necessidade] of [

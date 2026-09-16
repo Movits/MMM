@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ConexaoRegistrada, type ConexaoNaTela } from "./ConexoesRegistradas";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import i18n from "@/i18n";
+import { ConexaoRegistrada, referenciaDaConexao, type ConexaoNaTela } from "./ConexoesRegistradas";
 
 /**
  * Conexão registrada vista por quem participa (Meu Network Inteligente e perfil
@@ -38,7 +39,7 @@ vi.mock("@/lib/trpc", () => ({
 const conexao = (extra: Partial<ConexaoNaTela> = {}): ConexaoNaTela => ({
   id: "c-1",
   origem: "PRIVATE_NETWORK_MATCH",
-  motivo: "NW-AAAAAA tem Vinho, que NW-BBBBBB procura.",
+  pontuacao: 100,
   itens: [{ tem: "Vinho", precisa: "Vinho", deCodigo: "NW-AAAAAA", paraCodigo: "NW-BBBBBB" }],
   status: "identificada",
   statusComissao: "sem_negocio",
@@ -116,10 +117,13 @@ describe("Conexão registrada — descartar pede confirmação", () => {
 /**
  * PLATFORM_MATCH: os dois lados são membras e nenhum tem código anônimo — o
  * servidor não manda contactId nem codigoAnonimo para conta alheia, e não deve
- * mandar mesmo. Sem mais nada na tela, dois pares registrados no mesmo dia
+ * mandar mesmo. Sem mais nada na tela, dois pares registrados na mesma rodada
  * viram dois cartões iguais, e o descarte (que não volta atrás) vira sorteio.
- * O que identifica o par sem ferir a privacidade: o motivo que o servidor já
- * calcula sem dado pessoal, a hora do registro e a marca de qual lado é o seu.
+ *
+ * O que identifica o par sem ferir a privacidade: a REFERÊNCIA da conexão (id
+ * da linha, que o cliente já tem) e a nota, que é número. As duas atravessam
+ * os 10 idiomas; o `motivo` do servidor é português fixo e ficou fora da tela
+ * de quem usa (ele segue no Painel Ouro, que é em português por decisão).
  */
 describe("Conexão entre duas membras — qual cartão é qual", () => {
   const ladosDeMembras: ConexaoNaTela["lados"] = [
@@ -129,8 +133,15 @@ describe("Conexão entre duas membras — qual cartão é qual", () => {
   const entreMembras = (extra: Partial<ConexaoNaTela> = {}) =>
     conexao({ origem: "PLATFORM_MATCH", itens: [], lados: ladosDeMembras, ...extra });
 
-  const motivoDe = (nota: number) =>
-    `Conexão sugerida pelo motor de perfis entre duas membras da plataforma, com o termo do Smart Match aceito pelas duas: compatibilidade de ${nota}%.`;
+  // Duas conexões da MESMA rodada: a nota arredonda para o mesmo inteiro e o
+  // registro cai no mesmo minuto. É o pior caso, e é o caso comum.
+  const MESMA_RODADA = { pontuacao: 72, criadaEm: Date.UTC(2026, 8, 14, 15, 22) };
+  const PAR_A = "0b3f0e4e-0000-4000-8000-0000000000a1";
+  const PAR_B = "0b3f0e4e-0000-4000-8000-0000000000b2";
+
+  afterEach(async () => {
+    await i18n.changeLanguage("pt-BR");
+  });
 
   it("o lado de quem olha não sai com o mesmo rótulo do lado alheio", () => {
     renderizar(entreMembras());
@@ -139,29 +150,56 @@ describe("Conexão entre duas membras — qual cartão é qual", () => {
     expect(screen.getByText("Membra da plataforma")).toBeInTheDocument();
   });
 
-  it("dois pares do mesmo dia se separam pelo motivo e pela hora do registro", () => {
+  it("dois pares da mesma rodada, com a mesma nota e o mesmo minuto, ainda assim se separam", () => {
     render(
       <ul>
-        <ConexaoRegistrada conexao={entreMembras({ id: "c-72", motivo: motivoDe(72), criadaEm: Date.UTC(2026, 8, 14, 12, 10) })} />
-        <ConexaoRegistrada conexao={entreMembras({ id: "c-58", motivo: motivoDe(58), criadaEm: Date.UTC(2026, 8, 14, 18, 40) })} />
+        <ConexaoRegistrada conexao={entreMembras({ id: PAR_A, ...MESMA_RODADA })} />
+        <ConexaoRegistrada conexao={entreMembras({ id: PAR_B, ...MESMA_RODADA })} />
       </ul>,
     );
 
-    expect(screen.getByText(motivoDe(72))).toBeInTheDocument();
-    expect(screen.getByText(motivoDe(58))).toBeInTheDocument();
-    const registros = screen.getAllByText(/Registrada em/).map(linha => linha.textContent);
-    expect(registros).toHaveLength(2);
-    expect(new Set(registros).size).toBe(2);
+    const referencias = [referenciaDaConexao(PAR_A), referenciaDaConexao(PAR_B)];
+    expect(new Set(referencias).size).toBe(2);
+    for (const referencia of referencias) {
+      expect(screen.getByText(`Referência ${referencia}`)).toBeInTheDocument();
+    }
+  });
+
+  it("a tela não mostra o texto em português que o servidor grava no motivo", () => {
+    // O motivo é frase fixa em pt-BR gravada na linha; esta tela roda em 10
+    // idiomas. Mesmo que ele venha no pedido, não pode ser desenhado.
+    const motivo = "Conexão sugerida pelo motor de perfis entre duas membras da plataforma, com o termo do Smart Match aceito pelas duas: compatibilidade de 72%.";
+    renderizar({ ...entreMembras({ id: PAR_A, ...MESMA_RODADA }), motivo } as unknown as ConexaoNaTela);
+
+    expect(screen.queryByText(motivo)).not.toBeInTheDocument();
+    expect(screen.getByText(`Referência ${referenciaDaConexao(PAR_A)}`)).toBeInTheDocument();
+    // E nenhum percentual: a comissão é status, e o cartão promete que não há percentual.
+    expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+  });
+
+  it("em japonês, o que identifica o cartão continua na tela e traduzido", async () => {
+    await i18n.changeLanguage("ja");
+    renderizar(entreMembras({ id: PAR_A, ...MESMA_RODADA }));
+
+    expect(screen.getByText(`参照番号 ${referenciaDaConexao(PAR_A)}`)).toBeInTheDocument();
+    // Nada de português na tela de quem lê em japonês.
+    expect(screen.queryByText(/compatibilidade de/i)).not.toBeInTheDocument();
+  });
+
+  it("o outro lado retirou a autorização: o aviso é texto da tela, traduzido", () => {
+    renderizar(entreMembras({ id: PAR_A, ...MESMA_RODADA, outroLadoSemAutorizacao: true }));
+
+    expect(screen.getByText(/retirou a autorização para a rede/)).toBeInTheDocument();
   });
 
   it("a confirmação diz qual conexão vai ser descartada", () => {
-    renderizar(entreMembras({ id: "c-72", motivo: motivoDe(72) }));
+    renderizar(entreMembras({ id: PAR_A, ...MESMA_RODADA }));
 
     fireEvent.click(screen.getByRole("button", { name: "Descartar" }));
 
     const dialogo = screen.getByRole("dialog");
     expect(within(dialogo).getByText("Entre membras da plataforma")).toBeInTheDocument();
-    expect(within(dialogo).getByText(motivoDe(72))).toBeInTheDocument();
+    expect(within(dialogo).getByText(`Referência ${referenciaDaConexao(PAR_A)}`)).toBeInTheDocument();
     expect(duble.mutate).not.toHaveBeenCalled();
   });
 });
