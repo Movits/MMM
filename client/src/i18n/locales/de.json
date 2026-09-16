@@ -1830,7 +1830,9 @@
       "cidade": "Stadt",
       "atuacao": "Ihr Tätigkeitsbereich",
       "apresentacao": "Eine Vorstellung mit mindestens {{minimo}} Wörtern darüber, wer Sie sind und was Sie tun",
-      "apresentacaoContagem": "Vorstellung: {{contadas}} von {{minimo}} Inhaltswörtern; kurze Wörter wie „und“ und „für“ zählen nicht",
+      "apresentacaoContagem": "Vorstellung: {{contadas}} von {{minimo}} unterschiedlichen inhaltlichen Wörtern; kurze Wörter wie „von“ und „für“ sowie Wiederholungen zählen nicht",
+      "apresentacaoRepeticao": "Vorstellung: Der Text wiederholt dieselben Wörter sehr oft – beschreiben Sie mit anderen Wörtern, wer Sie sind und was Sie tun",
+      "apresentacaoContagemERepeticao": "Vorstellung: {{contadas}} von {{minimo}} unterschiedlichen inhaltlichen Wörtern, und der Text wiederholt sich weiterhin stark – ergänzen Sie Neues, mit anderen Wörtern",
       "oQueTenho": "Mindestens ein Eintrag unter Was ich habe",
       "oQuePreciso": "Mindestens ein Eintrag unter Was ich brauche"
     }
@@ -1971,6 +1973,8 @@
       "noConsent": "Um Verbindungen zu sehen und zu erfassen, aktivieren Sie Intelligente Verbindungen.",
       "internalAlert": "Wir haben eine Chance in Ihrem eigenen Netzwerk gefunden.",
       "memberSide": "Plattformmitglied",
+      "mySide": "Ihre Seite",
+      "reference": "Referenz {{codigo}}",
       "contactSide": "Kontakt aus einem anderen Netzwerk ({{codigo}})",
       "itemLine": "Hat: {{tem}} · Braucht: {{precisa}}",
       "registeredAt": "Erfasst am {{data}}",
@@ -2007,7 +2011,8 @@
       "closingAwaiting": "Sie haben den Abschluss bestätigt. Die Bestätigung der anderen Seite steht noch aus.",
       "discardConfirmTitle": "Diese Verbindung verwerfen?",
       "discardConfirmText": "Das Verwerfen kann nicht rückgängig gemacht werden: Die Verbindung bleibt für Sie verworfen und kann in keine weitere Phase mehr übergehen.",
-      "discardConfirmButton": "Verbindung verwerfen",
+      "otherSideAnonymous": "Die andere Seite bleibt anonym: Die Plattform zeigt nicht, wer es ist. Prüfen Sie die Referenz oben – sie identifiziert diese Verbindung, und das Verwerfen lässt sich nicht rückgängig machen.",
+      "discardConfirmButton": "{{codigo}} verwerfen",
       "discardConfirmCancel": "Abbrechen",
       "reasonPlatformMatch": "Vom Profil-Motor zwischen zwei Mitgliedern vorgeschlagen, die bei der Erfassung die Smart-Match-Bedingungen akzeptiert hatten: {{pontuacao}} % Übereinstimmung.",
       "reasonNoAuthorization": "Die andere Seite hat ihre Zustimmung zurückgezogen, deshalb werden die Details dieser Verbindung nicht mehr angezeigt."

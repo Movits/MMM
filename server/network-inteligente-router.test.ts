@@ -270,14 +270,27 @@ describe("a rastreabilidade da plataforma exige administradora", () => {
     expect(createAuditLog).not.toHaveBeenCalled();
   });
 
-  it("presidente lista, sem a chave do par (ids crus), e a leitura fica na auditoria", async () => {
+  /** A lista da staff com um lado de cada dona, para a auditoria ter de quem era o que saiu. */
+  const conexaoDeDuasDonas = () => {
     estado.responder = sql => {
       if (/from `conexoes_registradas`/.test(sql)) {
         // id, origem, motivo, itens, pontuacao, status, apresentacao_em, negociacao_em, fechamento_em, descartada_em, status_comissao, created_at
         return [["c-1", "PRIVATE_NETWORK_MATCH", "NW-AAAAAA tem Vinho, que NW-BBBBBB procura.", "[]", 100, "identificada", null, null, null, null, "sem_negocio", 1000]];
       }
+      if (/from `conexoes_participantes`/.test(sql)) {
+        // id, conexao_id, lado, tipo, owner_id, userId, contact_id, codigo_anonimo, originador, status_comissao_originador, created_at, updated_at, descartada_em, fechamento_confirmado_em
+        return [
+          [1, "c-1", "a", "contato", "dona-1", null, 11, "NW-AAAAAA", true, "sem_negocio", 1000, 1000, null, null],
+          [2, "c-1", "b", "contato", "dona-2", null, 99, "NW-BBBBBB", true, "sem_negocio", 1000, 1000, null, null],
+        ];
+      }
+      if (/from `users`/.test(sql)) return [[31, "dona-1", "Ana"], [32, "dona-2", "Bia"]];
       return undefined;
     };
+  };
+
+  it("presidente lista, sem a chave do par (ids crus), e a leitura fica na auditoria", async () => {
+    conexaoDeDuasDonas();
     const lista = await chamar("president").admin.conexoes({ origem: "PRIVATE_NETWORK_MATCH" });
     expect(lista).toHaveLength(1);
     expect(lista[0]).not.toHaveProperty("chaveDoPar");
@@ -286,8 +299,78 @@ describe("a rastreabilidade da plataforma exige administradora", () => {
     expect(leitura.sql).not.toContain("chave_do_par");
     expect(createAuditLog).toHaveBeenCalledWith(expect.objectContaining({
       userId: 9, action: "NETWORK_CONNECTIONS_READ", resource: "conexoes_registradas",
-      details: { origem: "PRIVATE_NETWORK_MATCH", status: null, conexoes: 1 },
+      details: { origem: "PRIVATE_NETWORK_MATCH", status: null, conexoes: 1, donas: [31, 32], ladosSemConta: 0 },
     }));
+  });
+
+  /**
+   * Item 12 da revisão da #135: a leitura da staff é decisão de produto, mas a
+   * trilha precisa responder "quem viu as conexões do MEU network?". Com a
+   * contagem sozinha, a dona 31 não consegue saber que a conexão dela saiu
+   * nesta leitura — a resposta depende de a trilha dizer de quem era.
+   */
+  it("o telefone escrito dentro do rótulo do contato não chega à lista da staff", async () => {
+    // O rótulo é texto livre da dona e fica gravado inteiro (ela é quem lê o
+    // cartão do outro lado). Quem atravessa as redes de todas as donas é esta
+    // leitura, e é aqui que a máscara entra — sem estragar o dado no banco.
+    estado.responder = sql => {
+      if (/from `conexoes_registradas`/.test(sql)) {
+        return [[
+          "c-1", "PRIVATE_NETWORK_MATCH",
+          "NW-AAAAAA tem Vinho Malbec — chamar no (11) 98888-7777, que NW-BBBBBB procura.",
+          JSON.stringify([{ tem: "Vinho Malbec — chamar no (11) 98888-7777", precisa: "Vinho — ana.souza@vinhos.com.br", deCodigo: "NW-AAAAAA", paraCodigo: "NW-BBBBBB" }]),
+          100, "identificada", null, null, null, null, "sem_negocio", 1000,
+        ]];
+      }
+      return undefined;
+    };
+
+    const lista = await chamar("president").admin.conexoes();
+
+    const texto = JSON.stringify(lista);
+    expect(texto).not.toContain("98888-7777");
+    expect(texto).not.toContain("ana.souza@vinhos.com.br");
+    // O que a conexão diz continua legível para a staff.
+    expect(texto).toContain("Vinho Malbec");
+    expect(texto).toContain("NW-AAAAAA");
+  });
+
+  it("a trilha diz de QUEM eram as conexões lidas, sem nada de contato", async () => {
+    conexaoDeDuasDonas();
+    await chamar("admin").admin.conexoes();
+
+    const registro = createAuditLog.mock.calls.at(-1)![0] as { details: { donas: number[]; conexoes: number; ladosSemConta: number } };
+    expect(registro.details.donas).toEqual([31, 32]);
+    expect(registro.details.conexoes).toBe(1);
+    expect(registro.details.ladosSemConta).toBe(0);
+    const trilha = JSON.stringify(registro.details);
+    expect(trilha).not.toContain("NW-AAAAAA");
+    expect(trilha).not.toContain("dona-1");
+    expect(trilha).not.toContain("Ana");
+  });
+
+  it("lado cuja conta não resolve é contado, não sumido em silêncio", () => {
+    // Linha legada ou conta apagada: `lado.conta` vem null. Sem contar, a
+    // leitura pareceria ter coberto todas as donas envolvidas.
+    estado.responder = sql => {
+      if (/from `conexoes_registradas`/.test(sql)) {
+        return [["c-1", "PRIVATE_NETWORK_MATCH", "NW-AAAAAA tem Vinho, que NW-BBBBBB procura.", "[]", 100, "identificada", null, null, null, null, "sem_negocio", 1000]];
+      }
+      if (/from `conexoes_participantes`/.test(sql)) {
+        return [
+          [1, "c-1", "a", "contato", "dona-1", null, 11, "NW-AAAAAA", true, "sem_negocio", 1000, 1000, null, null],
+          [2, "c-1", "b", "contato", "dona-sumida", null, 99, "NW-BBBBBB", true, "sem_negocio", 1000, 1000, null, null],
+        ];
+      }
+      if (/from `users`/.test(sql)) return [[31, "dona-1", "Ana"]];
+      return undefined;
+    };
+
+    return chamar("admin").admin.conexoes().then(() => {
+      const registro = createAuditLog.mock.calls.at(-1)![0] as { details: { donas: number[]; ladosSemConta: number } };
+      expect(registro.details.donas).toEqual([31]);
+      expect(registro.details.ladosSemConta).toBe(1);
+    });
   });
 
   it("administradora lista; apurar antes do fechamento é conflito", async () => {

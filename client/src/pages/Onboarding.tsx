@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { BrainCircuit, CheckCircle } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
+import { LIMITE_DA_BIO_GRAVADA } from "@shared/apresentacao";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
 import { exigeCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
@@ -25,21 +26,7 @@ import { PREFIXO_DO_RASCUNHO_DO_CADASTRO } from "@/_core/hooks/useAuth";
 
 // Tetos do servidor (routers/profile.ts) para os campos livres: o ditado pode
 // passar deles, e sem contador o erro só aparecia no último passo.
-const LIMITE_BIO = 1000;
 const LIMITE_META = 2000;
-
-/** Corta o texto para caber em `limite` unidades UTF-16 (a medida de `.length`,
- *  a mesma do zod no servidor e de LIMITE_BIO) sem partir um emoji ao meio:
- *  percorre por code point (Array.from) e para antes do que não cabe. */
-function cortarSemPartirEmoji(texto: string, limite: number): string {
-  if (texto.length <= limite) return texto;
-  let cortado = "";
-  for (const caractere of Array.from(texto)) {
-    if (cortado.length + caractere.length > limite) break;
-    cortado += caractere;
-  }
-  return cortado;
-}
 
 /**
  * Última etapa: o Termo Geral de Uso (components/TermoGeralDeUso.tsx). É a
@@ -215,6 +202,18 @@ const VALIDADE_DO_RASCUNHO_MS = 7 * 24 * 60 * 60 * 1000;
 
 function chaveDoRascunhoDa(idDaUsuaria: number | string): string {
   return PREFIXO_DO_RASCUNHO_DO_CADASTRO + String(idDaUsuaria);
+}
+
+/** Quando o rascunho foi gravado. Fica FORA de `lerRascunho`, que só devolve campos do formulário. */
+function salvoEmDoRascunho(chave: string): number {
+  try {
+    const bruto = window.localStorage.getItem(chave);
+    const dados: unknown = bruto ? JSON.parse(bruto) : null;
+    const salvoEm = (dados as { salvoEm?: unknown } | null)?.salvoEm;
+    return typeof salvoEm === "number" && Number.isFinite(salvoEm) ? salvoEm : 0;
+  } catch {
+    return 0;
+  }
 }
 
 /** Lê o rascunho gravado; só entram os campos com a forma que o formulário
@@ -438,6 +437,10 @@ export default function Onboarding() {
   // num re-onboarding, o perfil salvo. Antes o formulario abria vazio e pedia
   // o nome de novo. O rascunho da usuária entra ANTES: campo que ela já
   // preencheu vence o perfil salvo.
+  // A bio da carga vai até LIMITE_DA_BIO_GRAVADA (scripts/importacao/planilha.mjs)
+  // e entra INTEIRA no campo: mostrar só o começo fazia concluir o cadastro (ou
+  // qualquer edição) destruir o resto, em silêncio e sem volta (validação de
+  // 16/09 na #135, item 10).
   const profileQuery = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   useEffect(() => {
     if (prefilled.current || !profileQuery.data) return;
@@ -452,6 +455,22 @@ export default function Onboarding() {
     // Chave e formulário mudam juntos (mesmo lote): o efeito que grava só roda
     // com o formulário já restaurado, nunca com o vazio do primeiro render.
     setChaveDoRascunho(chave);
+    // O que aparece na apresentação fica decidido aqui, fora do atualizador: lá
+    // dentro a segunda passagem do StrictMode recebe o estado já preenchido.
+    const bioSalva = profile?.bio ?? "";
+    const bioDoRascunho = (rascunho as { bio?: string } | null)?.bio ?? "";
+    // O rascunho nasce sozinho: abrir a tela uma vez já grava o que ela
+    // pré-preencheu. Se depois a pessoa editar a apresentação no Perfil, o
+    // rascunho velho voltaria por cima do texto novo sem ninguém tocar no campo.
+    // Ele só vale enquanto for mais NOVO do que o perfil salvo.
+    const salvoEm = chave ? salvoEmDoRascunho(chave) : 0;
+    const perfilSalvoEm = new Date((profile as { updatedAt?: string | number | Date } | null)?.updatedAt ?? 0).getTime();
+    const rascunhoEhMaisNovo = salvoEm >= (Number.isFinite(perfilSalvoEm) ? perfilSalvoEm : 0);
+    // A apresentação entra INTEIRA no campo, mesmo acima do teto do cadastro:
+    // a carga da planilha grava até LIMITE_DA_BIO_GRAVADA, e mostrar só o
+    // começo fazia qualquer edição destruir, em silêncio, o resto que a pessoa
+    // nunca viu (validação de 16/09 na #135, item 10).
+    const bioMostrada = (rascunhoEhMaisNovo && bioDoRascunho) || bioSalva;
     setForm(prev => {
       const base = rascunho ? { ...prev, ...rascunho } : prev;
       return {
@@ -461,10 +480,10 @@ export default function Onboarding() {
         country: rascunho?.country || profile?.country || base.country,
         // A bio já salva (contas da carga de scripts/importar-participantes.mjs)
         // não vinha para o formulário e saía vazia ao concluir, apagando-a no
-        // servidor (lista do Nicolas na PR #135, item 10). A carga insere sem
-        // limite e o zod de completeOnboarding aceita até LIMITE_BIO: maior que
-        // isso, o "Continuar" da etapa 1 travava e a conta não concluía.
-        bio: base.bio || cortarSemPartirEmoji(profile?.bio ?? "", LIMITE_BIO),
+        // servidor (lista do Nicolas na PR #135, item 10). Vem inteira, e o que
+        // a pessoa já DIGITOU vence — `prev`, não `base`: `base` já traz o
+        // rascunho, e o rascunho velho voltaria por cima do texto novo.
+        bio: prev.bio || bioMostrada,
         // O porte já gravado volta marcado, venha no formato antigo (um porte só)
         // ou no novo (lista separada por vírgula) — ver lerPortes.
         preferredCompanySizes: base.preferredCompanySizes.length > 0
@@ -712,7 +731,9 @@ export default function Onboarding() {
   };
 
   const canProceed = () => {
-    if (step === 1) return form.displayName.trim().length >= 2 && form.city.trim().length >= 2 && form.bio.length <= LIMITE_BIO;
+    // O teto do passo é o que a plataforma GRAVA: a bio da carga passa do teto
+    // do cadastro e travava o "Continuar" da etapa 1 — a conta não concluía.
+    if (step === 1) return form.displayName.trim().length >= 2 && form.city.trim().length >= 2 && form.bio.length <= LIMITE_DA_BIO_GRAVADA;
     if (step === 2) {
       const temEspecialidade = form.primarySpecialties.length > 0 || form.customSpecialty.trim().length > 0;
       // Quem se declara MEI, pessoa juridica ou sem fins lucrativos tem cadastro empresarial por definicao (A7).
@@ -768,6 +789,10 @@ export default function Onboarding() {
       // Em branco, o campo não vai: `bio: ""` apagava a bio importada, e o
       // servidor (upsertUserProfile → UPDATE do Drizzle) não toca na coluna
       // quando o valor está ausente.
+      // Campo intocado cujo conteúdo é o texto CORTADO do que já está salvo: não vai.
+      // Ausente, o servidor não mexe na coluna e a bio longa da carga sobrevive.
+      // O campo mostra a apresentação inteira, então o que volta é o que está
+      // gravado (ou o que a pessoa escreveu). Sem corte, não há o que perder.
       bio: form.bio.trim() || undefined,
       primarySpecialty: selectedSpecialties[0], secondarySpecialties: selectedSpecialties.slice(1),
       experienceYears: form.experienceYears ?? undefined,
@@ -880,7 +905,7 @@ export default function Onboarding() {
                     <div>
                       <TextareaInput label={t("onboarding.fields.bio")} value={form.bio} onChange={v => set("bio", v)}
                         placeholder={t("onboarding.fields.bioPlaceholder")} hint={t("onboarding.fields.bioHint")}
-                        limite={LIMITE_BIO} assistente/>
+                        limite={LIMITE_DA_BIO_GRAVADA} assistente/>
                     </div>
                     <div>
                       <div className="grid grid-cols-2 gap-4">

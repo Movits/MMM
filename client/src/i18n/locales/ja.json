@@ -1830,7 +1830,9 @@
       "cidade": "都市",
       "atuacao": "あなたの活動分野",
       "apresentacao": "あなたが誰で何をしているかを伝える、{{minimo}}語以上の自己紹介",
-      "apresentacaoContagem": "自己紹介：{{contadas}}/{{minimo}}語の内容のある言葉；異なる2文字で1語と数え、数字や記号は含まれません",
+      "apresentacaoContagem": "自己紹介：{{contadas}}/{{minimo}}語の異なる内容のある言葉；異なる2文字で1語と数え、数字や記号、繰り返しは含まれません",
+      "apresentacaoRepeticao": "自己紹介：同じ言葉の繰り返しが多すぎます。別の言葉で、あなたが誰で何をしているかを書いてください",
+      "apresentacaoContagemERepeticao": "自己紹介：{{contadas}}/{{minimo}}語の異なる内容のある言葉で、しかも繰り返しが多すぎます。別の言葉で新しいことを足してください",
       "oQueTenho": "「私が持つもの」に1つ以上の項目",
       "oQuePreciso": "「私が必要なもの」に1つ以上の項目"
     }
@@ -1971,6 +1973,8 @@
       "noConsent": "コネクションを見て記録するには、スマートコネクションを有効にしてください。",
       "internalAlert": "あなた自身のネットワーク内に機会が見つかりました。",
       "memberSide": "プラットフォームのメンバー",
+      "mySide": "あなたの側",
+      "reference": "参照番号 {{codigo}}",
       "contactSide": "別のネットワークの連絡先（{{codigo}}）",
       "itemLine": "持っている：{{tem}} ・ 必要：{{precisa}}",
       "registeredAt": "{{data}} に記録",
@@ -2007,7 +2011,8 @@
       "closingAwaiting": "成約を確認しました。相手側の確認を待っています。",
       "discardConfirmTitle": "このコネクションを見送りますか？",
       "discardConfirmText": "見送りは取り消せません。このコネクションはあなたにとって見送りのままとなり、次の段階に進めることはできなくなります。",
-      "discardConfirmButton": "コネクションを見送る",
+      "otherSideAnonymous": "相手は匿名のままです。プラットフォームは誰かを表示しません。上の参照番号を確認してください。それがこのつながりを特定するものであり、破棄は取り消せません。",
+      "discardConfirmButton": "{{codigo}} を破棄",
       "discardConfirmCancel": "キャンセル",
       "reasonPlatformMatch": "接続が記録された時点で Smart Match の規約に同意していた二人のメンバーの間で、プロフィール・エンジンが提案しました：適合度 {{pontuacao}}%。",
       "reasonNoAuthorization": "相手が承認を取り消したため、この接続の詳細は表示されなくなりました。"

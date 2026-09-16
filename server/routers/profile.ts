@@ -16,10 +16,44 @@ import {
   VALORES_ACEITOS_EM_SEEKING_TYPES,
 } from "../../shared/o-que-busca";
 import { esquemaDasDemandas, esquemaDoWhatINeed, prepararOQuePreciso } from "../o-que-preciso";
+import { cortarSemPartirEmoji, LIMITE_DA_BIO_GRAVADA, LIMITE_DA_BIO_NO_CADASTRO } from "../../shared/apresentacao";
 
 // ============================================================
 // PERFIL DO USUÁRIO
 // ============================================================
+
+/**
+ * A apresentação GRAVADA que o cadastro não deve regravar por cima: quando o
+ * texto que chegou é o corte que o formulário fazia (bundle antigo em cache) ou
+ * está VAZIO com apresentação gravada (o bundle publicado da main). Devolve null
+ * em todo o resto — bio ausente, texto editado, conta sem apresentação —, e aí
+ * a escrita segue normal.
+ *
+ * A comparação é por IGUALDADE com `cortarSemPartirEmoji`, a mesma função da
+ * tela, e não por "começa com": um começo com folga descarta edição legítima
+ * — quem apaga o pedaço pendurado no fim do texto cortado está editando, e
+ * essa edição tem de valer.
+ */
+async function apresentacaoAPreservar(userId: number, bioRecebida: string | undefined): Promise<string | null> {
+  if (bioRecebida === undefined) return null;
+  // Um corte tem o tamanho do teto, ou um a menos quando o último code point
+  // ocupa duas unidades UTF-16 e não coube. Texto de tamanho médio não é
+  // corte nem apagamento, e nem consulta o perfil.
+  const podeSerCorte = bioRecebida.length >= LIMITE_DA_BIO_NO_CADASTRO - 1;
+  if (!podeSerCorte && bioRecebida.trim() !== "") return null;
+  const perfil = (await getUserProfile(userId)) as { bio?: string | null } | null;
+  const salva = perfil?.bio ?? "";
+  // Bio VAZIA com apresentação gravada: é o bundle publicado da main, que
+  // manda `bio` sempre e nunca pré-preenche o campo. Concluir o cadastro não
+  // é o lugar de apagar uma apresentação que a pessoa não viu — quem quer
+  // limpar o texto faz isso no Perfil, onde ele está à vista.
+  if (bioRecebida.trim() === "") return salva.length > 0 ? salva : null;
+  if (salva.length <= LIMITE_DA_BIO_NO_CADASTRO) return null;
+  // O bundle antigo manda `form.bio.trim()`: o corte pode chegar sem os espaços
+  // das pontas, e a igualdade tem de reconhecer as duas formas.
+  const corte = cortarSemPartirEmoji(salva, LIMITE_DA_BIO_NO_CADASTRO);
+  return bioRecebida === corte || bioRecebida === corte.trim() ? salva : null;
+}
 
 // Aceita "meusite.com.br" e completa o protocolo. Antes, z.string().url()
 // puro rejeitava a mutation INTEIRA quando a usuária colava a URL sem
@@ -71,7 +105,10 @@ export const profileRouter = router({
  update: protectedProcedure
    .input(z.object({
      displayName: z.string().min(2).max(100).optional(),
-     bio: z.string().max(1000).optional(),
+     // O Perfil edita o que JÁ ESTÁ gravado, e a carga da planilha grava mais
+     // do que o formulário do cadastro mostra: com o teto do cadastro aqui, a
+     // mutation inteira era recusada e a pessoa não conseguia nem encurtar.
+     bio: z.string().max(LIMITE_DA_BIO_GRAVADA).optional(),
      city: z.string().max(100).optional(),
      country: z.string().length(2).optional(),
      sectors: z.array(z.string()).optional(),
@@ -138,7 +175,10 @@ export const profileRouter = router({
  completeOnboarding: protectedProcedure
    .input(z.object({
      displayName: z.string().min(2).max(100),
-     bio: z.string().max(1000).optional(),
+     // O campo mostra a apresentação inteira, inclusive a da carga, que passa
+     // do teto do cadastro: com o teto menor aqui, concluir devolveria o texto
+     // gravado e o zod derrubaria a mutation inteira.
+     bio: z.string().max(LIMITE_DA_BIO_GRAVADA).optional(),
      city: z.string().max(100),
      country: z.string().length(2).default("BR"),
      sectors: z.array(z.string()).min(1).max(5).optional(),
@@ -212,8 +252,18 @@ export const profileRouter = router({
       // é gravado e o cadastro não conclui (server/termo-geral-de-uso.ts).
       await exigirAceiteDoTermoGeral(ctx.user.id);
       const { company, position, jobTitle, currentRole, currentCompany, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed: _whatINeed, whatINeedDetails: _whatINeedDetails, personType, companySize, companyCnpj, seekingOtherNeed, ...profileData } = input;
+      // Concluir o cadastro não regrava o corte que a própria tela mostrou. O
+      // formulário corta a bio no teto para caber; a trava de não reenviar
+      // esse corte é do cliente, e um bundle antigo em cache durante o deploy
+      // volta a mandar o texto cortado — o upsert gravaria por cima e uma bio
+      // importada de 1500 caracteres perderia 500, em silêncio e sem
+      // histórico da coluna. Só o texto IDÊNTICO ao corte é ignorado:
+      // qualquer edição, inclusive apagar o pedaço pendurado no fim do texto
+      // cortado, grava normalmente.
+      const bioPreservada = await apresentacaoAPreservar(ctx.user.id, input.bio);
       await upsertUserProfile(ctx.user.id, {
         ...profileData,
+        ...(bioPreservada !== null ? { bio: bioPreservada } : {}),
         // Desmarcar "Outra necessidade" apaga o texto: ele não pode seguir
         // valendo como necessidade declarada. Sem seekingTypes no pedido, não mexe.
         ...(input.seekingTypes !== undefined

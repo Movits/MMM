@@ -88,6 +88,24 @@ describe("registro — a chave do par e o motivo", () => {
     expect(itens).toEqual([{ tem: "Distribuição farmacêutica", precisa: "Distribuidores", deCodigo: "NW-AAAAAA", paraCodigo: "NW-BBBBBB" }]);
     expect(motivoAnonimo({ matchType: "mutual", matchedAssets: [], matchedNeeds: [] }, "NW-A", "NW-B").motivo).toContain("se completam");
   });
+
+  it("o rótulo é gravado como a dona escreveu: a máscara é da LEITURA da staff, não da escrita", () => {
+    // Mascarar na escrita destrói o dado no banco, e num PRIVATE_NETWORK_MATCH
+    // os dois lados são contatos da MESMA dona: ela leria a própria anotação
+    // borrada, contra o contrato do módulo da máscara. E há falso positivo que
+    // estragaria o registro ("Café arábica 14 6000-8000 sacas").
+    const { motivo, itens } = motivoAnonimo(
+      {
+        matchType: "exact",
+        matchedAssets: [{ slug: "v", label: "Vinho Malbec — chamar no (11) 98888-7777" }],
+        matchedNeeds: [{ slug: "v", label: "Vinho importado — ana.souza@vinhos.com.br" }],
+      },
+      "NW-AAAAAA", "NW-BBBBBB",
+    );
+
+    expect(motivo).toContain("(11) 98888-7777");
+    expect(itens[0].precisa).toContain("ana.souza@vinhos.com.br");
+  });
 });
 
 describe("registro — toda conexão interna é informada à plataforma (item 16)", () => {

@@ -26,15 +26,21 @@ export function QualificacaoDoPerfil({ role, perfil, onCompletar }: {
   const { qualificado, pendencias, detalhes } = avaliarQualificacaoDoPerfil(perfil);
   const { apresentacao } = detalhes;
 
-  // A apresentação recusada diz quantas palavras de conteúdo a régua contou
-  // ("5 de 6; 'de' e 'para' não contam"), não só o mínimo: quem escreveu 7
-  // palavras e leu "pelo menos 6" não entendia a recusa (revisão da #135,
-  // item 8). Com a contagem no mínimo e a pendência de pé, o motivo é a
-  // repetição, e a contagem enganaria: fica o texto geral.
-  const textoDaPendencia = (pendencia: PendenciaDoPerfil) =>
-    pendencia === "apresentacao" && apresentacao.contadas < apresentacao.minimo
-      ? t("governanca.pendencias.apresentacaoContagem", apresentacao)
-      : t(`governanca.pendencias.${pendencia}`, { minimo: apresentacao.minimo });
+  // Quatro textos, e a ordem importa: a recusa pode ter DOIS motivos ao mesmo
+  // tempo (faltam palavras diferentes E o texto se repete), e quem só ouve o
+  // primeiro completa as palavras e leva uma segunda recusa sem aviso. O texto
+  // geral fica só para o campo vazio — com texto escrito ele esconde a
+  // contagem, que é justamente o que explica a recusa (validação de 16/09 na
+  // #135, item 8).
+  const textoDaPendencia = (pendencia: PendenciaDoPerfil) => {
+    if (pendencia !== "apresentacao") return t(`governanca.pendencias.${pendencia}`, { minimo: apresentacao.minimo });
+    if (apresentacao.vazia) return t("governanca.pendencias.apresentacao", { minimo: apresentacao.minimo });
+    const faltamPalavras = apresentacao.contadas < apresentacao.minimo;
+    if (faltamPalavras && apresentacao.repetida) return t("governanca.pendencias.apresentacaoContagemERepeticao", apresentacao);
+    if (faltamPalavras) return t("governanca.pendencias.apresentacaoContagem", apresentacao);
+    if (apresentacao.repetida) return t("governanca.pendencias.apresentacaoRepeticao", apresentacao);
+    return t("governanca.pendencias.apresentacao", { minimo: apresentacao.minimo });
+  };
 
   return (
     <section
