@@ -155,6 +155,14 @@ function irAteAUltimaEtapa() {
 
 const botaoFinal = () => screen.getByRole("button", { name: new RegExp(pt.onboarding.nav.findMatches) });
 
+// As duas caixas da última etapa (a de maioridade entrou em 16/09; ver Onboarding.maioridade.test.tsx).
+const caixaDoAceite = () => screen.getByRole("checkbox", { name: pt.termoGeral.aceite });
+const caixaDaMaioridade = () => screen.getByRole("checkbox", { name: pt.termoGeral.maioridade });
+function marcarAsDuasCaixas() {
+  fireEvent.click(caixaDoAceite());
+  fireEvent.click(caixaDaMaioridade());
+}
+
 beforeEach(() => {
   vi.useFakeTimers();
   Object.defineProperty(window, "scrollTo", { value: () => {}, writable: true, configurable: true });
@@ -223,7 +231,7 @@ describe("uma etapa de termos só — o Termo Geral substituiu 'Termos e Condiç
     render(<Onboarding />);
     irAteAUltimaEtapa();
 
-    fireEvent.click(screen.getByRole("checkbox"));
+    marcarAsDuasCaixas();
     fireEvent.click(botaoFinal());
 
     const aceites = duble.chamadas.filter(([nome]) => nome === "consent.accept").map(([, vars]) => (vars as { type: string }).type);
@@ -238,7 +246,7 @@ describe("uma etapa de termos só — o Termo Geral substituiu 'Termos e Condiç
     render(<Onboarding />);
     irAteAUltimaEtapa();
 
-    fireEvent.click(screen.getByRole("checkbox"));
+    marcarAsDuasCaixas();
     fireEvent.click(botaoFinal());
 
     const concluido = { id: 7, role: "bronze", onboardingCompleted: true };
@@ -297,7 +305,7 @@ describe("passo 3 — O que você busca?", () => {
 });
 
 describe("última etapa — Termo Geral de Uso", () => {
-  it("mostra o texto da versão publicada (sem a linha ☐ do docx) e um único checkbox", () => {
+  it("mostra o texto da versão publicada (sem a linha ☐ do docx) e duas caixas: o aceite e a declaração de maioridade", () => {
     render(<Onboarding />);
     irAteAUltimaEtapa();
 
@@ -305,8 +313,9 @@ describe("última etapa — Termo Geral de Uso", () => {
     const texto = screen.getByTestId("texto-do-termo-geral");
     expect(texto.textContent).toMatch(/1\.1\. Este instrumento regula o acesso\./);
     expect(texto.textContent).not.toMatch(/☐/);
-    expect(screen.getAllByRole("checkbox")).toHaveLength(1);
-    expect(screen.getByText(pt.termoGeral.aceite)).toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(2);
+    expect(caixaDoAceite()).not.toBeChecked();
+    expect(caixaDaMaioridade()).not.toBeChecked();
     expect(botaoFinal()).toBeDisabled();
   });
 
@@ -327,7 +336,7 @@ describe("última etapa — Termo Geral de Uso", () => {
     render(<Onboarding />);
     irAteAUltimaEtapa();
 
-    fireEvent.click(screen.getByRole("checkbox"));
+    marcarAsDuasCaixas();
     expect(botaoFinal()).toBeEnabled();
     fireEvent.click(botaoFinal());
 
@@ -336,6 +345,7 @@ describe("última etapa — Termo Geral de Uso", () => {
     const perfil = duble.chamadas[1][1] as Record<string, unknown>;
     expect(perfil).not.toHaveProperty("age");
     expect(perfil.seekingTypes).toEqual(["expandir_negocio"]);
+    expect(perfil.declaraMaioridade).toBe(true);
     expect(perfil.seekingOtherNeed).toBeUndefined();
   });
 
@@ -346,19 +356,21 @@ describe("última etapa — Termo Geral de Uso", () => {
     const { rerender } = render(<Onboarding />);
     irAteAUltimaEtapa();
 
-    fireEvent.click(screen.getByRole("checkbox"));
+    marcarAsDuasCaixas();
     expect(botaoFinal()).toBeEnabled();
 
     const v4 = { ...TERMO, id: "termo-v4", version: 4, text: "# TERMO GERAL DE USO\n\n1.1. Texto da versão 4.\n" };
     duble.status = { data: { document: v4, accepted: false, acceptedAt: null, pendingText: false, previousVersion: 3 }, isLoading: false, isError: false };
     rerender(<Onboarding />);
 
-    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(caixaDoAceite()).not.toBeChecked();
+    // A declaração de maioridade não depende da versão do termo: continua marcada.
+    expect(caixaDaMaioridade()).toBeChecked();
     expect(botaoFinal()).toBeDisabled();
     fireEvent.click(botaoFinal());
     expect(duble.chamadas.some(([nome]) => nome === "consent.accept")).toBe(false);
 
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(caixaDoAceite());
     fireEvent.click(botaoFinal());
     expect(duble.chamadas[0]).toEqual(["consent.accept", { type: "termo_geral_de_uso", documentVersionId: "termo-v4" }]);
   });
@@ -368,12 +380,12 @@ describe("última etapa — Termo Geral de Uso", () => {
     render(<Onboarding />);
     irAteAUltimaEtapa();
 
-    fireEvent.click(screen.getByRole("checkbox"));
+    marcarAsDuasCaixas();
     fireEvent.click(botaoFinal());
 
     expect(duble.chamadas.some(([nome]) => nome === "profile.completeOnboarding")).toBe(false);
     expect(duble.chamadas.some(([nome]) => nome === "consent.status.refetch")).toBe(true);
-    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(caixaDoAceite()).not.toBeChecked();
     expect(toast.error).toHaveBeenCalledWith(pt.termoGeral.versaoMudou);
   });
 });

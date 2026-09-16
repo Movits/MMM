@@ -1783,7 +1783,10 @@
     "naoPublicado": "Los Términos Generales de Uso aún no están disponibles.",
     "naoPublicadoDica": "Sin ellos no se puede completar el registro. Avisa al soporte e inténtalo más tarde; lo que completaste sigue en esta pantalla.",
     "versaoMudou": "Los términos se actualizaron mientras leías. Lee la nueva versión y vuelve a marcar la aceptación.",
-    "erroAceite": "No se pudo registrar la aceptación de los términos. No se guardó nada; inténtalo de nuevo."
+    "erroAceite": "No se pudo registrar la aceptación de los términos. No se guardó nada; inténtalo de nuevo.",
+    "maioridade": "Declaro que tengo 18 años o más.",
+    "maioridadeObrigatoria": "Sin esta declaración no se puede completar el registro: la plataforma es exclusiva para mayores de 18 años.",
+    "maioridadeRecusada": "No se completó el registro: marca la declaración de que tienes 18 años o más e inténtalo de nuevo."
   },
   "assistenteTexto": {
     "gravar": "Grabar audio",

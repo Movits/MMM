@@ -210,7 +210,9 @@ pedido FICA esperando e a presidência recebe o aviso: mesclar a fila só depois
 conceder o poder em produção. Detalhes em docs/arquitetura/fluxos.md e privacidade.md.
 
 **Cadastro não concluído não usa a plataforma.** `profile.completeOnboarding` exige o
-Termo Geral de Uso aceito (`server/termo-geral-de-uso.ts`) e é quem marca
+Termo Geral de Uso aceito (`server/termo-geral-de-uso.ts`) e a declaração de maioridade
+(`declaraMaioridade: true`, cláusula 3.4 do Termo; gravada em `audit_logs` como
+`AGE_MAJORITY_DECLARED` ANTES de concluir, por `server/maioridade.ts`), e é quem marca
 `users.onboardingCompleted`; o `protectedProcedure` (e, por herança, admin, Ouro e
 distribuidor) passa por `exigirCadastroConcluido` (`server/cadastro-concluido.ts`), que
 responde PRECONDITION_FAILED a quem tem `onboardingCompleted = false` fora de `auth`,

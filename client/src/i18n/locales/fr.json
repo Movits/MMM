@@ -1783,7 +1783,10 @@
     "naoPublicado": "Les Conditions générales d’utilisation ne sont pas encore disponibles.",
     "naoPublicadoDica": "Sans elles, l’inscription ne peut pas être finalisée. Prévenez le support et réessayez plus tard ; ce que vous avez rempli reste sur cet écran.",
     "versaoMudou": "Les conditions ont été mises à jour pendant votre lecture. Lisez la nouvelle version et cochez de nouveau l’acceptation.",
-    "erroAceite": "Impossible d’enregistrer votre acceptation. Rien n’a été enregistré ; réessayez."
+    "erroAceite": "Impossible d’enregistrer votre acceptation. Rien n’a été enregistré ; réessayez.",
+    "maioridade": "Je déclare avoir 18 ans ou plus.",
+    "maioridadeObrigatoria": "L’inscription ne peut pas être finalisée sans cette déclaration : la plateforme est réservée aux personnes de 18 ans ou plus.",
+    "maioridadeRecusada": "L’inscription n’a pas été finalisée : cochez la déclaration indiquant que vous avez 18 ans ou plus, puis réessayez."
   },
   "assistenteTexto": {
     "gravar": "Enregistrer un audio",

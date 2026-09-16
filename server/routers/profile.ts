@@ -9,6 +9,9 @@ import { users, userProfiles } from "../../drizzle/schema";
 import { toPublicUser } from "../auth";
 import { reavaliarNivelPeloPerfil } from "../nivel-do-perfil";
 import { exigirAceiteDoTermoGeral } from "../termo-geral-de-uso";
+import { exigirDeclaracaoDeMaioridade, registrarDeclaracaoDeMaioridade } from "../maioridade";
+import { IDADE_MINIMA, MENSAGEM_IDADE_ABAIXO_DO_MINIMO } from "../../shared/maioridade";
+import { getRequestIp } from "../password-reset-security";
 import {
   LIMITE_OUTRA_NECESSIDADE,
   outraNecessidadeValida,
@@ -195,8 +198,13 @@ export const profileRouter = router({
      companySize: z.enum(["mei", "micro", "small", "medium", "large"]).optional(),
      companyCnpj: z.string().optional(),
      gender: z.enum(["male", "female", "prefer_not_to_say"]).optional(),
-     // Campos do sistema de matching
-     age: z.number().int().min(16).max(120).optional(),
+     // Campos do sistema de matching. A tela não pede mais a idade (14/09), mas
+     // quem a mandar respeita a cláusula 3.4 do Termo Geral: 18 anos ou mais
+     // (era 16; ver shared/maioridade.ts).
+     age: z.number().int().min(IDADE_MINIMA, MENSAGEM_IDADE_ABAIXO_DO_MINIMO).max(120).optional(),
+     // "Declaro que tenho 18 anos ou mais.", a caixa da última etapa. Só `true`
+     // conclui; a recusa, com mensagem em português, é de exigirDeclaracaoDeMaioridade.
+     declaraMaioridade: z.boolean().optional(),
      primarySpecialty: z.string().max(100).optional(),
      secondarySpecialties: z.array(z.string().min(1).max(100)).optional(),
      experienceYears: z.number().int().min(0).max(60).optional(),
@@ -242,6 +250,9 @@ export const profileRouter = router({
       whatINeedDetails: esquemaDasDemandas.optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // Antes de tudo: sem a declaração de maioridade (cláusula 3.4 do Termo
+      // Geral) nada é lido nem gravado e o cadastro não conclui.
+      exigirDeclaracaoDeMaioridade(input.declaraMaioridade);
       conferirCadastroEmpresarial(input.personType, input.companyCnpj);
       if (!outraNecessidadeValida(input.seekingTypes, input.seekingOtherNeed)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Você marcou \"Outra necessidade\": descreva o que você procura." });
@@ -250,8 +261,8 @@ export const profileRouter = router({
       const oQuePreciso = prepararOQuePreciso(input.whatINeed, input.whatINeedDetails);
       // Última etapa do cadastro: sem o Termo Geral de Uso vigente aceito, nada
       // é gravado e o cadastro não conclui (server/termo-geral-de-uso.ts).
-      await exigirAceiteDoTermoGeral(ctx.user.id);
-      const { company, position, jobTitle, currentRole, currentCompany, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed: _whatINeed, whatINeedDetails: _whatINeedDetails, personType, companySize, companyCnpj, seekingOtherNeed, ...profileData } = input;
+      const termoAceito = await exigirAceiteDoTermoGeral(ctx.user.id);
+      const { company, position, jobTitle, currentRole, currentCompany, activityArea, interestSectors, institutionalNetwork, currentResources, whatIHave, whatINeed: _whatINeed, whatINeedDetails: _whatINeedDetails, personType, companySize, companyCnpj, seekingOtherNeed, declaraMaioridade: _declaraMaioridade, ...profileData } = input;
       // Concluir o cadastro não regrava o corte que a própria tela mostrou. O
       // formulário corta a bio no teto para caber; a trava de não reenviar
       // esse corte é do cliente, e um bundle antigo em cache durante o deploy
@@ -261,6 +272,16 @@ export const profileRouter = router({
       // qualquer edição, inclusive apagar o pedaço pendurado no fim do texto
       // cortado, grava normalmente.
       const bioPreservada = await apresentacaoAPreservar(ctx.user.id, input.bio);
+      // A prova da declaração de maioridade vem ANTES de qualquer escrita: com
+      // IP, user-agent e a versão do Termo Geral aceita (server/maioridade.ts
+      // explica por que na auditoria e não no `consents`). Se a linha não
+      // grava, a mutation falha aqui e o cadastro não conclui sem prova.
+      await registrarDeclaracaoDeMaioridade({
+        userId: ctx.user.id,
+        termo: termoAceito,
+        ipAddress: getRequestIp(ctx.req.headers["x-forwarded-for"], ctx.req.socket?.remoteAddress ?? ctx.req.ip),
+        userAgent: ctx.req.headers["user-agent"],
+      });
       await upsertUserProfile(ctx.user.id, {
         ...profileData,
         ...(bioPreservada !== null ? { bio: bioPreservada } : {}),

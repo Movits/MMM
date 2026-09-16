@@ -1783,7 +1783,10 @@
     "naoPublicado": "The General Terms of Use are not available yet.",
     "naoPublicadoDica": "Sign-up cannot be completed without them. Please contact support and try again later; what you filled in stays on this screen.",
     "versaoMudou": "The terms were updated while you were reading. Read the new version and tick the acceptance box again.",
-    "erroAceite": "Your acceptance could not be recorded. Nothing was saved; please try again."
+    "erroAceite": "Your acceptance could not be recorded. Nothing was saved; please try again.",
+    "maioridade": "I declare that I am 18 years of age or older.",
+    "maioridadeObrigatoria": "Sign-up cannot be completed without this declaration: the platform is exclusively for people aged 18 or over.",
+    "maioridadeRecusada": "Sign-up was not completed: tick the declaration that you are 18 or older and try again."
   },
   "assistenteTexto": {
     "gravar": "Record audio",

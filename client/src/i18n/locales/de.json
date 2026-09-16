@@ -1783,7 +1783,10 @@
     "naoPublicado": "Die Allgemeinen Nutzungsbedingungen sind noch nicht verfügbar.",
     "naoPublicadoDica": "Ohne sie kann die Registrierung nicht abgeschlossen werden. Informieren Sie den Support und versuchen Sie es später erneut; Ihre Eingaben bleiben auf dieser Seite.",
     "versaoMudou": "Die Bedingungen wurden aktualisiert, während Sie gelesen haben. Lesen Sie die neue Fassung und bestätigen Sie die Zustimmung erneut.",
-    "erroAceite": "Ihre Zustimmung konnte nicht gespeichert werden. Es wurde nichts gespeichert; versuchen Sie es erneut."
+    "erroAceite": "Ihre Zustimmung konnte nicht gespeichert werden. Es wurde nichts gespeichert; versuchen Sie es erneut.",
+    "maioridade": "Ich erkläre, dass ich mindestens 18 Jahre alt bin.",
+    "maioridadeObrigatoria": "Ohne diese Erklärung kann die Registrierung nicht abgeschlossen werden: Die Plattform steht ausschließlich Personen ab 18 Jahren offen.",
+    "maioridadeRecusada": "Die Registrierung wurde nicht abgeschlossen: Bestätigen Sie die Erklärung, dass Sie mindestens 18 Jahre alt sind, und versuchen Sie es erneut."
   },
   "assistenteTexto": {
     "gravar": "Audio aufnehmen",

@@ -1783,7 +1783,10 @@
     "naoPublicado": "通用使用条款尚未发布。",
     "naoPublicadoDica": "没有该条款无法完成注册。请联系支持并稍后再试；您填写的内容仍保留在此页面。",
     "versaoMudou": "您阅读期间条款已更新。请阅读新版本并重新勾选接受。",
-    "erroAceite": "无法记录您对条款的接受。没有保存任何内容；请重试。"
+    "erroAceite": "无法记录您对条款的接受。没有保存任何内容；请重试。",
+    "maioridade": "本人声明已年满18周岁。",
+    "maioridadeObrigatoria": "未作出此声明将无法完成注册：本平台仅限年满18周岁的人士使用。",
+    "maioridadeRecusada": "注册未完成：请勾选您已年满18周岁的声明，然后重试。"
   },
   "assistenteTexto": {
     "gravar": "录制语音",
