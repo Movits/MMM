@@ -548,15 +548,6 @@ export async function listarPedidosEmAnalise(distribuidorId: number, limit = 50)
 }
 
 /**
- * A linha crua do pedido EM ANÁLISE, para o router conferir as travas antes de
- * decidir. O pedido em que o distribuidor é PARTE não existe para ele (o mesmo
- * recorte da fila e do histórico), e o que já saiu de `in_review` também não: id
- * inexistente, pedido de que ele é parte e pedido já decidido dão o mesmo null.
- * O router só chega aqui com o id tirado de uma alça que a própria fila entregou
- * a quem decide (server/alca-do-pedido.ts), e a fila nunca traz pedido de que ele
- * é parte: o recorte pelas partes continua no WHERE como segunda trava.
- */
-/**
  * A linha da conexão pelo id, sem recorte — para a TRAVA DO ACEITE
  * (`connections.respond`), que precisa ler um pedido `pending` de quem é parte.
  *
@@ -584,6 +575,15 @@ export async function lerPedidoParaAceite(connectionId: number) {
   return linha ?? null;
 }
 
+/**
+ * A linha crua do pedido EM ANÁLISE, para o router conferir as travas antes de
+ * decidir. O pedido em que o distribuidor é PARTE não existe para ele (o mesmo
+ * recorte da fila e do histórico), e o que já saiu de `in_review` também não: id
+ * inexistente, pedido de que ele é parte e pedido já decidido dão o mesmo null.
+ * O router só chega aqui com o id tirado de uma alça que a própria fila entregou
+ * a quem decide (server/alca-do-pedido.ts), e a fila nunca traz pedido de que ele
+ * é parte: o recorte pelas partes continua no WHERE como segunda trava.
+ */
 export async function lerPedidoDeMatch(connectionId: number, distribuidorId: number) {
   const db = await exigirDb();
   const [linha] = await db.select({

@@ -111,8 +111,10 @@ O que cada lado vê é o que a consulta devolve (`pedidoVisivelPara`, em `db.ts`
 | `not_forwarded` + `reciprocatedAt` | "Interesse não encaminhado" | "Interesse não encaminhado" | histórico |
 
 O distribuidor que é parte de um pedido não o vê na fila nem no histórico e não é
-avisado dele. Com duas linhas no par, o cartão e a aba Conexões mostram a mesma: a
-mais recente entre as que cada pessoa pode ver.
+avisado dele. Com duas linhas no par, o cartão e a aba Conexões mostram a mesma entre
+as que cada pessoa pode ver, escolhida pelo estado (`linhaVisivelDoPar`, em `db.ts`):
+a conexão aceita, depois o pedido encaminhado que ela responde, depois o encaminhado
+que ela espera e, no empate, a mais recente.
 
 Sem distribuidor que possa decidir (nenhum ativo, ou só as próprias partes), o pedido
 fica esperando (nunca passa sem análise) e president/admin ativos recebem o aviso
