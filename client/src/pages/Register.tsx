@@ -262,16 +262,28 @@ export default function Register() {
               )}
             </div>
 
-            {/* Termos */}
+            {/* Termos.
+
+                Os dois nomes eram <span> com cor de link e cursor-pointer: pareciam
+                clicáveis e não levavam a lugar nenhum. Numa frase que diz "ao criar
+                sua conta, você concorda com", isso é pior do que texto simples — a
+                pessoa tenta ler o que está aceitando e o clique morre. Agora são
+                links de verdade para as duas páginas públicas, que existem e estão
+                no ar (/termos mostra o Termo Geral vigente desde 16/09).
+
+                Abrem em aba nova de propósito: ler o termo no meio do cadastro não
+                pode custar o formulário já preenchido. */}
             <p className="text-xs text-white/50 leading-relaxed">
               {t("auth.termsPrefix")}{" "}
-              <span className="text-amber-500/70 hover:text-amber-400 cursor-pointer transition-colors">
+              <a href="/termos" target="_blank" rel="noopener noreferrer"
+                className="text-amber-500/70 hover:text-amber-400 underline underline-offset-2 transition-colors">
                 {t("auth.terms")}
-              </span>{" "}
+              </a>{" "}
               {t("auth.termsAnd")}{" "}
-              <span className="text-amber-500/70 hover:text-amber-400 cursor-pointer transition-colors">
+              <a href="/privacidade" target="_blank" rel="noopener noreferrer"
+                className="text-amber-500/70 hover:text-amber-400 underline underline-offset-2 transition-colors">
                 {t("auth.privacy")}
-              </span>
+              </a>
               . {t("auth.dataProtected")}
             </p>
 
