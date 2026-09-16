@@ -1,4 +1,5 @@
 import { DrizzleError, DrizzleQueryError } from "drizzle-orm";
+import { MENSAGEM_BANCO_INDISPONIVEL, MENSAGEM_ERRO_DE_CONSULTA } from "@shared/const";
 
 /**
  * Banco fora do ar.
@@ -29,10 +30,11 @@ import { DrizzleError, DrizzleQueryError } from "drizzle-orm";
  * O módulo é separado de propósito: db.ts e routers/consent.ts precisam os
  * dois da classe, e um importar do outro viraria ciclo.
  */
-export const MENSAGEM_BANCO_INDISPONIVEL = "Banco de dados indisponível; tente de novo em instantes";
-
-/** Erro do driver que NÃO é queda do banco (tabela ausente, chave duplicada, SQL inválido). */
-export const MENSAGEM_ERRO_DE_CONSULTA = "Erro ao consultar o banco de dados";
+// As duas frases passaram a morar em shared/const.ts: a TELA as reconhece para
+// dizê-las nos dez idiomas (client/src/lib/mensagem-de-erro.ts), e o client não
+// importa de server/. Reexportadas aqui para todo o servidor continuar
+// importando do mesmo lugar de sempre.
+export { MENSAGEM_BANCO_INDISPONIVEL, MENSAGEM_ERRO_DE_CONSULTA };
 
 export class BancoIndisponivel extends Error {
   constructor() {

@@ -36,7 +36,9 @@
     "login": "Sign in",
     "startFree": "Create account",
     "myDashboard": "My Dashboard →",
-    "beta": "Beta"
+    "beta": "Beta",
+    "backToTop": "Back to top",
+    "menu": "Menu"
   },
   "hero": {
     "badge": "Global business network among members • +30 countries • endless possibilities",
@@ -694,7 +696,16 @@
     "goToLogin": "Go to login",
     "backToLogin": "Back to login",
     "sending": "Sending...",
-    "passwordStrengthHint": "Use uppercase letters, numbers and symbols for a stronger password"
+    "passwordStrengthHint": "Use uppercase letters, numbers and symbols for a stronger password",
+    "forgotPasswordNote": "If the email is registered, you will receive the link in moments.",
+    "saving": "Saving...",
+    "forgotPasswordInfoTitle": "Important information",
+    "forgotPasswordInfoExpiryBefore": "The link expires in ",
+    "forgotPasswordInfoExpiryStrong": "1 hour",
+    "forgotPasswordInfoOnceBefore": "It can be used ",
+    "forgotPasswordInfoOnceStrong": "only once",
+    "forgotPasswordInfoSpam": "If it doesn't arrive, check your spam folder",
+    "emailPlaceholder": "you@email.com"
   },
   "errors": {
     "notFound": "Page not found",
@@ -704,7 +715,11 @@
     "backHome": "Back to home",
     "goToDashboard": "Go to Dashboard",
     "staleLink": "If you arrived here via a link, it may be outdated.",
-    "notFoundDescShort": "The page you're looking for doesn't exist."
+    "notFoundDescShort": "The page you're looking for doesn't exist.",
+    "databaseUnavailable": "Database unavailable; please try again in a moment",
+    "queryFailed": "Error querying the database",
+    "notAuthenticated": "Please sign in to continue.",
+    "notAuthorized": "You don't have permission for this action."
   },
   "aiEngine": {
     "label": "AI Engine",
@@ -716,7 +731,8 @@
     "dim3": "Values and purpose",
     "dim4": "Investment capacity",
     "badgeTitle": "AI-powered connections",
-    "badgeDesc": "Six-criteria analysis"
+    "badgeDesc": "Six-criteria analysis",
+    "illustrative": "Illustrative example"
   },
   "aiSection": {
     "label": "Artificial Intelligence",
@@ -773,7 +789,8 @@
       "whatINeedSubtitle": "Demands and needs to grow and expand",
       "noAssets": "No assets selected yet.",
       "noDemands": "No demands selected yet.",
-      "clickToEdit": "Click to edit →"
+      "clickToEdit": "Click to edit →",
+      "noProfessionalInfo": "No professional information yet."
     },
     "gender": {
       "label": "Gender",
@@ -800,6 +817,36 @@
       "registrationNumberPlaceholder": "Letters and numbers only",
       "registrationNumberHint": "Required for MEIs, companies and nonprofits.",
       "registrationNumberRequired": "Enter the Business Registration Number."
+    },
+    "backToHome": "Back to the home page",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "save": "Save",
+    "saveProfile": "Save profile",
+    "editProfile": "Edit profile",
+    "updated": "Profile updated successfully!",
+    "badgeGold": "Gold",
+    "badgeSilver": "Silver",
+    "badgeBronze": "Bronze",
+    "fields": {
+      "displayName": "Display name",
+      "displayNamePlaceholder": "How you would like to be addressed",
+      "company": "Company",
+      "companyPlaceholder": "Your company's name",
+      "jobTitle": "Job title",
+      "jobTitlePlaceholder": "E.g.: CEO, Sales Director",
+      "activityArea": "Area of activity",
+      "activityAreaPlaceholder": "E.g.: Export, Technology, Fashion",
+      "country": "Country",
+      "countryPlaceholder": "Select the country",
+      "city": "City",
+      "cityPlaceholder": "Your city",
+      "institutionalNetwork": "Institutional network",
+      "institutionalNetworkPlaceholder": "E.g.: Chamber of Commerce, industry association, business council",
+      "bio": "About you",
+      "bioPlaceholder": "Tell us a little about your story and your business...",
+      "linkedinPlaceholder": "https://linkedin.com/in/...",
+      "websitePlaceholder": "https://..."
     }
   },
   "network": {
@@ -958,7 +1005,12 @@
     "ouroRevogarCancelar": "Cancel",
     "ouroRevogando": "Revoking…",
     "ouroRevogadoToast": "Authorisation revoked. The archive stops being visible to Gold accounts.",
-    "ouroRevogarFalhaToast": "The authorisation could not be revoked."
+    "ouroRevogarFalhaToast": "The authorisation could not be revoked.",
+    "campoNotasIA": "📝 Notes",
+    "uploadFormatoNaoSuportado": "Unsupported format: upload JPG, PNG or WebP.",
+    "uploadArquivoMuitoGrande": "The file must be no larger than 10 MB.",
+    "uploadErroLerArquivo": "Could not read the file. Please try again.",
+    "uploadErroEnviarImagem": "Could not upload the image."
   },
   "contexts": {
     "editarContextoTitulo": "Edit Context",
@@ -1353,7 +1405,8 @@
     "noDocsYet": "No documents shared yet.",
     "sendDocsSecurely": "Securely send confidential documents.",
     "youLabel": "You",
-    "docsProtectedNotice": "All documents shared in this room are protected by the signed NDA. Sharing them outside this platform violates the agreed terms."
+    "docsProtectedNotice": "All documents shared in this room are protected by the signed NDA. Sharing them outside this platform violates the agreed terms.",
+    "fileSizeKb": "{{size}} KB"
   },
   "meetings": {
     "statusDraft": "Draft",
@@ -1452,7 +1505,17 @@
     "recordingExpiredNoTranscript": "No audio is stored for this meeting. Audio is kept for at most 30 days.",
     "decisionsPaused": "Available when processing finishes.",
     "storedAudioMissing": "This meeting's stored audio was not found.",
-    "audioDurationUnreadable": "We couldn't read this audio's duration. Upload the file as MP3 or M4A."
+    "audioDurationUnreadable": "We couldn't read this audio's duration. Upload the file as MP3 or M4A.",
+    "entity": {
+      "person": "Person",
+      "company": "Company",
+      "phone": "Phone",
+      "email": "Email",
+      "role": "Role",
+      "asset": "Offers",
+      "need": "Seeks",
+      "opportunity": "Opportunity"
+    }
   },
   "connections": {
     "messageSent": "Message sent",
@@ -1558,7 +1621,21 @@
     "aceitaEm": "accepted on",
     "revogadaEmData": "· revoked on {{data}}",
     "termoMudouAviso": "· the agreement changed after that",
-    "seloMesmoServico": "Same service"
+    "seloMesmoServico": "Same service",
+    "consentToastRegistered": "Authorization recorded.",
+    "consentErrorRegister": "Could not record the authorization.",
+    "consentLoading": "Loading the agreement…",
+    "consentErrorDesc": "Nothing was changed. Try opening this page again in a moment.",
+    "consentTitleUpdated": "The agreement has been updated",
+    "consentTitleRequired": "Authorization required",
+    "consentVersionLabel": "Version {{version}} of the Smart Cross-Referencing agreement",
+    "consentChangedBefore": "You had authorized ",
+    "consentChangedStrong": "version {{version}}",
+    "consentChangedAfter": ". The text has changed, and the previous authorization does not cover the new wording — so cross-referencing is paused until you accept this version. Your contacts and the connections you have already accepted stay where they were.",
+    "consentReadFull": "Read the full agreement",
+    "consentAcceptNew": "Accept the new version",
+    "consentAuthorize": "Authorize cross-referencing",
+    "consentRevokeNote": "You can revoke this whenever you want, and the rest of the platform keeps working."
   },
   "networkPanel": {
     "eyebrow": "YOUR PRIVATE NETWORK",
@@ -2261,5 +2338,148 @@
     "legado": {
       "consultoria": "Consulting"
     }
+  },
+  "faq": {
+    "label": "FAQ",
+    "headline1": "Clear up your ",
+    "headline2": "questions",
+    "subtitle": "The answers to the most common questions. And if yours isn't here, ask the AI just below.",
+    "items": {
+      "i1": {
+        "q": "What are the platform's membership levels?",
+        "a": "There are three: Bronze, Silver and Gold. Bronze and Silver are not subscription plans: they reflect how qualified the information in your profile is under Who I Am, What I Have and What I Need. Every account starts at Bronze, and Silver comes when that information meets the platform's completeness and quality criteria. Neither of them has a monthly fee. Gold is a premium category, with a monthly fee and exclusive benefits."
+      },
+      "i2": {
+        "q": "How does the non-disclosure agreement (NDA) work in the Deal Room?",
+        "a": "The Deal Room is the private room where the two of you negotiate inside the platform. Before any conversation there, both parties sign a non-disclosure agreement. The room is only released after both signatures, and everything exchanged there is protected by the agreement."
+      },
+      "i3": {
+        "q": "How does the Deal Room, the private negotiation room, work?",
+        "a": "You show interest in an opportunity and, when the other party accepts, the platform creates a private room for the two of you. Inside it are the chat and the documents for the deal, all conditional on the signed NDA. The idea is to leave the loose conversation behind and move into a space with clear rules."
+      },
+      "i4": {
+        "q": "What is the Gold level and how do I get it?",
+        "a": "Gold Status is the network's premium category, with a monthly fee: first-hand access to selected national and international business opportunities, invitations to strategic gatherings and priority in the communication of opportunities exclusive to the category. It is not an automatic step up from Silver: it depends on joining the premium category and on the platform's specific rules."
+      },
+      "i5": {
+        "q": "What kinds of opportunities can I find on the platform?",
+        "a": "Many kinds: offers of products and services, requests from those looking for a supplier, searches for investment, commercial partnerships and distribution channels. Before appearing to other members, every opportunity goes through an automatic check against the platform's rules and through approval by our team."
+      },
+      "i6": {
+        "q": "How does the AI find the pairings between profiles and opportunities?",
+        "a": "The system compares profiles across dimensions such as specialty, sector, goals, location, values and investment capacity, and calculates a compatibility score. For the strongest connections, the AI writes an explanation of why that partnership makes sense, so you can decide with context."
+      }
+    },
+    "askTitle": "Have another question? Ask the AI:",
+    "askPlaceholder": "E.g.: How does identity verification work?",
+    "askButton": "Ask",
+    "askError": "We couldn't answer right now. Please try again in a moment."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications yet",
+    "seeAll": "See all notifications",
+    "unread_zero": "{{count}} new",
+    "unread_one": "{{count}} new",
+    "unread_two": "{{count}} new",
+    "unread_few": "{{count}} new",
+    "unread_many": "{{count}} new",
+    "unread_other": "{{count}} new",
+    "timeNow": "now",
+    "timeMinutes": "{{count}}min ago",
+    "timeHours": "{{count}}h ago",
+    "timeDays": "{{count}}d ago"
+  },
+  "protectedRoute": {
+    "checkingAccess": "Checking access...",
+    "checkFailedTitle": "We couldn't verify your access",
+    "retry": "Try again"
+  },
+  "memory": {
+    "suggestion1": "Who do I know in Nigeria?",
+    "suggestion2": "Who works in healthcare?",
+    "suggestion3": "Who exports medicines?",
+    "suggestion4": "Who knows government ministers?",
+    "suggestion5": "Who works in mining?",
+    "suggestion6": "Who can open up a market in Europe?",
+    "typeContact": "Contact",
+    "typeContext": "Context",
+    "typeMeeting": "Meeting",
+    "updatedToast": "Memory updated: {{partes}}.",
+    "updatedIndexed": "{{count}} new record(s)",
+    "updatedRemoved": "{{count}} removed",
+    "updatedJoin": " and ",
+    "pendingToast": "{{count}} record(s) were left for the next update, to respect the pace of the AI service.",
+    "truncatedToast": "{{count}} record(s) were left out: your account has passed the memory's document limit.",
+    "errorReindex": "Could not update the memory.",
+    "errorSearch": "Could not run the search.",
+    "errorShortQuery": "Write a question with at least 2 characters.",
+    "eyebrow": "SMART MEMORY",
+    "title": "Ask about your network in your own words",
+    "subtitle": "Find contacts, contexts and private conversations without having to remember exact words. The answers use only the content in your account.",
+    "searchPlaceholder": "E.g.: Who works with renewable energy?",
+    "searchButton": "Search",
+    "privateMemory": "Private memory",
+    "checkingStatus": "Checking your memory…",
+    "documentsStored": "{{count}} record(s) stored",
+    "updatedAt": " · updated on {{data}}",
+    "reindexButton": "Update memory",
+    "searchingTitle": "Searching your private memory…",
+    "searchingSubtitle": "Looking through your contacts, contexts and meetings.",
+    "pendingBanner": "Your memory is still being indexed ({{count}} record(s) queued) — the results may be incomplete. Ask again in a moment.",
+    "truncatedBanner": "{{count}} record(s) were left out of the memory because your account has passed the document limit — the search cannot see them.",
+    "answerTitle": "Answer based on your records",
+    "sourcesTitle": "Private sources used",
+    "relevance": "{{percent}}% relevant",
+    "openSource": "Open source",
+    "noSources": "No sources found."
+  },
+  "enrichment": {
+    "saveEdit": "Save edit",
+    "assistantName": "WRW Assistant",
+    "contextCreated": "Context \"{{nome}}\" created and linked to the contact.",
+    "contextExisted": "The context \"{{nome}}\" already existed: the contact was linked to it.",
+    "contextGone": "That context can no longer be created here.",
+    "contextCreateError": "I couldn't create the context. Please try again.",
+    "contextOfferQuestion": "Create the context “{{nome}}”?",
+    "creating": "Creating...",
+    "create": "Create",
+    "notNow": "Not now",
+    "reloadError": "I couldn't reload the conversation. Close the contact and open it again.",
+    "sessionAlreadyActive": "An enrichment session is already active.",
+    "startError": "Error starting enrichment: {{motivo}}",
+    "suggestionPending": "There's a suggestion waiting for your decision. Confirm or ignore it to continue.",
+    "processError": "I couldn't process your answer right now. Please try again.",
+    "savedToProfile": "Information saved to the profile!",
+    "enrichedSuccess": "Profile enriched successfully!",
+    "alreadyDecided": "That suggestion had already been decided. I've refreshed the conversation.",
+    "saveError": "Error saving the information.",
+    "ignoreError": "Error ignoring the information.",
+    "completed": "Enrichment completed!",
+    "starting": "Starting...",
+    "startButton": "✨ Enrich profile with AI",
+    "headerDone": "Enrichment completed",
+    "headerActive": "Enrichment Chat",
+    "startingConversation": "Starting the conversation...",
+    "enrichedTitle": "✨ Profile enriched!",
+    "sessionDone": "Session completed.",
+    "inputPlaceholder": "Answer here...",
+    "confirmOrIgnore": "Confirm or ignore the information above to continue.",
+    "finish": "Finish enrichment →",
+    "confidence": "{{pct}}% confidence"
+  },
+  "oQueTenho": {
+    "industria": "Industry",
+    "fazenda": "Farm / Agribusiness",
+    "laboratorio": "Laboratory",
+    "tecnologia": "Technology",
+    "investidores": "Investor network",
+    "acesso_governamental": "Government access",
+    "commodities": "Raw materials (commodities)",
+    "licencas": "Licenses & certifications",
+    "imoveis": "Real estate",
+    "logistica": "Logistics",
+    "canais_comerciais": "Commercial channels"
   }
 }

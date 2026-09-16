@@ -55,20 +55,23 @@ const TIPO_TERMO_GERAL = "termo_geral_de_uso" as const;
 
 
 // ─── Tags "O que tenho" ───────────────────────────────────────────────────────
-// Os rótulos continuam em pt-BR fixo (como sempre estiveram); só o "Outros"
-// novo passa pelo i18n, com texto nos 10 idiomas.
+// `id` é o que vai GRAVADO (e o que já está no banco); `chave` é só o rótulo da
+// tela. Os rótulos eram texto fixo em português aqui e no Perfil — a mesma
+// lista, duplicada —, então o passo 6 do cadastro saía em português nos dez
+// idiomas. As chaves ficam em `oQueTenho.*` para as duas telas lerem o mesmo
+// rótulo, como já acontece com "O que preciso" (shared/o-que-preciso.ts).
 const WHAT_I_HAVE_OPTIONS = [
-  { id: "industria", label: "Indústria", icon: "🏭" },
-  { id: "fazenda", label: "Fazenda / Agro", icon: "🌾" },
-  { id: "laboratorio", label: "Laboratório", icon: "🔬" },
-  { id: "tecnologia", label: "Tecnologia", icon: "💻" },
-  { id: "investidores", label: "Rede de Investidores", icon: "💰" },
-  { id: "acesso_governamental", label: "Acesso Governamental", icon: "🏛️" },
-  { id: "commodities", label: "Matérias-primas (commodities)", icon: "📦" },
-  { id: "licencas", label: "Licenças & Certificações", icon: "📋" },
-  { id: "imoveis", label: "Imóveis", icon: "🏢" },
-  { id: "logistica", label: "Logística", icon: "🚚" },
-  { id: "canais_comerciais", label: "Canais Comerciais", icon: "🤝" },
+  { id: "industria", chave: "oQueTenho.industria", icon: "🏭" },
+  { id: "fazenda", chave: "oQueTenho.fazenda", icon: "🌾" },
+  { id: "laboratorio", chave: "oQueTenho.laboratorio", icon: "🔬" },
+  { id: "tecnologia", chave: "oQueTenho.tecnologia", icon: "💻" },
+  { id: "investidores", chave: "oQueTenho.investidores", icon: "💰" },
+  { id: "acesso_governamental", chave: "oQueTenho.acesso_governamental", icon: "🏛️" },
+  { id: "commodities", chave: "oQueTenho.commodities", icon: "📦" },
+  { id: "licencas", chave: "oQueTenho.licencas", icon: "📋" },
+  { id: "imoveis", chave: "oQueTenho.imoveis", icon: "🏢" },
+  { id: "logistica", chave: "oQueTenho.logistica", icon: "🚚" },
+  { id: "canais_comerciais", chave: "oQueTenho.canais_comerciais", icon: "🤝" },
 ];
 
 /**
@@ -1104,7 +1107,7 @@ export default function Onboarding() {
                   {t("onboarding.misc.step7_hint")} <span className="text-white/25">{t("onboarding.misc.optional")}</span>
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {sortOptionsAlphabetically(WHAT_I_HAVE_OPTIONS, i18n.language).map(opt => (
+                  {sortOptionsAlphabetically(WHAT_I_HAVE_OPTIONS.map(o => ({ ...o, label: t(o.chave) })), i18n.language).map(opt => (
                     <TagButton
                       key={opt.id}
                       icon={opt.icon}

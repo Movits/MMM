@@ -244,7 +244,7 @@ export default function DealRoom() {
                 <p className="text-white/40 border-t border-white/10 pt-3">
                   {t("dealRoom.ndaOpportunityLabel")} <strong className="text-white/60">{opp?.title}</strong><br />
                   {t("dealRoom.ndaRoomIdLabel", { roomId })}<br />
-                  {t("dealRoom.ndaCreatedLabel")} {room.createdAt ? new Date(room.createdAt).toLocaleDateString("pt-BR") : "-"}
+                  {t("dealRoom.ndaCreatedLabel")} {room.createdAt ? new Date(room.createdAt).toLocaleDateString(i18n.language) : "-"}
                 </p>
               </div>
 
@@ -334,7 +334,7 @@ export default function DealRoom() {
                       >
                         <p>{msg.content}</p>
                         <p className={`text-xs mt-1 ${isMine ? "text-black/50" : "text-white/30"}`}>
-                          {new Date(msg.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          {new Date(msg.createdAt).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
                     </div>
@@ -430,8 +430,8 @@ export default function DealRoom() {
                         <p className="text-white text-sm truncate">{doc.name}</p>
                         <p className="text-white/40 text-xs">
                           {doc.uploadedBy === user?.id ? t("dealRoom.youLabel") : otherParty?.name} •{" "}
-                          {new Date(doc.createdAt).toLocaleDateString("pt-BR")}
-                          {doc.sizeBytes && ` • ${(doc.sizeBytes / 1024).toFixed(0)} KB`}
+                          {new Date(doc.createdAt).toLocaleDateString(i18n.language)}
+                          {doc.sizeBytes && ` • ${t("dealRoom.fileSizeKb", { size: (doc.sizeBytes / 1024).toFixed(0) })}`}
                         </p>
                       </div>
                       <a href={doc.url} target="_blank" rel="noopener noreferrer">

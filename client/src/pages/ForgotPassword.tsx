@@ -70,18 +70,18 @@ export default function ForgotPassword() {
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-foreground">{t("auth.forgotPasswordSentTitle", "Verifique seu e-mail")}</h3>
+                  <h3 className="text-lg font-semibold text-foreground">{t("auth.forgotPasswordSentTitle")}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Se o e-mail existir em nossa base, você receberá instruções em breve. Verifique também a pasta de spam.
+                    {t("auth.forgotPasswordSentDesc")}
                   </p>
                 </div>
 
                 <div className="bg-muted/30 rounded-lg p-4 text-left space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Informações importantes</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("auth.forgotPasswordInfoTitle")}</p>
                   <ul className="text-xs text-muted-foreground space-y-1">
-                    <li>• O link expira em <strong className="text-foreground">1 hora</strong></li>
-                    <li>• Pode ser usado <strong className="text-foreground">apenas uma vez</strong></li>
-                    <li>• Se não receber, verifique a pasta de spam</li>
+                    <li>• {t("auth.forgotPasswordInfoExpiryBefore")}<strong className="text-foreground">{t("auth.forgotPasswordInfoExpiryStrong")}</strong></li>
+                    <li>• {t("auth.forgotPasswordInfoOnceBefore")}<strong className="text-foreground">{t("auth.forgotPasswordInfoOnceStrong")}</strong></li>
+                    <li>• {t("auth.forgotPasswordInfoSpam")}</li>
                   </ul>
                 </div>
 
@@ -110,7 +110,7 @@ export default function ForgotPassword() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="seu@email.com"
+                    placeholder={t("auth.emailPlaceholder")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required

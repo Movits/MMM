@@ -23,14 +23,39 @@ function assertFaqRate(ip: string) {
   if (faqCalls.size > 5000) faqCalls.clear();
 }
 
+// O idioma em que a IA deve responder. A chave é o código do seletor da Home
+// (client/src/i18n/index.ts) e o valor é o nome do idioma DENTRO do prompt,
+// que é escrito em português.
+//
+// Vem do cliente porque o servidor não tem como saber o idioma da tela: não há
+// cabeçalho de idioma tratado em lugar nenhum e `users` não tem coluna de
+// idioma. Desconhecido ou ausente cai no português do Brasil, que é o
+// fallback do próprio i18n.
+const IDIOMA_DA_RESPOSTA: Record<string, string> = {
+  "pt-BR": "português do Brasil",
+  en: "inglês",
+  es: "espanhol",
+  fr: "francês",
+  ar: "árabe",
+  zh: "chinês simplificado",
+  hi: "híndi",
+  de: "alemão",
+  ja: "japonês",
+  ru: "russo",
+};
+
 // ============================================================
 // FAQ COM IA
 // ============================================================
 export const faqRouter = router({
   ask: publicProcedure
-    .input(z.object({ question: z.string().min(1).max(500) }))
+    .input(z.object({
+      question: z.string().min(1).max(500),
+      idioma: z.string().max(10).optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       assertFaqRate(getRequestIp(ctx.req.headers["x-forwarded-for"], ctx.req.socket?.remoteAddress));
+      const idiomaDaResposta = IDIOMA_DA_RESPOSTA[input.idioma ?? ""] ?? IDIOMA_DA_RESPOSTA["pt-BR"];
       const systemPrompt = `Você é a assistente virtual da plataforma WRW — Women Rocking the World — uma rede de negócios para pessoas empreendedoras e líderes de negócios. Responda perguntas sobre a plataforma de forma clara, amigável e concisa (máximo 3 parágrafos curtos).
 
 Informações sobre a plataforma:
@@ -47,14 +72,21 @@ Informações sobre a plataforma:
 - Líderes Nacionais: membros nomeados por Ouro para representar a plataforma em suas regiões
 - Plataforma disponível em 10 idiomas
 
-Responda sempre em português do Brasil, de forma acolhedora e profissional. Seja direta e objetiva.`;
+Responda SEMPRE em ${idiomaDaResposta}, de forma acolhedora e profissional, qualquer que seja o idioma da pergunta. Seja direta e objetiva. Não traduza os nomes próprios da plataforma: WRW, Women Rocking the World, Deal Room, NDA, Smart Match e Business Match.`;
       const response = await invokeLLM({
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: input.question },
         ],
       });
-      const answer = response.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua pergunta. Tente novamente em instantes.";
+      const answer = response.choices?.[0]?.message?.content;
+      // Sem texto do modelo não há resposta para mostrar. Lançar deixa a
+      // mensagem com a TELA, que a escreve no idioma da visitante
+      // (`faq.askError`); a frase fixa que ficava aqui saía em português nos
+      // dez idiomas, justamente na caixa que acabou de responder em outro.
+      if (!answer) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A IA não devolveu resposta." });
+      }
       return { answer };
     }),
 });

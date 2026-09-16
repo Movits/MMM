@@ -26,7 +26,7 @@ type ComplianceInfo = {
 };
 
 export default function OpportunityDetail() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -423,7 +423,7 @@ export default function OpportunityDetail() {
               <p><strong className="text-white/80">{t("opportunityDetail.ndaItem2Title")}</strong> {t("opportunityDetail.ndaItem2TextPre")}<strong className="text-amber-400">{t("opportunityDetail.ndaItem2Strong")}</strong>{t("opportunityDetail.ndaItem2TextPost")}</p>
               <p><strong className="text-white/80">{t("opportunityDetail.ndaItem3Title")}</strong> {t("opportunityDetail.ndaItem3Text")}</p>
               <p><strong className="text-white/80">{t("opportunityDetail.ndaItem4Title")}</strong> {t("opportunityDetail.ndaItem4Text")}</p>
-              <p className="text-white/40 text-xs border-t border-white/10 pt-3">{t("opportunityDetail.ndaFooterOpportunityLabel")} <strong className="text-white/60">{opp.title}</strong> • {t("opportunityDetail.ndaFooterDateLabel")} {new Date().toLocaleDateString("pt-BR")} • {t("opportunityDetail.ndaFooterUserLabel")} {user?.name}</p>
+              <p className="text-white/40 text-xs border-t border-white/10 pt-3">{t("opportunityDetail.ndaFooterOpportunityLabel")} <strong className="text-white/60">{opp.title}</strong> • {t("opportunityDetail.ndaFooterDateLabel")} {new Date().toLocaleDateString(i18n.language)} • {t("opportunityDetail.ndaFooterUserLabel")} {user?.name}</p>
             </div>
 
             <div className="mb-4">
