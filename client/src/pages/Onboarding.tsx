@@ -471,7 +471,11 @@ export default function Onboarding() {
         currentResources: base.currentResources || profile?.currentResources || "",
         whatIHave: base.whatIHave.length > 0 ? base.whatIHave : listaDeChaves(profile?.whatIHave),
         whatINeed: base.whatINeed.length > 0 ? base.whatINeed : listaDeChaves(profile?.whatINeed),
-        interestSectors: base.interestSectors.length > 0 ? base.interestSectors : listaDeChaves(profile?.sectors),
+        // `sectors` do perfil NÃO entra em `interestSectors`: a carga grava ali o
+        // RÓTULO do setor que veio na planilha ("Agronegócio"), e esta lista é de
+        // chaves. Pré-preencher com rótulo devolveria o rótulo ao servidor na
+        // conclusão, que é justamente o defeito que a entrega consertou em
+        // businessInterests. O campo não aparece no cadastro; quem edita é o Perfil.
       };
     });
   }, [profileQuery.data]);
