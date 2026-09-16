@@ -985,6 +985,34 @@ export default function Dashboard() {
     distribution: [0,1,2,3,4].map(b => data.filter(m => Math.min(4, Math.floor(m.overallScore / 20)) === b).length),
   }) });
   const connectionsQuery = trpc.connections.list.useQuery(undefined, { enabled: isAuthenticated });
+  // QUEM PEDIU VÊ O ACEITE SEM F5 (achado do Nicolas na #136). O aceite manda um
+  // aviso `interest_received` para a solicitante, e o sino relê a lista de
+  // avisos a cada 30 s — mas o Dashboard não escutava nada disso, então o cartão
+  // dela continuava anônimo até o F5. Aqui a tela observa o aviso e relê as duas
+  // listas que desenham o nome.
+  //
+  // A comparação é pelo maior id JÁ VISTO, e não pelo tamanho da lista: aviso de
+  // outro tipo não relê nada, e a primeira leitura também não — senão toda
+  // abertura do Dashboard faria duas consultas a mais, e quem nunca teve um
+  // aceite pagaria por isso.
+  const avisosDeInteresse = trpc.notifications.list.useQuery(undefined, { enabled: isAuthenticated, staleTime: 30_000 });
+  const maiorAvisoVisto = useRef<number | null>(null);
+  useEffect(() => {
+    const ids = (avisosDeInteresse.data ?? [])
+      .filter((aviso: { type: string }) => aviso.type === "interest_received")
+      .map((aviso: { id: number }) => aviso.id);
+    if (!ids.length) return;
+    const maior = Math.max(...ids);
+    const anterior = maiorAvisoVisto.current;
+    maiorAvisoVisto.current = maior;
+    if (anterior !== null && maior > anterior) {
+      void connectionsQuery.refetch();
+      void matchesQuery.refetch();
+    }
+    // As duas consultas ficam fora das dependências de propósito: a identidade
+    // delas muda a cada render, e o que decide a releitura é o aviso novo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avisosDeInteresse.data]);
   // Números da plataforma inteira. É a MESMA consulta que alimentava os quatro
   // indicadores da Hero (stats.platform, em server/routers/stats.ts), que saíram
   // da página pública: nenhum cálculo novo, nenhum número fixo no código.
@@ -1419,6 +1447,12 @@ export default function Dashboard() {
                       const setor = normalizarCaixa(optionLabel(t, conn.primarySpecialty));
                       const cidade = normalizarCidade(conn.city);
                       const esperaPorMim = conn.status === "pending" && Boolean(conn.souDestinataria);
+                      // Conexão ACEITA sem apelido aparecia como "Membro da rede",
+                      // mesmo com o servidor já mandando o nome da conta: o
+                      // `userName` vem atrás do mesmo CASE WHEN que libera o
+                      // resto, ou seja, só depois do aceite (server/db.ts:930).
+                      // Achado do Nicolas na #136, item 4 da validação da #108.
+                      const nomeVisivel = conn.displayName || (conn as { userName?: string | null }).userName || null;
                       const pedidoEm = conn.createdAt ? new Date(conn.createdAt) : null;
                       return (
                         <div key={conn.id}
@@ -1429,12 +1463,12 @@ export default function Dashboard() {
                           className="bg-[#1b1714] border border-white/8 rounded-2xl p-5 flex items-center gap-4 hover:border-white/15 transition-colors duration-200">
                           <div className="w-12 h-12 rounded-full flex items-center justify-center text-[#151312] font-black flex-shrink-0"
                             style={{ background: "linear-gradient(135deg, #c98f70, #efcba8)" }}>
-                            {conn.displayName
-                              ? conn.displayName[0].toUpperCase()
+                            {nomeVisivel
+                              ? nomeVisivel[0].toUpperCase()
                               : <User className="w-5 h-5 opacity-60" strokeWidth={2.5} aria-label={t("dashboard.anonAvatarAlt")} />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-bold">{conn.displayName || t("dashboard.anonTitle")}</div>
+                            <div className="font-bold">{nomeVisivel || t("dashboard.anonTitle")}</div>
                             {/* Sem o filtro, uma cidade em branco deixava um " · " solto. */}
                             <div className="text-sm text-white/40">{[setor, cidade].filter(Boolean).join(" · ")}</div>
                             {conn.message && <div className="text-xs text-white/25 mt-1 truncate">"{conn.message}"</div>}

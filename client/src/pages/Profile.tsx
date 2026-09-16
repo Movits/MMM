@@ -249,7 +249,10 @@ export default function Profile() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-transparent text-white flex items-center justify-center">
-        <div className="space-y-4 w-full max-w-2xl px-6">
+        {/* A MESMA largura da tela carregada (max-w-6xl px-4 sm:px-6, logo
+            abaixo). O esqueleto era mais estreito, então a página "pulava" de
+            largura quando o perfil chegava — achado do Nicolas na #136. */}
+        <div className="space-y-4 w-full max-w-6xl px-4 sm:px-6">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 bg-white/5 rounded-2xl" />)}
         </div>
       </div>
