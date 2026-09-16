@@ -1830,7 +1830,9 @@
       "cidade": "城市",
       "atuacao": "您的业务领域",
       "apresentacao": "一段至少 {{minimo}} 个词的自我介绍，说明您是谁、做什么",
-      "apresentacaoContagem": "自我介绍：{{contadas}}/{{minimo}} 个有内容的词；两个不同的汉字算一个词，数字和符号不计",
+      "apresentacaoContagem": "自我介绍：{{contadas}}/{{minimo}} 个不同的有内容的词；两个不同的汉字算一个词，数字、符号和重复的词不计",
+      "apresentacaoRepeticao": "自我介绍：文字重复太多相同的词——请用不同的词说说你是谁、你做什么",
+      "apresentacaoContagemERepeticao": "自我介绍：{{contadas}}/{{minimo}} 个不同的有内容的词，而且重复仍然太多——请用不同的词补充一些新内容",
       "oQueTenho": "“我拥有什么”中至少一项",
       "oQuePreciso": "“我需要什么”中至少一项"
     }
@@ -1971,6 +1973,8 @@
       "noConsent": "要查看和记录连接，请开启智能连接。",
       "internalAlert": "我们在您自己的人脉中发现了一个机会。",
       "memberSide": "平台成员",
+      "mySide": "你这一方",
+      "reference": "编号 {{codigo}}",
       "contactSide": "其他人脉中的联系人（{{codigo}}）",
       "itemLine": "拥有：{{tem}} · 需要：{{precisa}}",
       "registeredAt": "记录于 {{data}}",
@@ -2007,7 +2011,8 @@
       "closingAwaiting": "您已确认成交，正在等待另一方确认。",
       "discardConfirmTitle": "放弃此连接？",
       "discardConfirmText": "放弃后无法撤销：该连接对您将保持已放弃状态，无法再进入下一阶段。",
-      "discardConfirmButton": "放弃连接",
+      "otherSideAnonymous": "另一方保持匿名：平台不会显示对方是谁。请核对上面的编号——它是识别这条连接的依据，而且丢弃无法撤销。",
+      "discardConfirmButton": "丢弃 {{codigo}}",
       "discardConfirmCancel": "取消",
       "reasonPlatformMatch": "由资料匹配引擎在两位会员之间建议；记录该连接时，双方均已接受 Smart Match 条款：匹配度 {{pontuacao}}%。",
       "reasonNoAuthorization": "对方已撤回授权，因此该连接的详情不再显示。"

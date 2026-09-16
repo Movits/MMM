@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ExcluirMinhaConta } from "@/components/ExcluirMinhaConta";
 import { AssistenteDeTexto } from "@/components/AssistenteDeTexto";
 import { QualificacaoDoPerfil } from "@/components/QualificacaoDoPerfil";
+import { LIMITE_DA_BIO_GRAVADA } from "@shared/apresentacao";
 import { DemandasDoPerfil, EditorDoQuePreciso } from "@/components/OQuePreciso";
 import { categoriasPendentes, demandasParaGravar, lerDemandas, type DemandaDetalhada } from "@shared/o-que-preciso";
 import { toast } from "sonner";
@@ -368,8 +369,17 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Governança: a membra Bronze vê o que falta para a Prata. */}
-        <QualificacaoDoPerfil role={user?.role} perfil={profile} onCompletar={editing ? undefined : startEditing} />
+        {/* Governança: quem é Bronze vê o que falta para a Prata. Em edição, a
+            régua lê o que está SENDO digitado nos seis campos que ela mede: com
+            o perfil salvo, o número ficava parado ao lado do texto que a pessoa
+            reescrevia justamente para sair da recusa, e medir só a bio prometia
+            Prata para um estado que o Salvar não grava (revisão de 16/09 na #135,
+            item 8). */}
+        <QualificacaoDoPerfil
+          role={user?.role}
+          perfil={editing ? { ...(profile ?? {}), displayName, city, activityArea, whatIHave, whatINeed, bio } : profile}
+          onCompletar={editing ? undefined : startEditing}
+        />
 
         {/* ── SEÇÃO 1: QUEM SOU ── */}
         <Section
@@ -512,8 +522,8 @@ export default function Profile() {
                   className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50 resize-none" />
                 {/* Gravar áudio e Revisar texto: só mudam o campo; salvar continua sendo o botão do Perfil. */}
                 <AssistenteDeTexto valor={bio} onChange={setBio} />
-                {bio.length > 1000 && (
-                  <p className="text-xs text-red-400/80 mt-1">{t("assistenteTexto.textoLongo", { maximo: 1000 })}</p>
+                {bio.length > LIMITE_DA_BIO_GRAVADA && (
+                  <p className="text-xs text-red-400/80 mt-1">{t("assistenteTexto.textoLongo", { maximo: LIMITE_DA_BIO_GRAVADA })}</p>
                 )}
               </div>
 

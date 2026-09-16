@@ -1830,7 +1830,9 @@
       "cidade": "Cidade",
       "atuacao": "Sua área de atuação",
       "apresentacao": "Uma apresentação com pelo menos {{minimo}} palavras que digam quem você é e o que faz",
-      "apresentacaoContagem": "Apresentação: {{contadas}} de {{minimo}} palavras de conteúdo; palavras curtas como 'de' e 'para' não contam",
+      "apresentacaoContagem": "Apresentação: {{contadas}} de {{minimo}} palavras de conteúdo diferentes; palavras curtas como 'de' e 'para', e as repetidas, não contam",
+      "apresentacaoRepeticao": "Apresentação: o texto repete muito as mesmas palavras — conte com palavras diferentes quem você é e o que faz",
+      "apresentacaoContagemERepeticao": "Apresentação: {{contadas}} de {{minimo}} palavras de conteúdo diferentes, e o texto ainda repete muito — acrescente coisas novas, com palavras diferentes",
       "oQueTenho": "Pelo menos um item em O que tenho",
       "oQuePreciso": "Pelo menos um item em O que preciso"
     }
@@ -1971,6 +1973,8 @@
       "noConsent": "Para ver e registrar conexões, ative as Conexões Inteligentes.",
       "internalAlert": "Encontramos uma oportunidade dentro do seu próprio network.",
       "memberSide": "Membra da plataforma",
+      "mySide": "Seu lado",
+      "reference": "Referência {{codigo}}",
       "contactSide": "Contato de outro network ({{codigo}})",
       "itemLine": "Tem: {{tem}} · Precisa: {{precisa}}",
       "registeredAt": "Registrada em {{data}}",
@@ -2007,7 +2011,8 @@
       "closingAwaiting": "Fechamento confirmado por você. Falta a confirmação do outro lado.",
       "discardConfirmTitle": "Descartar esta conexão?",
       "discardConfirmText": "O descarte não pode ser desfeito: a conexão fica como descartada para você e não volta a avançar de etapa.",
-      "discardConfirmButton": "Descartar conexão",
+      "otherSideAnonymous": "O outro lado continua anônimo: a plataforma não mostra quem é. Confira a referência acima — é ela que identifica esta conexão, e o descarte não volta atrás.",
+      "discardConfirmButton": "Descartar {{codigo}}",
       "discardConfirmCancel": "Cancelar",
       "reasonPlatformMatch": "Sugerida pelo motor de perfis entre duas membras que tinham o termo do Smart Match aceito quando a conexão foi registrada: compatibilidade de {{pontuacao}}%.",
       "reasonNoAuthorization": "O outro lado retirou a autorização, então os detalhes desta conexão deixaram de aparecer."

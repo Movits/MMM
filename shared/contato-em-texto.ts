@@ -31,18 +31,27 @@
  * "1000-5000"), CNPJ/CPF (pontuados ou crus), CEP (5-3), valores, datas — e
  * o fixo hifenizado SEM DDD ("3456-7890"), que é indistinguível de faixa
  * numérica; sem DDD ele tampouco serve como contato entre cidades. Burlar
- * ainda dá (soletrar com erros de grafia, trocar por emoji) — o objetivo é o
+ * O separador DUPLO vale só para o celular (o 9 na frente dos quatro dígitos):
+ * quem
+ * digita no celular escreve "11  99999  8888" sem querer, e `.trim()` não
+ * colapsa espaço interno — com um separador só, esse telefone saía inteiro. Com
+ * o separador duplo solto, "lote 14  1500  2000" virava telefone e o portão A13
+ * recusava a proposta: falso positivo aqui é pior do que telefone que escapa.
+ * Burlar ainda dá (soletrar com erros de grafia, trocar por emoji) — o objetivo é o
  * caminho honesto e o registro, não uma fortaleza.
  */
 
 const PADROES: Array<{ tipo: "email" | "telefone"; regex: RegExp }> = [
   { tipo: "email", regex: /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi },
   // +DDI com grupos: +55 11 99999-8888 · +55 (11) 99999 8888 · +351 912 345 678
-  { tipo: "telefone", regex: /\+\d{1,3}[\s.-]?\(?\d{1,4}\)?(?:[\s.-]?\d{2,5}){2,4}/g },
+  { tipo: "telefone", regex: /\+\d{1,3}[\s.-]{0,2}\(?\d{1,4}\)?(?:[\s.-]{0,2}\d{2,5}){2,4}/g },
   // DDD entre parênteses: (11) 99999-8888 · (11)3456-7890 · (11) 9 9999 8888
-  { tipo: "telefone", regex: /\(\d{2,3}\)\s?9?[\s.]?\d{4}[\s.-]?\d{4}\b/g },
+  { tipo: "telefone", regex: /\(\d{2,3}\)\s{0,2}9?[\s.]{0,2}\d{4}[\s.-]{0,2}\d{4}\b/g },
   // DDD + separador: 11 99999 8888 · 11.99999.8888 · 11 9 9999 8888 · 11 3456-7890
   { tipo: "telefone", regex: /\b[1-9][1-9][\s.]9?[\s.]?\d{4}[\s.-]\d{4}\b/g },
+  // Com separador duplo, so o celular: o 9 na frente de quatro digitos separa
+  // "11  99999  8888" de "lote 14  1500  2000".
+  { tipo: "telefone", regex: /\b[1-9][1-9][\s.]{1,2}9[\s.]?\d{4}[\s.-]{1,2}\d{4}\b/g },
   // Celular hifenizado sem DDD: o 9 obrigatório na frente separa "99999-8888"
   // de faixas e anos; o fixo 4-4 sem DDD fica de fora (ver o cabeçalho).
   { tipo: "telefone", regex: /\b9\d{4}-\d{4}\b/g },

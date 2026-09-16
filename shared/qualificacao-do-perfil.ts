@@ -106,11 +106,12 @@ export type QualificacaoDoPerfil = {
    * O que a régua contou, para a tela explicar a pendência em vez de só
    * repetir o mínimo (revisão da #135, item 8: "Consultora de marketing digital
    * para pequenas empresas" tem 7 palavras, 5 de conteúdo, e a tela dizia só
-   * "pelo menos 6"). `contadas` são as palavras de conteúdo DISTINTAS da
-   * apresentação; com `contadas >= minimo` e a pendência ainda de pé, o motivo
-   * é a repetição dominante (ver `leituraComConteudo`).
+   * "pelo menos 6"). `contadas` são as palavras de conteúdo DISTINTAS;
+   * `repetida` é a repetição dominante, que pode acontecer JUNTO com a falta
+   * de palavras; `vazia` é o campo sem nada escrito — o único caso do texto
+   * geral, porque com texto escrito ele esconde a contagem.
    */
-  detalhes: { apresentacao: { contadas: number; minimo: number } };
+  detalhes: { apresentacao: { contadas: number; minimo: number; repetida: boolean; vazia: boolean } };
 };
 
 // Palavras funcionais de 3+ letras dos idiomas de escrita latina da plataforma.
@@ -306,6 +307,25 @@ export function avaliarQualificacaoDoPerfil(perfil: PerfilParaQualificar | null 
     qualificado: pendencias.length === 0,
     pendencias,
     dimensoes: { quemSou, oQueTenho, oQuePreciso },
-    detalhes: { apresentacao: { contadas: apresentacao.distintas, minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO } },
+    detalhes: {
+      apresentacao: {
+        contadas: apresentacao.distintas,
+        minimo: MINIMO_DE_PALAVRAS_NA_APRESENTACAO,
+        /**
+         * Nada legível no campo. É o único caso em que o texto geral ("uma
+         * apresentação com pelo menos N palavras") é o que cabe: com texto
+         * escrito, ele esconde a contagem que explica a recusa.
+         */
+        vazia: typeof p.bio !== "string" || p.bio.trim() === "",
+        /**
+         * Repetição dominante — a mesma razão de `leituraComConteudo`, mas SEM
+         * exigir que a contagem já tenha chegado ao mínimo. Quem falha nas duas
+         * portas precisa saber disso antes de completar as palavras que faltam,
+         * senão chega a 6 e leva uma segunda recusa sem aviso (validação de
+         * 16/09 na #135, item 8).
+         */
+        repetida: apresentacao.total > 0 && apresentacao.distintas / apresentacao.total < 0.5,
+      },
+    },
   };
 }

@@ -217,6 +217,75 @@ describe("a descrição que nomeia o serviço que o próprio perfil OFERECE não
     const semOServico = { ...comIdFixo, activityArea: "Indústria de alimentos" };
     expect(necessidadesEscritasDoPerfil(semOServico)).toEqual([DESCRICAO_DA_PROPRIA_OFERTA]);
   });
+
+  it("a guarda usa o mesmo critério do motor: trocar a redação não escapa dela (validação de 16/09)", () => {
+    // A guarda olhava só `necessidadeNomeiaOServico`, enquanto `satisfaz` (server/matching.ts) casa também pelo
+    // ASSUNTO declarado sem nomear o serviço. Bastava reescrever a mesma oferta para o texto voltar a ser lido
+    // como necessidade e o par valer 50 no motor de perfis.
+    const tributarista = (descricao: string) => ({
+      whatIHave: ["Advocacia tributária"],
+      whatINeed: ["expansao_internacionalizacao"],
+      whatINeedDetails: [{ id: "d1", category: "expansao_internacionalizacao", description: descricao }],
+    });
+    for (const descricao of [
+      "Planejamento tributário para investidores estrangeiros e sócios",
+      "Assessoria tributária para holdings familiares",
+    ]) {
+      expect(necessidadesEscritasDoPerfil(tributarista(descricao)), descricao).toEqual([]);
+      expect(calculateCompatibilityScore(perfil({ whatIHave: ["Advocacia tributária"] }), perfil(tributarista(descricao))).overall, descricao).toBe(0);
+    }
+    // Necessidade de verdade continua passando: ela pede OUTRO serviço.
+    const precisaDeContador = tributarista("Preciso de um contador para fechar o balanço");
+    expect(necessidadesEscritasDoPerfil(precisaDeContador)).toContain("Preciso de um contador para fechar o balanço");
+  });
+
+  it("palpite de família não apaga necessidade declarada (validação de 16/09)", () => {
+    // Quem declara a área como a FAMÍLIA pura e escreve que precisa daquela
+    // família com outra finalidade não está repetindo a própria oferta: pela
+    // regra da casa, oferecer a família não prova a especialidade — vale 60, um
+    // bom palpite. Usar esse palpite na guarda apagava a necessidade de quem
+    // escreveu "Advogado para causas do trabalho" só por ter a área "Advocacia",
+    // enquanto a mesma frase sobrevivia para quem declara a área especializada.
+    const comArea = (activityArea: string) => ({
+      whatIHave: [],
+      whatINeed: ["outra_necessidade"],
+      seekingTypes: ["outra_necessidade"],
+      seekingOtherNeed: "Advogado para causas do trabalho",
+      activityArea,
+    });
+
+    for (const area of ["Advocacia", "Advocacia tributária"]) {
+      expect(necessidadesEscritasDoPerfil(comArea(area)), area).toContain("Advogado para causas do trabalho");
+    }
+
+    // E o que a guarda existe para pegar continua pego: a mesma especialidade escrita de novo.
+    const repetindoAOferta = { ...comArea("Advocacia tributária"), seekingOtherNeed: "Advocacia tributária para indústrias farmacêuticas" };
+    expect(necessidadesEscritasDoPerfil(repetindoAOferta)).toEqual([]);
+  });
+
+  it("quem TEM a especialidade e escreve a FAMÍLIA dela está contando a própria oferta", () => {
+    // O outro sentido do palpite de família, e o caso que originou a #135: a
+    // consultora tributária que escreve "Consultoria" em texto livre não precisa
+    // de consultoria — ela presta. Sem isso, duas prestadoras do mesmo serviço
+    // eram conectadas sem nenhuma declarar precisar dele.
+    const comOferta = (whatIHave: string[], texto: string) => ({
+      whatIHave,
+      whatINeed: ["outra_necessidade"],
+      seekingTypes: ["outra_necessidade"],
+      seekingOtherNeed: texto,
+    });
+
+    for (const texto of ["Consultoria", "Preciso de consultoria", "Consultor"]) {
+      expect(necessidadesEscritasDoPerfil(comOferta(["Consultoria tributária"], texto)), texto).toEqual([]);
+    }
+    for (const texto of ["Advogado", "Preciso de um advogado"]) {
+      expect(necessidadesEscritasDoPerfil(comOferta(["Advocacia tributária"], texto)), texto).toEqual([]);
+    }
+
+    // E a oferta que é a família pura continua sem apagar necessidade declarada.
+    expect(necessidadesEscritasDoPerfil(comOferta(["Advocacia"], "Advogado para causas do trabalho")))
+      .toContain("Advogado para causas do trabalho");
+  });
 });
 
 describe("categoria de serviço SEM descrição não casa", () => {

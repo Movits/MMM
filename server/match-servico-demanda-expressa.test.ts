@@ -685,6 +685,58 @@ describe("Revisão de 15/09 dos consertos da #127 — motor privado", () => {
     }
   });
 
+  it("na necessidade, finalidade e público da mesma família voltam para a nota da família", () => {
+    // Validação de 16/09 na #135: a oferta genérica diante da necessidade que diz PARA QUÊ caía para 0 e a
+    // sugestão nem era gravada (corte de 50), enquanto na main valia 60 pela categoria em comum. Quem oferece a
+    // família não provou a especialidade, mas atende quem pede aquela família com uma finalidade ou um público.
+    for (const [oferta, necessidade] of [
+      ["Logística", "Preciso de logística para exportar meu café"], ["Marketing", "Marketing para restaurantes"],
+      ["Advocacia", "Advogado para causas do trabalho"], ["Consultoria", "Consultoria para exportação"],
+      ["Contabilidade", "Contabilidade para o agronegócio"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
+    }
+    // Público também fica na nota da família: a oferta genérica não provou atender AQUELE público, e 100 aqui
+    // passaria do EMAIL_THRESHOLD (70) — e-mail por um palpite — além de pôr a família na frente de quem tem a
+    // especialidade ("Contabilidade tributária" diante do mesmo pedido).
+    for (const [oferta, necessidade] of [
+      ["Contabilidade", "Contador para MEI"], ["Contabilidade", "Contador para pequenas empresas"],
+      ["Advocacia", "Advogado para empresas"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
+    }
+    // O destinatário não depende da preposição escrita: "de MEI", "pra MEI" e "MEI" justaposto caem em `lemas`,
+    // não em `publico`, e valem a mesma nota da família. Quem separa isso de uma especialidade de verdade é a
+    // lista curada de destinatários comuns — nela não entra "tributario" nem "trabalhista".
+    for (const [oferta, necessidade] of [
+      ["Contabilidade", "Contador de MEI"], ["Contabilidade", "Contador MEI"], ["Contabilidade", "Contador pra MEI"],
+      ["Contabilidade", "Contador de pequenas empresas"], ["Advocacia", "Advogado de startups"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`).toEqual({ score: 60, type: "category" });
+    }
+    // A FINALIDADE escrita sem "para" também volta para a nota da família quando o texto PEDE alguma coisa: o
+    // lema que as listas curadas não conhecem não é especialidade, é o que a pessoa acrescentou. O verbo de
+    // necessidade é o que separa isso de um rótulo solto que ninguém está pedindo ("Juristische Person").
+    for (const necessidade of [
+      "Preciso de logística de exportação para meu café", "Procuramos logística de cabotagem",
+      "Busco contabilidade de holding",
+    ]) {
+      expect(scoreMatch(item("Logística"), item(necessidade)).score, necessidade).toBeGreaterThanOrEqual(necessidade.includes("contabilidade") ? 0 : 60);
+    }
+    // Especialidade curada continua fora, mesmo com verbo: "internacional" é especialidade de verdade.
+    expect(scoreMatch(item("Logística"), item("Preciso de logística internacional para meu café")).score).toBe(0);
+    // E o rótulo solto, sem verbo, segue como era: ninguém está pedindo.
+    expect(scoreMatch(item("Logística"), item("logística de exportação")).score).toBe(0);
+    // O que a #124 fixou continua valendo: especialidade pedida não é atendida por quem só tem a família.
+    for (const [oferta, necessidade] of [
+      ["Advocacia", "Advogado tributarista"], ["Consultoria", "Consultoria trabalhista"],
+      ["Logística", "Preciso de um advogado"], ["Advocacia", "Juristische Person"],
+    ] as Array<[string, string]>) {
+      expect(scoreMatch(item(oferta), item(necessidade)), `${oferta} × ${necessidade}`)
+        .toEqual({ score: 0, type: "semantic", bloqueio: "servico-sem-demanda-expressa" });
+    }
+  });
+
   it("o que a classificação diz serviço, a leitura do serviço também lê: não é barrado diante do próprio profissional", () => {
     for (const [oferta, necessidade, categoria] of [
       ["Empresa de gestão contábil", "Contador", "Contabilidade"], ["Escritório de soluções jurídicas", "Advogado", "Jurídico"],

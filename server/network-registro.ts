@@ -6,6 +6,7 @@ import {
 import { ehErroDeBancoIndisponivel } from "./banco-indisponivel";
 import { exigirDb } from "./db";
 import { garantirCodigosAnonimos } from "./network-codigo-anonimo";
+import { mascararContatosEmTexto } from "../shared/contato-em-texto";
 
 /**
  * Registro das conexões que podem originar negócio — Meu Network Inteligente,
@@ -125,6 +126,11 @@ const rotulosDe = (guardado: unknown) =>
  * O motivo de uma conexão interna SEM nome de ninguém. A sugestão do motor
  * privado diz "Ana possui X, que Bia procura" — texto que só a dona vê. O
  * registro é da plataforma e fala pelos IDs anônimos.
+ *
+ * O rótulo é texto livre da dona e fica gravado como ela escreveu: a máscara
+ * de contato entra na LEITURA da staff (`listarTodasAsConexoes`), não aqui.
+ * Mascarar na escrita destruiria o dado da dona no banco — e ela é quem lê
+ * esta linha do outro lado, num par entre dois contatos dela.
  */
 export function motivoAnonimo(sugestao: {
   matchType: string; matchedAssets: unknown; matchedNeeds: unknown;
@@ -625,11 +631,20 @@ export async function listarTodasAsConexoes(opcoes: { origem?: OrigemDaConexao; 
     : [];
   const porOpenId = new Map(contas.map(c => [c.openId, c]));
   const porId = new Map(contas.map(c => [c.id, c]));
+  // A máscara entra AQUI, na leitura que atravessa as redes de todas as donas:
+  // o rótulo de "O que tenho"/"O que preciso" é texto livre, e o ID anônimo não
+  // protege nada com o telefone escrito dentro dele. Na escrita não pode entrar:
+  // ali o valor mascarado substituiria o dado da própria dona no banco.
+  const semContato = (valor: unknown) => (typeof valor === "string" ? mascararContatosEmTexto(valor) : valor);
+  const itensSemContato = (valor: unknown): ItemDaConexao[] =>
+    (Array.isArray(valor) ? valor : []).map(item => (item && typeof item === "object"
+      ? { ...(item as ItemDaConexao), tem: semContato((item as ItemDaConexao).tem) as string, precisa: semContato((item as ItemDaConexao).precisa) as string }
+      : item)) as ItemDaConexao[];
   return cabecalhos.map(cabecalho => ({
     id: cabecalho.id,
     origem: cabecalho.origem,
-    motivo: cabecalho.motivo,
-    itens: Array.isArray(cabecalho.itens) ? cabecalho.itens : [],
+    motivo: semContato(cabecalho.motivo) as string,
+    itens: itensSemContato(cabecalho.itens),
     pontuacao: cabecalho.pontuacao,
     status: cabecalho.status,
     apresentacaoEm: cabecalho.apresentacaoEm ?? null,

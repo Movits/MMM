@@ -367,25 +367,105 @@ describe("revisão do rascunho — o que não pode ficar no localStorage, e por 
   });
 });
 
-describe("item 10 — bio importada maior que o teto de 1000 do servidor", () => {
-  it("bio de 1200 caracteres em profile.get aparece com 1000 e deixa continuar", () => {
-    duble.perfil = perfilDe(USUARIA_7, { displayName: "Fulana Importada", city: "Recife", country: "BR", bio: "a".repeat(1200) });
+describe("item 10 — a apresentação já gravada não se perde no cadastro", () => {
+  const BIO_DA_CARGA = "Consultora tributária com 15 anos de estrada. " + "a".repeat(1400);
+
+  it("a apresentação entra INTEIRA no campo, mesmo acima do teto do cadastro", () => {
+    // Mostrar só o começo fazia qualquer edição destruir, em silêncio, o resto
+    // que a pessoa nunca viu — o mesmo dano do relato, com o gatilho invertido.
+    duble.perfil = perfilDe(USUARIA_7, { displayName: "Fulana Importada", city: "Recife", country: "BR", bio: BIO_DA_CARGA });
     render(<Onboarding />);
 
-    expect(campoBio()).toHaveValue("a".repeat(1000));
+    expect(campoBio()).toHaveValue(BIO_DA_CARGA);
     // Antes, `form.bio.length > LIMITE_BIO` travava o "Continuar" da etapa 1.
     expect(botaoContinuar()).toBeEnabled();
   });
 
-  it("o corte não parte um emoji ao meio e cabe no teto do zod (que conta unidades UTF-16)", () => {
+  it("emoji no fim do texto continua inteiro: nada é cortado", () => {
     const bio = "Consultora " + "😀".repeat(1200);
     duble.perfil = perfilDe(USUARIA_7, { displayName: "Fulana Importada", city: "Recife", country: "BR", bio });
     render(<Onboarding />);
 
-    // "Consultora " tem 11 unidades; cada emoji, 2: cabem 494 (11 + 988 = 999).
-    // Um `slice(0, 1000)` deixaria meio emoji no fim; 1000 code points estourariam o zod.
-    expect(campoBio()).toHaveValue("Consultora " + "😀".repeat(494));
-    expect(botaoContinuar()).toBeEnabled();
+    expect(campoBio()).toHaveValue(bio);
+  });
+
+  it("concluir sem tocar no campo devolve a apresentação inteira — nada se perde", () => {
+    duble.perfil = perfilDe(USUARIA_7, { displayName: "Fulana Importada", city: "Recife", country: "BR", bio: BIO_DA_CARGA });
+    render(<Onboarding />);
+
+    irAteAUltimaEtapa();
+    concluir();
+
+    expect(perfilEnviado().bio).toBe(BIO_DA_CARGA);
+  });
+
+  it("a bio editada continua indo, mesmo quando a salva era maior que o teto", () => {
+    duble.perfil = perfilDe(USUARIA_7, { displayName: "Fulana Importada", city: "Recife", country: "BR", bio: BIO_DA_CARGA });
+    render(<Onboarding />);
+    fireEvent.change(campoBio(), { target: { value: "Consultora de exportação para o Mercosul" } });
+
+    irAteAUltimaEtapa();
+    concluir();
+
+    expect(perfilEnviado().bio).toBe("Consultora de exportação para o Mercosul");
+  });
+
+  it("na segunda visita, o rascunho traz a apresentação inteira de volta", () => {
+    // O rascunho guarda a bio a cada mudança; como o campo mostra o texto
+    // inteiro, o que ele guarda também é inteiro.
+    duble.perfil = perfilDe(USUARIA_7, { displayName: "Fulana Importada", city: "Recife", country: "BR", bio: BIO_DA_CARGA });
+    window.localStorage.setItem(CHAVE_DA_7, JSON.stringify({ bio: BIO_DA_CARGA, salvoEm: Date.now() }));
+
+    render(<Onboarding />);
+    expect(campoBio()).toHaveValue(BIO_DA_CARGA);
+    irAteAUltimaEtapa();
+    concluir();
+
+    expect(perfilEnviado().bio).toBe(BIO_DA_CARGA);
+  });
+
+  it("rascunho NOVO vence o perfil, mesmo com o perfil trazendo updatedAt", () => {
+    // A regra do "rascunho mais novo" precisa ler o salvoEm do localStorage: ele
+    // não volta em lerRascunho (que devolve só campos do formulário), e lê-lo de
+    // lá dava sempre 0 — com qualquer perfil gravado, o texto digitado sumia.
+    duble.perfil = perfilDe(USUARIA_7, {
+      displayName: "Fulana Importada", city: "Recife", country: "BR",
+      bio: "Apresentação antiga que veio da carga de participantes",
+      updatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    });
+    window.localStorage.setItem(CHAVE_DA_7, JSON.stringify({ bio: "Apresentação que eu acabei de escrever no cadastro", salvoEm: Date.now() }));
+
+    render(<Onboarding />);
+
+    expect(campoBio()).toHaveValue("Apresentação que eu acabei de escrever no cadastro");
+  });
+
+  it("rascunho VELHO não sobrescreve a apresentação editada depois no Perfil", () => {
+    // O rascunho nasce sozinho: abrir a tela uma vez já grava o que ela
+    // pré-preencheu. Quem depois arruma a apresentação no Perfil e volta ao
+    // cadastro tinha o texto novo trocado pelo antigo, sem tocar no campo.
+    const ontem = Date.now() - 24 * 60 * 60 * 1000;
+    duble.perfil = perfilDe(USUARIA_7, {
+      displayName: "Fulana Importada", city: "Recife", country: "BR",
+      bio: "Apresentação corrigida agora no Perfil, com bastante conteúdo novo",
+      updatedAt: new Date(Date.now() - 1000).toISOString(),
+    });
+    window.localStorage.setItem(CHAVE_DA_7, JSON.stringify({ bio: "Texto velho do rascunho", salvoEm: ontem }));
+
+    render(<Onboarding />);
+
+    expect(campoBio()).toHaveValue("Apresentação corrigida agora no Perfil, com bastante conteúdo novo");
+  });
+
+  it("rascunho com texto de verdade vence a bio salva", () => {
+    duble.perfil = perfilDe(USUARIA_7, { displayName: "Fulana Importada", city: "Recife", country: "BR", bio: BIO_DA_CARGA });
+    window.localStorage.setItem(CHAVE_DA_7, JSON.stringify({ bio: "Consultora de exportação para o Mercosul", salvoEm: Date.now() }));
+
+    render(<Onboarding />);
+    irAteAUltimaEtapa();
+    concluir();
+
+    expect(perfilEnviado().bio).toBe("Consultora de exportação para o Mercosul");
   });
 });
 

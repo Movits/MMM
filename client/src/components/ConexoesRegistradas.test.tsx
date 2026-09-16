@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ConexaoRegistrada, type ConexaoNaTela } from "./ConexoesRegistradas";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import i18n from "@/i18n";
+import { ConexaoRegistrada, referenciaDaConexao, type ConexaoNaTela } from "./ConexoesRegistradas";
 
 /**
  * Conexão registrada vista por quem participa (Meu Network Inteligente e perfil
@@ -84,7 +85,9 @@ describe("Conexão registrada — descartar pede confirmação", () => {
     renderizar(conexao({ id: "c-negociacao", status: "negociacao" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Descartar" }));
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Descartar conexão" }));
+    // O botão nomeia a conexão: quem descarta age sobre uma referência, não
+    // sobre um cartão que parece igual ao de baixo.
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: `Descartar ${referenciaDaConexao("c-negociacao")}` }));
 
     expect(duble.mutate).toHaveBeenCalledTimes(1);
     expect(duble.mutate).toHaveBeenCalledWith({ conexaoId: "c-negociacao", etapa: "descartada" });
@@ -151,5 +154,69 @@ describe("cartão sem itens mostra o motivo", () => {
     }));
 
     expect(screen.queryByText(/não deve aparecer duas vezes/)).toBeNull();
+  });
+});
+
+/**
+ * A frase traduzida diz POR QUE a conexão existe, mas não diz QUAL delas é:
+ * duas conexões da mesma rodada têm a mesma compatibilidade arredondada e o
+ * mesmo minuto de registro. Quem descarta — e o descarte não volta atrás —
+ * precisa de um campo que nunca empate, e que não revele quem é o outro lado.
+ */
+describe("entre membras, o que identifica a conexão antes do descarte", () => {
+  const ladosDeMembras: ConexaoNaTela["lados"] = [
+    { lado: "a", tipo: "membro", contactId: null, codigoAnonimo: null, meu: true, originador: false, statusComissaoOriginador: null },
+    { lado: "b", tipo: "membro", contactId: null, codigoAnonimo: null, meu: false, originador: false, statusComissaoOriginador: null },
+  ];
+  const MESMA_RODADA = { pontuacao: 72, criadaEm: Date.UTC(2026, 8, 14, 15, 22) };
+  const PAR_A = "0b3f0e4e-0000-4000-8000-0000000000a1";
+  const PAR_B = "0b3f0e4e-0000-4000-8000-0000000000b2";
+  const entreMembras = (extra: Partial<ConexaoNaTela> = {}) =>
+    conexao({ origem: "PLATFORM_MATCH", itens: [], lados: ladosDeMembras, ...MESMA_RODADA, ...extra });
+
+  afterEach(async () => {
+    await i18n.changeLanguage("pt-BR");
+  });
+
+  it("o lado de quem olha não sai com o mesmo rótulo do lado alheio", () => {
+    renderizar(entreMembras({ id: PAR_A }));
+
+    expect(screen.getByText("Seu lado")).toBeInTheDocument();
+    expect(screen.getByText("Membra da plataforma")).toBeInTheDocument();
+  });
+
+  it("dois pares da mesma rodada, com a mesma nota e o mesmo minuto, se separam pela referência", () => {
+    render(
+      <ul>
+        <ConexaoRegistrada conexao={entreMembras({ id: PAR_A })} />
+        <ConexaoRegistrada conexao={entreMembras({ id: PAR_B })} />
+      </ul>,
+    );
+
+    const referencias = [referenciaDaConexao(PAR_A), referenciaDaConexao(PAR_B)];
+    expect(new Set(referencias).size).toBe(2);
+    for (const referencia of referencias) {
+      expect(screen.getByText(`Referência ${referencia}`)).toBeInTheDocument();
+    }
+  });
+
+  it("em japonês, a referência continua identificando o cartão", async () => {
+    await i18n.changeLanguage("ja");
+    renderizar(entreMembras({ id: PAR_A }));
+
+    expect(screen.getByText(`参照番号 ${referenciaDaConexao(PAR_A)}`)).toBeInTheDocument();
+  });
+
+  it("a confirmação nomeia a conexão e avisa que o outro lado é anônimo", () => {
+    renderizar(entreMembras({ id: PAR_A }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Descartar" }));
+
+    const dialogo = screen.getByRole("dialog");
+    expect(within(dialogo).getByText("Entre membras da plataforma")).toBeInTheDocument();
+    expect(within(dialogo).getByText(`Referência ${referenciaDaConexao(PAR_A)}`)).toBeInTheDocument();
+    expect(within(dialogo).getByText(/O outro lado continua anônimo/)).toBeInTheDocument();
+    expect(within(dialogo).getByRole("button", { name: `Descartar ${referenciaDaConexao(PAR_A)}` })).toBeInTheDocument();
+    expect(duble.mutate).not.toHaveBeenCalled();
   });
 });
