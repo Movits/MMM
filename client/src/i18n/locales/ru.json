@@ -412,22 +412,6 @@
       "30k_plus": "Свыше 1.2M ₽"
     },
     "countries": {
-      "brazil": "Бразилия",
-      "portugal": "Португалия",
-      "usa": "США",
-      "argentina": "Аргентина",
-      "chile": "Чили",
-      "mexico": "Мексика",
-      "colombia": "Колумбия",
-      "germany": "Германия",
-      "france": "Франция",
-      "uk": "Великобритания",
-      "spain": "Испания",
-      "italy": "Италия",
-      "japan": "Япония",
-      "china": "Китай",
-      "india": "Индия",
-      "uae": "ОАЭ",
       "other": "Другое"
     },
     "aiAnalysis": {
@@ -1158,24 +1142,6 @@
     "sharedByPrefix": "· сеть {{name}}"
   },
   "newOpportunity": {
-    "countryBrasil": "Бразилия",
-    "countryPortugal": "Португалия",
-    "countryEstadosUnidos": "США",
-    "countryArgentina": "Аргентина",
-    "countryChile": "Чили",
-    "countryColombia": "Колумбия",
-    "countryMexico": "Мексика",
-    "countryEspanha": "Испания",
-    "countryFranca": "Франция",
-    "countryAlemanha": "Германия",
-    "countryReinoUnido": "Великобритания",
-    "countryItalia": "Италия",
-    "countryJapao": "Япония",
-    "countryChina": "Китай",
-    "countryIndia": "Индия",
-    "countryAfricaDoSul": "ЮАР",
-    "countryNigeria": "Нигерия",
-    "countryEmiradosArabes": "ОАЭ",
     "complianceGreenLabel": "Высокая надёжность",
     "complianceYellowLabel": "Средняя надёжность",
     "complianceOrangeLabel": "Требует проверки",
@@ -2490,5 +2456,16 @@
     "imoveis": "Недвижимость",
     "logistica": "Логистика",
     "canais_comerciais": "Коммерческие каналы"
+  },
+  "city": {
+    "placeholder": "Введите первые буквы города",
+    "chooseCountry": "Сначала выберите страну, чтобы увидеть подсказки городов.",
+    "loading": "Загрузка городов...",
+    "noList": "Списка городов этой страны пока нет. Введите название города.",
+    "noResults": "Город не найден. Вы всё равно можете ввести название.",
+    "credit": "Данные о городах:"
+  },
+  "country": {
+    "credit": "Данные о странах:"
   }
 }

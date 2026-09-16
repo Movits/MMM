@@ -6,6 +6,9 @@ import { useTranslation } from "react-i18next";
 import { BrainCircuit, CheckCircle } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { LIMITE_DA_BIO_GRAVADA } from "@shared/apresentacao";
+import CampoDeCidade from "@/components/CampoDeCidade";
+import CreditoDeDados from "@/components/CreditoDeDados";
+import { CODIGO_OUTRO, FONTE_DOS_PAISES, FONTE_DOS_PAISES_URL, listarPaises, nomeDoPais } from "@shared/paises";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
 import { exigeCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
@@ -329,16 +332,18 @@ function TagButton({ icon, label, selected, onClick }: {
   );
 }
 
-function TextInput({ label, value, onChange, placeholder, type = "text", hint, min, max, list, required }: {
+// O `list` saiu junto com o <datalist> de municípios brasileiros: a sugestão de
+// cidade agora é do CampoDeCidade, que serve qualquer país.
+function TextInput({ label, value, onChange, placeholder, type = "text", hint, min, max, required }: {
   // `compondo`: o IME (japonês, chinês) ainda está montando o texto; quem
   // transforma o valor deve esperar o fim da composição, que chama de novo.
   label: string; value: string | number; onChange: (v: string, compondo?: boolean) => void;
-  placeholder?: string; type?: string; hint?: string; min?: number; max?: number; list?: string; required?: boolean;
+  placeholder?: string; type?: string; hint?: string; min?: number; max?: number; required?: boolean;
 }) {
   return (
     <div>
       <label className="block text-sm font-medium text-white/70 mb-2">{label}{required && <span className="text-[#c98f70]"> *</span>}</label>
-      <input type={type} value={value ?? ""} min={min} max={max} list={list}
+      <input type={type} value={value ?? ""} min={min} max={max}
         inputMode={type === "number" ? "numeric" : undefined}
         onChange={e => onChange(e.target.value, (e.nativeEvent as InputEvent).isComposing === true)}
         onCompositionEnd={e => onChange(e.currentTarget.value, false)} placeholder={placeholder}
@@ -426,8 +431,6 @@ export default function Onboarding() {
   const [animDir, setAnimDir] = useState<"forward" | "back">("forward");
   const [visible, setVisible] = useState(true);
   const [form, setForm] = useState<FormData>(INITIAL);
-  const [cityOptions, setCityOptions] = useState<string[]>([]);
-  const municipiosRef = useRef<string[] | null>(null);
   const prefilled = useRef(false);
   // Chave do rascunho em localStorage: existe só depois de saber quem é a
   // usuária e de restaurar o que ela já tinha (ver "Rascunho do cadastro").
@@ -522,24 +525,10 @@ export default function Onboarding() {
     if (chaveDoRascunho) gravarRascunho(chaveDoRascunho, form);
   }, [form, chaveDoRascunho]);
 
-  // Sugestoes de cidade (IBGE) so quando o pais e o Brasil: filtra em memoria
-  // a partir de 2 letras, ignorando acento, e mostra no maximo 50 opcoes para
-  // o datalist nao travar em mobile.
-  const norm = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  useEffect(() => {
-    if (form.country !== "BR" || form.city.trim().length < 2) { setCityOptions([]); return; }
-    let alive = true;
-    const filtrar = (lista: string[]) => {
-      const q = norm(form.city.trim());
-      if (alive) setCityOptions(lista.filter(m => norm(m).startsWith(q)).slice(0, 50));
-    };
-    if (municipiosRef.current) filtrar(municipiosRef.current);
-    else import("@/data/municipios-br.json").then(mod => {
-      municipiosRef.current = mod.default as string[];
-      filtrar(municipiosRef.current);
-    }).catch(() => {});
-    return () => { alive = false; };
-  }, [form.city, form.country]);
+  // As sugestoes de cidade agora vivem em CampoDeCidade, que serve QUALQUER
+  // pais com lista gerada (client/src/data/cidades/), nao so o Brasil. O que
+  // estava aqui filtrava municipio brasileiro num <datalist> e arrancava a UF do
+  // valor a cada tecla; ver o cabecalho do componente.
 
   // O banco guarda a CHAVE (estavel entre idiomas); o rotulo e so exibicao.
   // Antes era gravado o texto traduzido, e usuarias de idiomas diferentes
@@ -615,25 +604,14 @@ export default function Onboarding() {
     { value: "mba", label: t("onboarding.education.mba") },
   ];
 
-  const COUNTRIES = [
-    { value: "BR", label: t("onboarding.countries.brazil") },
-    { value: "PT", label: t("onboarding.countries.portugal") },
-    { value: "US", label: t("onboarding.countries.usa") },
-    { value: "AR", label: t("onboarding.countries.argentina") },
-    { value: "CL", label: t("onboarding.countries.chile") },
-    { value: "MX", label: t("onboarding.countries.mexico") },
-    { value: "CO", label: t("onboarding.countries.colombia") },
-    { value: "DE", label: t("onboarding.countries.germany") },
-    { value: "FR", label: t("onboarding.countries.france") },
-    { value: "GB", label: t("onboarding.countries.uk") },
-    { value: "ES", label: t("onboarding.countries.spain") },
-    { value: "IT", label: t("onboarding.countries.italy") },
-    { value: "JP", label: t("onboarding.countries.japan") },
-    { value: "CN", label: t("onboarding.countries.china") },
-    { value: "IN", label: t("onboarding.countries.india") },
-    { value: "AE", label: t("onboarding.countries.uae") },
-    { value: "XX", label: t("onboarding.countries.other") },
-  ];
+  // Os 250 países, com o nome traduzido pelo navegador e já em ordem alfabética
+  // DO IDIOMA da tela (shared/paises.ts). A lista escrita à mão que estava aqui
+  // tinha 16 países e um "Outro": quem morava em Angola, no Paraguai ou no Catar
+  // não se achava. O "Outro" continua, por último, para o valor antigo continuar
+  // gravável — e é por isso que esta lista NÃO passa por
+  // sortOptionsAlphabetically: ordenar de novo jogaria o "Outro" para o meio.
+  const COUNTRIES = listarPaises(i18n.language, t("onboarding.countries.other"))
+    .map(pais => ({ value: pais.codigo, label: pais.rotulo }));
 
   // "Seus valores" saiu da lista junto com o campo (21:08): a etapa de revisão
   // não pode prometer uma análise do que o cadastro não pergunta mais.
@@ -910,17 +888,15 @@ export default function Onboarding() {
                     <div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <TextInput label={t("onboarding.fields.city")} value={form.city} list={form.country === "BR" ? "cidades-br" : undefined}
-                            onChange={v => set("city", v.replace(/\s\([A-Z]{2}\)$/, ""))}
+                          <CampoDeCidade rotulo={t("onboarding.fields.city")} valor={form.city} pais={form.country}
+                            onChange={v => set("city", v)}
                             placeholder={t("onboarding.fields.cityPlaceholder")}/>
-                          {form.country === "BR" && (
-                            <datalist id="cidades-br">
-                              {cityOptions.map(m => <option key={m} value={m}/>)}
-                            </datalist>
-                          )}
                         </div>
-                        <SelectInput label={t("onboarding.fields.country")} value={form.country} onChange={v => set("country", v)}
-                          options={sortOptionsAlphabetically(COUNTRIES, i18n.language)} placeholder={t("onboarding.fields.selectPlaceholder")}/>
+                        <div>
+                          <SelectInput label={t("onboarding.fields.country")} value={form.country} onChange={v => set("country", v)}
+                            options={COUNTRIES} placeholder={t("onboarding.fields.selectPlaceholder")}/>
+                          <CreditoDeDados rotulo={t("country.credit")} fonte={FONTE_DOS_PAISES} fonteUrl={FONTE_DOS_PAISES_URL}/>
+                        </div>
                       </div>
                     </div>
                     <div>
@@ -1236,7 +1212,7 @@ export default function Onboarding() {
                 <div className="grid grid-cols-2 gap-4">
                   {[
                     { label: t("onboarding.review.name"), value: form.displayName, icon: "👤" },
-                    { label: t("onboarding.review.location"), value: `${form.city}, ${form.country}`, icon: "📍" },
+                    { label: t("onboarding.review.location"), value: [form.city, form.country === CODIGO_OUTRO ? t("onboarding.countries.other") : nomeDoPais(form.country, i18n.language)].filter(Boolean).join(", "), icon: "📍" },
                     ...(form.gender ? [{ label: t("profile.gender.label"), value: t(`profile.gender.${form.gender === "prefer_not_to_say" ? "preferNotToSay" : form.gender}`), icon: "⚥" }] : []),
                     { label: t("onboarding.review.specialty"), value: normalizePrimarySpecialties(form.primarySpecialties, form.customSpecialty).map(k => t("onboarding.specialties." + k, { defaultValue: k })).join(", "), icon: "⚡" },
                     { label: t("onboarding.misc.company"), value: form.company || "-", icon: "🏢" },

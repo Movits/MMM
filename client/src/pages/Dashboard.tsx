@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+// O cartão mostrava o CÓDIGO do país ("Recife, BR"); com a lista de países
+// traduzida pelo navegador, dá para escrever o nome (ver shared/paises.ts).
+import { nomeDoPais } from "@shared/paises";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { opportunitySectorLabel } from "@/lib/opportunity-sectors";
 import { rotuloDaBusca, rotuloDeInteresse } from "@/lib/interesses";
@@ -481,7 +484,7 @@ function MatchCard({ match, onInterest, onDismiss, onResponder, onVerConexoes, i
               <span className="text-[10px]">📍</span>
               {sectorLabel(t, i18n, match.sector) || optionLabel(t, match.primarySpecialty)}
               {(match.sector || match.primarySpecialty) && (match.city) && " · "}
-              {match.city}{match.country && `, ${match.country}`}
+              {match.city}{match.country && `, ${nomeDoPais(match.country, i18n.language)}`}
             </div>
           </div>
 

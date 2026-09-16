@@ -412,22 +412,6 @@
       "30k_plus": "Más de $15k"
     },
     "countries": {
-      "brazil": "Brasil",
-      "portugal": "Portugal",
-      "usa": "EE.UU.",
-      "argentina": "Argentina",
-      "chile": "Chile",
-      "mexico": "México",
-      "colombia": "Colombia",
-      "germany": "Alemania",
-      "france": "Francia",
-      "uk": "Reino Unido",
-      "spain": "España",
-      "italy": "Italia",
-      "japan": "Japón",
-      "china": "China",
-      "india": "India",
-      "uae": "EAU",
       "other": "Otro"
     },
     "aiAnalysis": {
@@ -1158,24 +1142,6 @@
     "sharedByPrefix": "· red de {{name}}"
   },
   "newOpportunity": {
-    "countryBrasil": "Brasil",
-    "countryPortugal": "Portugal",
-    "countryEstadosUnidos": "Estados Unidos",
-    "countryArgentina": "Argentina",
-    "countryChile": "Chile",
-    "countryColombia": "Colombia",
-    "countryMexico": "México",
-    "countryEspanha": "España",
-    "countryFranca": "Francia",
-    "countryAlemanha": "Alemania",
-    "countryReinoUnido": "Reino Unido",
-    "countryItalia": "Italia",
-    "countryJapao": "Japón",
-    "countryChina": "China",
-    "countryIndia": "India",
-    "countryAfricaDoSul": "Sudáfrica",
-    "countryNigeria": "Nigeria",
-    "countryEmiradosArabes": "Emiratos Árabes",
     "complianceGreenLabel": "Alta Confiabilidad",
     "complianceYellowLabel": "Confiabilidad Media",
     "complianceOrangeLabel": "Necesita Validación",
@@ -2490,5 +2456,16 @@
     "imoveis": "Inmuebles",
     "logistica": "Logística",
     "canais_comerciais": "Canales comerciales"
+  },
+  "city": {
+    "placeholder": "Escribe las primeras letras de la ciudad",
+    "chooseCountry": "Elige primero el país para ver sugerencias de ciudad.",
+    "loading": "Cargando ciudades...",
+    "noList": "Todavía no tenemos la lista de este país. Escribe el nombre de la ciudad.",
+    "noResults": "No se encontró ninguna ciudad. Puedes escribir el nombre de todos modos.",
+    "credit": "Datos de ciudades:"
+  },
+  "country": {
+    "credit": "Datos de países:"
   }
 }

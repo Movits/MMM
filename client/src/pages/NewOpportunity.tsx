@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AssistenteDeTexto } from "@/components/AssistenteDeTexto";
+import CreditoDeDados from "@/components/CreditoDeDados";
+import { FONTE_DOS_PAISES, FONTE_DOS_PAISES_URL, listarPaises } from "@shared/paises";
 import { toast } from "sonner";
 import { FTSBadge } from "./Opportunities";
 import { sortOptionsAlphabetically } from "@shared/option-sorting";
@@ -34,17 +36,10 @@ export default function NewOpportunity() {
   // idioma. Ver client/src/lib/opportunity-sectors.ts.
   const SECTORS = OPPORTUNITY_SECTOR_KEYS.map(key => ({ key, label: opportunitySectorLabel(t, key) }));
 
-  const COUNTRIES = [
-    { code: "BR", name: t("newOpportunity.countryBrasil") }, { code: "PT", name: t("newOpportunity.countryPortugal") },
-    { code: "US", name: t("newOpportunity.countryEstadosUnidos") }, { code: "AR", name: t("newOpportunity.countryArgentina") },
-    { code: "CL", name: t("newOpportunity.countryChile") }, { code: "CO", name: t("newOpportunity.countryColombia") },
-    { code: "MX", name: t("newOpportunity.countryMexico") }, { code: "ES", name: t("newOpportunity.countryEspanha") },
-    { code: "FR", name: t("newOpportunity.countryFranca") }, { code: "DE", name: t("newOpportunity.countryAlemanha") },
-    { code: "GB", name: t("newOpportunity.countryReinoUnido") }, { code: "IT", name: t("newOpportunity.countryItalia") },
-    { code: "JP", name: t("newOpportunity.countryJapao") }, { code: "CN", name: t("newOpportunity.countryChina") },
-    { code: "IN", name: t("newOpportunity.countryIndia") }, { code: "ZA", name: t("newOpportunity.countryAfricaDoSul") },
-    { code: "NG", name: t("newOpportunity.countryNigeria") }, { code: "AE", name: t("newOpportunity.countryEmiradosArabes") },
-  ];
+  // Os 250 países, traduzidos pelo navegador e ordenados no idioma da tela (ver
+  // shared/paises.ts). Aqui NÃO entra o "Outro" do cadastro: a oportunidade é
+  // publicada para quem procura por país, e "Outro" não é lugar nenhum.
+  const COUNTRIES = listarPaises(i18n.language);
 
   const COMPLIANCE_COLORS = {
     green:   { label: t("newOpportunity.complianceGreenLabel"),   color: "#22c55e", icon: <ShieldCheck size={14} />, bg: "bg-green-500/10",  border: "border-green-500/30",  text: "text-green-400"  },
@@ -366,11 +361,12 @@ export default function NewOpportunity() {
                     <SelectValue placeholder={t("newOpportunity.selectPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent className="bg-[#211e1b] border-white/10 max-h-60 text-white">
-                    {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: country.name })), i18n.language).map((c) => (
-                      <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
+                    {COUNTRIES.map(pais => (
+                      <SelectItem key={pais.codigo} value={pais.codigo}>{pais.rotulo}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <CreditoDeDados rotulo={t("country.credit")} fonte={FONTE_DOS_PAISES} fonteUrl={FONTE_DOS_PAISES_URL}/>
               </div>
             </div>
 

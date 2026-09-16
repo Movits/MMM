@@ -412,22 +412,6 @@
       "30k_plus": "₹3L से अधिक"
     },
     "countries": {
-      "brazil": "ब्राज़ील",
-      "portugal": "पुर्तगाल",
-      "usa": "अमेरिका",
-      "argentina": "अर्जेंटीना",
-      "chile": "चिली",
-      "mexico": "मेक्सिको",
-      "colombia": "कोलंबिया",
-      "germany": "जर्मनी",
-      "france": "फ्रांस",
-      "uk": "यूके",
-      "spain": "स्पेन",
-      "italy": "इटली",
-      "japan": "जापान",
-      "china": "चीन",
-      "india": "भारत",
-      "uae": "UAE",
       "other": "अन्य"
     },
     "aiAnalysis": {
@@ -1158,24 +1142,6 @@
     "sharedByPrefix": "· {{name}} का नेटवर्क"
   },
   "newOpportunity": {
-    "countryBrasil": "ब्राज़ील",
-    "countryPortugal": "पुर्तगाल",
-    "countryEstadosUnidos": "अमेरिका",
-    "countryArgentina": "अर्जेंटीना",
-    "countryChile": "चिली",
-    "countryColombia": "कोलंबिया",
-    "countryMexico": "मेक्सिको",
-    "countryEspanha": "स्पेन",
-    "countryFranca": "फ्रांस",
-    "countryAlemanha": "जर्मनी",
-    "countryReinoUnido": "यूके",
-    "countryItalia": "इटली",
-    "countryJapao": "जापान",
-    "countryChina": "चीन",
-    "countryIndia": "भारत",
-    "countryAfricaDoSul": "दक्षिण अफ्रीका",
-    "countryNigeria": "नाइजीरिया",
-    "countryEmiradosArabes": "संयुक्त अरब अमीरात",
     "complianceGreenLabel": "उच्च विश्वसनीयता",
     "complianceYellowLabel": "मध्यम विश्वसनीयता",
     "complianceOrangeLabel": "सत्यापन आवश्यक",
@@ -2490,5 +2456,16 @@
     "imoveis": "अचल संपत्ति",
     "logistica": "लॉजिस्टिक्स",
     "canais_comerciais": "व्यावसायिक चैनल"
+  },
+  "city": {
+    "placeholder": "शहर के पहले अक्षर लिखें",
+    "chooseCountry": "शहर के सुझाव देखने के लिए पहले देश चुनें।",
+    "loading": "शहर लोड हो रहे हैं...",
+    "noList": "इस देश की सूची अभी हमारे पास नहीं है। शहर का नाम लिखें।",
+    "noResults": "कोई शहर नहीं मिला। आप फिर भी नाम लिख सकते हैं।",
+    "credit": "शहरों का डेटा:"
+  },
+  "country": {
+    "credit": "देशों का डेटा:"
   }
 }

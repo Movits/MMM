@@ -412,22 +412,6 @@
       "30k_plus": "¥1.5M以上"
     },
     "countries": {
-      "brazil": "ブラジル",
-      "portugal": "ポルトガル",
-      "usa": "アメリカ",
-      "argentina": "アルゼンチン",
-      "chile": "チリ",
-      "mexico": "メキシコ",
-      "colombia": "コロンビア",
-      "germany": "ドイツ",
-      "france": "フランス",
-      "uk": "イギリス",
-      "spain": "スペイン",
-      "italy": "イタリア",
-      "japan": "日本",
-      "china": "中国",
-      "india": "インド",
-      "uae": "UAE",
       "other": "その他"
     },
     "aiAnalysis": {
@@ -1158,24 +1142,6 @@
     "sharedByPrefix": "· {{name}}のネットワーク"
   },
   "newOpportunity": {
-    "countryBrasil": "ブラジル",
-    "countryPortugal": "ポルトガル",
-    "countryEstadosUnidos": "アメリカ",
-    "countryArgentina": "アルゼンチン",
-    "countryChile": "チリ",
-    "countryColombia": "コロンビア",
-    "countryMexico": "メキシコ",
-    "countryEspanha": "スペイン",
-    "countryFranca": "フランス",
-    "countryAlemanha": "ドイツ",
-    "countryReinoUnido": "イギリス",
-    "countryItalia": "イタリア",
-    "countryJapao": "日本",
-    "countryChina": "中国",
-    "countryIndia": "インド",
-    "countryAfricaDoSul": "南アフリカ",
-    "countryNigeria": "ナイジェリア",
-    "countryEmiradosArabes": "アラブ首長国連邦",
     "complianceGreenLabel": "信頼性が高い",
     "complianceYellowLabel": "信頼性は中程度",
     "complianceOrangeLabel": "確認が必要",
@@ -2490,5 +2456,16 @@
     "imoveis": "不動産",
     "logistica": "物流",
     "canais_comerciais": "販売チャネル"
+  },
+  "city": {
+    "placeholder": "都市名の最初の文字を入力",
+    "chooseCountry": "都市の候補を表示するには、まず国を選んでください。",
+    "loading": "都市を読み込んでいます...",
+    "noList": "この国のリストはまだありません。都市名を入力してください。",
+    "noResults": "都市が見つかりません。そのまま入力できます。",
+    "credit": "都市データ:"
+  },
+  "country": {
+    "credit": "国データ："
   }
 }

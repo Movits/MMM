@@ -412,22 +412,6 @@
       "30k_plus": "أكثر من 15k $"
     },
     "countries": {
-      "brazil": "البرازيل",
-      "portugal": "البرتغال",
-      "usa": "الولايات المتحدة",
-      "argentina": "الأرجنتين",
-      "chile": "تشيلي",
-      "mexico": "المكسيك",
-      "colombia": "كولومبيا",
-      "germany": "ألمانيا",
-      "france": "فرنسا",
-      "uk": "المملكة المتحدة",
-      "spain": "إسبانيا",
-      "italy": "إيطاليا",
-      "japan": "اليابان",
-      "china": "الصين",
-      "india": "الهند",
-      "uae": "الإمارات",
       "other": "أخرى"
     },
     "aiAnalysis": {
@@ -1158,24 +1142,6 @@
     "sharedByPrefix": "· شبكة {{name}}"
   },
   "newOpportunity": {
-    "countryBrasil": "البرازيل",
-    "countryPortugal": "البرتغال",
-    "countryEstadosUnidos": "الولايات المتحدة",
-    "countryArgentina": "الأرجنتين",
-    "countryChile": "تشيلي",
-    "countryColombia": "كولومبيا",
-    "countryMexico": "المكسيك",
-    "countryEspanha": "إسبانيا",
-    "countryFranca": "فرنسا",
-    "countryAlemanha": "ألمانيا",
-    "countryReinoUnido": "المملكة المتحدة",
-    "countryItalia": "إيطاليا",
-    "countryJapao": "اليابان",
-    "countryChina": "الصين",
-    "countryIndia": "الهند",
-    "countryAfricaDoSul": "جنوب أفريقيا",
-    "countryNigeria": "نيجيريا",
-    "countryEmiradosArabes": "الإمارات العربية المتحدة",
     "complianceGreenLabel": "موثوقية عالية",
     "complianceYellowLabel": "موثوقية متوسطة",
     "complianceOrangeLabel": "بحاجة إلى تحقق",
@@ -2490,5 +2456,16 @@
     "imoveis": "عقارات",
     "logistica": "لوجستيات",
     "canais_comerciais": "قنوات تجارية"
+  },
+  "city": {
+    "placeholder": "اكتب الأحرف الأولى من اسم المدينة",
+    "chooseCountry": "اختر الدولة أولاً لعرض اقتراحات المدن.",
+    "loading": "جارٍ تحميل المدن...",
+    "noList": "لا تتوفر لدينا قائمة لهذه الدولة بعد. اكتب اسم المدينة.",
+    "noResults": "لم يتم العثور على مدينة. يمكنك كتابة الاسم على أي حال.",
+    "credit": "بيانات المدن:"
+  },
+  "country": {
+    "credit": "بيانات البلدان:"
   }
 }

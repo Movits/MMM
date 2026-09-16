@@ -412,22 +412,6 @@
       "30k_plus": "Acima de R$ 50k"
     },
     "countries": {
-      "brazil": "Brasil",
-      "portugal": "Portugal",
-      "usa": "EUA",
-      "argentina": "Argentina",
-      "chile": "Chile",
-      "mexico": "México",
-      "colombia": "Colômbia",
-      "germany": "Alemanha",
-      "france": "França",
-      "uk": "Reino Unido",
-      "spain": "Espanha",
-      "italy": "Itália",
-      "japan": "Japão",
-      "china": "China",
-      "india": "Índia",
-      "uae": "Emirados Árabes",
       "other": "Outro"
     },
     "aiAnalysis": {
@@ -1158,24 +1142,6 @@
     "sharedByPrefix": "· rede de {{name}}"
   },
   "newOpportunity": {
-    "countryBrasil": "Brasil",
-    "countryPortugal": "Portugal",
-    "countryEstadosUnidos": "Estados Unidos",
-    "countryArgentina": "Argentina",
-    "countryChile": "Chile",
-    "countryColombia": "Colômbia",
-    "countryMexico": "México",
-    "countryEspanha": "Espanha",
-    "countryFranca": "França",
-    "countryAlemanha": "Alemanha",
-    "countryReinoUnido": "Reino Unido",
-    "countryItalia": "Itália",
-    "countryJapao": "Japão",
-    "countryChina": "China",
-    "countryIndia": "Índia",
-    "countryAfricaDoSul": "África do Sul",
-    "countryNigeria": "Nigéria",
-    "countryEmiradosArabes": "Emirados Árabes",
     "complianceGreenLabel": "Alta Confiabilidade",
     "complianceYellowLabel": "Confiabilidade Média",
     "complianceOrangeLabel": "Necessita Validação",
@@ -2490,5 +2456,16 @@
     "imoveis": "Imóveis",
     "logistica": "Logística",
     "canais_comerciais": "Canais Comerciais"
+  },
+  "city": {
+    "placeholder": "Digite as primeiras letras da cidade",
+    "chooseCountry": "Escolha o país primeiro para ver sugestões de cidade.",
+    "loading": "Carregando cidades...",
+    "noList": "Ainda não temos a lista deste país. Digite o nome da cidade.",
+    "noResults": "Nenhuma cidade encontrada. Você pode digitar o nome mesmo assim.",
+    "credit": "Dados de cidades:"
+  },
+  "country": {
+    "credit": "Dados de países:"
   }
 }
