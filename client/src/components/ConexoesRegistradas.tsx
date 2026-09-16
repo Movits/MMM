@@ -25,6 +25,12 @@ type Lado = { lado: "a" | "b"; tipo: "contato" | "membro"; contactId: number | n
 export type ConexaoNaTela = {
   id: string;
   origem: string;
+  /**
+   * Por que esta conexão existe, nas palavras que o servidor gravou. A tela só
+   * o mostra quando NÃO há itens (ver abaixo): com itens, ele repetiria o que
+   * já está escrito logo acima.
+   */
+  motivo?: string | null;
   itens: Array<{ tem: string; precisa: string; deCodigo: string | null; paraCodigo: string | null }>;
   status: string;
   statusComissao: string;
@@ -89,6 +95,17 @@ export function ConexaoRegistrada({ conexao }: { conexao: ConexaoNaTela }) {
           <li key={indice} className="text-sm text-white/75">{t("networkInteligente.connections.itemLine", { tem: item.tem, precisa: item.precisa })}</li>
         ))}
       </ul>
+
+      {/* Sem itens, o cartão ficava só com origem, status e data: duas conexões
+          entre membras viravam dois cartões IDÊNTICOS, e a dona não tinha como
+          saber qual era qual nem por que existiam (item 7 da revisão do Nicolas
+          na #135). O motivo é o que as distingue — para conexão entre membras
+          ele traz a compatibilidade, e quando o outro lado tirou a autorização
+          ele diz justamente isso, que era o cartão vazio sem explicação. Com
+          itens na tela o motivo não aparece: repetiria o que já está escrito. */}
+      {conexao.itens.length === 0 && conexao.motivo && (
+        <p className="mt-2 text-sm text-white/60">{conexao.motivo}</p>
+      )}
 
       <p className="mt-2 text-xs text-white/45">
         {t("networkInteligente.connections.registeredAt", { data: new Date(conexao.criadaEm).toLocaleDateString(i18n.language) })}

@@ -111,3 +111,41 @@ describe("Conexão registrada — descartar pede confirmação", () => {
     expect(screen.queryByRole("button", { name: "Descartar" })).not.toBeInTheDocument();
   });
 });
+
+/**
+ * Item 7 da revisão do Nicolas na #135: duas conexões entre membras viravam
+ * dois cartões IDÊNTICOS — origem, status e data, e nada mais —, porque a
+ * conexão entre membras não carrega item nenhum de propósito ("o que tenho" de
+ * uma não aparece para a outra). A dona não tinha como saber qual era qual nem
+ * por que existiam.
+ */
+describe("cartão sem itens mostra o motivo", () => {
+  it("entre membras, o motivo distingue um cartão do outro", () => {
+    renderizar(conexao({
+      origem: "PLATFORM_MATCH",
+      itens: [],
+      motivo: "Conexão sugerida pelo motor de perfis entre duas membras da plataforma, com o termo do Smart Match aceito pelas duas: compatibilidade de 72%.",
+    }));
+
+    expect(screen.getByText(/compatibilidade de 72%/)).toBeInTheDocument();
+  });
+
+  it("quando o outro lado tirou a autorização, o cartão diz isso em vez de ficar vazio", () => {
+    renderizar(conexao({
+      origem: "NETWORK_NETWORK_MATCH",
+      itens: [],
+      motivo: "A outra dona retirou a autorização; os detalhes deixaram de aparecer.",
+    }));
+
+    expect(screen.getByText(/retirou a autoriza[çc][ãa]o/)).toBeInTheDocument();
+  });
+
+  it("com itens na tela, o motivo não repete o que já está escrito", () => {
+    renderizar(conexao({
+      itens: [{ tem: "Vinho", precisa: "Importador", deCodigo: null, paraCodigo: null }],
+      motivo: "Motivo que não deve aparecer duas vezes.",
+    }));
+
+    expect(screen.queryByText(/não deve aparecer duas vezes/)).toBeNull();
+  });
+});
