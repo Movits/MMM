@@ -58,6 +58,7 @@ const PERFIL_IMPORTADO = {
     country: "BR",
     company: "Café do Cerrado",
     jobTitle: "Diretora comercial",
+    // Rótulo que EXISTE na lista de hoje.
     sector: "Agronegócio",
     currentResources: "Possui: Fazenda | Procura: Importador",
     whatIHave: ["fazenda", "commodities"],
@@ -87,6 +88,21 @@ describe("cadastro de conta importada", () => {
     // e não que apareçam na primeira tela.
     const valores = Array.from(document.querySelectorAll("input, textarea")).map(campo => (campo as HTMLInputElement).value);
     expect(valores).toContain("Ana Souza");
+  });
+
+  it("setor que não está mais na lista não é pré-preenchido, para o seletor não mentir", async () => {
+    // A planilha trazia "Tecnologia"; a lista de hoje tem "Tecnologia & Software".
+    // Pré-preencher com o que não casa deixa o seletor vazio na tela e o
+    // "Continuar" liberado, e a revisão mostra um setor que ninguém escolheu.
+    duble.perfil = {
+      user: { id: 43, name: "Bia" },
+      profile: { ...PERFIL_IMPORTADO.profile, displayName: "Bia", sector: "Tecnologia" },
+    };
+
+    render(<Onboarding />);
+
+    await waitFor(() => expect(screen.getByDisplayValue("Bia")).toBeInTheDocument());
+    expect(document.body.textContent ?? "").not.toContain("Tecnologia");
   });
 
   it("perfil vazio continua abrindo vazio, sem inventar nada", async () => {

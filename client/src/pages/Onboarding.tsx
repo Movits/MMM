@@ -8,7 +8,7 @@ import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
 import { exigeCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
-import { interesseEhDoSetor, setoresTraduzidos } from "@shared/setores";
+import { interesseEhDoSetor, setoresTraduzidos, type TradutorDeSetor } from "@shared/setores";
 import {
   CHAVE_OUTRA_NECESSIDADE,
   CHAVE_QUERO_MENTORAR,
@@ -403,6 +403,18 @@ function SelectInput({ label, value, onChange, options, placeholder }: {
  * coluna é `json` e o driver às vezes entrega a string). Só entram chaves: item
  * escrito à mão não volta para as caixinhas, que são de vocabulário fechado.
  */
+/**
+ * O rótulo de setor gravado no perfil, se ele ainda existir na lista de hoje.
+ * `setoresTraduzidos` é a fonte única (shared/setores.ts), a mesma que desenha o
+ * seletor da etapa 4.
+ */
+function setorConhecido(t: TradutorDeSetor, gravado: unknown): string | null {
+  if (typeof gravado !== "string" || !gravado.trim()) return null;
+  const alvo = gravado.trim().toLowerCase();
+  const achado = setoresTraduzidos(t).find(setor => setor.rotulo.trim().toLowerCase() === alvo);
+  return achado ? achado.rotulo : null;
+}
+
 function listaDeChaves(valor: unknown): string[] {
   const bruto = typeof valor === "string" ? (() => { try { return JSON.parse(valor); } catch { return []; } })() : valor;
   return Array.isArray(bruto) ? bruto.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
@@ -467,7 +479,13 @@ export default function Onboarding() {
         // o cadastro dela vira conferir e aceitar.
         company: base.company || profile?.company || "",
         jobTitle: base.jobTitle || profile?.jobTitle || "",
-        sector: base.sector || profile?.sector || "",
+        // O setor só volta se for UM DOS RÓTULOS da lista. A carga de
+        // participantes grava o que veio na coluna da planilha ("Tecnologia",
+        // "Saúde e bem-estar"), e a lista de hoje tem outros rótulos
+        // ("Tecnologia & Software", "Saúde"): pré-preencher com o que não casa
+        // deixa o seletor VAZIO na tela com o "Continuar" liberado, e a revisão
+        // mostrando um setor que ninguém escolheu. Sem casar, ela escolhe.
+        sector: base.sector || (setorConhecido(t, profile?.sector) ?? ""),
         currentResources: base.currentResources || profile?.currentResources || "",
         whatIHave: base.whatIHave.length > 0 ? base.whatIHave : listaDeChaves(profile?.whatIHave),
         whatINeed: base.whatINeed.length > 0 ? base.whatINeed : listaDeChaves(profile?.whatINeed),

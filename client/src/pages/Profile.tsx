@@ -561,7 +561,13 @@ export default function Profile() {
                   (profile as any)?.companySize && { icon: <Building size={13} />, label: t(`profile.business.size${String((profile as any).companySize).charAt(0).toUpperCase()}${String((profile as any).companySize).slice(1)}`) },
                   (profile as any)?.companyCnpj && { icon: <Building size={13} />, label: `${t("profile.business.registrationNumber")}: ${mascararCadastroEmpresarial((profile as any).companyCnpj)}` },
                   (profile?.city || profile?.country) && { icon: <MapPin size={13} />, label: [profile?.city, nomeDoPais(profile?.country)].filter(Boolean).join(", ") },
-                  (profile as any)?.gender && { icon: <User size={13} />, label: t(`profile.gender.${(profile as any).gender}`) },
+                  // O banco guarda "prefer_not_to_say" e a chave de tradução é
+                  // "preferNotToSay": interpolar o valor cru punha o nome da
+                  // chave na tela, nos dez idiomas. O cadastro já fazia esta
+                  // conversão na revisão; o Perfil não fazia — e a tela ficou
+                  // mais visível nesta entrega, porque "Editar perfil" passou a
+                  // levar para cá.
+                  (profile as any)?.gender && { icon: <User size={13} />, label: t(`profile.gender.${(profile as any).gender === "prefer_not_to_say" ? "preferNotToSay" : (profile as any).gender}`) },
                   (profile as any)?.institutionalNetwork && { icon: <Network size={13} />, label: (profile as any).institutionalNetwork },
                   profile?.linkedinUrl && { icon: <Link2 size={13} />, label: "LinkedIn", href: profile.linkedinUrl },
                   profile?.websiteUrl && { icon: <Globe size={13} />, label: "Website", href: profile.websiteUrl },
