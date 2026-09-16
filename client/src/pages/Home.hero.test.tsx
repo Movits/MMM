@@ -104,8 +104,10 @@ describe("Home — Hero", () => {
   it("os demais textos da Hero são os da spec, palavra por palavra, com mais de 30 países", () => {
     const s = within(hero());
     for (const texto of [
-      "Imagine uma rede capaz de identificar quem você precisa conhecer — e quem precisa conhecer você.",
-      "Nossa inteligência artificial cruza perfis, interesses, necessidades e oportunidades para revelar conexões estratégicas que talvez você nunca encontrasse sozinho.",
+      // Rosber, 16/09: sem o travessão, dois-pontos depois de "identificar" e "Quem"
+      // maiúsculo; e "talvez nunca fossem encontradas" (as conexões), não "você sozinho".
+      "Imagine uma rede capaz de identificar: Quem você precisa conhecer e quem precisa conhecer você.",
+      "Nossa inteligência artificial cruza perfis, interesses, necessidades e oportunidades para revelar conexões estratégicas que talvez nunca fossem encontradas.",
       "Seu próximo grande negócio pode já estar aqui.",
       "Descubra quem, onde e qual oportunidade combina com você.",
       "Encontre o seu Business Match.",
@@ -166,5 +168,106 @@ describe("Home — Hero", () => {
     expect(s.getByRole("heading", { level: 1 })).toHaveTextContent("Intelligence that connects deals that happen");
     expect(s.getByText("Global business network among members, +30 countries, endless possibilities")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/hero\.\w/);
+  });
+});
+
+/**
+ * Pedidos do Rosber de 16/09 (áudio no grupo, com o print da Hero marcado), nos
+ * 10 idiomas. O português segue o pedido ao pé da letra; nos outros, o mesmo
+ * desenho (dois-pontos depois de "identificar", sem travessão, as conexões que
+ * "talvez nunca fossem encontradas", sem "você sozinho") respeitando a gramática
+ * de cada um: inglês, espanhol, francês, alemão e russo põem minúscula depois
+ * dos dois-pontos, como manda a norma deles (o que segue não é oração completa);
+ * o francês leva espaço inseparável antes dos dois-pontos; chinês e japonês usam
+ * os dois-pontos de largura cheia, e o japonês anuncia a lista com 次のような人
+ * ("pessoas como estas"; 次の人 se lê "a próxima pessoa").
+ */
+const TEXTOS_DE_16_09: Record<string, { subtitle: string; ai: string }> = {
+  "pt-BR": {
+    subtitle: "Imagine uma rede capaz de identificar: Quem você precisa conhecer e quem precisa conhecer você.",
+    ai: "Nossa inteligência artificial cruza perfis, interesses, necessidades e oportunidades para revelar conexões estratégicas que talvez nunca fossem encontradas.",
+  },
+  en: {
+    subtitle: "Imagine a network that can identify: who you need to meet and who needs to meet you.",
+    ai: "Our artificial intelligence cross-references profiles, interests, needs and opportunities to reveal strategic connections that might never be found.",
+  },
+  es: {
+    subtitle: "Imagina una red capaz de identificar: a quién necesitas conocer y quién necesita conocerte.",
+    ai: "Nuestra inteligencia artificial cruza perfiles, intereses, necesidades y oportunidades para revelar conexiones estratégicas que quizá nunca se encontrarían.",
+  },
+  fr: {
+    subtitle: "Imaginez un réseau capable d'identifier\u00a0: qui vous devez rencontrer et qui doit vous rencontrer.",
+    ai: "Notre intelligence artificielle croise profils, intérêts, besoins et opportunités pour révéler des connexions stratégiques qui n'auraient peut-être jamais été trouvées.",
+  },
+  de: {
+    subtitle: "Stellen Sie sich ein Netzwerk vor, das erkennen kann: wen Sie kennenlernen sollten und wer Sie kennenlernen sollte.",
+    ai: "Unsere künstliche Intelligenz gleicht Profile, Interessen, Bedürfnisse und Chancen ab und macht strategische Verbindungen sichtbar, die vielleicht nie gefunden worden wären.",
+  },
+  ru: {
+    subtitle: "Представьте сеть, которая способна определить: с кем вам нужно познакомиться и кому нужно познакомиться с вами.",
+    ai: "Наш искусственный интеллект сопоставляет профили, интересы, потребности и возможности, чтобы открыть стратегические связи, которые, возможно, никогда не были бы найдены.",
+  },
+  hi: {
+    subtitle: "कल्पना कीजिए एक ऐसे नेटवर्क की, जो पहचान सके: आपको किससे मिलना चाहिए और किसे आपसे मिलना चाहिए।",
+    ai: "हमारी कृत्रिम बुद्धिमत्ता प्रोफ़ाइल, रुचियों, ज़रूरतों और अवसरों का मिलान करके ऐसे रणनीतिक संपर्क सामने लाती है, जो शायद कभी खोजे ही न जाते।",
+  },
+  ar: {
+    subtitle: "تخيّل شبكة قادرة على تحديد: من تحتاج إلى معرفته ومن يحتاج إلى معرفتك.",
+    ai: "يقاطع ذكاؤنا الاصطناعي الملفات الشخصية والاهتمامات والاحتياجات والفرص ليكشف عن علاقات استراتيجية ربما لم تكن لتُكتشف أبدًا.",
+  },
+  zh: {
+    subtitle: "想象一个网络，能识别出：您需要认识的人，以及需要认识您的人。",
+    ai: "我们的人工智能交叉比对档案、兴趣、需求与机遇，揭示可能永远不会被发现的战略性连接。",
+  },
+  ja: {
+    subtitle: "次のような人を見つけ出すネットワークを想像してみてください：あなたが知り合うべき人と、あなたと知り合うべき人。",
+    ai: "私たちのAIは、プロフィール、関心、ニーズ、機会を照らし合わせ、見つからないままだったかもしれない戦略的なつながりを明らかにします。",
+  },
+};
+
+describe("Home — textos da Hero pedidos pelo Rosber em 16/09, nos 10 idiomas", () => {
+  it("cobre exatamente os 10 idiomas do site", async () => {
+    const { LANGUAGES } = await import("@/i18n");
+    expect(Object.keys(TEXTOS_DE_16_09).sort()).toEqual(LANGUAGES.map(l => l.code).sort());
+  });
+
+  for (const [idioma, esperado] of Object.entries(TEXTOS_DE_16_09)) {
+    it(`${idioma}: a Hero mostra a frase com dois-pontos e sem travessão, e a das conexões sem "você sozinho"`, async () => {
+      await i18n.changeLanguage(idioma);
+      const s = within(hero());
+      // Comparação pelo textContent EXATO: o normalizador padrão do Testing
+      // Library troca o espaço inseparável do francês por espaço comum.
+      const exato = (texto: string) => s.getByText((_, elemento) => elemento?.tagName === "P" && elemento.textContent === texto);
+      const subtitulo = exato(esperado.subtitle);
+      expect(subtitulo).toBeInTheDocument();
+      expect(exato(esperado.ai)).toBeInTheDocument();
+      // No texto DESENHADO, e não no do próprio teste.
+      expect(subtitulo.textContent).not.toMatch(/—/);
+      expect(subtitulo.textContent).toMatch(/[:：]/);
+    });
+  }
+});
+
+describe("Home — as frases de destaque são legíveis no celular (Rosber, 16/09)", () => {
+  // O degradê recortado no texto é pintado como FUNDO, e o modo escuro dos
+  // navegadores de celular escurece fundo: a frase virou marrom sobre preto.
+  // Cor de texto sólida não passa por esse escurecimento.
+  const FRASES = [
+    "Seu próximo grande negócio pode já estar aqui.",
+    "Em algum lugar da nossa rede, alguém pode estar procurando exatamente o que você tem.",
+    "Você diz onde quer chegar. Nossa inteligência encontra quem pode ajudar você a chegar lá.",
+  ];
+
+  it("as três usam a cor de texto sólida #efcba8 com halo escuro, e não o degradê recortado no texto", () => {
+    render(<Home />);
+    for (const frase of FRASES) {
+      const elemento = screen.getByText(frase);
+      expect(elemento, frase).toHaveClass("text-[#efcba8]");
+      // Halo escuro: recorta os arcos e pontos claros do globo em volta das letras.
+      expect(elemento, frase).toHaveClass("[text-shadow:0_0_3px_rgba(6,11,20,.95),0_0_12px_rgba(6,11,20,.85)]");
+      expect(elemento, frase).not.toHaveClass("bg-clip-text");
+      expect(elemento, frase).not.toHaveClass("text-transparent");
+      expect(elemento.className, frase).not.toMatch(/bg-gradient/);
+    }
   });
 });

@@ -29,6 +29,7 @@ import {
   Briefcase, ShieldCheck, Users, User, MapPin, Mic, Brain, Sparkles, Crown,
   Menu as MenuIcon, ChevronDown, LogOut, Network,
 } from "lucide-react";
+import { MOSTRAR_NUMEROS_DA_REDE } from "@/lib/numeros-da-rede";
 
 // ─── Faixas de compatibilidade ───────────────────────────────────────────────
 // Item 12 do reteste v4 (Gabriel): os anéis dos cartões pintavam em TRÊS cores
@@ -1016,12 +1017,14 @@ export default function Dashboard() {
   // Números da plataforma inteira. É a MESMA consulta que alimentava os quatro
   // indicadores da Hero (stats.platform, em server/routers/stats.ts), que saíram
   // da página pública: nenhum cálculo novo, nenhum número fixo no código.
-  const plataformaQuery = trpc.stats.platform.useQuery(undefined, { enabled: isAuthenticated });
+  // Com MOSTRAR_NUMEROS_DA_REDE desligado (pedido do Rosber, 16/09) as duas
+  // consultas nem saem: a seção não é desenhada, e não há por que buscar o número.
+  const plataformaQuery = trpc.stats.platform.useQuery(undefined, { enabled: isAuthenticated && MOSTRAR_NUMEROS_DA_REDE });
   // Meu Network Inteligente: minutos usados no mês e limite por reunião no atalho.
   const minutosDoNetwork = trpc.networkInteligente.minutos.useQuery(undefined, { enabled: isAuthenticated });
   // Membros Bronze, Prata e Ouro (Governança, itens 1 e 12): saíram da Home e
   // só aparecem aqui. Consulta de quem está logada, com contagens reais por nível.
-  const niveisQuery = trpc.stats.membrosPorNivel.useQuery(undefined, { enabled: isAuthenticated });
+  const niveisQuery = trpc.stats.membrosPorNivel.useQuery(undefined, { enabled: isAuthenticated && MOSTRAR_NUMEROS_DA_REDE });
 
   // O número do aviso de novidades, CONGELADO na carga em que apareceu. A tela
   // se refaz o tempo todo (demonstrar interesse, aceitar, dispensar, marcar como
@@ -1247,8 +1250,10 @@ export default function Dashboard() {
             Mesmo StatCard, mesmas quatro cores e mesma grade da grade de cima:
             nenhum componente novo, nenhuma cor fora da identidade. O índice
             começa em 4 para a entrada escalonada continuar a de cima em vez de
-            recomeçar. */}
-        <div className="mb-8">
+            recomeçar.
+            Escondida, com "Membros por nível", até os números serem atraentes
+            (Rosber, 16/09): ver MOSTRAR_NUMEROS_DA_REDE em lib/numeros-da-rede.ts. */}
+        {MOSTRAR_NUMEROS_DA_REDE && (<div className="mb-8">
           <div className="flex items-baseline gap-3 mb-3 flex-wrap">
             {/* Mesmo corpo do título "Oportunidades Recomendadas" (linha 592), que é
                 a outra seção fora de cartão. Sem a classe de tamanho, o h2 cai no
@@ -1282,7 +1287,7 @@ export default function Dashboard() {
               <StatCard key={s.label} {...s} value={niveisQuery.isError ? "—" : s.value} index={8 + i} />
             ))}
           </div>
-        </div>
+        </div>)}
 
         {/* ─── MEU NETWORK INTELIGENTE ───
             Entrada do painel da rede particular (pedido do Nicolas, 13/09/2026).

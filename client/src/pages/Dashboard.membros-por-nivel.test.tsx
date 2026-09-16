@@ -57,6 +57,10 @@ vi.mock("@/lib/trpc", () => ({ trpc: duble.trpc }));
 vi.mock("@/components/AppHeader", () => ({ AppHeader: () => null, GlobalMenu: () => null }));
 vi.mock("@/components/NotificationBell", () => ({ NotificationBell: () => null }));
 vi.mock("@/components/SmartMatchConsent", () => ({ SmartMatchConsent: () => null }));
+// A seção está escondida em produção desde 16/09 (MOSTRAR_NUMEROS_DA_REDE, pedido do
+// Rosber). Este arquivo guarda o comportamento dela LIGADA, para quando voltar;
+// o estado desligado está em Dashboard.numeros-da-rede-escondidos.test.tsx.
+vi.mock("@/lib/numeros-da-rede", () => ({ MOSTRAR_NUMEROS_DA_REDE: true }));
 
 const ESPERA = { timeout: 3000 };
 

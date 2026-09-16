@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { BrainCircuit, CheckCircle } from "lucide-react";
+import { BrainCircuit, CheckCircle, Loader2 } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 import { LIMITE_DA_BIO_GRAVADA } from "@shared/apresentacao";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
@@ -260,6 +260,170 @@ function apagarRascunho(chave: string) {
   } catch {
     // Idem: nada a fazer sem armazenamento.
   }
+  try {
+    window.sessionStorage.removeItem(chave);
+  } catch {
+    // Idem.
+  }
+}
+
+// ─── Rascunho da aba: a etapa e o que o localStorage não guarda ───────────────
+// Rosber, 16/09: puxar a tela para baixo no celular recarregava a página, e o
+// cadastro voltava para a primeira etapa com várias escolhas desmarcadas. O
+// rascunho acima já devolvia a maior parte das respostas, mas não a ETAPA, e a
+// faixa de renda (obrigatória na etapa 3) ficava de fora por privacidade — sem
+// ela a pessoa nunca passaria da etapa 3 ao recarregar.
+//
+// Decisão: a etapa e os três campos fora do localStorage (renda, capacidade de
+// investimento e Número de Cadastro Empresarial) ficam no sessionStorage, com a
+// MESMA chave por usuária. O sessionStorage vive só naquela aba — some ao
+// fechá-la, e outra aba ou outra pessoa no mesmo computador não o lê —, então
+// cobre o recarregar sem reabrir a questão da V-03. Some também ao concluir
+// (apagarRascunho) e ao sair da conta (apagarRascunhosDoCadastro, que só alcança
+// a aba em que a pessoa saiu: o sessionStorage de OUTRA aba aberta do app não é
+// visível dali). Aba de celular pode durar semanas, então ele leva `salvoEm` e
+// vale os mesmos 7 dias do rascunho acima; vencido, é ignorado. O aceite do
+// Termo Geral continua fora dos dois.
+const CAMPOS_SO_DA_ABA = ["incomeRange", "investmentCapacity", "companyCnpj"] as const;
+
+type RascunhoDaAba = { etapa: number | null; campos: Partial<FormData> };
+
+function etapaValida(valor: unknown): number | null {
+  return typeof valor === "number" && Number.isInteger(valor) && valor >= 1 && valor <= ETAPA_TERMO_GERAL ? valor : null;
+}
+
+function lerRascunhoDaAba(chave: string): RascunhoDaAba | null {
+  try {
+    const bruto = window.sessionStorage.getItem(chave);
+    if (!bruto) return null;
+    const dados: unknown = JSON.parse(bruto);
+    if (!dados || typeof dados !== "object" || Array.isArray(dados)) return null;
+    const registro = dados as Record<string, unknown>;
+    const { salvoEm } = registro;
+    if (typeof salvoEm !== "number" || Date.now() - salvoEm > VALIDADE_DO_RASCUNHO_MS) return null;
+    const campos: Partial<FormData> = {};
+    for (const campo of CAMPOS_SO_DA_ABA) {
+      const valor = registro[campo];
+      if (typeof valor === "string") campos[campo] = valor as never;
+    }
+    return { etapa: etapaValida(registro.etapa), campos };
+  } catch {
+    return null;
+  }
+}
+
+function gravarRascunhoDaAba(chave: string, form: FormData, etapa: number) {
+  try {
+    const rascunho: Record<string, unknown> = { salvoEm: Date.now(), etapa };
+    for (const campo of CAMPOS_SO_DA_ABA) rascunho[campo] = form[campo];
+    window.sessionStorage.setItem(chave, JSON.stringify(rascunho));
+  } catch {
+    // Sem sessionStorage: recarregar volta à primeira etapa, como antes.
+  }
+}
+
+// ─── Uma entrada do histórico por etapa ───────────────────────────────────────
+// Rosber, 16/09: o "voltar" do navegador (e o do celular) saía do cadastro em
+// vez de voltar uma etapa — a rota anterior mandava de novo a /onboarding, que
+// abria na etapa 1. Cada etapa agora empilha uma entrada no histórico, na
+// MESMA URL (o wouter não vê troca de rota e o ProtectedRoute não é chamado de
+// novo), com a etapa guardada no `history.state`. Invariante: a entrada de
+// posição i da pilha do cadastro é a etapa i — é o que deixa `history.go` levar
+// a uma etapa exata.
+const CHAVE_DA_ETAPA_NO_HISTORICO = "etapaDoCadastro";
+
+function etapaDoEstado(estado: unknown): number | null {
+  if (!estado || typeof estado !== "object") return null;
+  return etapaValida((estado as Record<string, unknown>)[CHAVE_DA_ETAPA_NO_HISTORICO]);
+}
+
+function etapaNoHistorico(): number | null {
+  try {
+    return etapaDoEstado(window.history.state);
+  } catch {
+    return null;
+  }
+}
+
+function marcarEtapaNoHistorico(etapa: number, modo: "push" | "replace") {
+  try {
+    const atual: unknown = window.history.state;
+    const estado = { ...(atual && typeof atual === "object" ? atual : {}), [CHAVE_DA_ETAPA_NO_HISTORICO]: etapa };
+    if (modo === "push") window.history.pushState(estado, "");
+    else window.history.replaceState(estado, "");
+  } catch {
+    // Histórico indisponível: o cadastro segue, só sem o "voltar" do navegador por etapa.
+  }
+}
+
+/** Classe no <html> que desliga o "puxar para atualizar" enquanto o cadastro está aberto (index.css). */
+const CLASSE_SEM_PUXAR_PARA_ATUALIZAR = "cadastro-sem-puxar-para-atualizar";
+
+/**
+ * Leva a página ao topo NA HORA. Relato do Rosber de 16/09: a etapa nova
+ * continuava abrindo no meio ou no fim, mesmo com o scrollTo que já existia.
+ * Provável causa: o index.css põe `scroll-behavior: smooth` no html, e tanto
+ * `scrollTo({ behavior: "auto" })` quanto `scrollTop = 0` herdam esse "suave";
+ * a rolagem animada começava junto com a troca do conteúdo e o navegador do
+ * celular a interrompia no caminho. Aqui o html recebe `auto` inline só durante
+ * a chamada, e o pedido vai como "instant".
+ */
+function levarAoTopo(painel: HTMLElement | null) {
+  const raiz = document.documentElement;
+  const comportamentoAntes = raiz.style.scrollBehavior;
+  raiz.style.scrollBehavior = "auto";
+  try {
+    if (typeof window.scrollTo === "function") window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  } catch {
+    // Navegador que não aceita "instant": o scrollTop abaixo resolve.
+  }
+  (document.scrollingElement ?? raiz).scrollTop = 0;
+  // No desktop o formulário pode rolar dentro do painel da direita.
+  if (painel) painel.scrollTop = 0;
+  raiz.style.scrollBehavior = comportamentoAntes;
+}
+
+/**
+ * O que libera o "Continuar" de cada etapa. Saiu de dentro do componente para
+ * valer também fora da etapa visível: restaurar a etapa depois de recarregar,
+ * ou o "avançar" do navegador, só leva a uma etapa se todas as anteriores
+ * estiverem completas (ver etapaAlcancavel).
+ */
+function etapaCompleta(etapa: number, form: FormData, aceitouTermoGeral: boolean): boolean {
+  // O teto do passo é o que a plataforma GRAVA: a bio da carga passa do teto
+  // do cadastro e travava o "Continuar" da etapa 1 — a conta não concluía.
+  if (etapa === 1) return form.displayName.trim().length >= 2 && form.city.trim().length >= 2 && form.bio.length <= LIMITE_DA_BIO_GRAVADA;
+  if (etapa === 2) {
+    const temEspecialidade = form.primarySpecialties.length > 0 || form.customSpecialty.trim().length > 0;
+    // Quem se declara MEI, pessoa juridica ou sem fins lucrativos tem cadastro empresarial por definicao (A7).
+    const cadastroOk = !exigeCadastroEmpresarial(form.personType) || normalizarCadastroEmpresarial(form.companyCnpj).length > 0;
+    return temEspecialidade && cadastroOk;
+  }
+  if (etapa === 3) {
+    const textosCabem = form.shortTermGoal.length <= LIMITE_META && form.longTermGoal.length <= LIMITE_META
+      && form.currentResources.length <= LIMITE_META;
+    // Estilo de trabalho era exigido aqui e saiu do cadastro (21:08).
+    return form.seekingTypes.length > 0 && form.incomeRange.length > 0
+      && outraNecessidadeValida(form.seekingTypes, form.seekingOtherNeed) && textosCabem;
+  }
+  if (etapa === 4) return form.sector.length > 0;
+  // "O que tenho": marcar nada continua valendo, mas "Outros" marcado exige o texto.
+  if (etapa === 5) return outroAtivoValido(form.whatIHave, form.whatIHaveOther);
+  // "O que preciso": marcar nada continua valendo, mas categoria marcada precisa
+  // de ao menos uma demanda detalhada e válida — a seleção sozinha não gera conexão.
+  if (etapa === 6) return categoriasPendentes(form.whatINeed, form.whatINeedDetails).length === 0;
+  if (etapa === ETAPA_TERMO_GERAL) return aceitouTermoGeral;
+  // Etapas profissionais e de ativos são opcionais — sempre pode avançar
+  return true;
+}
+
+/** A etapa pedida, ou a primeira ANTERIOR a ela que ainda não está completa. */
+function etapaAlcancavel(pedida: number, form: FormData): number {
+  for (let etapa = 1; etapa < pedida; etapa++) {
+    // O Termo Geral é a última etapa: nunca é "anterior" a outra, e o aceite não conta aqui.
+    if (!etapaCompleta(etapa, form, false)) return etapa;
+  }
+  return pedida;
 }
 
 // ─── Componentes reutilizáveis ────────────────────────────────────────────────
@@ -433,6 +597,39 @@ export default function Onboarding() {
   // usuária e de restaurar o que ela já tinha (ver "Rascunho do cadastro").
   const [chaveDoRascunho, setChaveDoRascunho] = useState<string | null>(null);
 
+  // ─── Navegação entre etapas (histórico, topo, foco) ───
+  // `etapaAlvo` é para onde a tela ESTÁ INDO: muda na hora do clique ou do
+  // "voltar" do navegador, antes dos 220 ms da animação, e é o que o popstate
+  // compara para não trocar duas vezes para a mesma etapa.
+  const etapaAlvo = useRef(1);
+  const trocaPendente = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // O "Voltar" da tela vai pelo histórico e espera o popstate: sem esta trava,
+  // dois toques rápidos voltariam duas etapas.
+  const esperandoOHistorico = useRef(false);
+  const focarTituloNaTroca = useRef(false);
+  const tituloRef = useRef<HTMLHeadingElement>(null);
+  const painelRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef(form);
+  formRef.current = form;
+  // Para o popstate (registrado uma vez) gravar a etapa no rascunho da aba.
+  const chaveDoRascunhoRef = useRef(chaveDoRascunho);
+  chaveDoRascunhoRef.current = chaveDoRascunho;
+  // A etapa gravada na entrada do histórico em que a tela ABRIU (recarregar
+  // mantém o `history.state`); null é entrada nova. Lida uma vez, antes de a
+  // própria tela marcar a entrada. É também a primeira entrada que ESTE
+  // documento criou: depois de recarregar, as entradas abaixo dela são do
+  // documento anterior, e ir a elas recarrega a página.
+  const etapaAoAbrir = useRef<number | null | undefined>(undefined);
+  if (etapaAoAbrir.current === undefined) etapaAoAbrir.current = etapaNoHistorico();
+  // Etapa a restaurar depois que o formulário restaurado estiver no estado.
+  const [etapaARestaurar, setEtapaARestaurar] = useState<number | null>(null);
+  // Depois de concluir, a ida ao Dashboard espera o popstate do history.go que
+  // tira as etapas do caminho do "voltar" (ver irAoDashboardSemAsEtapas).
+  const saidaAposConcluir = useRef<(() => void) | null>(null);
+  // Entrada de um cadastro já concluído (ver o pré-preenchimento): a tela vai ao
+  // Dashboard em vez de reabrir as etapas.
+  const [indoAoDashboard, setIndoAoDashboard] = useState(false);
+
   // Pre-preenche com o que ja existe: o nome dado no cadastro (users.name) e,
   // num re-onboarding, o perfil salvo. Antes o formulario abria vazio e pedia
   // o nome de novo. O rascunho da usuária entra ANTES: campo que ela já
@@ -451,7 +648,33 @@ export default function Onboarding() {
     } | null };
     prefilled.current = true;
     const chave = user?.id != null ? chaveDoRascunhoDa(user.id) : null;
-    const rascunho = chave ? lerRascunho(chave) : null;
+    const rascunhoGuardado = chave ? lerRascunho(chave) : null;
+    // O rascunho da aba só existe se esta aba recarregou no meio do cadastro:
+    // traz a etapa e os campos que não ficam no localStorage. Os três campos
+    // dele não vêm do perfil salvo (o pré-preenchimento abaixo não os lê), então
+    // não há o que decidir entre ele e o perfil — e a conta com cadastro
+    // incompleto não consegue gravar o perfil por outra tela enquanto isso.
+    const rascunhoDaAba = chave ? lerRascunhoDaAba(chave) : null;
+    // Entrada de ETAPA de um cadastro que já foi concluído, sem rascunho da aba
+    // (concluir o apaga): é o "voltar" do Dashboard caindo numa etapa que ficou
+    // na pilha — depois de recarregar no meio do cadastro, ou pelo "avançar" do
+    // navegador. Reabrir aqui mostraria o formulário pela metade e convidaria a
+    // refazer tudo (revisão de 16/09). Quem usa "Refazer cadastro" chega numa
+    // entrada NOVA (sem etapa), e quem recarrega no meio dele tem o rascunho da aba.
+    const jaConcluiu = (user as { onboardingCompleted?: boolean | null } | null | undefined)?.onboardingCompleted === true;
+    if (jaConcluiu && etapaAoAbrir.current != null && !rascunhoDaAba) {
+      setIndoAoDashboard(true);
+      navigate("/dashboard", { replace: true });
+      return;
+    }
+    const rascunho = rascunhoGuardado || rascunhoDaAba
+      ? { ...(rascunhoGuardado ?? {}), ...(rascunhoDaAba?.campos ?? {}) }
+      : null;
+    // Qual etapa reabrir: a da entrada do histórico (recarregar) ou, numa entrada
+    // nova, a do rascunho da aba. Quem decide se dá para chegar nela é o efeito
+    // de restauração, já com o formulário restaurado.
+    const etapaPedida = etapaAoAbrir.current ?? rascunhoDaAba?.etapa ?? 1;
+    if (etapaPedida > 1) setEtapaARestaurar(etapaPedida);
     // Chave e formulário mudam juntos (mesmo lote): o efeito que grava só roda
     // com o formulário já restaurado, nunca com o vazio do primeiro render.
     setChaveDoRascunho(chave);
@@ -521,6 +744,107 @@ export default function Onboarding() {
   useEffect(() => {
     if (chaveDoRascunho) gravarRascunho(chaveDoRascunho, form);
   }, [form, chaveDoRascunho]);
+
+  // O rascunho da aba leva a etapa junto. Enquanto há etapa a restaurar ele
+  // espera: gravar agora escreveria a etapa 1 por cima da que vai ser reaberta.
+  // A etapa gravada é a de DESTINO (`etapaAlvo`), não a da tela: `step` só muda
+  // 220 ms depois do toque, e três "voltar" rápidos deixavam gravada a etapa de
+  // onde a pessoa saiu (trocarEtapa também grava na hora).
+  useEffect(() => {
+    if (chaveDoRascunho && etapaARestaurar === null) gravarRascunhoDaAba(chaveDoRascunho, form, etapaAlvo.current);
+  }, [form, step, chaveDoRascunho, etapaARestaurar]);
+
+  // Abrir o cadastro: a entrada atual do histórico passa a ser a etapa 1 (se já
+  // não for de uma etapa) e o "puxar para atualizar" fica desligado.
+  useEffect(() => {
+    if (etapaAoAbrir.current === null) marcarEtapaNoHistorico(1, "replace");
+    const raiz = document.documentElement;
+    raiz.classList.add(CLASSE_SEM_PUXAR_PARA_ATUALIZAR);
+    // Sem isto, no "voltar" o navegador devolve na hora a rolagem guardada da
+    // entrada (o fim da etapa) com a etapa anterior ainda na tela, e 220 ms
+    // depois a página pula ao topo. Quem leva ao topo é levarAoTopo.
+    let restauracaoAntes: ScrollRestoration | null = null;
+    try {
+      restauracaoAntes = window.history.scrollRestoration ?? null;
+      window.history.scrollRestoration = "manual";
+    } catch {
+      // Navegador sem a propriedade: fica o salto, só visual.
+    }
+    return () => {
+      raiz.classList.remove(CLASSE_SEM_PUXAR_PARA_ATUALIZAR);
+      if (trocaPendente.current) clearTimeout(trocaPendente.current);
+      try {
+        if (restauracaoAntes) window.history.scrollRestoration = restauracaoAntes;
+      } catch {
+        // Idem.
+      }
+    };
+  }, []);
+
+  // Reabre a etapa em que a pessoa estava, com o formulário já restaurado (o
+  // estado deste render). Só até onde as respostas deixam chegar: se faltar algo
+  // numa etapa anterior, abre nela. Se a pessoa já andou antes de o perfil
+  // chegar, o que ela fez vale e nada é restaurado.
+  useEffect(() => {
+    if (etapaARestaurar === null) return;
+    setEtapaARestaurar(null);
+    if (etapaAlvo.current !== 1) return;
+    const alvo = etapaAlcancavel(etapaARestaurar, form);
+    const naEntrada = etapaAoAbrir.current;
+    if (naEntrada != null) {
+      // Recarregou: a pilha 1..naEntrada já existe. Etapa que não dá para abrir
+      // volta pela própria pilha, para a entrada i continuar sendo a etapa i.
+      if (alvo < naEntrada) window.history.go(alvo - naEntrada);
+    } else {
+      // Entrada nova (a aba voltou ao cadastro por outra rota): refaz a pilha
+      // para o "voltar" do navegador passar por cada etapa até a 1.
+      for (let etapa = 2; etapa <= alvo; etapa++) marcarEtapaNoHistorico(etapa, "push");
+    }
+    etapaAlvo.current = alvo;
+    setStep(alvo);
+  }, [etapaARestaurar, form]);
+
+  // "Voltar" e "avançar" do navegador ou do celular: vai à etapa da entrada.
+  useEffect(() => {
+    const aoNavegarNoHistorico = (evento: PopStateEvent) => {
+      // Cadastro concluído: este popstate é o do recolhimento das etapas.
+      if (saidaAposConcluir.current) {
+        saidaAposConcluir.current();
+        return;
+      }
+      esperandoOHistorico.current = false;
+      const pedida = etapaDoEstado(evento.state);
+      if (pedida === null || pedida === etapaAlvo.current) return;
+      const permitida = etapaAlcancavel(pedida, formRef.current);
+      if (permitida < pedida) {
+        // "Avançar" para uma etapa que as respostas de hoje não liberam: volta
+        // pela pilha até a etapa que falta completar.
+        window.history.go(permitida - pedida);
+        if (permitida === etapaAlvo.current) return;
+      }
+      trocarEtapa(permitida);
+    };
+    window.addEventListener("popstate", aoNavegarNoHistorico);
+    return () => window.removeEventListener("popstate", aoNavegarNoHistorico);
+    // trocarEtapa só usa setters e refs, estáveis entre renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Etapa nova: topo da página e foco no título (quem usa leitor de tela ouve em
+  // que etapa está, e o teclado continua dali). Roda depois de o conteúdo novo
+  // estar no DOM, antes da pintura; não roda na primeira exibição da tela.
+  const primeiraExibicao = useRef(true);
+  useLayoutEffect(() => {
+    if (primeiraExibicao.current) {
+      primeiraExibicao.current = false;
+      return;
+    }
+    levarAoTopo(painelRef.current);
+    if (focarTituloNaTroca.current) {
+      focarTituloNaTroca.current = false;
+      tituloRef.current?.focus({ preventScroll: true });
+    }
+  }, [step]);
 
   // Sugestoes de cidade (IBGE) so quando o pais e o Brasil: filtra em memoria
   // a partir de 2 letras, ignorando acento, e mostra no maximo 50 opcoes para
@@ -683,7 +1007,40 @@ export default function Onboarding() {
     utils.auth.me.setData(undefined, atual => (atual ? { ...atual, onboardingCompleted: true } : atual));
     void utils.auth.me.invalidate();
     toast.success(t("onboarding.successMsg"));
-    navigate("/dashboard");
+    irAoDashboardSemAsEtapas();
+  };
+
+  // Revisão de 16/09: com uma entrada por etapa, ir ao Dashboard por cima delas
+  // deixava as 8 no caminho do "voltar" (gesto comum no Android). A pessoa caía
+  // numa etapa do cadastro que acabou de concluir, com o formulário pela metade,
+  // e o "avançar" ficava preso nas travas das etapas. Aqui a pilha volta à
+  // primeira entrada que esta página criou e o Dashboard toma o lugar dela.
+  // Abaixo dessa entrada (só existe se a página recarregou no meio do cadastro)
+  // quem cuida é o pré-preenchimento, que manda ao Dashboard a entrada de etapa
+  // de um cadastro já concluído.
+  const irAoDashboardSemAsEtapas = () => {
+    let foi = false;
+    const irAoDashboard = () => {
+      if (foi) return;
+      foi = true;
+      saidaAposConcluir.current = null;
+      navigate("/dashboard", { replace: true });
+    };
+    const etapaDaEntrada = etapaNoHistorico();
+    const primeiraDestaPagina = etapaAoAbrir.current ?? 1;
+    if (etapaDaEntrada === null || etapaDaEntrada <= primeiraDestaPagina) {
+      irAoDashboard();
+      return;
+    }
+    saidaAposConcluir.current = irAoDashboard;
+    try {
+      window.history.go(primeiraDestaPagina - etapaDaEntrada);
+    } catch {
+      irAoDashboard();
+      return;
+    }
+    // Rede de segurança: se o popstate não chegar, vai assim mesmo.
+    setTimeout(irAoDashboard, 1000);
   };
 
   // O aceite que deixa rastro no servidor (IP, user-agent, hash do texto) é o do
@@ -707,56 +1064,49 @@ export default function Onboarding() {
     set(key, arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value]);
   };
 
-  const goTo = (next: number) => {
-    const dir = next > step ? "forward" : "back";
+  // Anima e troca a etapa. O histórico é de quem chama: o "Continuar" empilha
+  // uma entrada, o "voltar" do navegador já andou nele. A rolagem ao topo e o
+  // foco no título ficam no useLayoutEffect de `step`, depois do conteúdo novo
+  // estar na tela (relato do Rosber de 09/09 e de novo em 16/09: "quando você
+  // passa para a próxima tela, ela não vai para o topo").
+  const trocarEtapa = (next: number) => {
+    const dir = next > etapaAlvo.current ? "forward" : "back";
+    etapaAlvo.current = next;
+    // Na hora, e não quando `step` mudar: ver o efeito que grava o rascunho da aba.
+    if (chaveDoRascunhoRef.current) gravarRascunhoDaAba(chaveDoRascunhoRef.current, formRef.current, next);
+    focarTituloNaTroca.current = true;
     setAnimDir(dir);
     setVisible(false);
-    setTimeout(() => {
+    if (trocaPendente.current) clearTimeout(trocaPendente.current);
+    trocaPendente.current = setTimeout(() => {
+      trocaPendente.current = null;
       setStep(next);
       setVisible(true);
-      // O passo novo precisa começar do topo. Sem isto a página mantinha a
-      // rolagem do passo anterior e a pessoa caía no meio (ou no fim) do
-      // formulário novo, tendo que subir na mão para ler o título e o primeiro
-      // campo — relatado pelo Rosber em 09/09: "quando você muda de um fichário
-      // pro outro (...) a página não abre no topo".
-      // `scrollTo` no window cobre o caso normal; `scrollingElement` cobre o
-      // navegador que rola o documento em vez da janela. Em jsdom o método não
-      // existe, então a guarda também serve ao teste.
-      if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
-        window.scrollTo({ top: 0, behavior: "auto" });
-      }
-      const raiz = document.scrollingElement ?? document.documentElement;
-      if (raiz) raiz.scrollTop = 0;
     }, 220);
   };
 
-  const canProceed = () => {
-    // O teto do passo é o que a plataforma GRAVA: a bio da carga passa do teto
-    // do cadastro e travava o "Continuar" da etapa 1 — a conta não concluía.
-    if (step === 1) return form.displayName.trim().length >= 2 && form.city.trim().length >= 2 && form.bio.length <= LIMITE_DA_BIO_GRAVADA;
-    if (step === 2) {
-      const temEspecialidade = form.primarySpecialties.length > 0 || form.customSpecialty.trim().length > 0;
-      // Quem se declara MEI, pessoa juridica ou sem fins lucrativos tem cadastro empresarial por definicao (A7).
-      const cadastroOk = !exigeCadastroEmpresarial(form.personType) || normalizarCadastroEmpresarial(form.companyCnpj).length > 0;
-      return temEspecialidade && cadastroOk;
-    }
-    if (step === 3) {
-      const textosCabem = form.shortTermGoal.length <= LIMITE_META && form.longTermGoal.length <= LIMITE_META
-        && form.currentResources.length <= LIMITE_META;
-      // Estilo de trabalho era exigido aqui e saiu do cadastro (21:08).
-      return form.seekingTypes.length > 0 && form.incomeRange.length > 0
-        && outraNecessidadeValida(form.seekingTypes, form.seekingOtherNeed) && textosCabem;
-    }
-    if (step === 4) return form.sector.length > 0;
-    // "O que tenho": marcar nada continua valendo, mas "Outros" marcado exige o texto.
-    if (step === 5) return outroAtivoValido(form.whatIHave, form.whatIHaveOther);
-    // "O que preciso": marcar nada continua valendo, mas categoria marcada precisa
-    // de ao menos uma demanda detalhada e válida — a seleção sozinha não gera conexão.
-    if (step === 6) return categoriasPendentes(form.whatINeed, form.whatINeedDetails).length === 0;
-    if (step === ETAPA_TERMO_GERAL) return aceitouTermoGeral;
-    // Etapas profissionais e de ativos são opcionais — sempre pode avançar
-    return true;
+  const avancar = () => {
+    // Toque duplo durante a animação não empilha a mesma etapa duas vezes.
+    if (!canProceed() || trocaPendente.current) return;
+    marcarEtapaNoHistorico(step + 1, "push");
+    trocarEtapa(step + 1);
   };
+
+  const voltar = () => {
+    if (step <= 1) { navigate("/"); return; }
+    if (trocaPendente.current || esperandoOHistorico.current) return;
+    // A entrada anterior do histórico é a etapa anterior: o "Voltar" da tela
+    // anda nele como o do navegador, e o "avançar" do navegador continua certo.
+    if (etapaNoHistorico() === step) {
+      esperandoOHistorico.current = true;
+      window.history.back();
+      return;
+    }
+    marcarEtapaNoHistorico(step - 1, "replace");
+    trocarEtapa(step - 1);
+  };
+
+  const canProceed = () => etapaCompleta(step, form, aceitouTermoGeral);
 
   // Ordem: primeiro o aceite do Termo Geral (com a versão que a tela mostrou),
   // depois o perfil. Ao contrário, o perfil ficaria salvo e o cadastro marcado
@@ -835,6 +1185,27 @@ export default function Onboarding() {
 
   const progress = ((step - 1) / (STEPS.length - 1)) * 100;
 
+  // Revisão de 16/09: sem esperar o perfil, recarregar na etapa 5 pintava a
+  // etapa 1 VAZIA e só depois pulava para a 5 — o "volta para a primeira tela e
+  // desmarca" do relato, e o que ela digitasse nesse intervalo o rascunho
+  // sobrescrevia. Enquanto o perfil não chega (a primeira busca; com erro, a
+  // tela abre como antes), enquanto o formulário não foi restaurado com ele e
+  // enquanto a etapa restaurada não é aplicada, a tela mostra só o carregando.
+  const preparando = profileQuery.isLoading === true
+    || (profileQuery.data != null && !prefilled.current)
+    || etapaARestaurar !== null
+    || indoAoDashboard;
+  if (preparando) {
+    return (
+      <div className="min-h-screen bg-transparent flex items-center justify-center" role="status" aria-live="polite">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 aria-hidden className="w-8 h-8 text-[#c98f70] animate-spin" />
+          <p className="text-sm text-white/60">{t("onboarding.nav.carregando")}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-transparent flex">
       {/* LEFT PANEL */}
@@ -881,7 +1252,7 @@ export default function Onboarding() {
           <span className="text-sm text-white/40">{step} / {STEPS.length}</span>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div ref={painelRef} className="flex-1 overflow-y-auto">
           <div className="max-w-2xl mx-auto px-6 py-10"
             style={{
               opacity: visible ? 1 : 0,
@@ -891,7 +1262,8 @@ export default function Onboarding() {
 
             <div className="mb-8">
               <div className="text-4xl mb-3">{STEPS[step - 1].icon}</div>
-              <h1 className="text-3xl font-black text-white">{STEPS[step - 1].title}</h1>
+              {/* tabIndex -1: recebe o foco ao trocar de etapa (ver o useLayoutEffect de `step`). */}
+              <h1 ref={tituloRef} tabIndex={-1} className="text-3xl font-black text-white outline-none">{STEPS[step - 1].title}</h1>
               <p className="text-white/50 mt-1">{STEPS[step - 1].subtitle}</p>
             </div>
 
@@ -1303,7 +1675,7 @@ export default function Onboarding() {
 
             {/* Navigation */}
             <div className="flex items-center justify-between mt-10 pt-6 border-t border-white/10">
-              <button type="button" onClick={() => step > 1 ? goTo(step - 1) : navigate("/")}
+              <button type="button" onClick={voltar}
                 className="flex items-center gap-2 text-white/50 hover:text-white text-sm transition-colors duration-200">
                 ← {step > 1 ? t("onboarding.nav.back") : t("onboarding.nav.home")}
               </button>
@@ -1315,7 +1687,7 @@ export default function Onboarding() {
                 ))}
               </div>
               {step < STEPS.length ? (
-                <button type="button" onClick={() => canProceed() && goTo(step + 1)} disabled={!canProceed()}
+                <button type="button" onClick={avancar} disabled={!canProceed()}
                   className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${canProceed() ? "bg-[#c98f70] hover:bg-[#b07a5c] text-[#151312] shadow-lg shadow-[#c98f70]/20" : "bg-white/10 text-white/30 cursor-not-allowed"}`}>
                   {t("onboarding.nav.continue")} →
                 </button>

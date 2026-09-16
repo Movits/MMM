@@ -10,7 +10,7 @@ type UseAuthOptions = {
 };
 
 /**
- * Prefixo das chaves do rascunho do cadastro em localStorage: pages/Onboarding.tsx
+ * Prefixo das chaves do rascunho do cadastro (localStorage e sessionStorage): pages/Onboarding.tsx
  * grava uma por usuária (`<prefixo><id>`). Vive aqui, e não na página, porque
  * o Onboarding é carregado com `lazy` e o logout precisa do prefixo sem puxar
  * a página inteira para o bundle principal.
@@ -24,15 +24,21 @@ export const PREFIXO_DO_RASCUNHO_DO_CADASTRO = "mmm.onboarding.rascunho.";
  * armazenamento (modo privado, SSR), nada a apagar.
  */
 export function apagarRascunhosDoCadastro() {
-  try {
-    const chaves: string[] = [];
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const chave = window.localStorage.key(i);
-      if (chave?.startsWith(PREFIXO_DO_RASCUNHO_DO_CADASTRO)) chaves.push(chave);
+  // O localStorage guarda o rascunho que sobrevive a fechar a aba; o
+  // sessionStorage, com a mesma chave, guarda a etapa e os campos que só podem
+  // voltar num recarregar da mesma aba (ver "Rascunho do cadastro" no Onboarding).
+  for (const armazenamento of ["localStorage", "sessionStorage"] as const) {
+    try {
+      const area = window[armazenamento];
+      const chaves: string[] = [];
+      for (let i = 0; i < area.length; i++) {
+        const chave = area.key(i);
+        if (chave?.startsWith(PREFIXO_DO_RASCUNHO_DO_CADASTRO)) chaves.push(chave);
+      }
+      for (const chave of chaves) area.removeItem(chave);
+    } catch {
+      // Sem o armazenamento, ou bloqueado: não há rascunho a apagar nele.
     }
-    for (const chave of chaves) window.localStorage.removeItem(chave);
-  } catch {
-    // Sem localStorage, ou bloqueado: não há rascunho a apagar.
   }
 }
 

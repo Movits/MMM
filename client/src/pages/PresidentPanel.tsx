@@ -1353,21 +1353,28 @@ export default function PresidentPanel() {
 
   return (
     <div className="min-h-screen bg-transparent text-white">
-      {/* Header */}
+      {/* Header
+          flex-wrap: conta Ouro ou admin que também distribui leva dois selos, e em
+          360-375 px a linha passava da tela (a página inteira rolava ~40 px para o
+          lado). Sem espaço, os selos descem para uma segunda linha. */}
       <div className="border-b border-white/8 bg-[#211e1b]">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 py-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate("/dashboard")} className="text-white/40 hover:text-white transition-colors text-sm">
+            {/* shrink-0 e nowrap: no mesmo print, o "← Dashboard" quebrava em duas
+                linhas por baixo da coroa (a regra global das abas, logo abaixo). */}
+            <button onClick={() => navigate("/dashboard")} className="shrink-0 whitespace-nowrap text-white/40 hover:text-white transition-colors text-sm">
               ← Dashboard
             </button>
             <div className="w-px h-4 bg-white/15" />
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-400/15 border border-amber-400/30 flex items-center justify-center">
+              {/* shrink-0: a regra global .flex { min-width: 0 } encolhia o quadrado da coroa. */}
+              <div className="shrink-0 w-8 h-8 rounded-lg bg-amber-400/15 border border-amber-400/30 flex items-center justify-center">
                 <Crown size={14} className="text-amber-400" />
               </div>
               <div>
-                <h1 className="text-sm font-bold text-white">Painel Ouro</h1>
-                <p className="text-xs text-amber-400/70">WRW · Backoffice Institucional</p>
+                <h1 className="text-sm font-bold text-white whitespace-nowrap">Painel Ouro</h1>
+                {/* Legenda decorativa: fica de fora no celular, onde não cabe ao lado do "← Dashboard". */}
+                <p className="hidden sm:block text-xs text-amber-400/70">WRW · Backoffice Institucional</p>
               </div>
             </div>
           </div>
@@ -1385,19 +1392,27 @@ export default function PresidentPanel() {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs
+            No celular (print de 16/09 no grupo, 360 px de largura) as abas se desenhavam
+            umas por cima das outras e os ícones sumiam. A causa é a regra global
+            `.flex { min-width: 0 }` do index.css: com ela cada botão (que é flex)
+            encolhia abaixo do próprio texto, e o `whitespace-nowrap` deixava o
+            texto vazar sobre o vizinho em vez de quebrar. `shrink-0` devolve a
+            largura do rótulo a cada aba; a fileira rola na horizontal
+            (overflow-x-auto), sem arrastar a página. `min-h-11` garante os 44 px
+            de área de toque. */}
         <div className="max-w-6xl mx-auto px-6 flex gap-1 overflow-x-auto pb-px">
           {tabs.map(tab => {
             const Icon = tab.icon;
             const isActive = abaAtiva === tab.id;
             return (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
+                className={`flex shrink-0 min-h-11 items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
                   isActive
                     ? "border-amber-400 text-amber-400"
                     : "border-transparent text-white/40 hover:text-white/70"
                 }`}>
-                <Icon size={14} />
+                <Icon size={14} className="shrink-0" aria-hidden="true" />
                 {tab.label}
               </button>
             );

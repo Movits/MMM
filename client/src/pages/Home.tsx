@@ -720,9 +720,23 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* As três frases de destaque (esta, steps.closing e opportunities.closing)
+                  eram um degradê ouro rosé recortado no texto (bg-clip-text). O degradê
+                  é FUNDO, e o modo escuro do navegador do celular (Samsung Internet,
+                  "escurecer sites" do Chrome) escurece fundos: nos prints do Rosber de
+                  16/09 a frase saiu num marrom-avermelhado de ~rgb(64,16,0) sobre ~rgb(24,24,20),
+                  contraste 1,2:1 — enquanto o "40" do Dashboard, cor de TEXTO #c98f70, saiu
+                  intacto. Agora é cor de texto sólida #efcba8 (o champanhe da paleta,
+                  --chart-5): 12,9:1 sobre o fundo da página (#060b14). Sobre o globo,
+                  medido nos mesmos prints, o corpo dele dá 6 a 9:1, mas os arcos e os
+                  pontos brancos das praças dão 1 a 3:1 (cerca de 2% do fundo atrás da
+                  frase). Por isso o halo escuro (text-shadow): recorta os arcos em volta
+                  das letras, e o anel de fundo encostado nelas fica abaixo de 3:1 em 0,2%
+                  dos pixels, contra 2,6% sem ele (simulação sobre o print 05). O Chrome
+                  com o modo escuro forçado não clareia o halo (testado em 16/09). */}
               <div className="max-w-xl border-s-2 border-[#c98f70]/60 ps-4 mb-5"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.3s both" }}>
-                <p className="text-xl md:text-2xl font-bold leading-snug bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+                <p className="text-xl md:text-2xl font-bold leading-snug text-[#efcba8] [text-shadow:0_0_3px_rgba(6,11,20,.95),0_0_12px_rgba(6,11,20,.85)]">
                   {t("hero.hook")}
                 </p>
                 <p className="text-sm md:text-base text-white/55 mt-2 leading-relaxed">
@@ -855,8 +869,9 @@ export default function Home() {
 
           {/* Fechamento da jornada: as três etapas explicam o mecanismo, esta
               frase devolve a pergunta para quem lê ("quem está procurando o que
-              eu tenho?") e o botão responde. O destaque é o mesmo gradiente ouro
-              rosé que a Hero já usa no gatilho dela — nenhuma cor nova.
+              eu tenho?") e o botão responde. O destaque é a mesma cor sólida #efcba8,
+              com o mesmo halo, que a Hero usa no gatilho dela (era degradê até 16/09;
+              ver lá o porquê).
               O botão NÃO é um CTA novo: é o mesmo elemento do CTA final desta
               página (mesmo Link, mesma rota, mesmas classes) e lê a MESMA chave
               hero.cta do botão da Hero, para os dois nunca divergirem. */}
@@ -866,7 +881,7 @@ export default function Home() {
               transform: stepsInView ? "translateY(0)" : "translateY(40px)",
               transition: "all 0.7s cubic-bezier(0.23,1,0.32,1) 0.45s",
             }}>
-            <p className="text-2xl md:text-3xl font-extrabold leading-snug text-balance bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+            <p className="text-2xl md:text-3xl font-extrabold leading-snug text-balance text-[#efcba8] [text-shadow:0_0_3px_rgba(6,11,20,.95),0_0_12px_rgba(6,11,20,.85)]">
               {t("steps.closing")}
             </p>
             <Link href={isAuthenticated ? "/dashboard" : "/register"}>
@@ -1011,8 +1026,8 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Fechamento no mesmo molde do de "Como funciona": frase no gradiente
-              ouro rosé e o MESMO botão (mesmo Link, mesma rota, mesmas classes,
+          {/* Fechamento no mesmo molde do de "Como funciona": frase na cor
+              de destaque #efcba8 (ver o gatilho da Hero) e o MESMO botão (mesmo Link, mesma rota, mesmas classes,
               mesma chave hero.cta). Não é CTA novo nem rota nova. */}
           <div className="max-w-3xl mx-auto mt-16 text-center"
             style={{
@@ -1020,7 +1035,7 @@ export default function Home() {
               transform: oppsInView ? "translateY(0)" : "translateY(40px)",
               transition: "all 0.7s cubic-bezier(0.23,1,0.32,1) 0.55s",
             }}>
-            <p className="text-2xl md:text-3xl font-extrabold leading-snug text-balance bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+            <p className="text-2xl md:text-3xl font-extrabold leading-snug text-balance text-[#efcba8] [text-shadow:0_0_3px_rgba(6,11,20,.95),0_0_12px_rgba(6,11,20,.85)]">
               {t("opportunities.closing")}
             </p>
             <Link href={isAuthenticated ? "/dashboard" : "/register"}>
@@ -1050,7 +1065,9 @@ export default function Home() {
             <p className="text-base md:text-lg text-white/50 max-w-2xl mx-auto mb-6 leading-relaxed">
               {t("smartNetwork.subtitle")}
             </p>
-            <p className="text-xl md:text-2xl font-bold leading-snug bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent mb-12 text-balance max-w-3xl mx-auto">
+            {/* Mesma troca das frases de destaque da Hero (degradê → cor sólida
+                com halo): o modo escuro do celular escurece o degradê. */}
+            <p className="text-xl md:text-2xl font-bold leading-snug text-[#efcba8] [text-shadow:0_0_3px_rgba(6,11,20,.95),0_0_12px_rgba(6,11,20,.85)] mb-12 text-balance max-w-3xl mx-auto">
               {t("smartNetwork.impact")}
             </p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-start">
@@ -1183,7 +1200,9 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <p className="text-lg font-bold leading-snug bg-gradient-to-r from-amber-200 to-amber-400 bg-clip-text text-transparent mb-2">
+              {/* Cor sólida, e não degradê recortado no texto: o modo escuro do
+                  celular escurece o degradê (ver as frases de destaque da Hero). */}
+              <p className="text-lg font-bold leading-snug text-amber-300 mb-2">
                 {t("governance.gold.highlight")}
               </p>
               <p className="text-sm text-white/60 leading-relaxed mb-6">{t("governance.gold.closing")}</p>
