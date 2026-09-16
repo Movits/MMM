@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { BrainCircuit, CheckCircle } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/components/BrandLogo";
-import { LIMITE_DA_BIO_GRAVADA, LIMITE_DA_BIO_NO_CADASTRO } from "@shared/apresentacao";
+import { LIMITE_DA_BIO_GRAVADA } from "@shared/apresentacao";
 import { normalizePrimarySpecialties, togglePrimarySpecialty } from "@shared/specialties";
 import { exigeCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
@@ -26,7 +26,6 @@ import { PREFIXO_DO_RASCUNHO_DO_CADASTRO } from "@/_core/hooks/useAuth";
 
 // Tetos do servidor (routers/profile.ts) para os campos livres: o ditado pode
 // passar deles, e sem contador o erro só aparecia no último passo.
-const LIMITE_BIO = LIMITE_DA_BIO_NO_CADASTRO;
 const LIMITE_META = 2000;
 
 /**
@@ -200,6 +199,18 @@ const VALIDADE_DO_RASCUNHO_MS = 7 * 24 * 60 * 60 * 1000;
 
 function chaveDoRascunhoDa(idDaUsuaria: number | string): string {
   return PREFIXO_DO_RASCUNHO_DO_CADASTRO + String(idDaUsuaria);
+}
+
+/** Quando o rascunho foi gravado. Fica FORA de `lerRascunho`, que só devolve campos do formulário. */
+function salvoEmDoRascunho(chave: string): number {
+  try {
+    const bruto = window.localStorage.getItem(chave);
+    const dados: unknown = bruto ? JSON.parse(bruto) : null;
+    const salvoEm = (dados as { salvoEm?: unknown } | null)?.salvoEm;
+    return typeof salvoEm === "number" && Number.isFinite(salvoEm) ? salvoEm : 0;
+  } catch {
+    return 0;
+  }
 }
 
 /** Lê o rascunho gravado; só entram os campos com a forma que o formulário
@@ -423,9 +434,9 @@ export default function Onboarding() {
     // pré-preencheu. Se depois a pessoa editar a apresentação no Perfil, o
     // rascunho velho voltaria por cima do texto novo sem ninguém tocar no campo.
     // Ele só vale enquanto for mais NOVO do que o perfil salvo.
-    const salvoEm = Number((rascunho as { salvoEm?: unknown } | null)?.salvoEm ?? 0);
+    const salvoEm = chave ? salvoEmDoRascunho(chave) : 0;
     const perfilSalvoEm = new Date((profile as { updatedAt?: string | number | Date } | null)?.updatedAt ?? 0).getTime();
-    const rascunhoEhMaisNovo = Number.isFinite(salvoEm) && salvoEm >= (Number.isFinite(perfilSalvoEm) ? perfilSalvoEm : 0);
+    const rascunhoEhMaisNovo = salvoEm >= (Number.isFinite(perfilSalvoEm) ? perfilSalvoEm : 0);
     // A apresentação entra INTEIRA no campo, mesmo acima do teto do cadastro:
     // a carga da planilha grava até LIMITE_DA_BIO_GRAVADA, e mostrar só o
     // começo fazia qualquer edição destruir, em silêncio, o resto que a pessoa
@@ -841,7 +852,7 @@ export default function Onboarding() {
                     <div>
                       <TextareaInput label={t("onboarding.fields.bio")} value={form.bio} onChange={v => set("bio", v)}
                         placeholder={t("onboarding.fields.bioPlaceholder")} hint={t("onboarding.fields.bioHint")}
-                        limite={LIMITE_BIO} assistente/>
+                        limite={LIMITE_DA_BIO_GRAVADA} assistente/>
                     </div>
                     <div>
                       <div className="grid grid-cols-2 gap-4">

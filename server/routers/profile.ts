@@ -49,7 +49,10 @@ async function apresentacaoAPreservar(userId: number, bioRecebida: string | unde
   // limpar o texto faz isso no Perfil, onde ele está à vista.
   if (bioRecebida.trim() === "") return salva.length > 0 ? salva : null;
   if (salva.length <= LIMITE_DA_BIO_NO_CADASTRO) return null;
-  return bioRecebida === cortarSemPartirEmoji(salva, LIMITE_DA_BIO_NO_CADASTRO) ? salva : null;
+  // O bundle antigo manda `form.bio.trim()`: o corte pode chegar sem os espaços
+  // das pontas, e a igualdade tem de reconhecer as duas formas.
+  const corte = cortarSemPartirEmoji(salva, LIMITE_DA_BIO_NO_CADASTRO);
+  return bioRecebida === corte || bioRecebida === corte.trim() ? salva : null;
 }
 
 // Aceita "meusite.com.br" e completa o protocolo. Antes, z.string().url()

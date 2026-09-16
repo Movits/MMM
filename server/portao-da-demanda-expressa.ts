@@ -34,7 +34,7 @@ import {
   rotuloDoQuePreciso,
 } from "@shared/o-que-preciso";
 import {
-  citacaoPedeServicoOferecido, classificarOferta, ehServico, ehServicoDeAssessoria, familiaDoServico, mesmaFamiliaEEspecialidade,
+  citacaoPedeServicoOferecido, classificarOferta, ehServico, ehServicoDeAssessoria, especialidadeDoServico, familiaDoServico, mesmaFamiliaEEspecialidade,
   necessidadeGenericaNomeiaOServico, necessidadeNomeiaOServico,
   necessidadeDeclaraOAssuntoDoServico, necessidadePedeImovel, PALAVRAS_DE_SERVICO, regraNaoLeOPar, PALAVRAS_VAZIAS_DA_CITACAO, PAPEIS_DE_COMERCIO, servicoDoTermo, TIPOS_DA_OFERTA, trechoNomeiaServicoAtendido, type TipoDaOferta,
 } from "@shared/tipo-da-oferta";
@@ -201,28 +201,45 @@ function frasesDaFonte(fonte: string): string[][] {
 const casaComAFonte = (pedaco: string, daFonte: string) => (ESCRITA_SEM_ESPACO.test(pedaco) ? daFonte.includes(pedaco) : daFonte === pedaco);
 
 /** Negação ANTES do termo em chinês: "不需要", "不再需要", "不太需要", "没有". */
-const NEGACOES_ANTES_SEM_ESPACO = new Set(Array.from("不沒没無无未非"));
+const NEGACOES_ANTES_SEM_ESPACO = new Set(Array.from("不沒没"));
 /** Quantos caracteres antes do termo a negação ainda o alcança ("不再", "不太", "暂时不"). */
 const ALCANCE_DA_NEGACAO_ANTES = 3;
-/** Negação DEPOIS do termo, que é como o japonês nega: "必要ありません", "必要ない". */
-const NEGACOES_DEPOIS_SEM_ESPACO = ["ありません", "ございません", "ありませんが", "ません", "ない", "不要", "無用", "无需"];
-/** Quantos caracteres depois do termo a negação ainda o alcança. */
-const ALCANCE_DA_NEGACAO_DEPOIS = 8;
+/** Negação DEPOIS do termo, que é como o japonês nega: "必要ありません", "必要ではない". */
+const NEGACOES_DEPOIS_SEM_ESPACO = ["ありません", "ございません", "ません", "ない", "不要", "無用", "无需"];
 /**
- * Fim de oração PARA ESTA CONFERÊNCIA: além do fim de frase, a vírgula
- * ideográfica e a barra com que `textoEscritoPelaPessoa` junta título, tags e
- * descrição. Sem elas, dois pedaços de campos diferentes (ou de orações
- * opostas separadas por 、) viravam uma citação só — a montagem do relato, com
- * outra pontuação.
+ * A negação depois só vale COLADA no termo (com uma partícula no meio, como em
+ * "必要ではありません"). Mais longe que isso ela é de outra oração: em
+ * "必要だが急ぎではない" o ない nega a pressa, não a necessidade.
  */
-const FIM_DE_ORACAO_NO_TEXTO = new RegExp("[.!?;\\u2026\\n\\u3002\\uFF01\\uFF1F\\uFF1B\\u3001\\uFF0C,|\\uFF5C]+");
+const INICIO_DA_NEGACAO_DEPOIS = 3;
+const ALCANCE_DA_NEGACAO_DEPOIS = 12;
+/**
+ * Fim de frase PARA ESTA CONFERÊNCIA: o fim de frase de sempre mais a barra
+ * com que `textoEscritoPelaPessoa` junta título, tags e descrição — dois
+ * pedaços de CAMPOS diferentes não são uma citação.
+ *
+ * A vírgula ideográfica (、) fica FORA: em chinês e japonês ela separa itens de
+ * uma lista dentro da mesma frase ("会计、税务咨询服务"), e cortar ali recusava a
+ * citação que é substring contígua da fonte — o trecho literal que o prompt
+ * manda copiar. Quem segura a montagem dentro da frase é a DISTÂNCIA.
+ */
+const FIM_DE_ORACAO_NO_TEXTO = new RegExp("[.!?;\\u2026\\n\\u3002\\uFF01\\uFF1F\\uFF1B|\\uFF5C]+");
+/**
+ * Quantos caracteres cabem entre um pedaço citado e o próximo. É o equivalente
+ * em texto do `INTERCALADAS_NA_CITACAO` do ramo latino (2 pedaços de conteúdo):
+ * em escrita sem espaço uma palavra tem 2 a 4 caracteres.
+ */
+const DISTANCIA_ENTRE_PEDACOS = 12;
 
 /** O termo está negado na oração: negação encostada antes (zh) ou logo depois (ja)? */
 function estaNegado(frase: string, inicio: number, tamanho: number): boolean {
   const antes = frase.slice(Math.max(0, inicio - ALCANCE_DA_NEGACAO_ANTES), inicio);
   if (Array.from(antes).some(caractere => NEGACOES_ANTES_SEM_ESPACO.has(caractere))) return true;
   const depois = frase.slice(inicio + tamanho, inicio + tamanho + ALCANCE_DA_NEGACAO_DEPOIS);
-  return NEGACOES_DEPOIS_SEM_ESPACO.some(negacao => depois.includes(negacao));
+  return NEGACOES_DEPOIS_SEM_ESPACO.some(negacao => {
+    const onde = depois.indexOf(negacao);
+    return onde >= 0 && onde <= INICIO_DA_NEGACAO_DEPOIS;
+  });
 }
 
 /**
@@ -253,6 +270,9 @@ function emOrdemNoTextoDaFrase(pedacos: readonly string[], fonte: string): boole
       let achou = frase.indexOf(pedaco, posicao);
       while (achou >= 0 && conferirNegacao && estaNegado(frase, achou, pedaco.length)) achou = frase.indexOf(pedaco, achou + 1);
       if (achou < 0) return false;
+      // Longe demais do pedaço anterior é montagem, não citação — o mesmo que a
+      // janela de tokens faz no ramo latino.
+      if (posicao > 0 && achou - posicao > DISTANCIA_ENTRE_PEDACOS) return false;
       posicao = achou + pedaco.length;
     }
     return true;
@@ -432,8 +452,10 @@ function ofertaAtenderiaOTexto(oferta: string, texto: string): boolean {
   // está contando a própria oferta de novo — é o caso que originou a guarda.
   // Só a oferta genérica fica de fora: ali o palpite apagava necessidade
   // declarada ("Advocacia" × "Advogado para causas do trabalho").
-  const servico = servicoDoTermo(oferta);
-  const ofertaEhFamiliaPura = servico !== null && servico.especialidades.length === 0;
+  // A pureza tem de ser lida como o MOTOR lê, e ele parte o rótulo coordenado:
+  // "Advocacia e contabilidade" são duas famílias puras, não uma família com a
+  // outra de especialidade. `especialidadeDoServico` é o acessor que faz isso.
+  const ofertaEhFamiliaPura = servicoDoTermo(oferta) !== null && especialidadeDoServico(oferta).length === 0;
   if (!ofertaEhFamiliaPura && necessidadeGenericaNomeiaOServico(oferta, null, texto)) return true;
   return necessidadeDeclaraOAssuntoDoServico(oferta, null, texto) && !regraNaoLeOPar(oferta, null, texto);
 }
@@ -563,31 +585,26 @@ export function exigeCitacao(item: ItemComPortao, perfil?: PerfilNoPortao): bool
   if (ofertas.length === 0) return false;
   const servicos = ofertas.filter(oferta => ehServico(oferta));
   if (tipo === null && servicos.length > 0) return true;
-  // Outra base possível é o que a pessoa DECLAROU ter, não o rótulo da área. Era
-  // `servicos.length === ofertas.length` sobre tudo (inclusive área e especialidade), e
-  // bastava a área que o classificador lê como "outros" ("Direito") ou como outro tipo
-  // ("Tecnologia") para soltar a exigência de citação de quem só presta serviço — o caso
-  // do item 3 da validação de 16/09. Olhar só "O que tenho" resolve isso sem fechar o
-  // portão de quem tem base de verdade: quem declara um ativo ("Linha de produção") ao
-  // lado de um serviço tem outra base, e exigir dela a citação suprimiria o match — ainda
-  // por cima uma citação que a regra 6 do prompt PROÍBE fora do tipo "servico".
-  const declarouOutraBase = lista(perfil.whatIHave).some(oferta => !ehServico(oferta));
-  // E o tipo RECONHECIDO não-serviço em qualquer oferta (inclusive a área) continua soltando
-  // a exigência: "outros" não é tipo reconhecido e não conta.
+  // Outra base possível é QUALQUER oferta que não seja serviço — inclusive a que
+  // o classificador não sabe ler ("outros"). O piso existe para quem não tem
+  // mais nada a oferecer; com outra base, exigir citação não deixa o portão mais
+  // rigoroso, deixa-o IMPASSÁVEL: a regra 6 do prompt PROÍBE citação fora do
+  // tipo "servico", então a citação vem vazia e o par nunca passa.
   //
-  // Isto NÃO é a regra do motor de perfis, e a divergência é deliberada: lá
-  // (server/matching.ts, `soOfereceServicoPresumido`) um item lido como "outros"
-  // nunca é outra base. Aqui ele é, quando a pessoa o DECLAROU em "O que tenho"
-  // — o botão "Outros" grava texto livre, e o classificador lê "Linha de
-  // produção" como "outros". Exigir citação nesse perfil suprimiria o match, e
-  // ainda seria uma citação que a regra 6 do prompt PROÍBE fora do tipo
-  // "servico". O preço da divergência: item declarado que o classificador não
-  // lê (inclusive digitação sem sentido) solta a exigência aqui e não solta lá.
-  const ofereceOutroTipo = ofertas.some(oferta => {
-    const tipo = classificarOferta(oferta);
-    return tipo !== "servico" && tipo !== "outros";
-  });
-  return servicos.length > 0 && !declarouOutraBase && !ofereceOutroTipo && !temNecessidadeDeclarada(perfil);
+  // Foi medido: apertar isto para "só o que a pessoa DECLAROU em O que tenho"
+  // conta como outra base derrubou 24 combinações reais de área × especialidade
+  // — "Agronegócio" (lido como "outros") com "Marketing & Vendas" (lido como
+  // serviço) parava de passar em oportunidade de imóvel, capital, conexão e
+  // tecnologia, que passavam antes da PR.
+  //
+  // O preço, e fica registrado: o caso do item 3 da validação de 16/09 na rota
+  // da IA continua aberto — área "Direito" com especialidade "legal" solta a
+  // exigência, porque "Direito" é lido igualzinho a "Agronegócio" (os dois
+  // "outros", nenhum serviço). Separar um do outro é decidir o que o
+  // classificador lê como área, não regra deste portão. O motor de perfis, que
+  // é onde o relato mediu o 41, já fechou o caso literal (server/matching.ts).
+  const ofereceOutraBase = ofertas.some(oferta => !ehServico(oferta));
+  return servicos.length > 0 && !ofereceOutraBase && !temNecessidadeDeclarada(perfil);
 }
 
 

@@ -187,9 +187,15 @@ describe("passaNoPortao — só serviço precisa de citação", () => {
 
   it("com 'O que tenho' vazio, o piso lê a área de atuação e a especialidade (que o prompt também recebe)", () => {
     expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: [], activityArea: "Advocacia tributária", whatINeed: [] })).toBe(true);
-    // "vendas" na especialidade é lida como "outros", e "outros" não é tipo reconhecido: o piso continua
-    // exigindo citação, a mesma regra do motor de perfis (validação de 16/09 na #135, item 3).
-    expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: [], activityArea: "Advocacia tributária", primarySpecialty: "vendas" })).toBe(true);
+    // Qualquer oferta que não seja serviço solta a exigência, inclusive a que o classificador não sabe ler
+    // ("vendas", "Agronegócio", "Direito" — todos "outros"). Apertar isto, para fechar o caso do item 3 na rota
+    // da IA, foi MEDIDO e derrubou 24 combinações reais de área × especialidade: quem tem "Agronegócio" na área
+    // e "Marketing & Vendas" na especialidade parava de passar em oportunidade de imóvel, capital, conexão e
+    // tecnologia — tipos em que a regra 6 do prompt PROÍBE citação, então o portão não fica rigoroso, fica
+    // impassável. O caso do item 3 fica aberto AQUI e documentado; no motor de perfis, onde o relato mediu o 41,
+    // ele já está fechado.
+    expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: [], activityArea: "Advocacia tributária", primarySpecialty: "vendas" })).toBe(false);
+    expect(exigeCitacao({ tipoDaOferta: "imoveis" }, { whatIHave: [], activityArea: "Agronegócio", primarySpecialty: "Marketing & Vendas" })).toBe(false);
     // Tipo reconhecido de verdade na área continua soltando a exigência: ela tem outra coisa a oferecer.
     expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: [], activityArea: "Indústria farmacêutica", primarySpecialty: "legal" })).toBe(false);
     expect(exigeCitacao({ tipoDaOferta: "nenhuma" }, { whatIHave: ["fazenda"], activityArea: "Advocacia tributária" })).toBe(false);

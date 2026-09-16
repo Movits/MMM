@@ -74,6 +74,21 @@ describe("Perfil — a régua acompanha o que está sendo digitado", () => {
     expect(linhaDaApresentacao()).toHaveTextContent("3 de 6");
   });
 
+  it("a régua mede os OUTROS campos em edição também, não só a apresentação", () => {
+    // Medir só a bio deixava cinco linhas paradas ao lado dos campos que a
+    // pessoa estava preenchendo — e podia prometer Prata para um estado que o
+    // Salvar não grava, porque o objeto avaliado não era nem o salvo nem o que
+    // vai ser enviado.
+    duble.perfil = { displayName: "Ana Souza", country: "BR", bio: "", city: "", activityArea: "", whatIHave: [], whatINeed: [] };
+    render(<Profile />);
+    editar();
+
+    const antes = screen.getAllByRole("listitem").length;
+    fireEvent.change(screen.getByPlaceholderText("Sua cidade"), { target: { value: "Porto Alegre" } });
+
+    expect(screen.getAllByRole("listitem").length).toBeLessThan(antes);
+  });
+
   it("fora da edição, a régua continua lendo o perfil salvo", () => {
     render(<Profile />);
 

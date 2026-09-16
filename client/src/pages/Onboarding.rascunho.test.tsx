@@ -424,6 +424,22 @@ describe("item 10 — a apresentação já gravada não se perde no cadastro", (
     expect(perfilEnviado().bio).toBe(BIO_DA_CARGA);
   });
 
+  it("rascunho NOVO vence o perfil, mesmo com o perfil trazendo updatedAt", () => {
+    // A regra do "rascunho mais novo" precisa ler o salvoEm do localStorage: ele
+    // não volta em lerRascunho (que devolve só campos do formulário), e lê-lo de
+    // lá dava sempre 0 — com qualquer perfil gravado, o texto digitado sumia.
+    duble.perfil = perfilDe(USUARIA_7, {
+      displayName: "Fulana Importada", city: "Recife", country: "BR",
+      bio: "Apresentação antiga que veio da carga de participantes",
+      updatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    });
+    window.localStorage.setItem(CHAVE_DA_7, JSON.stringify({ bio: "Apresentação que eu acabei de escrever no cadastro", salvoEm: Date.now() }));
+
+    render(<Onboarding />);
+
+    expect(campoBio()).toHaveValue("Apresentação que eu acabei de escrever no cadastro");
+  });
+
   it("rascunho VELHO não sobrescreve a apresentação editada depois no Perfil", () => {
     // O rascunho nasce sozinho: abrir a tela uma vez já grava o que ela
     // pré-preencheu. Quem depois arruma a apresentação no Perfil e volta ao
