@@ -278,7 +278,10 @@ diante da advocacia ou da contabilidade tributária — ou os dois lados só com
 "Contabilidade" × "Contador" e "Serviços contábeis" × "Contador", também com a oferta
 dirigida só a um destinatário comum, "Contabilidade para pequenas empresas" × "Contador",
 `mesmaFamiliaEEspecialidade`),
-necessidade que nomeia só a família do serviço → 60 (`necessidadeGenericaNomeiaOServico`),
+necessidade que nomeia só a família do serviço → 60 (`necessidadeGenericaNomeiaOServico`, que inclui a
+oferta GENÉRICA diante da necessidade da mesma família com só público ou finalidade — "Contabilidade" ×
+"Contador para pequenas empresas", "Logística" × "logística para exportar meu café": dava 0 e virou 60 na
+revisão do Nicolas de 15/09; dar 100 quando o público está em `DESTINATARIOS_COMUNS` é decisão em aberto),
 necessidade que declara o ASSUNTO do serviço sem nomeá-lo → 60 com tipo `semantic`
 (`necessidadeDeclaraOAssuntoDoServico`: vocabulário curado de tributário, internacionalização e
 regulatório sanitário, e a necessidade tem de pedir ajuda ou uma ação, sem pedir no resto a

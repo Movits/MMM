@@ -1939,11 +1939,37 @@ function cobrePublico(oferecida: EspecialidadeDoServico, pedida: EspecialidadeDo
     && exigidos.every(lema => oferecida.publico.has(lema) || (!FAMILIAS_CONHECIDAS.has(lema) && oferecida.lemas.has(lema)));
 }
 
+/**
+ * A oferta é a família crua ("Contabilidade", "Logística") e a necessidade
+ * pede a MESMA família só com público ou finalidade ("Contador para pequenas
+ * empresas", "logística para exportar meu café"): quem oferece a família
+ * inteira atende o caso particular dela.
+ *
+ * Sem isto o par dava ZERO — não a nota da família, zero com bloqueio —, porque
+ * `cobrePublico` percorre as especialidades da oferta e a oferta genérica não
+ * tem nenhuma: `.some()` sobre lista vazia é falso. O mesmo fato com os lados
+ * trocados ("Contabilidade para pequenas empresas" × "Contador") valia 100, o
+ * que deixava a regra assimétrica, e "Logística" × "preciso de logística para
+ * exportar meu café" tinha caído de 60 para 0 (item 4 da revisão do Nicolas na
+ * #135, 15/09).
+ *
+ * Vale a nota da FAMÍLIA (60), nunca a de serviço igual: quem escreveu o
+ * público disse algo a mais que a oferta genérica não promete. Dar 100 quando o
+ * público é um dos destinatários comuns é a outra metade do item 4, e depende
+ * de decisão do Roberto — a lista DESTINATARIOS_COMUNS está marcada no código
+ * como a confirmar, e 100 dispara e-mail.
+ */
+function ofertaGenericaCobreOPublico(oferecido: ServicoNomeado, pedida: EspecialidadeDoServico): boolean {
+  return oferecido.especialidades.length === 0
+    && pedida.lemas.size === 0
+    && Array.from(pedida.publico).some(lema => !LEMAS_DE_ATIVIDADE.has(lema));
+}
+
 function atendeEspecialidades(oferecido: ServicoNomeado, pedido: ServicoNomeado): boolean {
   if (ehGenerico(pedido)) return true;
   return pedido.especialidades.some(pedida => (pedida.lemas.size > 0
     ? oferecido.especialidades.some(oferecida => cobre(oferecida, pedida))
-    : oferecido.especialidades.some(oferecida => cobrePublico(oferecida, pedida))));
+    : oferecido.especialidades.some(oferecida => cobrePublico(oferecida, pedida)) || ofertaGenericaCobreOPublico(oferecido, pedida)));
 }
 
 const semOLema = (especialidade: EspecialidadeDoServico, lema: string): EspecialidadeDoServico => ({
@@ -2101,8 +2127,14 @@ function comoAtende(oferta: string, categoriaDaOferta: string | null | undefined
         if (!umServicoAtende(oferecido, alternativa)) continue;
         const soAFamilia = alternativa.especialidades.every(especialidade =>
           especialidade.publico.size === 0 && Array.from(especialidade.lemas).every(lema => lema === oferecido.familia));
-        if (!soAFamilia) return "especifico";
-        if (nadaAlemDaFamilia && pedidos.length === 1 && ehGenerico(pedido) && pedido.familia === oferecido.familia) return "especifico";
+        // Oferta genérica que cobriu só o público da necessidade fica na nota da
+        // família: ver `ofertaGenericaCobreOPublico`. Sem esta linha ela cairia
+        // no "especifico" abaixo e valeria 100, com e-mail, o que é justamente
+        // o que a outra metade do item 4 põe em decisão.
+        const soPeloPublicoDaOfertaGenerica = alternativa.especialidades.some(especialidade =>
+          ofertaGenericaCobreOPublico(oferecido, especialidade));
+        if (!soAFamilia && !soPeloPublicoDaOfertaGenerica) return "especifico";
+        if (soAFamilia && nadaAlemDaFamilia && pedidos.length === 1 && ehGenerico(pedido) && pedido.familia === oferecido.familia) return "especifico";
         melhor = "familia";
       }
     }
