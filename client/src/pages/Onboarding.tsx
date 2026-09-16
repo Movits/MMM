@@ -398,6 +398,16 @@ function SelectInput({ label, value, onChange, options, placeholder }: {
 }
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
+/**
+ * As listas do perfil chegam do banco como array ou como JSON em texto (a
+ * coluna é `json` e o driver às vezes entrega a string). Só entram chaves: item
+ * escrito à mão não volta para as caixinhas, que são de vocabulário fechado.
+ */
+function listaDeChaves(valor: unknown): string[] {
+  const bruto = typeof valor === "string" ? (() => { try { return JSON.parse(valor); } catch { return []; } })() : valor;
+  return Array.isArray(bruto) ? bruto.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
+}
+
 export default function Onboarding() {
   const { t, i18n } = useTranslation();
   const [, navigate] = useLocation();
@@ -419,7 +429,11 @@ export default function Onboarding() {
   const profileQuery = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   useEffect(() => {
     if (prefilled.current || !profileQuery.data) return;
-    const { user, profile } = profileQuery.data as { user?: { id?: number; name?: string | null } | null; profile?: Partial<FormData> & { displayName?: string | null; city?: string | null; country?: string | null; bio?: string | null; preferredCompanySize?: string | null } | null };
+    const { user, profile } = profileQuery.data as { user?: { id?: number; name?: string | null } | null; profile?: Partial<FormData> & {
+      displayName?: string | null; city?: string | null; country?: string | null; bio?: string | null; preferredCompanySize?: string | null;
+      company?: string | null; jobTitle?: string | null; sector?: string | null; currentResources?: string | null;
+      whatIHave?: unknown; whatINeed?: unknown; sectors?: unknown;
+    } | null };
     prefilled.current = true;
     const chave = user?.id != null ? chaveDoRascunhoDa(user.id) : null;
     const rascunho = chave ? lerRascunho(chave) : null;
@@ -444,6 +458,20 @@ export default function Onboarding() {
         preferredCompanySizes: base.preferredCompanySizes.length > 0
           ? base.preferredCompanySizes
           : lerPortes(profile?.preferredCompanySize),
+        // O RESTO do que a carga de participantes já gravou
+        // (scripts/importar-participantes.mjs): empresa, cargo, setor, o que
+        // possui, o que procura e o texto livre. Sem isto, a participante
+        // importada — que entra com `onboardingCompleted = 0` e por isso é
+        // mandada ao cadastro — via um formulário vazio e tinha de digitar de
+        // novo o que a planilha já trouxe, ou concluía apagando tudo. Com isto,
+        // o cadastro dela vira conferir e aceitar.
+        company: base.company || profile?.company || "",
+        jobTitle: base.jobTitle || profile?.jobTitle || "",
+        sector: base.sector || profile?.sector || "",
+        currentResources: base.currentResources || profile?.currentResources || "",
+        whatIHave: base.whatIHave.length > 0 ? base.whatIHave : listaDeChaves(profile?.whatIHave),
+        whatINeed: base.whatINeed.length > 0 ? base.whatINeed : listaDeChaves(profile?.whatINeed),
+        interestSectors: base.interestSectors.length > 0 ? base.interestSectors : listaDeChaves(profile?.sectors),
       };
     });
   }, [profileQuery.data]);
