@@ -273,3 +273,23 @@ describe("juntarTextoDitado", () => {
     expect(juntarTextoDitado("Fica igual", "   ")).toBe("Fica igual");
   });
 });
+
+/**
+ * A janela D da revisão do Nicolas na #135: estes dois botões aparecem DENTRO
+ * do cadastro, antes da etapa do Termo Geral de Uso. Quem grava a apresentação
+ * na segunda etapa manda a própria voz para um serviço de IA antes de ter
+ * aceitado termo nenhum — e até 16/09 a tela não dizia isso em lugar nenhum.
+ */
+describe("aviso de que o texto passa por IA", () => {
+  it("aparece junto dos botões, sem depender de clicar em nada", () => {
+    render(<AssistenteDeTexto valor="Sou arquiteta." onChange={() => {}} />);
+
+    expect(screen.getByText(/servi[çc]o de intelig[êe]ncia artificial/i)).toBeInTheDocument();
+  });
+
+  it("diz que usar é opcional, porque os dois botões são opcionais", () => {
+    render(<AssistenteDeTexto valor="" onChange={() => {}} />);
+
+    expect(screen.getByText(/opcional/i)).toBeInTheDocument();
+  });
+});

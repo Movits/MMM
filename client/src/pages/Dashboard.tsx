@@ -1562,7 +1562,14 @@ export default function Dashboard() {
                   </div>
 
                   <div className="flex gap-3">
-                    <Link href="/onboarding" className="flex-1">
+                    {/* "Editar perfil" leva ao PERFIL, não ao cadastro. Mandava
+                        para /onboarding, e quem já tinha conta era obrigada a
+                        refazer as oito etapas e, no fim delas, a aceitar o Termo
+                        Geral — que conta antiga não precisa aceitar (janela B da
+                        revisão do Nicolas na #135). Quem ainda não tem perfil
+                        continua indo para /onboarding, logo abaixo: lá o
+                        cadastro é o caminho certo. */}
+                    <Link href="/profile" className="flex-1">
                       <button className="w-full py-3 px-4 rounded-xl font-medium text-sm border border-white/15 text-white/60 hover:border-white/30 hover:text-white transition-all duration-200">
                         ✏️ {t("dashboard.editProfile")}
                       </button>

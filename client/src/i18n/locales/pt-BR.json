@@ -1806,7 +1806,8 @@
     "textoCurto": "Escreva algo antes de pedir a revisão.",
     "muitosPedidos": "Muitos pedidos em sequência. Aguarde alguns minutos e tente de novo.",
     "contador": "{{atual}}/{{maximo}}",
-    "textoLongo": "O texto passou do limite de {{maximo}} caracteres. Encurte antes de seguir."
+    "textoLongo": "O texto passou do limite de {{maximo}} caracteres. Encurte antes de seguir.",
+    "avisoIA": "Ao gravar ou revisar, o áudio e o texto deste campo são enviados a um serviço de inteligência artificial para transcrever ou sugerir a correção. Usar é opcional."
   },
   "governanca": {
     "dashboard": {

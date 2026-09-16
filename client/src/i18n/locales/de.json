@@ -1806,7 +1806,8 @@
     "textoCurto": "Schreiben Sie etwas, bevor Sie eine Prüfung anfordern.",
     "muitosPedidos": "Zu viele Anfragen hintereinander. Warten Sie einige Minuten und versuchen Sie es erneut.",
     "contador": "{{atual}}/{{maximo}}",
-    "textoLongo": "Der Text überschreitet das Limit von {{maximo}} Zeichen. Kürzen Sie ihn, bevor Sie fortfahren."
+    "textoLongo": "Der Text überschreitet das Limit von {{maximo}} Zeichen. Kürzen Sie ihn, bevor Sie fortfahren.",
+    "avisoIA": "Beim Aufnehmen oder Überprüfen werden Audio und Text dieses Feldes an einen KI-Dienst gesendet, der sie transkribiert oder Korrekturen vorschlägt. Die Nutzung ist freiwillig."
   },
   "governanca": {
     "dashboard": {

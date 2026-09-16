@@ -1806,7 +1806,8 @@
     "textoCurto": "Write something before asking for a review.",
     "muitosPedidos": "Too many requests in a row. Wait a few minutes and try again.",
     "contador": "{{atual}}/{{maximo}}",
-    "textoLongo": "The text is over the {{maximo}}-character limit. Shorten it before moving on."
+    "textoLongo": "The text is over the {{maximo}}-character limit. Shorten it before moving on.",
+    "avisoIA": "When you record or review, the audio and text in this field are sent to an artificial intelligence service to transcribe it or suggest corrections. Using it is optional."
   },
   "governanca": {
     "dashboard": {

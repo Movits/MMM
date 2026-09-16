@@ -1806,7 +1806,8 @@
     "textoCurto": "Écrivez quelque chose avant de demander une relecture.",
     "muitosPedidos": "Trop de demandes à la suite. Patientez quelques minutes et réessayez.",
     "contador": "{{atual}}/{{maximo}}",
-    "textoLongo": "Le texte dépasse la limite de {{maximo}} caractères. Raccourcissez-le avant de continuer."
+    "textoLongo": "Le texte dépasse la limite de {{maximo}} caractères. Raccourcissez-le avant de continuer.",
+    "avisoIA": "En enregistrant ou en révisant, l’audio et le texte de ce champ sont envoyés à un service d’intelligence artificielle pour la transcription ou la correction. Son usage est facultatif."
   },
   "governanca": {
     "dashboard": {

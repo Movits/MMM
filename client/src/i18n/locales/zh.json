@@ -1806,7 +1806,8 @@
     "textoCurto": "请先输入内容再申请校对。",
     "muitosPedidos": "连续请求过多。请等待几分钟后再试。",
     "contador": "{{atual}}/{{maximo}}",
-    "textoLongo": "文字超过 {{maximo}} 个字符的上限。请缩短后再继续。"
+    "textoLongo": "文字超过 {{maximo}} 个字符的上限。请缩短后再继续。",
+    "avisoIA": "录音或校对时，该字段的音频和文字会发送给人工智能服务进行转写或提出修改建议。是否使用由您决定。"
   },
   "governanca": {
     "dashboard": {

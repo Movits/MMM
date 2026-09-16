@@ -198,8 +198,13 @@ como pronta.
 cadastro só conclui com o Termo Geral de Uso, Proteção de Dados e Intermediação
 Digital aceito, e sem versão publicada `profile.completeOnboarding` recusa
 (`server/termo-geral-de-uso.ts`). Então, sem o termo publicado, toda conta nova
-fica presa na última etapa do `/onboarding` com "ainda não foi publicado". Quem
-já tem conta e salva o perfil por "Editar perfil" fica presa do mesmo jeito.
+fica presa na última etapa do `/onboarding` com "ainda não foi publicado".
+
+Quem **já tem conta** não fica: "Editar perfil", no Dashboard, leva a `/profile`,
+que salva sem passar pelo termo — antes ele apontava para `/onboarding` e
+obrigava a refazer as oito etapas para esbarrar na mesma parede (janela B da
+revisão da #135). A trava do Termo Geral é para quem ainda não concluiu o
+cadastro.
 
 A migração 0013 só acrescenta o valor `termo_geral_de_uso` ao enum de
 `document_versions`. Antes dela aplicada, o banco recusa a publicação. Por isso a
