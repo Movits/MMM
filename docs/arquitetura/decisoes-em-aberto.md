@@ -303,6 +303,68 @@ par ordenado e backfill; hoje a trava contra dupla revelação é o status no WH
 
 ---
 
+## D8: Por quanto tempo o áudio de reunião fica guardado
+
+**Trava:** o texto de consentimento da gravação e a rotina que apaga o áudio. Até
+aqui a tela prometia 30 dias depois do envio, e a limpeza só acontecia quando a
+dona reabria a reunião: o endpoint de cron não tinha chamador.
+
+**DECIDIDO em 14/09/2026.** A regra:
+
+1. **Reunião transcrita:** o áudio é apagado 24 horas depois da transcrição.
+   Decisão da Dra. Glenda em 12/09/2026, item 6 do questionário.
+2. **Reunião que falhou:** o áudio é apagado 24 horas depois da falha, o tempo de
+   reprocessar. Se o reprocesso falhar de novo, o prazo continua contando da
+   PRIMEIRA falha, nunca estende; só um reprocesso que dá certo renova, para 24 h
+   depois da nova transcrição (Nicolas). A reunião interrompida pela varredura de
+   `processing` não ganha escrita extra: no envio vale o prazo provisório (tomada +
+   24 h + 15 min, que nunca passa de 24 h depois da marcação); no reprocesso, o
+   prazo que já contava da primeira falha.
+3. **Gravações antigas:** as de reuniões transcritas há mais de 24 h, e as linhas de
+   `meeting_recordings` sem reunião, saem na primeira passada depois do deploy. As
+   reuniões que falharam em 01/09 eram de teste e podem ser apagadas (Nicolas); o
+   código apaga só o áudio delas.
+4. **O que sai e o que fica:** sai o arquivo no Backblaze, com todas as versões, e a
+   linha de `meeting_recordings`. Na exclusão da reunião ou da conta o áudio sai do
+   mesmo jeito; se o Backblaze recusar, a reunião ou a conta sai assim mesmo e a
+   linha da gravação fica, sem reunião, até a varredura conseguir apagar o arquivo.
+   A transcrição, as entidades e as sugestões ficam até a dona excluir a reunião ou
+   a conta.
+5. **O termo:** só a frase da caixa de consentimento (`meetings.consentCheckboxLabel`)
+   ganha o prazo, e os textos da tela que prometiam 30 dias passam a dizer a regra
+   nova. A caixa continua sem versão registrada (só `consent_granted` e
+   `consent_at`): reuniões antigas foram consentidas com a frase dos 30 dias.
+
+Por que a falha não renova: cada falha grava `updated_at` novo, e o teto de 3
+reprocessos a cada 10 min vive na memória do processo e zera a cada deploy. Se cada
+falha renovasse as 24 h, o áudio de uma reunião que nunca transcreve ficaria
+guardado sem limite. Com a regra, o máximo é cerca de 48 h depois da primeira falha:
+24 h para reprocessar e, se der certo, mais 24 h a partir da nova transcrição.
+
+A varredura roda no boot e a cada 5 min dentro do processo
+(`server/_core/index.ts`); o Render de produção está no plano Starter, que não
+hiberna. O endpoint `/api/scheduled/cleanup-recordings` continua, para o dia em que
+houver agendador externo. Resumo técnico no `CLAUDE.md`.
+
+**Continua em aberto: as versões dos outros arquivos no B2 (cartão F11).** Fotos e
+cartões de contato, anexos de contexto e os arquivos que a exclusão de conta apaga
+(fora o áudio) seguem com o `storageDelete`, que só esconde o objeto: a versão antiga
+continua no bucket. O cartão é de outra pessoa. Enquanto isso, vale a recomendação
+de `docs/deploy.md` (regra "Keep only the last version" no painel do B2, a cargo do
+Roberto).
+
+**Pendência: o áudio escondido antes deste deploy.** Até esta versão, a exclusão da
+reunião, a exclusão da conta e a leitura de uma gravação vencida apagavam o áudio
+com o `storageDelete`, que só esconde, e depois apagavam a linha. O que saiu assim
+desde 01/09, quando o B2 entrou na produção, continua no bucket, com a voz das
+participantes e sem linha em `meeting_recordings`, e a varredura não alcança: ela só
+trata chaves que têm linha ou que a poda acabou de vencer. Para essas versões o item
+4 ainda não vale. Saem com a regra "Keep only the last version" do cartão F11 ou com
+a limpeza dos arquivos escondidos do prefixo `meetings/` no painel do B2, a cargo do
+Roberto ou do Gabriel (passo em `docs/deploy.md`).
+
+---
+
 ## Decisões de produto do modelo de acesso
 
 Três definições que a revisão técnica do modelo levantou. São regras de produto, não

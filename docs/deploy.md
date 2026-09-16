@@ -71,7 +71,9 @@ o MMM fala MySQL pelo driver `mysql2`.
 
 **O custo do plano gratuito:** o serviço dorme depois de um tempo sem acesso, e
 a primeira visita seguinte demora de 30 a 60 segundos. Vale avisar quem for
-testar, senão parece que está fora do ar.
+testar, senão parece que está fora do ar. Dormindo, o servidor também não roda a
+varredura que apaga o áudio de reunião 24 h depois da transcrição ou da falha: por
+isso a produção está no plano Starter, que não dorme.
 
 ## Subir no Railway
 
@@ -181,6 +183,56 @@ STORAGE_ENDPOINT=          só fora da AWS (ex.: https://<conta>.r2.cloudflarest
 Sem as variáveis, os quatro caminhos que dependem de arquivo (gravação de
 reunião, documentos do deal room, documentos do SIVC, geração de imagem) falham
 com mensagem que nomeia as variáveis certas.
+
+**A chave do B2 precisa das capacidades `listFiles` e `deleteFiles`.** O bucket
+guarda versões (cartão F11): apagar um objeto sem dizer a versão só o esconde, e a
+versão antiga continua guardada. Por isso o áudio de reunião (apagado 24 h depois da
+transcrição ou da falha, ver `CLAUDE.md`) sai com todas as versões, na varredura, na
+exclusão da reunião e na exclusão da conta: o servidor esconde o arquivo, lista as
+versões da chave e apaga uma a uma. Sem essas duas capacidades o áudio pode até
+deixar de ser servido (o apagamento simples vem antes), mas a versão fica no bucket,
+a linha fica em `meeting_recordings` e o erro volta no log a cada passada, de 5 em 5
+min; quando a chave for corrigida, a passada seguinte apaga. Nas exclusões é igual: a
+reunião ou a conta sai, e a linha da gravação fica, sem reunião, para a varredura.
+Repetir o erro não empilha marcadores de exclusão na chave: antes do apagamento
+simples o servidor faz um HEAD e, se o arquivo já está escondido (404), não o esconde
+de novo. O HEAD usa a mesma permissão de leitura com que o site já serve e reprocessa
+o áudio. Se o HEAD estourar o prazo (bucket travado), o servidor desiste na hora, sem
+gastar outro prazo no apagamento simples; se ele falhar por outro motivo (403, por
+exemplo), o apagamento simples vai assim mesmo. Antes de falar com o bucket, o
+servidor tira da chave o `/manus-storage/` que uma linha antiga ainda traga. Os
+outros arquivos (fotos e cartões de contato, anexos de contexto, documentos da deal
+room e do SIVC) seguem com o apagamento simples. Para eles continua recomendado
+trocar a regra de lifecycle do bucket para "Keep only the last version" no painel
+do B2 — a cargo do Roberto. A regra também serve de rede de segurança para o áudio:
+o B2 apaga a versão que o apagamento simples escondeu, mesmo que a listagem falhe.
+
+**No primeiro deploy com a regra das 24 h**, a poda do boot põe no passado o prazo
+das gravações antigas (30 dias contados do envio) enquanto a instância velha ainda
+atende. Se a velha abrir uma dessas reuniões nesse intervalo, ela só esconde o áudio
+e apaga a linha. Por isso a poda devolve as chaves que venceu, e a passada expurga
+pela chave as que já ficaram sem linha (as do boot antes mesmo da poda de dentro,
+para uma queda do banco não perdê-las). As que ainda têm linha ficam com o
+apagamento de sempre, que pula reunião em `processing`: se a velha aceitar, entre a
+leitura e a escrita da poda, o reprocesso de uma reunião que falhou há mais de 24 h,
+o áudio fica e a execução termina normalmente. Limite: numa base com mais de 4 mil
+gravações vencidas, a passada do boot para no teto de 20 lotes de 200; se a velha
+apagar a linha de uma gravação que ficou além do teto, a versão dela fica escondida
+no bucket, como no legado abaixo.
+
+**Pendência: áudio escondido antes deste deploy.** Até esta versão, o site apagava o
+áudio de reunião com o apagamento simples (`storageDelete`) na exclusão da reunião,
+na exclusão da conta e na leitura de uma gravação vencida, e em seguida apagava a
+linha de `meeting_recordings`. Toda vez que isso aconteceu desde 01/09, quando o B2
+entrou na produção, a versão com a voz das participantes ficou escondida no bucket e
+sem linha no banco. A varredura não chega nelas: só trata chaves que têm linha ou que
+a poda acabou de vencer, e não há script no repositório para isso. Saem de um de dois
+jeitos, a cargo do Roberto ou do Gabriel: a regra de lifecycle "Keep only the last
+version" (cartão F11, acima), que faz o B2 apagar as versões escondidas; ou a
+limpeza, no painel do B2, dos arquivos escondidos do prefixo `meetings/`, com todas
+as versões. Na limpeza à mão, só os escondidos: os visíveis são, em regra, áudio
+ainda dentro do prazo, que a varredura apaga quando vencer. Registrado também na D8
+de `docs/arquitetura/decisoes-em-aberto.md`.
 
 A rota que serve os arquivos (`/manus-storage/*`) passou a exigir **sessão e
 posse**: gravação só para a dona, SIVC só para a dona, deal room para as partes

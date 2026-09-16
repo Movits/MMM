@@ -18,7 +18,7 @@ stateDiagram-v2
     GRAVANDO --> PROCESSANDO: usuária encerra
     PROCESSANDO --> TRANSCRITA: transcrição pronta
     PROCESSANDO --> ERRO: falha
-    ERRO --> PROCESSANDO: tentar de novo
+    ERRO --> PROCESSANDO: tentar de novo (com o áudio ainda guardado)
     TRANSCRITA --> EXTRAINDO
     EXTRAINDO --> EM_REVISAO: sugestões prontas
     EM_REVISAO --> REVISADA: usuária aceita ou rejeita cada uma
@@ -27,9 +27,13 @@ stateDiagram-v2
 
 ### Passo a passo
 
-1. **Aviso e consentimento.** Antes de gravar, a tela avisa que a reunião será
-   gravada. O aceite grava a versão do texto em `reuniao.consentimento_documento_id`.
-   Sem isso, não grava.
+1. **Aviso e consentimento.** Antes de gravar, a dona marca uma caixa, uma por
+   reunião, confirmando que todas as participantes autorizaram a gravação; a frase
+   da caixa diz também o prazo do áudio (passo 6). No código atual isso vira
+   `meetings.consent_granted` e `meetings.consent_at`, gravados quando a reunião é
+   criada. Não há versão de documento: a frase aceita não fica registrada, só o
+   booleano e a hora. Sem a caixa a reunião não é criada, e o servidor recusa áudio
+   de reunião sem consentimento.
 2. **Gravação.** Áudio vai para storage cifrado. `reuniao.audio_url` guarda a
    referência, não o arquivo.
 3. **Transcrição.** Serviço de fala-para-texto, resultado em `reuniao_transcricao`
@@ -42,6 +46,13 @@ stateDiagram-v2
    adicioná-lo à sua rede?"* Aceitar cria o `contato` com os campos pré-preenchidos.
    Rejeitar marca `status='rejeitado'` e a linha fica; é ela que mostra o que a IA
    está errando.
+6. **Retenção do áudio.** O áudio vive 24 h depois da transcrição ou, se ela falhar,
+   24 h depois da falha, o tempo de tentar de novo. Um reprocesso que dá certo
+   recomeça a contagem a partir da nova transcrição; uma nova falha não recomeça. No
+   código atual o prazo é `meeting_recordings.expires_at`, e uma varredura do
+   servidor (no boot e a cada 5 min) apaga o arquivo do bucket, com todas as versões,
+   e a linha. A transcrição, as extrações e as sugestões ficam até a dona excluir a
+   reunião ou a conta.
 
 ### As três travas
 

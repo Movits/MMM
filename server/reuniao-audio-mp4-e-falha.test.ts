@@ -34,6 +34,12 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  */
 
 const atualizacoes: Array<Record<string, unknown>> = [];
+// A tabela de cada UPDATE, na mesma ordem de `atualizacoes` e `escopos`: o
+// prazo do áudio é um UPDATE em meeting_recordings, e as asserções sobre o
+// status da reunião olham só os de `meetings`.
+const tabelasAtualizadas: unknown[] = [];
+// Tabela cujo UPDATE o banco recusa, e com qual erro.
+let recusarUpdate: ((tabela: unknown) => Error | null) | null = null;
 // O WHERE de cada SELECT, UPDATE e DELETE, renderizado pelo dialeto do MySQL
 // (sem banco): o fake não executa o predicado, então o escopo por dona e o
 // `status <> 'deleted'` só se provam olhando para o SQL E os parâmetros. Uma
@@ -81,11 +87,19 @@ vi.mock("./db", () => ({
   exigirDb: async () => ({
     select: () => ({ from: (tabela: unknown) => ({ where: (condicao?: SQL) => {
       leituras.push({ tabela, ...renderizar(condicao) });
-      const linhas = tabela === schema.meetings ? (reunioesPorLeitura.shift() ?? [{ ...reuniaoNoBanco }]) : [];
+      // A gravação lida pela compensação é a que a execução inseriu: é por ela
+      // (pelo id) que a linha sai, e só se o arquivo saiu.
+      const linhas = tabela === schema.meetings
+        ? (reunioesPorLeitura.shift() ?? [{ ...reuniaoNoBanco }])
+        : tabela === schema.meetingRecordings
+          ? insercoes.filter(operacao => operacao.tabela === schema.meetingRecordings).flatMap(operacao => operacao.valores)
+          : [];
       return { limit: async () => linhas, then: (resolver: (valor: unknown) => unknown) => resolver(linhas) };
     } }) }),
     update: (tabela: unknown) => ({ set: (valores: Record<string, unknown>) => ({ where: async (condicao?: SQL) => {
-      atualizacoes.push(valores); escopos.push(renderizar(condicao));
+      atualizacoes.push(valores); escopos.push(renderizar(condicao)); tabelasAtualizadas.push(tabela);
+      const erro = recusarUpdate?.(tabela);
+      if (erro) throw erro;
       const afetadas = linhasAfetadasPorUpdate.shift() ?? 1;
       if (afetadas && tabela === schema.meetings) Object.assign(reuniaoNoBanco, valores);
       return [{ affectedRows: afetadas }];
@@ -100,10 +114,13 @@ vi.mock("./db", () => ({
 }));
 const storagePut = vi.fn(async () => ({ key: "k", url: "/manus-storage/k" }));
 const storageDelete = vi.fn(async () => {});
+// O áudio de reunião sai do bucket com todas as versões (B2 guarda versões).
+const storageApagarTodasAsVersoes = vi.fn(async (_chave: string) => {});
 vi.mock("./storage", async importOriginal => ({
   ...await importOriginal<typeof import("./storage")>(),
   storagePut: (...args: unknown[]) => storagePut(...(args as [])),
   storageDelete: (...args: unknown[]) => storageDelete(...(args as [])),
+  storageApagarTodasAsVersoes: (...args: unknown[]) => storageApagarTodasAsVersoes(...(args as [string])),
   storageGetBytes: async () => { throw new Error("o envio original nunca lê o áudio de volta do bucket"); },
   storageGetSignedUrl: async () => "https://assinada",
 }));
@@ -126,7 +143,12 @@ vi.mock("./_core/llm", () => ({
   },
 }));
 
-const { decodeMeetingAudio, processMeetingRecording, LIMITE_SUGESTAO, LIMITE_VALOR_NORMALIZADO, ReuniaoForaDoEstado, ReuniaoTomadaPorOutraExecucao } = await import("./meeting-service");
+const {
+  decodeMeetingAudio, processMeetingRecording, LIMITE_SUGESTAO, LIMITE_VALOR_NORMALIZADO, ReuniaoForaDoEstado, ReuniaoTomadaPorOutraExecucao,
+  PRAZO_DO_AUDIO_MS, LIMITE_PROCESSAMENTO_MS,
+} = await import("./meeting-service");
+const atualizacoesDe = (tabela: unknown) => atualizacoes.filter((_, i) => tabelasAtualizadas[i] === tabela);
+const escoposDe = (tabela: unknown) => escopos.filter((_, i) => tabelasAtualizadas[i] === tabela);
 const { MENSAGEM_ERRO_DE_CONSULTA } = await import("./banco-indisponivel");
 const { GeminiCotaEsgotadaError, GeminiRecusouChamadaError } = await import("./gemini");
 
@@ -143,7 +165,10 @@ const leiturasDe = (tabela: unknown) => leituras.filter(operacao => operacao.tab
 const fichaGravada = () => atualizacoes.find(a => a.status === "processing")?.updatedAt;
 
 beforeEach(() => {
-  atualizacoes.length = 0; escopos.length = 0; leituras.length = 0; insercoes.length = 0; delecoes.length = 0;
+  atualizacoes.length = 0; escopos.length = 0; tabelasAtualizadas.length = 0; leituras.length = 0; insercoes.length = 0; delecoes.length = 0;
+  recusarUpdate = null;
+  storageApagarTodasAsVersoes.mockReset();
+  storageApagarTodasAsVersoes.mockImplementation(async () => {});
   reunioesPorLeitura.length = 0;
   linhasAfetadasPorUpdate.length = 0;
   reuniaoNoBanco = { ...reuniao };
@@ -206,12 +231,12 @@ describe("processMeetingRecording — áudio recusado vira reunião com falha, n
   it("áudio válido segue o caminho normal: processing → ready", async () => {
     await expect(processMeetingRecording(entradaValida)).resolves.toMatchObject({ transcript: "transcrição" });
     expect(storagePut).toHaveBeenCalledTimes(1);
-    expect(atualizacoes.map(a => a.status)).toEqual(["processing", "ready"]);
+    expect(atualizacoesDe(schema.meetings).map(a => a.status)).toEqual(["processing", "ready"]);
     // A tomada só vale para a reunião da dona que espera áudio; o 'ready', só
     // para a que ainda é desta execução: 'processing' + a ficha gravada na tomada.
     const ficha = fichaGravada();
     expect(Number(ficha)).toBeGreaterThan(reuniao.updatedAt);
-    expect(escopos).toEqual([REUNIAO_DA_DONA_ESPERANDO_AUDIO, REUNIAO_DA_DONA_COM_FICHA(ficha)]);
+    expect(escoposDe(schema.meetings)).toEqual([REUNIAO_DA_DONA_ESPERANDO_AUDIO, REUNIAO_DA_DONA_COM_FICHA(ficha)]);
     // As duas leituras de meetings (entrada e releitura antes das escritas)
     // são da reunião DA dona.
     expect(leiturasDe(schema.meetings)).toEqual([REUNIAO_DA_DONA, REUNIAO_DA_DONA]);
@@ -232,10 +257,16 @@ describe("processMeetingRecording — áudio recusado vira reunião com falha, n
     expect(escopos).toEqual([REUNIAO_DA_DONA_ESPERANDO_AUDIO]);
   });
 
-  it("a gravação nasce com o prazo de 30 dias contado da tomada", async () => {
+  it("a gravação nasce com o prazo PROVISÓRIO (tomada + 24 h + limite de processamento), e o 'ready' o troca por transcrição + 24 h na gravação DA reunião DA dona", async () => {
     await processMeetingRecording(entradaValida);
     const [gravacao] = insercoes.find(operacao => operacao.tabela === schema.meetingRecordings)!.valores;
-    expect(gravacao.expiresAt).toBe(Number(fichaGravada()) + 30 * 24 * 60 * 60 * 1000);
+    expect(gravacao.expiresAt).toBe(Number(fichaGravada()) + PRAZO_DO_AUDIO_MS + LIMITE_PROCESSAMENTO_MS);
+    // Depois da promoção, nunca antes: a ordem das escritas é tomada, 'ready', prazo.
+    expect(tabelasAtualizadas).toEqual([schema.meetings, schema.meetings, schema.meetingRecordings]);
+    const pronta = atualizacoesDe(schema.meetings).find(a => a.status === "ready")!;
+    // SET simples (sem `expires_at > ?`): o 'ready' é a transição que pode estender o prazo.
+    expect(atualizacoesDe(schema.meetingRecordings)).toEqual([{ expiresAt: Number(pronta.updatedAt) + PRAZO_DO_AUDIO_MS }]);
+    expect(escoposDe(schema.meetingRecordings)).toEqual([derivadaDaReuniaoDaDona("meeting_recordings")]);
   });
 });
 
@@ -462,11 +493,17 @@ describe("processMeetingRecording — excluída no meio, a reunião não deixa �
       meeting_transcripts: schema.meetingTranscripts, meeting_transcript_translations: schema.meetingTranscriptTranslations,
       meeting_recordings: schema.meetingRecordings,
     };
+    const [gravacaoInserida] = insercoes.find(operacao => operacao.tabela === schema.meetingRecordings)!.valores;
     for (const [nome, tabela] of Object.entries(derivadas)) {
       const delecao = delecoes.find(operacao => operacao.tabela === tabela);
       expect(delecao, `compensação não apagou ${nome}`).toBeDefined();
-      // meeting_id E owner_id, em AND — `or` apagaria os derivados de todas as reuniões da dona
-      expect({ sql: delecao!.sql, params: delecao!.params }).toEqual(derivadaDaReuniaoDaDona(nome));
+      // A gravação sai pelo id da que foi lida (e cujo arquivo saiu), e da dona;
+      // as derivadas, por meeting_id E owner_id, em AND — `or` apagaria os
+      // derivados de todas as reuniões da dona.
+      const esperado = tabela === schema.meetingRecordings
+        ? { sql: "(`meeting_recordings`.`id` in (?) and `meeting_recordings`.`owner_id` = ?)", params: [gravacaoInserida.id, "dona-1"] }
+        : derivadaDaReuniaoDaDona(nome);
+      expect({ sql: delecao!.sql, params: delecao!.params }).toEqual(esperado);
     }
     expect(delecoes).toHaveLength(Object.keys(derivadas).length);
     // …e a gravação que a compensação lê para apagar o arquivo é a da dona.
@@ -487,7 +524,10 @@ describe("processMeetingRecording — excluída no meio, a reunião não deixa �
 
     expect(delecoes).toEqual([]);
     expect(storageDelete).not.toHaveBeenCalled();
+    expect(storageApagarTodasAsVersoes).not.toHaveBeenCalled();
+    // Sem o prazo também: o 'ready' desta execução não valeu, e o prazo é de quem tomou a reunião.
     expect(atualizacoes.map(a => a.status)).toEqual(["processing", "ready"]);
+    expect(atualizacoesDe(schema.meetingRecordings)).toEqual([]);
   });
 
   it("UPDATE final para 'ready' sem linha afetada e a releitura acha a reunião ainda 'deleted' (a exclusão não terminou): compensa como exclusão, não como 'outra execução'", async () => {
@@ -502,5 +542,99 @@ describe("processMeetingRecording — excluída no meio, a reunião não deixa �
       schema.meetingTranscriptTranslations, schema.meetingRecordings,
     ]);
     expect(atualizacoes.map(a => a.status)).not.toContain("failed");
+  });
+});
+
+describe("processMeetingRecording — o áudio vive 24 h depois da transcrição ou da falha", () => {
+  it("falha na IA: o prazo é ENCURTADO para a hora da falha + 24 h — `expires_at > ?`, na gravação DA reunião DA dona", async () => {
+    falhaDaIA = new Error("qualquer");
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow();
+    const falha = atualizacoesDe(schema.meetings).find(a => a.status === "failed")!;
+    // O mesmo instante vai para meetings.updated_at e para o prazo: é dele que a poda da varredura recalcula.
+    const prazo = Number(falha.updatedAt) + PRAZO_DO_AUDIO_MS;
+    expect(atualizacoesDe(schema.meetingRecordings)).toEqual([{ expiresAt: prazo }]);
+    expect(escoposDe(schema.meetingRecordings)).toEqual([{
+      sql: "(`meeting_recordings`.`meeting_id` = ? and `meeting_recordings`.`owner_id` = ? and `meeting_recordings`.`expires_at` > ?)",
+      params: ["reuniao-1", "dona-1", prazo],
+    }]);
+  });
+
+  it("falha que não casa a ficha (0 linhas: outra execução ou a exclusão chegou antes): o prazo fica como está", async () => {
+    falhaDaIA = new Error("qualquer");
+    linhasAfetadasPorUpdate.push(1, 0);
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow();
+    expect(atualizacoesDe(schema.meetings).map(a => a.status)).toEqual(["processing", "failed"]);
+    expect(atualizacoesDe(schema.meetingRecordings)).toEqual([]);
+  });
+
+  it("áudio recusado na decodificação: não há gravação, e nada é escrito em meeting_recordings", async () => {
+    await expect(processMeetingRecording({ ...entradaValida, audioBase64: "isto não é base64!" })).rejects.toThrow("Arquivo de áudio inválido.");
+    expect(tabelasAtualizadas).toEqual([schema.meetings]);
+  });
+
+  it("o banco recusa a GRAVAÇÃO depois do upload: o arquivo sai do bucket, com todas as versões, antes de a falha ser marcada — objeto sem linha nenhuma varredura acharia", async () => {
+    recusarInsert = tabela => (tabela === schema.meetingRecordings ? new Error("Lock wait timeout exceeded") : null);
+    let statusNaHoraDoApagamento: unknown;
+    storageApagarTodasAsVersoes.mockImplementationOnce(async () => { statusNaHoraDoApagamento = reuniaoNoBanco.status; });
+
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow("Lock wait timeout exceeded");
+
+    expect(storageApagarTodasAsVersoes).toHaveBeenCalledWith("k");
+    expect(statusNaHoraDoApagamento).toBe("processing");
+    expect(reuniaoNoBanco.status).toBe("failed");
+    expect(storageDelete).not.toHaveBeenCalled();
+  });
+
+  it("a escrita do prazo lança depois do 'ready' em TODAS as tentativas: o envio RESOLVE (a reunião deu certo), não vira 'failed', e o motivo vai para o log", async () => {
+    recusarUpdate = tabela => (tabela === schema.meetingRecordings ? new Error("connect ECONNREFUSED 127.0.0.1:3306") : null);
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await expect(processMeetingRecording(entradaValida)).resolves.toMatchObject({ transcript: "transcrição" });
+
+    expect(reuniaoNoBanco.status).toBe("ready");
+    expect(atualizacoesDe(schema.meetings).map(a => a.status)).toEqual(["processing", "ready"]);
+    // três tentativas do mesmo UPDATE, idempotente, antes de desistir
+    const pronta = atualizacoesDe(schema.meetings).find(a => a.status === "ready")!;
+    expect(atualizacoesDe(schema.meetingRecordings)).toEqual(Array(3).fill({ expiresAt: Number(pronta.updatedAt) + PRAZO_DO_AUDIO_MS }));
+    expect(aviso).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(aviso.mock.calls)).toContain("ECONNREFUSED");
+  });
+
+  it("a escrita do prazo lança UMA vez: a tentativa seguinte grava, sem aviso", async () => {
+    let recusadas = 0;
+    recusarUpdate = tabela => (tabela === schema.meetingRecordings && recusadas++ === 0 ? new Error("Lock wait timeout exceeded") : null);
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await expect(processMeetingRecording(entradaValida)).resolves.toMatchObject({ transcript: "transcrição" });
+
+    expect(atualizacoesDe(schema.meetingRecordings)).toHaveLength(2);
+    expect(aviso).not.toHaveBeenCalled();
+  });
+
+  it("a falha também tenta de novo o encurtamento do prazo", async () => {
+    falhaDaIA = new Error("qualquer");
+    let recusadas = 0;
+    recusarUpdate = tabela => (tabela === schema.meetingRecordings && recusadas++ === 0 ? new Error("Lock wait timeout exceeded") : null);
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow();
+
+    const falha = atualizacoesDe(schema.meetings).find(a => a.status === "failed")!;
+    expect(atualizacoesDe(schema.meetingRecordings)).toEqual(Array(2).fill({ expiresAt: Number(falha.updatedAt) + PRAZO_DO_AUDIO_MS }));
+    expect(aviso).not.toHaveBeenCalled();
+  });
+});
+
+describe("processMeetingRecording — excluída no meio com o bucket falhando", () => {
+  it("a compensação não apaga a linha da gravação cujo arquivo ficou no bucket: sem a reunião, a varredura tenta de novo", async () => {
+    reunioesPorLeitura.push([reuniao], [{ ...reuniao, status: "deleted" }]);
+    storageApagarTodasAsVersoes.mockRejectedValueOnce(new Error("bucket fora do ar"));
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await expect(processMeetingRecording(entradaValida)).rejects.toThrow("Reunião excluída durante o processamento.");
+
+    expect(storageApagarTodasAsVersoes).toHaveBeenCalledWith("k");
+    expect(tabelasApagadas()).not.toContain(schema.meetingRecordings);
+    expect(tabelasApagadas()).toEqual(expect.arrayContaining([schema.meetingTranscripts, schema.meetingContactSuggestions]));
   });
 });

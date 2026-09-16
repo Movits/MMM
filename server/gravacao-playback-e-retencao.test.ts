@@ -11,18 +11,23 @@ process.env.JWT_SECRET ??= "jwt-secret-somente-para-testes";
  * a gravação, então não havia como ouvir de volta. Junto vinham duas dívidas
  * que só apareciam quando existisse um player:
  *
- *  1. O prazo de 30 dias era decorativo: `expiresAt` era escrito e nunca lido,
- *     e nada apagava o arquivo. A tela prometia "expira automaticamente após
- *     30 dias" enquanto o áudio ficava para sempre.
+ *  1. O prazo do áudio (então de 30 dias; hoje 24 h depois da transcrição ou
+ *     da falha) era decorativo: `expiresAt` era escrito e nunca lido, e nada
+ *     apagava o arquivo. A tela prometia que o áudio expirava enquanto ele
+ *     ficava para sempre.
  *  2. Apagar a reunião não apagava o áudio do bucket — e sem a linha do banco,
  *     ninguém saberia que o objeto continuava lá.
  */
 
-const storageDelete = vi.fn(async () => {});
+// O áudio de reunião sai do bucket com TODAS as versões (o B2 guarda versões e
+// o DELETE simples só esconde): é essa função que o serviço tem de chamar, e o
+// storageDelete de sempre não pode ser usado para áudio.
+const apagarTodasAsVersoes = vi.fn(async () => {});
 vi.mock("./storage", async importOriginal => ({
   ...await importOriginal<typeof import("./storage")>(),
   storagePut: async () => ({ key: "k", url: "/manus-storage/k" }),
-  storageDelete: (...args: unknown[]) => storageDelete(...(args as [string])),
+  storageApagarTodasAsVersoes: (...args: unknown[]) => apagarTodasAsVersoes(...(args as [string])),
+  storageDelete: async () => { throw new Error("áudio de reunião não sai por storageDelete: só esconderia a versão"); },
 }));
 vi.mock("./_core/llm", () => ({ invokeLLM: async () => ({ choices: [{ message: { content: "{}" } }] }) }));
 // As classes de erro vêm do módulo real: meeting-service faz instanceof nelas.
@@ -35,7 +40,7 @@ const schema = await import("../drizzle/schema");
 const { MENSAGEM_ERRO_DE_CONSULTA } = await import("./banco-indisponivel");
 
 const AGORA = Date.now();
-const TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const HORA = 60 * 60 * 1000;
 const tabelas = new Map<unknown, Record<string, unknown>[]>();
 
 /**
@@ -72,13 +77,19 @@ const consulta = (linhas: Record<string, unknown>[]) => ({
   then: (resolver: (valor: Record<string, unknown>[]) => unknown) => resolver(linhas),
 });
 
+const onde = (tabela: unknown) => (condicao?: SQL) => {
+  leituras.push({ tabela, ...renderizar(condicao) });
+  return consulta(tabelas.get(tabela) ?? []);
+};
+// A varredura lê as gravações com LEFT JOIN na reunião. O fake não executa o
+// JOIN: devolve as linhas da gravação sem os campos da reunião, então a poda
+// não acha alvo e o que se prova aqui é o apagamento. A regra das 24 h, com o
+// JOIN avaliado, está em gravacao-24h-apos-transcrever.test.ts.
 const fakeDb = {
   select: () => ({
     from: (tabela: unknown) => ({
-      where: (condicao?: SQL) => {
-        leituras.push({ tabela, ...renderizar(condicao) });
-        return consulta(tabelas.get(tabela) ?? []);
-      },
+      where: onde(tabela),
+      leftJoin: () => ({ where: onde(tabela) }),
     }),
   }),
   delete: (tabela: unknown) => ({
@@ -100,8 +111,9 @@ const fakeDb = {
 vi.mock("./db", () => ({ exigirDb: async () => fakeDb as never, getDb: async () => fakeDb as never }));
 
 const servico = await import("./meeting-service");
+const PRAZO_MS = servico.PRAZO_DO_AUDIO_MS;
 
-const REUNIAO = { id: "reuniao-1", ownerId: "dona-1", title: "Reunião", status: "ready", consentGranted: true, createdAt: AGORA - 1000 };
+const REUNIAO = { id: "reuniao-1", ownerId: "dona-1", title: "Reunião", status: "ready", consentGranted: true, createdAt: AGORA - 1000, updatedAt: AGORA - 500 };
 const gravacaoCom = (expiresAt: number) => ({
   id: "grav-1", meetingId: "reuniao-1", ownerId: "dona-1",
   storageKey: "meetings/dona-1/reuniao-1/recording_abc.webm",
@@ -119,8 +131,8 @@ beforeEach(() => {
   sequencia.length = 0;
   // mockReset (não mockClear): um mockRejectedValueOnce não consumido por um
   // teste vazaria para o próximo e o faria falhar por motivo errado.
-  storageDelete.mockReset();
-  storageDelete.mockImplementation(async () => {});
+  apagarTodasAsVersoes.mockReset();
+  apagarTodasAsVersoes.mockImplementation(async () => {});
   tabelas.set(schema.meetings, [REUNIAO]);
   tabelas.set(schema.meetingTranscripts, []);
   tabelas.set(schema.meetingEntities, []);
@@ -130,7 +142,7 @@ beforeEach(() => {
 
 describe("Playback — a API entrega a gravação para a tela poder tocar", () => {
   it("gravação dentro do prazo volta com endereço, duração e validade", async () => {
-    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 10 * 24 * 60 * 60 * 1000)]);
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 10 * HORA)]);
     const dados = await servico.getPrivateMeeting("dona-1", "reuniao-1");
     expect(dados?.recording?.url).toBe("/manus-storage/meetings/dona-1/reuniao-1/recording_abc.webm");
     expect(dados?.recording?.durationSeconds).toBe(92);
@@ -139,13 +151,13 @@ describe("Playback — a API entrega a gravação para a tela poder tocar", () =
   });
 
   it("o endereço é o do proxy autenticado, nunca o do bucket", async () => {
-    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 1000)]);
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + HORA)]);
     const dados = await servico.getPrivateMeeting("dona-1", "reuniao-1");
     expect(dados?.recording?.url.startsWith("/manus-storage/")).toBe(true);
   });
 
   it("a chave do bucket NÃO vai para a tela", async () => {
-    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 1000)]);
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + HORA)]);
     const dados = await servico.getPrivateMeeting("dona-1", "reuniao-1");
     expect(dados?.recording).not.toHaveProperty("storageKey");
   });
@@ -154,11 +166,11 @@ describe("Playback — a API entrega a gravação para a tela poder tocar", () =
     const dados = await servico.getPrivateMeeting("dona-1", "reuniao-1");
     expect(dados?.recording).toBeNull();
     expect(dados?.recordingExpired).toBe(false);
-    expect(storageDelete).not.toHaveBeenCalled();
+    expect(apagarTodasAsVersoes).not.toHaveBeenCalled();
   });
 
   it("a gravação lida é a da reunião DA dona (meeting_id E owner_id) — como a reunião, a transcrição, as entidades e as sugestões", async () => {
-    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 1000)]);
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + HORA)]);
     await servico.getPrivateMeeting("dona-1", "reuniao-1");
     const porTabela = (tabela: unknown) => leituras.filter(operacao => operacao.tabela === tabela).map(predicadoDe);
     expect(porTabela(schema.meetings)).toEqual([REUNIAO_DA_DONA]);
@@ -205,37 +217,73 @@ describe("Leitura — processing_error legado com o SQL do driver não chega à 
   });
 });
 
-describe("Retenção — os 30 dias deixam de ser promessa e viram ação", () => {
+describe("Retenção — o prazo do áudio deixa de ser promessa e vira ação", () => {
+  // Pronta há mais de 24 h: a transcrição + 24 h já passou, e o prazo gravado é o que vale.
+  const prontaHaDias = () => tabelas.set(schema.meetings, [{ ...REUNIAO, createdAt: AGORA - 3 * PRAZO_MS, updatedAt: AGORA - 2 * PRAZO_MS }]);
+
   it("gravação vencida não é servida, e o arquivo é apagado do bucket", async () => {
+    prontaHaDias();
     tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA - 1)]);
     const dados = await servico.getPrivateMeeting("dona-1", "reuniao-1");
     expect(dados?.recording).toBeNull();
     expect(dados?.recordingExpired).toBe(true);
-    expect(storageDelete).toHaveBeenCalledWith("meetings/dona-1/reuniao-1/recording_abc.webm");
+    expect(apagarTodasAsVersoes).toHaveBeenCalledWith("meetings/dona-1/reuniao-1/recording_abc.webm");
     expect(tabelasApagadas()).toContain(schema.meetingRecordings);
   });
 
   it("o storage fora do ar não derruba a leitura da reunião", async () => {
+    prontaHaDias();
     tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA - 1)]);
-    storageDelete.mockRejectedValueOnce(new Error("bucket fora do ar"));
+    apagarTodasAsVersoes.mockRejectedValueOnce(new Error("bucket fora do ar"));
     const dados = await servico.getPrivateMeeting("dona-1", "reuniao-1");
     expect(dados?.recordingExpired).toBe(true);
     expect(dados?.meeting).toBeTruthy();
   });
 
   it("bucket falhou: a LINHA fica, senão o áudio some do banco e vive no bucket para sempre", async () => {
+    prontaHaDias();
     tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA - 1)]);
-    storageDelete.mockRejectedValueOnce(new Error("bucket fora do ar"));
+    apagarTodasAsVersoes.mockRejectedValueOnce(new Error("bucket fora do ar"));
     await servico.getPrivateMeeting("dona-1", "reuniao-1");
+    expect(apagarTodasAsVersoes).toHaveBeenCalled();
     expect(tabelasApagadas()).not.toContain(schema.meetingRecordings);
+  });
+
+  it("reunião PRONTA há menos de 24 h com o prazo gravado vencido (a renovação de um reprocesso não foi gravada): o áudio é servido até a transcrição + 24 h, e nada é apagado", async () => {
+    const transcritaEm = AGORA - 2 * HORA;
+    tabelas.set(schema.meetings, [{ ...REUNIAO, updatedAt: transcritaEm }]);
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA - 1)]);
+    const dados = await servico.getPrivateMeeting("dona-1", "reuniao-1");
+    expect(dados?.recordingExpired).toBe(false);
+    expect(dados?.recording?.expiresAt).toBe(transcritaEm + PRAZO_MS);
+    expect(apagarTodasAsVersoes).not.toHaveBeenCalled();
+    expect(tabelasApagadas()).toEqual([]);
+  });
+
+  it("em 'failed' não há essa folga: o prazo gravado (falha + 24 h) é o que vale", async () => {
+    tabelas.set(schema.meetings, [{ ...REUNIAO, status: "failed", updatedAt: AGORA - 2 * HORA }]);
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA - 1)]);
+    const dados = await servico.getPrivateMeeting("dona-1", "reuniao-1");
+    expect(dados?.recordingExpired).toBe(true);
+    expect(apagarTodasAsVersoes).toHaveBeenCalled();
   });
 
   it("depois de descartada, a tela continua sabendo que EXPIROU — não vira 'nunca houve áudio'", async () => {
     // sem linha, mas a reunião é mais velha que o prazo
-    tabelas.set(schema.meetings, [{ ...REUNIAO, createdAt: AGORA - TTL_MS - 1 }]);
+    tabelas.set(schema.meetings, [{ ...REUNIAO, createdAt: AGORA - PRAZO_MS - 1 }]);
     const dados = await servico.getPrivateMeeting("dona-1", "reuniao-1");
     expect(dados?.recording).toBeNull();
     expect(dados?.recordingExpired).toBe(true);
+  });
+
+  it("reunião em 'processing' com a gravação vencida: não serve o áudio, mas também não apaga — a execução pode estar lendo e ainda vai gravar o prazo", async () => {
+    tabelas.set(schema.meetings, [{ ...REUNIAO, status: "processing" }]);
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA - 1)]);
+    const dados = await servico.getPrivateMeeting("dona-1", "reuniao-1");
+    expect(dados?.recording).toBeNull();
+    expect(dados?.recordingExpired).toBe(true);
+    expect(apagarTodasAsVersoes).not.toHaveBeenCalled();
+    expect(tabelasApagadas()).toEqual([]);
   });
 
   it("reunião recente sem áudio não é confundida com expirada", async () => {
@@ -244,47 +292,68 @@ describe("Retenção — os 30 dias deixam de ser promessa e viram ação", () =
   });
 
   it("a leitura da gravação é ordenada: sem unique por reunião, a escolha não pode ficar ao acaso", async () => {
-    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 1000)]);
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + HORA)]);
     await servico.getPrivateMeeting("dona-1", "reuniao-1");
     expect(ordenacoes.length).toBeGreaterThan(0);
   });
 });
 
-describe("Retenção — a varredura faz os 30 dias valerem sem depender de alguém abrir a tela", () => {
+describe("Retenção — a varredura faz as 24 h valerem sem depender de alguém abrir a tela", () => {
   it("apaga arquivo e linha das gravações vencidas", async () => {
     tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA - 1)]);
     const resultado = await servico.limparGravacoesVencidas();
-    expect(resultado).toEqual({ encontradas: 1, apagadas: 1 });
-    expect(storageDelete).toHaveBeenCalledWith("meetings/dona-1/reuniao-1/recording_abc.webm");
+    expect(resultado).toEqual({ encontradas: 1, apagadas: 1, prazosAjustados: 0 });
+    expect(apagarTodasAsVersoes).toHaveBeenCalledWith("meetings/dona-1/reuniao-1/recording_abc.webm");
     expect(tabelasApagadas()).toContain(schema.meetingRecordings);
   });
 
   it("bucket falhou: conta como não apagada e a linha permanece para a próxima rodada", async () => {
     tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA - 1)]);
-    storageDelete.mockRejectedValueOnce(new Error("bucket fora do ar"));
+    apagarTodasAsVersoes.mockRejectedValueOnce(new Error("bucket fora do ar"));
     const resultado = await servico.limparGravacoesVencidas();
-    expect(resultado).toEqual({ encontradas: 1, apagadas: 0 });
+    expect(resultado).toEqual({ encontradas: 1, apagadas: 0, prazosAjustados: 0 });
     expect(tabelasApagadas()).not.toContain(schema.meetingRecordings);
   });
 
-  it("a varredura filtra por expiresAt <= agora — não sai apagando a base inteira, nem o que ainda vale", async () => {
+  it("o apagamento filtra por expiresAt <= agora e pula reunião em 'processing' e a pronta há menos de 24 h — não sai apagando a base inteira, nem o que ainda vale, nem o áudio que uma execução está lendo, nem o de uma renovação pendente", async () => {
     tabelas.set(schema.meetingRecordings, []);
     const antes = Date.now();
     await servico.limparGravacoesVencidas();
     const depois = Date.now();
-    const leitura = leituras.find(operacao => operacao.tabela === schema.meetingRecordings);
-    expect(leitura?.sql).toBe("`meeting_recordings`.`expires_at` <= ?");
-    expect(leitura?.params).toHaveLength(1);
-    expect(Number(leitura?.params[0])).toBeGreaterThanOrEqual(antes);
-    expect(Number(leitura?.params[0])).toBeLessThanOrEqual(depois);
+    const leitura = leituras.find(operacao => operacao.tabela === schema.meetingRecordings && operacao.sql.includes("<="));
+    // `meetings.id is null`: gravação sem reunião da mesma dona (legado, ou a que
+    // ficou de uma exclusão com o bucket falhando) também sai; sem ele, o `<>`
+    // com NULL do LEFT JOIN a deixaria no bucket para sempre.
+    expect(leitura?.sql).toBe(
+      "(`meeting_recordings`.`expires_at` <= ? and `meeting_recordings`.`id` > ? and (`meetings`.`id` is null or (`meetings`.`status` <> ? and (`meetings`.`status` <> ? or `meetings`.`updated_at` <= ?))))",
+    );
+    expect(leitura?.params).toHaveLength(5);
+    const agora = Number(leitura?.params[0]);
+    expect(agora).toBeGreaterThanOrEqual(antes);
+    expect(agora).toBeLessThanOrEqual(depois);
+    expect(leitura?.params.slice(1, 4)).toEqual(["", "processing", "ready"]);
+    expect(leitura?.params[4]).toBe(agora - PRAZO_MS);
+  });
+
+  // O ajuste nos dois sentidos e o compare-and-set do UPDATE da poda, com o JOIN
+  // avaliado, estão em gravacao-24h-apos-transcrever.test.ts; aqui a leitura não
+  // traz a reunião, e a poda não tem o que escrever.
+  it("a poda lê o que ainda não venceu e a reunião pronta há menos de 24 h (renovação pendente), paginando pelo id", async () => {
+    tabelas.set(schema.meetingRecordings, []);
+    await servico.limparGravacoesVencidas();
+    const poda = leituras.find(operacao => operacao.tabela === schema.meetingRecordings && !operacao.sql.includes("<="));
+    expect(poda?.sql).toBe("((`meeting_recordings`.`expires_at` > ? or (`meetings`.`status` = ? and `meetings`.`updated_at` > ?)) and `meeting_recordings`.`id` > ?)");
+    const agora = Number(poda?.params[0]);
+    expect(poda?.params).toEqual([agora, "ready", agora - PRAZO_MS, ""]);
+    expect(atualizacoes).toEqual([]);
   });
 });
 
 describe("Exclusão — apagar a reunião apaga a VOZ, não só a linha", () => {
   it("o arquivo de áudio sai do bucket", async () => {
-    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 1000)]);
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + HORA)]);
     await servico.deletePrivateMeeting("dona-1", "reuniao-1");
-    expect(storageDelete).toHaveBeenCalledWith("meetings/dona-1/reuniao-1/recording_abc.webm");
+    expect(apagarTodasAsVersoes).toHaveBeenCalledWith("meetings/dona-1/reuniao-1/recording_abc.webm");
   });
 
   it("as TRADUÇÕES da transcrição também saem — senão o conteúdo sobrevive em nove idiomas", async () => {
@@ -293,7 +362,7 @@ describe("Exclusão — apagar a reunião apaga a VOZ, não só a linha", () => 
   });
 
   it("todo delete da exclusão — e a leitura das gravações — é da reunião DA dona: meeting_id E owner_id, em AND", async () => {
-    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 1000)]);
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + HORA)]);
     await servico.deletePrivateMeeting("dona-1", "reuniao-1");
 
     // A leitura que diz onde o arquivo está: sem o owner_id, o áudio de uma
@@ -306,7 +375,8 @@ describe("Exclusão — apagar a reunião apaga a VOZ, não só a linha", () => 
       [schema.meetingEntities, derivadaDaReuniaoDaDona("meeting_entities")],
       [schema.meetingTranscripts, derivadaDaReuniaoDaDona("meeting_transcripts")],
       [schema.meetingTranscriptTranslations, derivadaDaReuniaoDaDona("meeting_transcript_translations")],
-      [schema.meetingRecordings, derivadaDaReuniaoDaDona("meeting_recordings")],
+      // a gravação sai pelo id da que foi lida (e cujo arquivo saiu), e da dona
+      [schema.meetingRecordings, { sql: "(`meeting_recordings`.`id` in (?) and `meeting_recordings`.`owner_id` = ?)", params: ["grav-1", "dona-1"] }],
       [schema.meetings, REUNIAO_DA_DONA],
     ]);
     expect(delecoes).toHaveLength(esperado.size);
@@ -335,7 +405,7 @@ describe("Exclusão — apagar a reunião apaga a VOZ, não só a linha", () => 
     // transcrição e sugestões DEPOIS da exclusão, órfãs e indexáveis pela
     // Memória. O UPDATE também substitui o SELECT de existência: zero linhas
     // é "não é dela".
-    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 1000)]);
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + HORA)]);
 
     await servico.deletePrivateMeeting("dona-1", "reuniao-1");
 
@@ -350,17 +420,19 @@ describe("Exclusão — apagar a reunião apaga a VOZ, não só a linha", () => 
     expect(tabelasApagadas().at(-1)).toBe(schema.meetings);
   });
 
-  it("falha no bucket não impede a reunião de ser excluída", async () => {
-    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + 1000)]);
-    storageDelete.mockRejectedValueOnce(new Error("bucket fora do ar"));
+  it("falha no bucket não impede a reunião de ser excluída — mas a LINHA da gravação fica, sem reunião, para a varredura tentar de novo", async () => {
+    tabelas.set(schema.meetingRecordings, [gravacaoCom(AGORA + HORA)]);
+    apagarTodasAsVersoes.mockRejectedValueOnce(new Error("bucket fora do ar"));
     await expect(servico.deletePrivateMeeting("dona-1", "reuniao-1")).resolves.toBe(true);
     expect(tabelasApagadas()).toContain(schema.meetings);
+    expect(tabelasApagadas()).toContain(schema.meetingTranscripts);
+    expect(tabelasApagadas()).not.toContain(schema.meetingRecordings);
   });
 
   it("reunião de outra dona não apaga nada", async () => {
     tabelas.set(schema.meetings, []);
     expect(await servico.deletePrivateMeeting("dona-2", "reuniao-1")).toBe(false);
-    expect(storageDelete).not.toHaveBeenCalled();
+    expect(apagarTodasAsVersoes).not.toHaveBeenCalled();
     expect(tabelasApagadas()).toHaveLength(0);
   });
 });

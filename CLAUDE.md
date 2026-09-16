@@ -245,9 +245,10 @@ está gravado nas URLs do banco, não renomeie sem migração de dados.
 **Reunião que falha na IA se reprocessa pelo áudio guardado.** `processMeetingRecording`
 guarda o áudio no bucket antes da IA; `meetings.reprocess` (`iniciarReprocessamento` em
 `server/meeting-service.ts`) lê esses bytes de volta (`storageGetBytes`) e roda de novo
-transcrição e extração, sem gravar áudio nem renovar os 30 dias. Cada execução tem uma
-FICHA: o `updated_at` que ela grava ao tomar a reunião para `processing` (UPDATE
-condicional a partir de `recording` no envio e de `failed` no reprocesso). Releitura,
+transcrição e extração, sem gravar áudio; se der certo, o prazo do áudio passa a contar
+da nova transcrição (se falhar de novo, não estende). Cada execução tem uma FICHA: o
+`updated_at` que ela grava ao tomar a reunião para `processing` (UPDATE condicional a
+partir de `recording` no envio e de `failed` no reprocesso). Releitura,
 `ready` e `failed` exigem `status = 'processing' AND updated_at = ficha`: quem tomou a
 reunião por último (reprocesso novo, ou a varredura de interrompidas, que grava
 `updated_at` novo) vence, e a execução velha sai sem escrever. O reprocesso responde na
@@ -255,6 +256,40 @@ hora e segue em segundo plano (a tela consulta a cada 5 s); o trabalho nunca rej
 porque rejeição solta derruba o processo. Os derivados da tentativa anterior só saem
 depois de a IA dar certo, e decidir sobre sugestão ou entidade com a reunião em
 `processing` dá CONFLICT. Teto brando de 3 reprocessos aceitos por dona a cada 10 min.
+
+**Áudio de reunião vive 24 h depois da transcrição ou da falha** (decisão da Dra.
+Glenda; registro na D8 de `docs/arquitetura/decisoes-em-aberto.md`). O prazo é
+`meeting_recordings.expires_at`: provisório no upload (tomada + 24 h +
+`LIMITE_PROCESSAMENTO_MS`, que já cobre a reunião interrompida pela varredura),
+reescrito no `ready` (transcrição + 24 h, inclusive no reprocesso que dá certo) e
+encurtado no `failed` (falha + 24 h; nova falha não renova, o prazo segue contando da
+primeira). As duas escritas nunca lançam: tentam 3 vezes e, se ainda falharem, só
+avisam no log. `ajustarPrazosDasGravacoes` (a poda) recalcula o prazo a partir de
+`meetings.updated_at`: no `ready` ajusta nos dois sentidos (é assim que chega a
+renovação que não foi gravada), no `failed` só encurta, e gravação sem reunião da
+mesma dona vence na hora; é também o que tira as gravações antigas de 30 dias na
+primeira passada. A poda depende de um invariante: só a promoção a `ready` grava
+`updated_at` num UPDATE que mantenha a reunião em `ready` (a exclusão grava ao levá-la
+para `deleted`, que a poda não ajusta). Um UPDATE que o grave em `ready` (renomear, por
+exemplo) estenderia a guarda do áudio a cada edição; quem escrever um tem de trocar a
+âncora da poda. `limparGravacoesVencidas` expurga pela CHAVE, antes da poda, as chaves
+que o boot venceu e já ficaram sem linha; repete a poda; apaga o que venceu (o objeto,
+com TODAS as versões no B2, e só então a linha), pulando reunião em `processing` e
+reunião pronta há menos de 24 h; e expurga pela chave as que a poda venceu e perderam a
+linha no meio. Com a linha lá, quem cuida é o apagamento. A leitura
+(`gravacaoParaOuvir`) conta o `ready` pelo maior entre `expires_at` e `updated_at` +
+24 h, e nunca apaga em `processing`. Só o áudio expurga versões
+(`storageApagarTodasAsVersoes`, sobre a chave sem o `/manus-storage/` de linha antiga:
+HEAD, que lança se estourar o prazo; DELETE simples, que tira o arquivo do ar, só se o
+HEAD não der 404, para a retentativa não empilhar marcadores; e cada versão e marcador
+pelo `VersionId`), também na exclusão da reunião e da conta. Se o
+expurgo falhar numa exclusão, a reunião ou a conta sai e a linha da gravação fica, sem
+reunião, para a varredura tentar de novo. Os outros arquivos seguem com
+`storageDelete`, que só esconde (cartão F11). No boot a poda roda com await antes do
+`listen`, para nenhum reprocesso aceitar áudio pelo prazo velho (se ela falhar, o erro
+vai ao log e a subida segue), e passa à primeira limpeza as chaves que venceu; a
+limpeza roda sem await no boot e a cada 5 min no `setInterval` de
+`server/_core/index.ts`, só com `STORAGE_BUCKET`. A transcrição fica.
 
 **Client.** Não há AuthContext: `useAuth` é `trpc.auth.me` no cache do React Query.
 `ProtectedRoute` aplica `requireAdmin`, `requireGold` e `requireOpportunities`; páginas
@@ -303,9 +338,11 @@ Schema e migrações em `drizzle/` (`schema.ts` + SQL versionado, com baseline
 ## Produção
 
 Merge na `main` = deploy automático no Render (runtime Docker pelo `Dockerfile`; não
-há `render.yaml`, as variáveis vivem no painel; o plano gratuito hiberna e a primeira
-visita leva 30-60 s). Banco MySQL no Aiven; arquivos no Backblaze B2 via `STORAGE_*`;
-vitrine no GitHub Pages. Depois de todo deploy:
+há `render.yaml`, as variáveis vivem no painel). A produção está no plano Starter, que
+não hiberna: a varredura das gravações de reunião no `setInterval` depende disso (no
+plano gratuito o serviço hiberna e a primeira visita leva 30-60 s). Banco MySQL no
+Aiven; arquivos no Backblaze B2 via `STORAGE_*`; vitrine no GitHub Pages. Depois de
+todo deploy:
 `node scripts/checar-producao.mjs --env .env.producao` (o exame só precisa de
 `DATABASE_URL`; nunca do `JWT_SECRET`). Passo a passo e tabela de variáveis em
 `docs/deploy.md`.
