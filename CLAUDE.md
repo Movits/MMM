@@ -37,6 +37,8 @@ pnpm start             # roda o build de produção
 pnpm format            # prettier --write .
 node scripts/conferir-locales.mjs   # os 10 idiomas têm as mesmas chaves (o CI também roda)
 node scripts/checar-producao.mjs --env .env.producao   # exame de saúde da produção (pós-deploy); --com-ia inclui as checagens de IA
+node scripts/gerar-cidades.mjs --ibge  # regera client/src/data/cidades/BR.json do arquivo do IBGE
+node scripts/gerar-cidades.mjs --entrada <pasta com o dump do GeoNames descompactado>  # demais países
 node scripts/semear-rede-de-teste.mjs   # contatos fictícios na rede de uma usuária; --limpar desfaz
 node scripts/definir-senha-local.mjs    # senha de conta em banco LOCAL (sem Resend em dev)
 node .claude/hooks/carimbo.mjs --status # estado da conferência (ver "Fluxo de trabalho")
@@ -360,6 +362,31 @@ há `tailwind.config`); o tema escuro está desligado. i18n: 10 JSONs em
 `client/src/i18n/locales/` com o mesmo conjunto de chaves (`conferir-locales.mjs`
 garante); `AdminPanel`, `PresidentPanel` e `LegalPage` continuam em pt-BR fixo, e a
 maioria dos componentes compartilhados não traduz.
+
+**Cidade é busca sobre lista gerada, não texto solto.** `CampoDeCidade` (usado por
+`Onboarding` e `Profile`) sugere cidade de QUALQUER país que tenha lista em
+`client/src/data/cidades/<CC>.json` — hoje 230 países e 70.221 cidades —, casando o que
+foi digitado contra uma chave que já
+traz os apelidos nos 10 idiomas, sem acento e em minúsculas. Escolher da lista grava o
+NOME CANÔNICO; digitar livre continua valendo, e país sem lista cai em texto livre. As
+listas saem de `scripts/gerar-cidades.mjs` — nada de cidade escrita à mão, e nome que
+não caiba no `varchar(100)` de `user_profiles.city` é descartado com aviso. O Brasil
+vem do IBGE (5.571 municípios) e o resto do mundo do GeoNames: a rodada mundial do
+gerador PULA o BR de propósito, senão trocaria a lista do IBGE pelos 4.422 registros
+brasileiros do dump. A
+normalização existe DUAS vezes (`shared/normalizar-cidade.ts` para o navegador,
+`scripts/cidades/montagem.mjs` para o gerador, que é .mjs e não importa .ts): se elas
+divergirem a busca para de achar em silêncio, e `server/cidades-montagem.test.ts` é o
+que segura isso — mudou uma, muda a outra. A pontuação entra na chave nas DUAS formas
+("xique xique|xiquexique"), porque a normalização só troca hífen e apóstrofo por
+espaço e quem digita emendado não achava nada. O cabeçalho do arquivo gerado guarda a
+ORIGEM do dado (`fonte`, `fonteUrl`) e nenhuma data, para regerar dar o mesmo arquivo —
+`server/cidades-geradas.test.ts` remonta o `BR.json`, exige que bata e recalcula a
+chave das 70.221 cidades dos 230 arquivos. Dados do
+GeoNames são CC BY 4.0 e exigem crédito em tela: `CampoDeCidade` mostra a `fonte` do
+país como link embaixo do campo. Ver `docs/arquitetura/cidades.md`, inclusive a decisão
+em aberto sobre o nome canônico do GeoNames vir em inglês ("Lisbon", "Munich").
+
 Código morto conhecido (não construa sobre ele): `ComponentShowcase` e `AIChatBox`
 (importado só por ele).
 

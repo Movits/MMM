@@ -412,22 +412,6 @@
       "30k_plus": "Above $15k"
     },
     "countries": {
-      "brazil": "Brazil",
-      "portugal": "Portugal",
-      "usa": "USA",
-      "argentina": "Argentina",
-      "chile": "Chile",
-      "mexico": "Mexico",
-      "colombia": "Colombia",
-      "germany": "Germany",
-      "france": "France",
-      "uk": "United Kingdom",
-      "spain": "Spain",
-      "italy": "Italy",
-      "japan": "Japan",
-      "china": "China",
-      "india": "India",
-      "uae": "UAE",
       "other": "Other"
     },
     "aiAnalysis": {
@@ -1158,24 +1142,6 @@
     "sharedByPrefix": "· {{name}}'s network"
   },
   "newOpportunity": {
-    "countryBrasil": "Brazil",
-    "countryPortugal": "Portugal",
-    "countryEstadosUnidos": "United States",
-    "countryArgentina": "Argentina",
-    "countryChile": "Chile",
-    "countryColombia": "Colombia",
-    "countryMexico": "Mexico",
-    "countryEspanha": "Spain",
-    "countryFranca": "France",
-    "countryAlemanha": "Germany",
-    "countryReinoUnido": "United Kingdom",
-    "countryItalia": "Italy",
-    "countryJapao": "Japan",
-    "countryChina": "China",
-    "countryIndia": "India",
-    "countryAfricaDoSul": "South Africa",
-    "countryNigeria": "Nigeria",
-    "countryEmiradosArabes": "United Arab Emirates",
     "complianceGreenLabel": "High Reliability",
     "complianceYellowLabel": "Medium Reliability",
     "complianceOrangeLabel": "Needs Validation",
@@ -2490,5 +2456,16 @@
     "imoveis": "Real estate",
     "logistica": "Logistics",
     "canais_comerciais": "Commercial channels"
+  },
+  "city": {
+    "placeholder": "Type the first letters of the city",
+    "chooseCountry": "Choose the country first to see city suggestions.",
+    "loading": "Loading cities...",
+    "noList": "We don't have a list for this country yet. Just type the city name.",
+    "noResults": "No city found. You can type the name anyway.",
+    "credit": "City data:"
+  },
+  "country": {
+    "credit": "Country data:"
   }
 }

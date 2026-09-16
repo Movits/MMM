@@ -412,22 +412,6 @@
       "30k_plus": "¥100k 以上"
     },
     "countries": {
-      "brazil": "巴西",
-      "portugal": "葡萄牙",
-      "usa": "美国",
-      "argentina": "阿根廷",
-      "chile": "智利",
-      "mexico": "墨西哥",
-      "colombia": "哥伦比亚",
-      "germany": "德国",
-      "france": "法国",
-      "uk": "英国",
-      "spain": "西班牙",
-      "italy": "意大利",
-      "japan": "日本",
-      "china": "中国",
-      "india": "印度",
-      "uae": "阿联酋",
       "other": "其他"
     },
     "aiAnalysis": {
@@ -1158,24 +1142,6 @@
     "sharedByPrefix": "· 来自 {{name}} 的人脉"
   },
   "newOpportunity": {
-    "countryBrasil": "巴西",
-    "countryPortugal": "葡萄牙",
-    "countryEstadosUnidos": "美国",
-    "countryArgentina": "阿根廷",
-    "countryChile": "智利",
-    "countryColombia": "哥伦比亚",
-    "countryMexico": "墨西哥",
-    "countryEspanha": "西班牙",
-    "countryFranca": "法国",
-    "countryAlemanha": "德国",
-    "countryReinoUnido": "英国",
-    "countryItalia": "意大利",
-    "countryJapao": "日本",
-    "countryChina": "中国",
-    "countryIndia": "印度",
-    "countryAfricaDoSul": "南非",
-    "countryNigeria": "尼日利亚",
-    "countryEmiradosArabes": "阿拉伯联合酋长国",
     "complianceGreenLabel": "高可信度",
     "complianceYellowLabel": "中等可信度",
     "complianceOrangeLabel": "需要验证",
@@ -2490,5 +2456,16 @@
     "imoveis": "房地产",
     "logistica": "物流",
     "canais_comerciais": "商业渠道"
+  },
+  "city": {
+    "placeholder": "输入城市名称的前几个字",
+    "chooseCountry": "请先选择国家，以查看城市建议。",
+    "loading": "正在加载城市...",
+    "noList": "我们暂时没有该国家的城市列表。请直接输入城市名称。",
+    "noResults": "未找到城市。您仍然可以输入名称。",
+    "credit": "城市数据："
+  },
+  "country": {
+    "credit": "国家数据："
   }
 }

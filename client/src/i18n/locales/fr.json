@@ -412,22 +412,6 @@
       "30k_plus": "Plus de 15k €"
     },
     "countries": {
-      "brazil": "Brésil",
-      "portugal": "Portugal",
-      "usa": "États-Unis",
-      "argentina": "Argentine",
-      "chile": "Chili",
-      "mexico": "Mexique",
-      "colombia": "Colombie",
-      "germany": "Allemagne",
-      "france": "France",
-      "uk": "Royaume-Uni",
-      "spain": "Espagne",
-      "italy": "Italie",
-      "japan": "Japon",
-      "china": "Chine",
-      "india": "Inde",
-      "uae": "ÉAU",
       "other": "Autre"
     },
     "aiAnalysis": {
@@ -1158,24 +1142,6 @@
     "sharedByPrefix": "· réseau de {{name}}"
   },
   "newOpportunity": {
-    "countryBrasil": "Brésil",
-    "countryPortugal": "Portugal",
-    "countryEstadosUnidos": "États-Unis",
-    "countryArgentina": "Argentine",
-    "countryChile": "Chili",
-    "countryColombia": "Colombie",
-    "countryMexico": "Mexique",
-    "countryEspanha": "Espagne",
-    "countryFranca": "France",
-    "countryAlemanha": "Allemagne",
-    "countryReinoUnido": "Royaume-Uni",
-    "countryItalia": "Italie",
-    "countryJapao": "Japon",
-    "countryChina": "Chine",
-    "countryIndia": "Inde",
-    "countryAfricaDoSul": "Afrique du Sud",
-    "countryNigeria": "Nigeria",
-    "countryEmiradosArabes": "Émirats arabes unis",
     "complianceGreenLabel": "Fiabilité élevée",
     "complianceYellowLabel": "Fiabilité moyenne",
     "complianceOrangeLabel": "Nécessite une validation",
@@ -2490,5 +2456,16 @@
     "imoveis": "Immobilier",
     "logistica": "Logistique",
     "canais_comerciais": "Canaux commerciaux"
+  },
+  "city": {
+    "placeholder": "Saisissez les premières lettres de la ville",
+    "chooseCountry": "Choisissez d'abord le pays pour voir des suggestions de ville.",
+    "loading": "Chargement des villes...",
+    "noList": "Nous n'avons pas encore la liste de ce pays. Saisissez le nom de la ville.",
+    "noResults": "Aucune ville trouvée. Vous pouvez quand même saisir le nom.",
+    "credit": "Données des villes :"
+  },
+  "country": {
+    "credit": "Données des pays :"
   }
 }

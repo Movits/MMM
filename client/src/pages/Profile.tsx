@@ -14,6 +14,9 @@ import { QualificacaoDoPerfil } from "@/components/QualificacaoDoPerfil";
 import { LIMITE_DA_BIO_GRAVADA } from "@shared/apresentacao";
 import { DemandasDoPerfil, EditorDoQuePreciso } from "@/components/OQuePreciso";
 import { categoriasPendentes, demandasParaGravar, lerDemandas, type DemandaDetalhada } from "@shared/o-que-preciso";
+import CampoDeCidade from "@/components/CampoDeCidade";
+import CreditoDeDados from "@/components/CreditoDeDados";
+import { FONTE_DOS_PAISES, FONTE_DOS_PAISES_URL, listarPaises, nomeDoPais } from "@shared/paises";
 import { toast } from "sonner";
 import { exigeCadastroEmpresarial, mascararCadastroEmpresarial, normalizarCadastroEmpresarial } from "@shared/business-registration";
 import { sortOptionsAlphabetically, sortTextAlphabetically } from "@shared/option-sorting";
@@ -37,17 +40,10 @@ const LANGUAGES_LIST = [
   "中文", "日本語", "العربية", "हिन्दी", "Русский",
 ];
 
-const COUNTRIES = [
-  { code: "BR", chave: "newOpportunity.countryBrasil" }, { code: "PT", chave: "newOpportunity.countryPortugal" },
-  { code: "US", chave: "newOpportunity.countryEstadosUnidos" }, { code: "AR", chave: "newOpportunity.countryArgentina" },
-  { code: "CL", chave: "newOpportunity.countryChile" }, { code: "CO", chave: "newOpportunity.countryColombia" },
-  { code: "MX", chave: "newOpportunity.countryMexico" }, { code: "ES", chave: "newOpportunity.countryEspanha" },
-  { code: "FR", chave: "newOpportunity.countryFranca" }, { code: "DE", chave: "newOpportunity.countryAlemanha" },
-  { code: "GB", chave: "newOpportunity.countryReinoUnido" }, { code: "IT", chave: "newOpportunity.countryItalia" },
-  { code: "CN", chave: "newOpportunity.countryChina" }, { code: "JP", chave: "newOpportunity.countryJapao" },
-  { code: "IN", chave: "newOpportunity.countryIndia" }, { code: "ZA", chave: "newOpportunity.countryAfricaDoSul" },
-  { code: "NG", chave: "newOpportunity.countryNigeria" }, { code: "AE", chave: "newOpportunity.countryEmiradosArabes" },
-];
+// A lista de 18 países escrita à mão que estava aqui virou shared/paises.ts:
+// 250 países, com o nome traduzido pelo navegador no idioma da tela. O seletor
+// abaixo monta a lista com `listarPaises`, incluindo o "Outro" antigo para o
+// perfil de quem escolheu "XX" antes de o mundo caber na lista.
 
 // Tags "O que tenho" — a MESMA lista do Onboarding; as chaves ficam em
 // `oQueTenho.*` para as duas telas lerem o mesmo rótulo, como já acontece com
@@ -124,6 +120,9 @@ function Section({
 // ─── Componente Principal ─────────────────────────────────────────────────────
 export default function Profile() {
   const { t, i18n } = useTranslation();
+  // Os 250 países no idioma da tela, com o "Outro" antigo por último (ver
+  // shared/paises.ts). Já vêm ordenados: ordenar de novo tiraria o "Outro" do fim.
+  const PAISES = listarPaises(i18n.language, t("onboarding.countries.other"));
   const { user } = useAuth();
   const utils = trpc.useUtils();
 
@@ -264,10 +263,9 @@ export default function Profile() {
   const profileWhatINeed = Array.isArray((profile as any)?.whatINeed) ? (profile as any).whatINeed as string[] : [];
   const profileInterestSectors = Array.isArray((profile as any)?.interestSectors) ? (profile as any).interestSectors as string[] : [];
 
-  const nomeDoPais = (codigo?: string | null) => {
-    const pais = COUNTRIES.find(c => c.code === codigo);
-    return pais ? t(pais.chave) : codigo ?? "";
-  };
+  // O nome do país vem de shared/paises.ts, traduzido pelo navegador: o
+  // ajudante local que estava aqui procurava na lista de 18 países escrita à
+  // mão, que deixou de existir.
 
   return (
     <div className="min-h-screen bg-transparent text-white">
@@ -442,17 +440,26 @@ export default function Profile() {
                       <SelectValue placeholder={t("profile.fields.countryPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent className="bg-[#1b1714] border-white/10 text-white">
-                      {sortOptionsAlphabetically(COUNTRIES.map(country => ({ ...country, label: t(country.chave) })), i18n.language).map(c => (
-                        <SelectItem key={c.code} value={c.code} className="text-white hover:bg-white/10 focus:bg-white/10">{c.label}</SelectItem>
+                      {PAISES.map(pais => (
+                        <SelectItem key={pais.codigo} value={pais.codigo} className="text-white hover:bg-white/10 focus:bg-white/10">{pais.rotulo}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <CreditoDeDados rotulo={t("country.credit")} fonte={FONTE_DOS_PAISES} fonteUrl={FONTE_DOS_PAISES_URL}/>
                 </div>
                 <div>
-                  <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.fields.city")}</label>
-                  <Input value={city} onChange={e => setCity(e.target.value)}
-                    placeholder={t("profile.fields.cityPlaceholder")}
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50" />
+                  {/* Mesmo campo do cadastro: sugere cidade de qualquer país com
+                      lista gerada e grava o nome canônico. Antes era um <Input>
+                      cru, sem nenhuma sugestão nem no Brasil. */}
+                  <CampoDeCidade
+                    rotulo={t("profile.fields.city")}
+                    valor={city}
+                    pais={country}
+                    onChange={setCity}
+                    placeholder={t("city.placeholder")}
+                    classeDoRotulo="text-xs text-white/40 uppercase tracking-wider mb-1.5 block"
+                    classeDoCampo="bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-amber-500/50"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-white/40 uppercase tracking-wider mb-1.5 block">{t("profile.gender.label")}</label>
@@ -570,7 +577,7 @@ export default function Profile() {
                   (profile as any)?.personType && { icon: <Building size={13} />, label: t(`profile.business.${(profile as any).personType === "legal_entity" ? "legalEntity" : (profile as any).personType}`) },
                   (profile as any)?.companySize && { icon: <Building size={13} />, label: t(`profile.business.size${String((profile as any).companySize).charAt(0).toUpperCase()}${String((profile as any).companySize).slice(1)}`) },
                   (profile as any)?.companyCnpj && { icon: <Building size={13} />, label: `${t("profile.business.registrationNumber")}: ${mascararCadastroEmpresarial((profile as any).companyCnpj)}` },
-                  (profile?.city || profile?.country) && { icon: <MapPin size={13} />, label: [profile?.city, nomeDoPais(profile?.country)].filter(Boolean).join(", ") },
+                  (profile?.city || profile?.country) && { icon: <MapPin size={13} />, label: [profile?.city, profile?.country ? nomeDoPais(profile.country, i18n.language) : ""].filter(Boolean).join(", ") },
                   // O banco guarda "prefer_not_to_say" e a chave de tradução é
                   // "preferNotToSay": interpolar o valor cru punha o nome da
                   // chave na tela, nos dez idiomas. O cadastro já fazia esta

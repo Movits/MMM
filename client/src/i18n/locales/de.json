@@ -412,22 +412,6 @@
       "30k_plus": "Über 15k €"
     },
     "countries": {
-      "brazil": "Brasilien",
-      "portugal": "Portugal",
-      "usa": "USA",
-      "argentina": "Argentinien",
-      "chile": "Chile",
-      "mexico": "Mexiko",
-      "colombia": "Kolumbien",
-      "germany": "Deutschland",
-      "france": "Frankreich",
-      "uk": "Vereinigtes Königreich",
-      "spain": "Spanien",
-      "italy": "Italien",
-      "japan": "Japan",
-      "china": "China",
-      "india": "Indien",
-      "uae": "VAE",
       "other": "Sonstiges"
     },
     "aiAnalysis": {
@@ -1158,24 +1142,6 @@
     "sharedByPrefix": "· Netzwerk von {{name}}"
   },
   "newOpportunity": {
-    "countryBrasil": "Brasilien",
-    "countryPortugal": "Portugal",
-    "countryEstadosUnidos": "USA",
-    "countryArgentina": "Argentinien",
-    "countryChile": "Chile",
-    "countryColombia": "Kolumbien",
-    "countryMexico": "Mexiko",
-    "countryEspanha": "Spanien",
-    "countryFranca": "Frankreich",
-    "countryAlemanha": "Deutschland",
-    "countryReinoUnido": "Vereinigtes Königreich",
-    "countryItalia": "Italien",
-    "countryJapao": "Japan",
-    "countryChina": "China",
-    "countryIndia": "Indien",
-    "countryAfricaDoSul": "Südafrika",
-    "countryNigeria": "Nigeria",
-    "countryEmiradosArabes": "VAE",
     "complianceGreenLabel": "Hohe Zuverlässigkeit",
     "complianceYellowLabel": "Mittlere Zuverlässigkeit",
     "complianceOrangeLabel": "Validierung erforderlich",
@@ -2490,5 +2456,16 @@
     "imoveis": "Immobilien",
     "logistica": "Logistik",
     "canais_comerciais": "Vertriebskanäle"
+  },
+  "city": {
+    "placeholder": "Geben Sie die ersten Buchstaben der Stadt ein",
+    "chooseCountry": "Wählen Sie zuerst das Land, um Städtevorschläge zu sehen.",
+    "loading": "Städte werden geladen...",
+    "noList": "Für dieses Land haben wir noch keine Liste. Geben Sie den Stadtnamen ein.",
+    "noResults": "Keine Stadt gefunden. Sie können den Namen trotzdem eingeben.",
+    "credit": "Städtedaten:"
+  },
+  "country": {
+    "credit": "Länderdaten:"
   }
 }

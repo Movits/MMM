@@ -84,7 +84,10 @@ describe("Perfil — a régua acompanha o que está sendo digitado", () => {
     editar();
 
     const antes = screen.getAllByRole("listitem").length;
-    fireEvent.change(screen.getByPlaceholderText("Sua cidade"), { target: { value: "Porto Alegre" } });
+    // O campo de cidade do Perfil virou o CampoDeCidade, com sugestão: o texto de
+    // ajuda deixou de ser "Sua cidade" e passou a dizer o que fazer. Digitar
+    // continua valendo (a lista ajuda, não obriga), que é o que este caso mede.
+    fireEvent.change(screen.getByPlaceholderText(/primeiras letras da cidade/i), { target: { value: "Porto Alegre" } });
 
     expect(screen.getAllByRole("listitem").length).toBeLessThan(antes);
   });
