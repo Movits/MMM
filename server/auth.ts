@@ -87,6 +87,27 @@ export async function registerUser(params: {
 }
 
 // ─── Login com email + senha ──────────────────────────────────
+/**
+ * O `appId` que vai no JWT. NUNCA vazio: `sdk.verifySession` exige
+ * `isNonEmptyString(appId)` (server/_core/sdk.ts) e recusa a sessão inteira
+ * sem ele — a pessoa loga, a sessão é criada no banco, e no request seguinte
+ * já está deslogada, com "[Auth] Session payload missing required fields" no
+ * log.
+ *
+ * O defeito que isto fecha (achado pelo Gabryel na #139): o código usava
+ * `process.env.VITE_APP_ID ?? "mmm-os"`, e `??` só cai no padrão com
+ * null/undefined. O `.env.example` traz `VITE_APP_ID=` — vazio —, o dotenv
+ * entrega string VAZIA, que não é nullish, e o appId ia vazio. Ou seja: quem
+ * seguisse o README ("cp .env.example .env") não conseguia ficar logado.
+ *
+ * É a mesma cautela que o `safeName` logo abaixo já tinha. Fica como função
+ * exportada para o teste poder prendê-la (server/auth.identificador-do-aplicativo.test.ts):
+ * a troca de `??` por `||` é de um caractere e volta sem ninguém ver.
+ */
+export function identificadorDoAplicativo(): string {
+  return process.env.VITE_APP_ID?.trim() || "mmm-os";
+}
+
 export async function loginUser(params: {
   email: string;
   password: string;
@@ -174,17 +195,7 @@ export async function loginUser(params: {
     ? user.name.trim()
     : (user.email ? user.email.split("@")[0] : "usuario");
 
-  // Mesma cautela do safeName, que faltava aqui: `??` só cai no fallback com
-  // null/undefined, e o .env.example traz `VITE_APP_ID=` — vazio. O dotenv
-  // entrega string VAZIA, que não é nullish, então o appId ia vazio no JWT.
-  // Do outro lado, sdk.verifySession exige isNonEmptyString(appId) e recusava
-  // a sessão a cada requisição, registrando "[Auth] Session payload missing
-  // required fields": a pessoa logava, a sessão era criada no banco, e no
-  // request seguinte ela já estava deslogada. Ou seja, quem seguiu o README
-  // ("cp .env.example .env" e preencher as variáveis) não conseguia ficar
-  // logado em dev. Achado ao abrir o app logado para conferir a carga da
-  // planilha de ponta a ponta (F9).
-  const safeAppId = process.env.VITE_APP_ID?.trim() || "mmm-os";
+  const safeAppId = identificadorDoAplicativo();
 
   const token = await new jose.SignJWT({
     openId: user.openId,                          // campo esperado pelo sdk.verifySession
