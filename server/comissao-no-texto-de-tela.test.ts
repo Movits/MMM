@@ -7,8 +7,8 @@
  * negócio". Quem define o percentual é a Diretoria Comercial, "por critérios que
  * serão definidos em outra ocasião".
  *
- * O acordo da Sala de Negociação é texto que as DUAS PARTES aceitam antes de
- * conversar, nos dez idiomas. Ele dizia "o limite é de 50% do lucro declarado no
+ * O contrato de comissão é aceito no fim do cadastro (etapa 9 do Onboarding,
+ * chaves onboarding.terms.*), nos dez idiomas. Ele dizia "o limite é de 50% do lucro declarado no
  * negócio" e "o percentual é definido caso a caso, conforme o tipo e o tamanho do
  * negócio" — o primeiro contradiz a resposta dela, e o segundo inventa um
  * critério que ela não deu.

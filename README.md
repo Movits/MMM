@@ -62,7 +62,7 @@ Todo o texto do repositório — documentação, commits, PRs, comentários — 
    ir ao ar, e uma análise automática sugere que documentação aquele negócio pede.
 6. **Negociar.** Quem se interessa abre uma **Sala de Negociação**, que só destrava
    depois das duas partes aceitarem o acordo de confidencialidade. O registro do
-   negócio fechado — valor, lucro declarado e aviso de comissão — **ainda não
+   negócio fechado — valor, honorários da intermediação e aviso de comissão — **ainda não
    está no ar**: é o ajuste A11, em rascunho na PR #94, e depende de decisões
    comerciais da cliente que seguem em aberto.
 

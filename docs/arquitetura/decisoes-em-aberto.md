@@ -14,7 +14,10 @@ correspondente no quadro do projeto.
 Roberto; o grupo é o canal das decisões dela e nem tudo chega ao Notion): o
 percentual é individualizado por negócio, definido manualmente por enquanto, com
 teto de 50% do lucro declarado; a divisão entre duas indicadoras se resolve caso a
-caso. Falta o texto contratual: em 05/09 a Cris pediu ao Roberto as orientações
+caso. **Atualizado em 12/09/2026:** o teto de 50% incide sobre o valor dos
+honorários da intermediação (não sobre o lucro), e o percentual é definido pela
+Diretoria Comercial; o texto da tela mudou na PR #107 e a versão 2 do
+`contrato_comissao` foi publicada em 14/09/2026. Falta o texto contratual: em 05/09 a Cris pediu ao Roberto as orientações
 originais da Glenda sobre comissão e remuneração para concluir o acordo de
 intermediação e o contrato de comissão.
 
