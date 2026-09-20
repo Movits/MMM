@@ -530,12 +530,11 @@ export default function Home() {
       {/* ─── NAVBAR ─── */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.05] bg-[#151312]/80 backdrop-blur-2xl">
         <div className="flex items-center justify-between px-6 md:px-12 py-3.5">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center">
             <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className="cursor-pointer" aria-label={t("nav.backToTop")}>
               <BrandMark />
             </a>
-            <span className="text-[10px] uppercase tracking-wider bg-[#c98f70]/10 text-[#c98f70] border border-[#c98f70]/20 px-2 py-0.5 rounded-full font-semibold">{t("nav.beta")}</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/50">
             <button onClick={() => scrollTo('como-funciona')} className="whitespace-nowrap hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.howItWorks")}</button>
