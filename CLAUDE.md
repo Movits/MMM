@@ -90,8 +90,8 @@ que dizia: título de commit não é evidência.
    PR que toque na sua área, abra o diff (`gh pr diff N`) e confirme que o código faz
    o que a mensagem diz e o que a tarefa pedia.
 3. Confira o quadro do Notion (concluído, removido, adicionado, notificações; "Feito
-   (a validar)" é trabalho à espera de validação por OUTRA pessoa, não "Concluído";
-   validar item de colega faz parte do trabalho) e as decisões no grupo de WhatsApp "Projetos IA",
+   (a validar)" é trabalho pronto numa PR à espera de validação por OUTRA pessoa antes
+   do merge, não "Concluído"; validar PR de colega faz parte do trabalho) e as decisões no grupo de WhatsApp "Projetos IA",
    canal principal do time. **Se o seu Claude não tem acesso a eles, diga isso e
    pergunte a quem tem; nunca declare que conferiu sem ter aberto.**
 4. Registre a conferência (é o que destrava commit e push):
@@ -113,10 +113,22 @@ que dizia: título de commit não é evidência.
   Notion e o grupo foram lidos; prova que a conferência foi registrada. O botão
   "Merge" do site passa ao largo, por isso merge só por `gh pr merge`.
 
-**Depois do merge**: espere o deploy do Render e rode
-`node scripts/checar-producao.mjs --env .env.producao`. Só então mova a tarefa no Notion
-para "Feito (a validar)", com a comprovação (link da PR, saída do exame). Quem fez não
-conclui: outra pessoa do time valida no link de teste e só ela marca "Concluído".
+**Status no Notion** (regra do Roberto, 16/09/2026):
+
+- **Feito (a validar)**: a tarefa está pronta numa PR aberta, com CI verde, esperando
+  validação. Quem fez move o cartão para cá ao abrir a PR, com o link da PR em
+  Comprovação.
+- **Validar** é trabalho de OUTRA pessoa, antes do merge: ler o diff (não o título),
+  testar o que a PR diz ("Como verifiquei" e o smoke das telas, com o nível de conta
+  certo) e aprovar a PR no GitHub, escrevendo o que conferiu. Quem fez não aprova a
+  própria PR. Só com essa aprovação a PR entra, e só por `gh pr merge`.
+- **Concluído**: validado por outra pessoa E na `main`. Depois do merge, espere o deploy
+  do Render e rode `node scripts/checar-producao.mjs --env .env.producao`; com o exame
+  sem falha, o cartão vai para "Concluído", com a saída do exame na Comprovação. Se o
+  exame falhar, o cartão volta para "Em andamento".
+- Tarefa sem código (painel de serviço, DNS, texto jurídico) segue a mesma lógica: fica
+  em "Feito (a validar)" até outra pessoa conferir o resultado e registrar no cartão o
+  que viu.
 
 ## Testes
 
