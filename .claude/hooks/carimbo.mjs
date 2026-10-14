@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-// Carimbo de conferência do MMM.
+// Carimbo de conferência da WRW (nome técnico MMM).
 //
 // Regra do time (CLAUDE.md, "Fluxo de trabalho"): antes de iniciar uma tarefa e
 // antes de commit/push, conferir GitHub, o quadro do Notion e o grupo do time,
 // e provar que o código faz o que o commit diz. Este script transforma a regra
 // em trava: sem um carimbo recente, o Claude Code recusa `git commit`,
-// `git push`, `git merge` e `gh pr merge`.
+// `git push`, `git merge` e `gh pr merge`. Exceções que não publicam nem
+// mesclam nada na main: `gh api` só de leitura, e o `git merge origin/main`
+// que só traz a main para uma branch de trabalho (ver soTrazAMain).
 //
 // O carimbo fica em .claude/carimbo.local.json (ignorado pelo git, um por
 // clone). Ele vence em 6 horas e também quando origin/main muda: se alguém
@@ -101,7 +103,7 @@ function validarCarimbo() {
 
 function textoDeBloqueio(motivo) {
   return (
-    `Conferência do MMM pendente: ${motivo}. ` +
+    `Conferência da WRW pendente: ${motivo}. ` +
     "Antes de commitar ou empurrar, confira o GitHub (git fetch, commits e PRs novos, diff " +
     "provando que o código faz o que diz), o quadro do Notion e o grupo do time, mostre o " +
     `resumo a quem está pedindo e registre com: ${COMANDO_CARIMBAR}`
@@ -121,6 +123,47 @@ const RUNNERS = new Set([
 const REGEX_GIT = /\bgit\s+(?:-[^\s]+\s+)*(commit|push|merge)\b/;
 const REGEX_GH = /\bgh\s+(?:pr\s+merge|repo\s+sync|api\b[^\n]*merge)/;
 
+// `gh api` só escreve quando recebe método diferente de GET/HEAD (-X, --method)
+// ou, sem método, um corpo (-f, -F, --field, --raw-field, --input), que o gh
+// transforma em POST. Leitura (`--jq '.merged_at'`, `.allow_auto_merge`) passa.
+export function ghApiEscreve(args) {
+  let metodo = null;
+  let corpo = false;
+  for (let k = 0; k < args.length; k++) {
+    const a = args[k];
+    if (a === "-X" || a === "--method") metodo = (args[k + 1] || "").toUpperCase();
+    else if (/^-X./.test(a)) metodo = a.slice(2).toUpperCase();
+    else if (a.startsWith("--method=")) metodo = a.slice(9).toUpperCase();
+    else if (/^(?:-f|-F|--field|--raw-field|--input)(?:=|$)/.test(a) || /^-[fF]./.test(a)) corpo = true;
+  }
+  if (metodo) return metodo !== "GET" && metodo !== "HEAD";
+  return corpo;
+}
+
+// O `git merge` que só traz a main para uma branch de trabalho não mescla nada
+// NA main e é o que o fluxo manda fazer antes da PR. Sem esta exceção havia um
+// impasse: o --carimbar recusa branch atrás de origin/main, e o hook recusava
+// o merge que a põe em dia. Só vale na forma simples, com a branch do diretório
+// do comando conhecida e diferente de main; qualquer troca de diretório ou de
+// repositório no comando (cd, pushd, -C, GIT_DIR, --git-dir, --work-tree) tira
+// a exceção, e o merge volta a pedir carimbo.
+const ALVOS_DA_MAIN = new Set(["origin/main", "main", "refs/remotes/origin/main", "refs/heads/main"]);
+const OPCOES_DO_MERGE_SIMPLES = new Set(["--no-edit", "--ff-only", "--ff", "--no-ff"]);
+const TROCA_DE_LUGAR =
+  /(?:^|[\s;&|({])(?:cd|chdir|pushd|popd|set-location|sl)(?:\s|$)|\s-C\s|GIT_DIR|GIT_WORK_TREE|--git-dir|--work-tree/i;
+
+export function soTrazAMain(argsDoMerge, comandoInteiro, branch) {
+  if (!branch || branch === "main" || branch === "HEAD" || branch === "?") return false;
+  if (TROCA_DE_LUGAR.test(comandoInteiro)) return false;
+  const alvos = argsDoMerge.filter(a => !a.startsWith("-"));
+  const opcoes = argsDoMerge.filter(a => a.startsWith("-"));
+  return (
+    alvos.length === 1 &&
+    ALVOS_DA_MAIN.has(alvos[0]) &&
+    opcoes.every(o => OPCOES_DO_MERGE_SIMPLES.has(o))
+  );
+}
+
 function tokens(segmento) {
   const saida = [];
   const re = /"([^"]*)"|'([^']*)'|(\S+)/g;
@@ -130,7 +173,9 @@ function tokens(segmento) {
 }
 
 // Devolve "commit" | "push" | "merge" | null para um segmento de comando.
-function classificarSegmento(segmento) {
+// `ctx.branch` é a branch do diretório onde o comando roda (para soTrazAMain);
+// `ctx.comando` é o comando inteiro.
+function classificarSegmento(segmento, ctx = {}) {
   const s = segmento.trim();
   if (!s) return null;
   const t = tokens(s);
@@ -148,6 +193,12 @@ function classificarSegmento(segmento) {
     if (sub === "commit" || sub === "push" || sub === "merge") {
       if (t.includes("--dry-run")) return null;
       if (sub === "push" && t.includes("-n")) return null;
+      if (sub === "merge") {
+        const resto = t.slice(j + 1);
+        // Ajuda e desistência não mesclam nada.
+        if (resto.some(a => ["-h", "--help", "--abort", "--quit"].includes(a))) return null;
+        if (soTrazAMain(resto, ctx.comando || s, ctx.branch)) return null;
+      }
       return sub;
     }
     return null;
@@ -156,7 +207,9 @@ function classificarSegmento(segmento) {
     const resto = t.slice(i + 1).join(" ");
     if (/^pr\s+merge\b/.test(resto)) return "merge";
     if (/^repo\s+sync\b/.test(resto)) return "push";
-    if (/^api\b/.test(resto) && /merge/.test(resto)) return "merge";
+    if (/^api\b/.test(resto) && /merge/i.test(resto) && ghApiEscreve(t.slice(i + 2))) {
+      return "merge";
+    }
     return null;
   }
   if (RUNNERS.has(exe)) {
@@ -209,12 +262,12 @@ function segmentar(comando) {
 }
 
 // Devolve a ação mais grave encontrada no comando inteiro, ou null.
-export function detectar(comando) {
+export function detectar(comando, ctx = {}) {
   if (typeof comando !== "string") return null;
   const peso = { commit: 1, push: 2, merge: 3 };
   let pior = null;
   for (const seg of segmentar(comando)) {
-    const acao = classificarSegmento(seg);
+    const acao = classificarSegmento(seg, { ...ctx, comando });
     if (acao && (!pior || peso[acao] > peso[pior])) pior = acao;
   }
   return pior;
@@ -230,13 +283,29 @@ function lerStdin() {
   }
 }
 
+function branchDoDiretorio(dir) {
+  if (typeof dir !== "string" || !dir) return null;
+  try {
+    return execFileSync("git", ["-C", dir, "rev-parse", "--abbrev-ref", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 5000,
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
 function modoPreTool() {
   const entrada = lerStdin();
   if (!entrada) return;
   const ferramentas = new Set(["Bash", "PowerShell", "mcp__Desktop_Commander__start_process"]);
   if (!ferramentas.has(entrada.tool_name)) return;
   const comando = entrada.tool_input && entrada.tool_input.command;
-  const acao = detectar(comando);
+  // A branch é a do diretório onde o comando roda (campo cwd da entrada do
+  // hook), não a da raiz do projeto: o diretório do Bash persiste entre
+  // chamadas. Sem cwd, a branch fica desconhecida e não há exceção.
+  const acao = detectar(comando, { branch: branchDoDiretorio(entrada.cwd) });
   if (!acao) return;
 
   let veredito;
@@ -278,7 +347,7 @@ function modoPrompt() {
       hookSpecificOutput: {
         hookEventName: "UserPromptSubmit",
         additionalContext:
-          `[carimbo do MMM] ${v.motivo}. Se a mensagem inicia uma tarefa nova, antes de ` +
+          `[carimbo da WRW] ${v.motivo}. Se a mensagem inicia uma tarefa nova, antes de ` +
           "tocar em código: confira o GitHub (fetch, commits/PRs novos, diff), o quadro do " +
           `Notion e o grupo do time, e registre com: ${COMANDO_CARIMBAR}`,
       },
@@ -314,7 +383,7 @@ function modoCarimbar() {
   }
   const sha = shaCurto("origin/main");
   if (!sha) {
-    console.error("Não achei origin/main. Este é o clone do MMM, com o remote origin?");
+    console.error("Não achei origin/main. Este é o clone da WRW, com o remote origin?");
     process.exit(1);
   }
   if (!github.includes(sha)) {
@@ -324,11 +393,17 @@ function modoCarimbar() {
     );
     process.exit(1);
   }
-  const atras = git(["rev-list", "--count", "HEAD..origin/main"]);
+  // Com um merge da main em andamento (conflito a resolver), o que está no
+  // MERGE_HEAD já foi trazido: o commit que conclui o merge precisa do carimbo.
+  const mergeEmAndamento = git(["rev-parse", "-q", "--verify", "MERGE_HEAD"]);
+  const atras = mergeEmAndamento
+    ? git(["rev-list", "--count", "HEAD..origin/main", `^${mergeEmAndamento}`])
+    : git(["rev-list", "--count", "HEAD..origin/main"]);
   if (atras && Number(atras) > 0) {
     console.error(
       `Sua branch (${branchAtual()}) está ${atras} commit(s) atrás de origin/main. ` +
-        "Traga a main para ela (git merge origin/main ou rebase), leia o que entrou e carimbe de novo."
+        "Traga a main para ela com git merge origin/main (numa branch de trabalho isso não pede " +
+        "carimbo; na main, use git pull --ff-only), leia o que entrou e carimbe de novo."
     );
     process.exit(1);
   }
@@ -369,6 +444,7 @@ function modoStatus() {
 }
 
 function modoTestar() {
+  // [comando, esperado, branch do diretório (opcional; padrão: desconhecida)]
   const casos = [
     ["git status", null],
     ["git log --oneline -5 origin/main", null],
@@ -381,6 +457,36 @@ function modoTestar() {
     ["git push --dry-run", null],
     ["GIT_TRACE=1 git push", "push"],
     ["git merge origin/main", "merge"],
+    ["git merge origin/main", null, "fix/x"],
+    ["git merge --no-edit origin/main", null, "fix/x"],
+    ["git fetch --prune && git merge origin/main", null, "fix/x"],
+    ["git merge origin/main", "merge", "main"],
+    ["git merge feat/outra", "merge", "fix/x"],
+    ["git merge origin/main feat/outra", "merge", "fix/x"],
+    ["git merge -s ours origin/main", "merge", "fix/x"],
+    ["git merge", "merge", "fix/x"],
+    ["git merge --continue", "merge", "fix/x"],
+    ["cd /outro && git merge origin/main", "merge", "fix/x"],
+    ["{ cd /outro; git merge origin/main; }", "merge", "fix/x"],
+    ["builtin cd /outro && git merge origin/main", "merge", "fix/x"],
+    ["export GIT_DIR=/outro/.git; git merge origin/main", "merge", "fix/x"],
+    ["git -C /outro merge origin/main", "merge", "fix/x"],
+    ["git --git-dir=/outro/.git merge origin/main", "merge", "fix/x"],
+    ['bash -c "git merge origin/main"', "merge", "fix/x"],
+    ["git merge --abort", null],
+    ["git merge -h", null],
+    ["gh api repos/o/r --jq '.allow_auto_merge'", null],
+    ["gh api repos/o/r/pulls/94 --jq '{merged_at: .merged_at}'", null],
+    ["gh api repos/o/r/pulls/1/merge", null],
+    ["gh api -X PUT repos/o/r/pulls/1/merge", "merge"],
+    ["gh api --method=PUT repos/o/r/pulls/1/merge", "merge"],
+    ["gh api -XPUT repos/o/r/pulls/1/merge", "merge"],
+    ["gh api repos/o/r/merges -f base=main -f head=x", "merge"],
+    ["gh api -X PATCH repos/o/r -F allow_auto_merge=true", "merge"],
+    ["gh api graphql -f query='mutation { mergePullRequest(input: {}) { clientMutationId } }'", "merge"],
+    ["gh api graphql -F query=@merge.graphql", "merge"],
+    ["gh api https://api.github.com/graphql -f query='mutation { mergePullRequest }'", "merge"],
+    ["gh api -X GET search/issues -f q='is:merged'", null],
     ["gh pr merge 12 --squash", "merge"],
     ["gh pr view 12", null],
     ["gh pr create --fill", null],
@@ -395,11 +501,12 @@ function modoTestar() {
     ["pnpm test", null],
   ];
   let falhas = 0;
-  for (const [cmd, esperado] of casos) {
-    const obtido = detectar(cmd);
+  for (const [cmd, esperado, branch] of casos) {
+    const obtido = detectar(cmd, { branch: branch || null });
     const ok = obtido === esperado;
     if (!ok) falhas++;
-    console.log(`${ok ? "ok  " : "ERRO"} ${JSON.stringify(cmd)} -> ${obtido} (esperado ${esperado})`);
+    const onde = branch ? ` [branch ${branch}]` : "";
+    console.log(`${ok ? "ok  " : "ERRO"} ${JSON.stringify(cmd)}${onde} -> ${obtido} (esperado ${esperado})`);
   }
   if (existsSync(ARQUIVO)) {
     const c = lerCarimbo();
