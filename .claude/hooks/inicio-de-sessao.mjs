@@ -44,7 +44,7 @@ const TETO_DO_FETCH_MS = 15_000;
 
 const LINHA_NUVEM =
   "Na nuvem: gh pr/gh issue dão 403 (use as ferramentas mcp__github__*); não há MySQL (o banco do zero fica com o CI).";
-const LINHA_FINAL = "O Claude só mescla ou toca produção a pedido da pessoa, com permissão.";
+const LINHA_FINAL = "O Claude não aprova, não mescla nem toca produção por conta própria.";
 
 // ------------------------------------------------------- funções puras -----
 

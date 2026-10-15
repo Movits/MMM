@@ -317,7 +317,7 @@ describe("montarAviso", () => {
 
   it("aponta as skills só quando elas existem", () => {
     expect(montarAviso({ nuvem: false, git, skillsProntas: true }).at(-1)).toBe(
-      "Para começar: /comecar-tarefa. Antes da PR: /abrir-pr. O Claude só mescla ou toca produção a pedido da pessoa, com permissão."
+      "Para começar: /comecar-tarefa. Antes da PR: /abrir-pr. O Claude não aprova, não mescla nem toca produção por conta própria."
     );
     expect(
       montarAviso({ nuvem: false, git, skillsProntas: false }).at(-1)
