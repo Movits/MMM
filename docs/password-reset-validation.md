@@ -1,3 +1,6 @@
+> **Histórico.** Teste manual de 11/08/2026, feito ainda na plataforma Manus.
+> Não vale como validação do sistema de hoje.
+
 # Validação do fluxo de recuperação de senha
 
 ## Teste manual — 11 de agosto de 2026

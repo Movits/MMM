@@ -1,3 +1,7 @@
+> **Histórico.** Especificação escrita pelo Manus AI em agosto de 2026, com premissas de stack que não
+> são as do código (NestJS, Postgres, Expo). Registra o pedido; o sistema de hoje está no código e em [docs/README.md](./README.md).
+> A numeração é a do Manus: no escopo e no quadro, Contexto é a etapa 5 e Reuniões é a 3.
+
 # Especificação Técnica — Etapa 3
 ## Organização por Contexto: Onde e Como Conheceu
 ### Módulo CRM Inteligente · MMM (Mulheres que Movem o Mundo)

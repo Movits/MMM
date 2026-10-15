@@ -1,3 +1,6 @@
+> **Histórico de projeto.** Este DDL é Postgres e não é o banco que roda: a fonte do banco real é
+> `drizzle/schema.ts` (MySQL), com as migrações de `drizzle/`.
+
 # Modelo de dados
 
 > Este desenho assume Postgres, e o código recuperado do Manus roda em MySQL. Qual
@@ -152,7 +155,7 @@ CREATE TABLE taxonomia_sinonimo (
 CREATE TABLE contato (
   id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   dono_usuario_id      uuid NOT NULL REFERENCES usuario(id) ON DELETE RESTRICT,
-  -- Quando o contato também é membro do MMM, aponta para ele.
+  -- Quando o contato também é membro da WRW, aponta para ele.
   -- O perfil da própria usuária é um contato cujo dono e vinculado são ela mesma.
   usuario_vinculado_id uuid REFERENCES usuario(id),
 

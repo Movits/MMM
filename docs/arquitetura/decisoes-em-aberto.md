@@ -18,9 +18,26 @@ caso. Falta o texto contratual: em 05/09 a Cris pediu ao Roberto as orientaçõe
 originais da Glenda sobre comissão e remuneração para concluir o acordo de
 intermediação e o contrato de comissão.
 
+**Atualizada pela Glenda em 12/09/2026, por escrito:** o teto de 50% incide sobre o
+valor dos **honorários da intermediação** do negócio, não sobre o lucro, e quem define
+o percentual é a Diretoria Comercial, "por critérios que serão definidos em outra
+ocasião". O texto de tela do contrato mudou na PR #107, mesclada em 14/09/2026, e,
+segundo o registro da PR #132, a versão 2 do `contrato_comissao` foi publicada no mesmo
+dia.
+
+**O que a tela nunca mostrou.** As outras respostas de 12/09 (quem declara o valor é o
+consultor de negócios; o rateio entre duas indicadoras; o bypass vedado; nenhum prazo
+de decadência) entraram em `docs/termos/contrato-comissao-provisorio.md`, mas nunca no
+texto que a usuária lia no cadastro. Na tela, a cláusula de comissão só trouxe o
+percentual, o teto de 50% (sobre o lucro até a PR #107, sobre os honorários depois) e o
+pagamento fora da plataforma. Desde a noite de 14/09/2026 o cadastro não mostra nem
+registra mais esse contrato: a comissão passou às cláusulas 12 a 15 do Termo Geral de
+Uso. O que cada usuária aceitou antes disso está no registro do aceite (`consents`, com
+o hash do texto), e conferir esse registro é assunto do jurídico.
+
 Perguntas:
 
-1. Qual o percentual da comissão do MMM?
+1. Qual o percentual da comissão da WRW?
 2. Incide sobre o quê: valor do negócio fechado, valor recebido, outra base?
 3. Percentual único, ou varia por tipo de negócio, porte ou valor?
 
@@ -41,20 +58,20 @@ A nota da reunião de 05/08 diz:
 > descontada a comissão
 
 Guardar dinheiro de terceiros e repassar depois é atividade regulada no Brasil.
-Fazer isso na mão, com o valor passando por uma conta do MMM, cria risco jurídico e
+Fazer isso na mão, com o valor passando por uma conta da WRW, cria risco jurídico e
 tributário.
 
 | Caminho | Como funciona | Cabe até 10/09? |
 |---|---|---|
-| **Não tocar no dinheiro** | O MMM registra o negócio e cobra a comissão por fora. | Sim |
-| **Split via gateway** | Pagar.me, Asaas, Stripe Connect e similares dividem o valor entre as partes e a comissão. A licença é do gateway, não do MMM. | Apertado |
-| **Conta escrow própria** | O MMM recebe, guarda e repassa. Exige estrutura de instituição de pagamento. | Não |
+| **Não tocar no dinheiro** | A WRW registra o negócio e cobra a comissão por fora. | Sim |
+| **Split via gateway** | Pagar.me, Asaas, Stripe Connect e similares dividem o valor entre as partes e a comissão. A licença é do gateway, não da WRW. | Apertado |
+| **Conta escrow própria** | A WRW recebe, guarda e repassa. Exige estrutura de instituição de pagamento. | Não |
 
 **Recomendação técnica:** o primeiro caminho para 10/09, o segundo como alvo da
 versão seguinte. O terceiro não deveria entrar em discussão sem parecer jurídico.
 
 **Respondida pela Glenda em 31/08/2026, no grupo:** o dinheiro não passa pela
-plataforma na primeira versão; o MMM só registra o negócio fechado. É o primeiro
+plataforma na primeira versão; a WRW só registra o negócio fechado. É o primeiro
 caminho da tabela. O A14 continua bloqueado para uma versão futura.
 
 ---
@@ -289,7 +306,7 @@ aceite (etapa 11).
 
 Perguntas:
 
-1. O termo passa a dizer que "uma pessoa designada pelo MMM confere a
+1. O termo passa a dizer que "uma pessoa designada pela WRW confere a
    compatibilidade e lê os dois perfis antes de encaminhar"?
 2. O distribuidor recebe e-mail além do sino? Hoje é só o sino, e um pedido pode
    esperar dias sem ninguém abrir o Painel Ouro.
@@ -300,6 +317,47 @@ Perguntas:
 
 Pendência técnica ligada: índice único no par de `connections` (exige colunas de
 par ordenado e backfill; hoje a trava contra dupla revelação é o status no WHERE).
+
+---
+
+## D9: Corte do match de perfis, 40 ou 50?
+
+**Trava:** nada. O corte segue em 40 até a decisão.
+**Quem decide:** Dra. Glenda (o Roberto leva a pergunta).
+
+O motor de perfis (`server/matching.ts`) soma seis dimensões e só grava o par como
+match no Dashboard com nota 40 ou mais. A PR #105 (Gabriel, 13/09/2026) propôs subir
+para 50 e atribuiu a mudança a uma decisão da Dra. Glenda que não tem registro: as
+perguntas que o Roberto mandou a ela em 12/09 não tratavam do corte, e as respostas
+também não. A PR não foi mesclada e será fechada; o código fica guardado nela. Os testes
+que ela chama de fronteira não medem o corte: os dois pares dão 34 e 73, passam iguais
+com 40 e com 50, e não há teste na faixa 40–49 (revisão do Nicolas, 13/09). Se a
+resposta for 50, o caminho é uma PR nova e pequena a partir da `main`, com um par
+dentro dessa faixa no teste.
+
+**Efeito medido** na `main` de 20/09, com `calculateCompatibilityScore`:
+
+| Par | Nota | Com corte 40 | Com corte 50 |
+|---|---|---|---|
+| Dois perfis vazios, sem nada declarado | 41 | vira match | não vira |
+| "Advocacia tributária" × quem declarou precisar de "consultoria", perfis rasos: o par-bandeira da regra da demanda expressa (PR #101, `server/matching-demanda-expressa.test.ts`) | 44 | vira match | não vira |
+
+- **Os matches de 41 a 49 já gravados continuam na tela.** Com a nota abaixo do corte,
+  o cálculo só pula o par: não atualiza nem apaga a linha. E a leitura
+  (`getMatchesForUser`, em `server/db.ts`) não filtra por nota. Subir o corte vale só
+  para pares novos, a não ser que a leitura passe a filtrar também.
+- **O piso de 41 vem da nota neutra.** Perfil vazio já pontua em quase todas as
+  dimensões (complementaridade 50, setor 30, investimento 60, valores 50, localização
+  50). Mexer nesse neutro é outro jeito de tirar os pares fracos, e também muda a nota
+  de todo mundo.
+
+Perguntas:
+
+1. A usuária deve ver mais pares, alguns de encaixe fraco (corte 40), ou menos pares,
+   com mais cara de encaixe (50)?
+2. Se for 50: os matches de 41 a 49 que já estão na tela somem ou ficam?
+3. O par-bandeira da demanda expressa, que vale 44 com perfis rasos, deve continuar
+   virando match?
 
 ---
 
