@@ -1,5 +1,5 @@
 /**
- * MMM - Módulo de Segurança Corporativa (Cofre Digital)
+ * WRW - Módulo de Segurança Corporativa (Cofre Digital)
  * Camada de segurança de nível bancário com:
  * - Criptografia AES-256-GCM
  * - Rate limiting e proteção contra brute force
