@@ -1,5 +1,5 @@
-> **Histórico de projeto.** Este DDL é Postgres e não é o banco que roda: a fonte do banco real é
-> `drizzle/schema.ts` (MySQL), com as migrações de `drizzle/`.
+> **Projeto em Postgres, não o banco que roda.** A fonte do banco real é `drizzle/schema.ts`
+> (MySQL), com as migrações de `drizzle/`. Qual banco fica é a D6, ainda em aberto (ver abaixo).
 
 # Modelo de dados
 

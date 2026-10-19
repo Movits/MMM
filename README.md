@@ -17,7 +17,7 @@ ninguém**. O cruzamento é feito pelo sistema e só o resultado aparece.
 | | |
 |---|---|
 | **No ar** | https://wrwglobal.org, no Render (o serviço técnico ainda se chama `mmm-gud5`), com banco MySQL no Aiven e arquivos no Backblaze B2 |
-| **Entregue** | 16/09/2026 (PR #135): etapas 1 a 11 |
+| **Entregue** | etapas 1 a 11, em 16/09/2026 (a última leva da entrega entrou com a PR #135) |
 | **Em andamento e próximo** | no quadro de trabalho do Notion, aba Agora |
 | **Precisa de decisão** | aba Decisões do Notion e [docs/arquitetura/decisoes-em-aberto.md](./docs/arquitetura/decisoes-em-aberto.md) |
 | **Fora do site, por decisão** | pagamento pelo site (ajuste A14) e aplicativo móvel (repositório à parte; o lugar dele ainda vai ser decidido) |

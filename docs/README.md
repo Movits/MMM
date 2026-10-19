@@ -48,8 +48,9 @@ estes arquivos sem o jurídico e o Roberto.
 - `termo-geral-de-uso.md`: o Termo Geral de Uso, Proteção de Dados e Intermediação
   Digital, que o cadastro exige.
 - `termo-acesso-ouro-provisorio.md`: a autorização do acervo Ouro (provisória).
-- `contrato-comissao-provisorio.md`: o contrato de comissão provisório. Desde 14/09/2026
-  o cadastro não o mostra mais, e a comissão passou às cláusulas 12 a 15 do Termo Geral.
+- `contrato-comissao-provisorio.md`: o contrato de comissão provisório. A retirada dele do
+  cadastro foi decidida em 14/09; no ar desde 16/09/2026 (PR #135), o cadastro não o mostra
+  mais, e a comissão passou às cláusulas 12 a 15 do Termo Geral.
 - Smart Match, em **três versões**: `termo-smart-match-provisorio.md` (espelho do texto
   embutido no script), `termo-smart-match.md` (pendente de revisão jurídica) e
   `termo-smart-match-cris-2026-09-05.md` (a redação da Cris). Qual delas está vigente em
@@ -68,7 +69,8 @@ Ficam para consulta e não descrevem o sistema de hoje. Os arquivos em Markdown 
 uma faixa no topo que diz isso.
 
 - `spec-*.md` e `spec-strategic-profile-etapa2.pdf`: as especificações por etapa escritas
-  pelo Manus AI em agosto de 2026, com outra stack (NestJS, Postgres, Expo). A
+  pelo Manus AI em agosto de 2026, quase todas com outra stack (NestJS, Postgres, Expo; a
+  `spec-private-network.md` já parte do Drizzle sobre MySQL/TiDB do Manus). A
   `spec-enrichment-etapa4.md` (v1) foi superada pela `spec-enrichment-etapa4-v2.md`.
 - [recuperacao-do-manus.md](./recuperacao-do-manus.md): como o código saiu da plataforma
   Manus e o que mudou na extração.
@@ -147,8 +149,9 @@ uma faixa no topo que diz isso.
   de as duas aceitarem o acordo de confidencialidade (NDA).
 - **SIVC:** o Sistema Inteligente de Verificação e Classificação de Usuários, que verifica
   documentos da usuária (`server/routers/sivc.ts`).
-- **Termo Geral de Uso:** o termo único que o cadastro exige desde 14/09/2026, com uso,
-  dados, gravação e intermediação. Ele não se revoga à parte.
+- **Termo Geral de Uso:** o termo único que o cadastro exige (decidido em 14/09; no ar
+  desde 16/09/2026, PR #135), com uso, dados, gravação e intermediação. Ele não se revoga
+  à parte.
 
 **Códigos de trabalho**
 

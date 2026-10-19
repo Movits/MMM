@@ -30,10 +30,12 @@ consultor de negócios; o rateio entre duas indicadoras; o bypass vedado; nenhum
 de decadência) entraram em `docs/termos/contrato-comissao-provisorio.md`, mas nunca no
 texto que a usuária lia no cadastro. Na tela, a cláusula de comissão só trouxe o
 percentual, o teto de 50% (sobre o lucro até a PR #107, sobre os honorários depois) e o
-pagamento fora da plataforma. Desde a noite de 14/09/2026 o cadastro não mostra nem
-registra mais esse contrato: a comissão passou às cláusulas 12 a 15 do Termo Geral de
-Uso. O que cada usuária aceitou antes disso está no registro do aceite (`consents`, com
-o hash do texto), e conferir esse registro é assunto do jurídico.
+pagamento fora da plataforma. A retirada desse contrato do cadastro foi decidida em
+14/09 e está no ar desde 16/09/2026 (PR #135): desde então o cadastro não mostra nem
+registra mais esse contrato, e a comissão passou às cláusulas 12 a 15 do Termo Geral de
+Uso. Quem concluiu o cadastro entre 14 e 16/09 ainda viu e aceitou o contrato. O que
+cada usuária aceitou está no registro do aceite (`consents`, com o hash do texto), e
+conferir esse registro é assunto do jurídico.
 
 Perguntas:
 
@@ -329,11 +331,11 @@ O motor de perfis (`server/matching.ts`) soma seis dimensões e só grava o par 
 match no Dashboard com nota 40 ou mais. A PR #105 (Gabriel, 13/09/2026) propôs subir
 para 50 e atribuiu a mudança a uma decisão da Dra. Glenda que não tem registro: as
 perguntas que o Roberto mandou a ela em 12/09 não tratavam do corte, e as respostas
-também não. A PR não foi mesclada e será fechada; o código fica guardado nela. Os testes
-que ela chama de fronteira não medem o corte: os dois pares dão 34 e 73, passam iguais
-com 40 e com 50, e não há teste na faixa 40–49 (revisão do Nicolas, 13/09). Se a
-resposta for 50, o caminho é uma PR nova e pequena a partir da `main`, com um par
-dentro dessa faixa no teste.
+também não. A PR não foi mesclada e foi fechada em 15/10/2026; o código fica guardado
+nela. Os testes que ela chama de fronteira não medem o corte: os dois pares dão 34 e
+73, passam iguais com 40 e com 50, e não há teste na faixa 40–49 (revisão do Nicolas,
+13/09). Se a resposta for 50, o caminho é uma PR nova e pequena a partir da `main`, com
+um par dentro dessa faixa no teste.
 
 **Efeito medido** na `main` de 20/09, com `calculateCompatibilityScore`:
 

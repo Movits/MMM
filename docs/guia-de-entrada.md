@@ -61,8 +61,9 @@ dúvida sobre código fica na PR, e produção, acessos e custos ficam com o Rob
 - **Notion:** acesso ao quadro de trabalho e o conector do Notion ligado na sua conta do
   claude.ai (claude.ai/customize/connectors). Com o Claude Code logado nessa mesma
   conta, o Claude lê o quadro. Para conferir, use `/mcp`.
-- **Grupo "Projetos IA"** no WhatsApp: é onde a Dra. Glenda e o time decidem. Hoje o
-  Claude não lê o grupo.
+- **Grupo "Projetos IA"** no WhatsApp: é onde a Dra. Glenda e o time decidem. Na nuvem,
+  o Claude não lê o grupo; no computador, só o lê se o WhatsApp Web estiver aberto num
+  Chrome ligado ao Claude (a extensão Claude in Chrome).
 - **Claude:** a sua conta, num plano que inclua o Claude Code.
 - **Chave de IA de desenvolvimento:** peça ao Roberto. Nunca use a de produção.
 
@@ -217,9 +218,10 @@ O `/comecar-tarefa` registra a conferência por você, e o comando por trás é
 `node .claude/hooks/carimbo.mjs --carimbar --github "…" --notion "…" --whatsapp "…"`.
 Cada um dos três textos tem 20 caracteres ou mais, e o de `--github` cita o SHA curto
 de `origin/main` (o que `git rev-parse --short origin/main` mostra). Quando o Claude não
-consegue ler o grupo (hoje, nunca consegue), ele pergunta a você o que houve lá, e você
-conta (ou responde "nada novo"). Ele registra o que você disse no formato
-"informado por Lucas em 14/10: nada novo no grupo", e nunca inventa.
+consegue ler o grupo (na nuvem, nunca consegue; no computador, só pelo Chrome ligado a
+ele, seção 2), ele pergunta a você o que houve lá, e você conta (ou responde "nada
+novo"). Ele registra o que você disse no formato "informado por Lucas em 14/10: nada
+novo no grupo", e nunca inventa.
 
 **Branch atrás da `main`.** O carimbo é recusado com "Sua branch (…) está N commit(s)
 atrás de origin/main". Anote a branch (`git branch --show-current`), rode

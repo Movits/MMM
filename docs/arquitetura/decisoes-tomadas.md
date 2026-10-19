@@ -46,20 +46,25 @@ Codex/OpenAI e do SDK da Anthropic"), `server/_core/trpc.ts` deixou de exportar 
   Consequência: contas Ouro criadas só para teste (inclusive a do Roberto) voltam a Prata
   antes da entrega.
 - **Onde:** `server/routers/_procedures.ts`. As quatro exceções estão em `server/CLAUDE.md`
-  (ver a revisão de 12/09 abaixo).
+  (ver a revisão da PR #97 abaixo).
 
-## 12/09/2026 — revisão do Nicolas na PR #89: a ressalva do consentimento
+## 12/09/2026 — PR #89, revisão atribuída ao Nicolas: a ressalva do consentimento
 
 - **Quem:** Nicolas, revisando a #89 (CLAUDE.md sem os fatos que envelheceram).
+- **Fonte:** a #89 foi mesclada em 12/09. A revisão não tem comentário nem aprovação no
+  GitHub; a atribuição ao Nicolas entrou no CLAUDE.md em 15/09 (commit `dfbab70`, na
+  `main` desde 16/09 com a #135).
 - **O quê:** o consentimento só trava quando existe versão VIGENTE do termo publicada.
   Sem linha `isCurrent` em `document_versions`, `hasValidConsent` e
   `usersComConsentimento` respondem "sim" para todas, em todo termo. Publicar o termo é o
   que liga a exigência.
 - **Onde:** `server/routers/consent.ts`; publicação por `scripts/publicar-documento.mjs`.
 
-## 12/09/2026 — revisão do Nicolas na PR #97: três correções de fato
+## 12/09/2026 — PR #97, revisão atribuída ao Nicolas: três correções de fato
 
 - **Quem:** Nicolas, revisando a #97 (README que começa pelo produto e pelas pessoas).
+- **Fonte:** a #97 foi mesclada em 12/09. Como na #89, a revisão não tem registro no
+  GitHub, e as três correções entraram no CLAUDE.md em 15/09 (commit `dfbab70`).
 - **O quê:**
   1. `criar-banco.mjs`, `migrar.mjs` e `nivelar-banco.mjs` NÃO leem o `.env`: preencher o
      arquivo não basta (`scripts/CLAUDE.md`).
