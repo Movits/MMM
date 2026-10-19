@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // Início de sessão: o que o Claude (e a pessoa) precisam saber antes do
 // primeiro comando. Roda no hook SessionStart (.claude/settings.json), em
 // "startup" e "resume".
