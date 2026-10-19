@@ -18,7 +18,7 @@ allowed-tools:
 
 **Nuvem × computador.** Na nuvem não há `.env` nem MySQL: gere com a URL fictícia do passo 2 e deixe o passo 4 com o CI (que cria o banco do zero em MariaDB), dizendo isso na PR. No computador com Windows, use o Git Bash: a sintaxe `VAR='...' comando` não funciona no PowerShell.
 
-0. **Mudança destrutiva** (apagar ou renomear tabela ou coluna, estreitar tipo, `NOT NULL` sem default em tabela com dados) só com decisão do Roberto registrada no cartão. A migração roda sozinha no boot da produção e não volta.
+0. **Mudança destrutiva** (apagar ou renomear tabela ou coluna, estreitar tipo, `NOT NULL` sem default em tabela com dados) só com o sim explícito do Roberto, dado na conversa, no grupo ou no cartão; registre na PR de onde veio o sim, sem exigir que antes ele esteja no Notion. A migração roda sozinha no boot da produção e não volta.
 1. Edite só `drizzle/schema.ts`. Nunca edite à mão `drizzle/*.sql`, `drizzle/meta/*_snapshot.json` nem `drizzle/meta/_journal.json`.
 2. `pnpm db:generate --name <assunto-em-kebab>` (no padrão de `0013_rede-inteligente-e-termo-geral.sql`). No computador ele lê o `.env` sozinho. Sem `.env`: `DATABASE_URL=mysql://x:x@127.0.0.1:3306/x pnpm db:generate --name <assunto>`, escrito exatamente assim (é a forma do `allowed-tools`; se mesmo assim pedir permissão, é esperado); o generate não conecta, a variável só precisa existir. Nascem o `.sql`, o snapshot e uma entrada no journal.
 3. **Leia o SQL gerado** e diga à pessoa, em português, o que ele faz. Errado? Desfaça só o que este generate criou (`git restore drizzle/meta/_journal.json` e apague o `.sql` e o snapshot novos que `git status --short drizzle/` mostra), corrija o `schema.ts` e gere de novo.
