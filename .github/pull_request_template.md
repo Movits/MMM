@@ -9,7 +9,7 @@
 ## Por quê
 
 - Cartão do Notion (link):
-- Decisão registrada na aba Decisões do Notion (quem decidiu e quando; o conteúdo do grupo não vem para cá):
+- De onde veio a decisão (cartão do Notion, grupo do time ou pedido de quem; quem decidiu e quando, sem copiar o conteúdo do grupo):
 
 ## Como verifiquei
 
