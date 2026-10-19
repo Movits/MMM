@@ -33,7 +33,13 @@ vi.mock("./db", () => ({
 vi.mock("./matching", () => ({ generateMatchesForUser: vi.fn(async () => {}) }));
 // O aceite do Termo Geral de Uso tem teste próprio (termo-geral-de-uso.test.ts);
 // aqui a conta já aceitou.
-vi.mock("./termo-geral-de-uso", () => ({ exigirAceiteDoTermoGeral: vi.fn(async () => {}) }));
+vi.mock("./termo-geral-de-uso", () => ({ exigirAceiteDoTermoGeral: vi.fn(async () => ({ id: "termo-v1", version: 1 })) }));
+// A declaração de maioridade tem teste próprio (maioridade.test.ts); aqui a
+// checagem é a real e só a linha de auditoria não é gravada.
+vi.mock("./maioridade", async (original) => ({
+  ...(await original<Record<string, unknown>>()),
+  registrarDeclaracaoDeMaioridade: vi.fn(async () => {}),
+}));
 
 const { profileRouter } = await import("./routers/profile");
 const { userProfiles } = await import("../drizzle/schema");
@@ -46,7 +52,7 @@ const ctx = {
 } as never;
 const chamadora = () => profileRouter.createCaller(ctx);
 
-const onboardingBase = { displayName: "Dona", city: "Lisboa", country: "PT" };
+const onboardingBase = { displayName: "Dona", city: "Lisboa", country: "PT", declaraMaioridade: true };
 
 function cadastroGravadoNoOnboarding() {
   const noPerfil = atualizacoes.find(a => a.tabela === userProfiles);

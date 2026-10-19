@@ -164,7 +164,8 @@ function irAtePasso(n: number) {
 /** Vai até o fim, aceita o termo e devolve o que foi enviado ao servidor. */
 function concluir(): Record<string, unknown> {
   irAtePasso(8);
-  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(screen.getByRole("checkbox", { name: ptBR.termoGeral.aceite }));
+  fireEvent.click(screen.getByRole("checkbox", { name: ptBR.termoGeral.maioridade }));
   fireEvent.click(botaoFinal());
   const envio = duble.chamadas.find(([nome]) => nome === "profile.completeOnboarding");
   expect(envio, "o cadastro não chegou a ser enviado").toBeTruthy();
@@ -292,7 +293,11 @@ describe("21:13 — porte da empresa em seleção múltipla", () => {
     expect(portesMarcados()).toEqual([pt.onboarding.companySize.medium]);
     unmount();
 
+    // Visita nova, em outra aba: sem o rascunho guardado, sem o da aba e sem a
+    // entrada do histórico (que reabriria na etapa em que o teste parou).
     window.localStorage.clear();
+    window.sessionStorage.clear();
+    window.history.replaceState(null, "");
     duble.perfil = { user: { id: 7 }, profile: { preferredCompanySize: "small,medium" } };
     render(<Onboarding />);
     irAtePasso(4);
@@ -328,7 +333,8 @@ describe("21:15 — a etapa 'Quem sou' (rede institucional) sai do cadastro", ()
 
     expect(screen.getByText("8 / 8")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(pt.termoGeral.etapaTitulo);
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("checkbox", { name: ptBR.termoGeral.aceite }));
+    fireEvent.click(screen.getByRole("checkbox", { name: ptBR.termoGeral.maioridade }));
     fireEvent.click(botaoFinal());
     const enviado = duble.chamadas.find(([nome]) => nome === "profile.completeOnboarding")![1] as Record<string, unknown>;
     expect(enviado).not.toHaveProperty("institutionalNetwork");

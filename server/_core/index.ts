@@ -4,7 +4,6 @@ import { spawnSync } from "child_process";
 import { createServer } from "http";
 import helmet from "helmet";
 import compression from "compression";
-import rateLimit from "express-rate-limit";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerStorageProxy } from "./storageProxy";
@@ -15,6 +14,7 @@ import { montarDiretivasCsp } from "./csp";
 import { autenticarCron } from "./cron";
 import { cleanupExpiredSessions, createAuditLog } from "../security";
 import { corpoGrandeParaUploads } from "./corpo-grande-para-uploads";
+import { criarDiagnosticoDoIp, criarLimiteDaApi, criarLimiteGeral } from "./limite-de-requisicoes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -39,45 +39,10 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 // RATE LIMITERS
 // ============================================================
 
-// Rate limiter global: 200 req/min por IP (proteção geral)
-const globalLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minuto
-  max: 200,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { error: "Muitas requisições. Tente novamente em breve." },
-  skip: (req) => {
-    // Não limitar assets estáticos e HMR do Vite em dev
-    const url = req.url || "";
-    if (url.startsWith("/@") || url.startsWith("/node_modules") || url.endsWith(".hot-update.js")) return true;
-    // Em DEV o Vite serve CADA módulo do próprio app como uma requisição HTTP
-    // separada, e são milhares (o build transforma ~5900 módulos). A lista
-    // acima cobria só `/@...` e `/node_modules/...`: os arquivos do app
-    // (`/client/src/**`) contavam no limite, e a PRIMEIRA abertura de qualquer
-    // tela estourava os 200/min — a página vinha pela metade e o navegador
-    // recebia {"error":"Muitas requisições. Tente novamente em breve."}.
-    // Isso inviabilizava o smoke manual que toda PR exige ("abrir cada tela
-    // afetada com pnpm dev, logado com o nível certo"). A intenção do skip já
-    // era essa; faltava alcance. Achado ao rodar a carga da planilha de ponta
-    // a ponta (F9) e tentar abrir o app logado.
-    //
-    // Em produção NADA muda: não há Vite (setupVite só roda em development),
-    // o cliente é um bundle pronto de dist/public, e o /api/trpc continua com
-    // o apiLimiter próprio de 100/min — que também segue valendo aqui, porque
-    // este skip deixa /api de fora.
-    if (process.env.NODE_ENV === "development" && !url.startsWith("/api/")) return true;
-    return false;
-  },
-});
-
-// Rate limiter para API tRPC: 100 req/min por IP
-const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 100,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { error: "Limite de API excedido. Tente novamente em breve." },
-});
+// Por conta quando há sessão, pelo IP real quando não há; estáticos e a API
+// fora do geral. Valores, chave e formato do 429 em limite-de-requisicoes.ts.
+const globalLimiter = criarLimiteGeral();
+const apiLimiter = criarLimiteDaApi();
 
 // ============================================================
 // MIDDLEWARE DE SEGURANÇA ADICIONAL
@@ -170,7 +135,9 @@ async function startServer() {
     setInterval(() => { void varrerReunioesPresas("Varredura"); }, 5 * 60_000).unref();
   }
 
-  // Confiar no proxy reverso (necessário para rate limiting por IP real)
+  // Confiar no proxy reverso (req.protocol decide o cookie `secure`). No Render
+  // `req.ip` sai um proxy interno, não a visitante: o limite por IP usa o
+  // CF-Connecting-IP (ver ip-da-cliente.ts). Não mexer sem medir os saltos.
   app.set("trust proxy", 1);
 
   // V-05: Headers de segurança HTTP via Helmet (CSP rigoroso). As diretivas
@@ -210,6 +177,15 @@ async function startServer() {
 
   // Rate limiting global
   app.use(globalLimiter);
+
+  // Rate limiting específico para API tRPC — ANTES dos leitores de corpo: o
+  // geral não conta /api/trpc, e um pedido excedente (ou com JSON malformado,
+  // que o express.json recusa pelo caminho de erro e pularia qualquer
+  // middleware posterior) seria lido inteiro, até 15 MB, antes do 429. A chave
+  // só lê cabeçalhos. No Render, antes dele, uma linha de log (só contagens)
+  // diz se o CF-Connecting-IP chega (ver ip-da-cliente.ts).
+  if (process.env.RENDER === "true") app.use("/api/trpc", criarDiagnosticoDoIp());
+  app.use("/api/trpc", apiLimiter);
 
   // Uploads dentro de um LOTE do tRPC ("/api/trpc/a,b"): os recortes por
   // caminho abaixo não casam com a lista; este middleware reconhece cada
@@ -357,10 +333,7 @@ async function startServer() {
     }
   });
 
-  // Rate limiting específico para API tRPC
-  app.use("/api/trpc", apiLimiter);
-
-  // tRPC API
+  // tRPC API (o limite dela está montado lá em cima, antes dos leitores de corpo)
   app.use(
     "/api/trpc",
     createExpressMiddleware({

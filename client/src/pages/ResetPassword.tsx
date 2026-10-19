@@ -162,13 +162,13 @@ export default function ResetPassword() {
 
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">
-                    {t("auth.confirmPassword", "Confirmar nova senha")}
+                    {t("auth.confirmNewPassword", "Confirmar nova senha")}
                   </Label>
                   <div className="relative">
                     <Input
                       id="confirmPassword"
                       type={showConfirm ? "text" : "password"}
-                      placeholder={t("auth.confirmPasswordPlaceholder", "Repita a nova senha")}
+                      placeholder={t("auth.confirmNewPasswordPlaceholder", "Repita a nova senha")}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required

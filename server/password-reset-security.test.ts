@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   getRequestIp,
   hashPasswordResetToken,
+  PASSWORD_RESET_ACCOUNT_LIMIT,
   PASSWORD_RESET_GENERIC_MESSAGE,
   PASSWORD_RESET_RATE_LIMIT,
+  PASSWORD_RESET_RATE_WINDOW_MS,
   PASSWORD_RESET_TTL_MS,
 } from "./password-reset-security";
 
@@ -17,7 +19,11 @@ describe("segurança da recuperação de senha", () => {
   });
 
   it("mantém os limites de segurança definidos para o fluxo", () => {
-    expect(PASSWORD_RESET_RATE_LIMIT).toBe(3);
+    // 300 por IP real (a sala do lançamento de 16/09 no mesmo wi-fi, contando
+    // repetições) e 3 por conta, os dois a cada 15 min.
+    expect(PASSWORD_RESET_RATE_LIMIT).toBe(300);
+    expect(PASSWORD_RESET_ACCOUNT_LIMIT).toBe(3);
+    expect(PASSWORD_RESET_RATE_WINDOW_MS).toBe(15 * 60 * 1000);
     expect(PASSWORD_RESET_TTL_MS).toBe(60 * 60 * 1000);
     expect(PASSWORD_RESET_GENERIC_MESSAGE).not.toMatch(/existe|não existe/i);
   });

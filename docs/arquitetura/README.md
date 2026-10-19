@@ -5,8 +5,9 @@
 
 ## Para que serve este documento
 
-O código do MMM foi construído inteiramente dentro do Manus e, até 25/08/2026, nunca
-saiu de lá. Este documento existe para que o desenho do sistema não dependa disso:
+O código da plataforma (então MMM, hoje WRW) foi construído inteiramente dentro do
+Manus e, até 25/08/2026, nunca saiu de lá. Este documento existe para que o desenho do
+sistema não dependa disso:
 
 - **Se o código voltar**, ele é o checklist para revisar o que existe.
 - **Se não voltar**, ele é a planta para reconstruir.

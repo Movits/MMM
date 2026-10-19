@@ -35,7 +35,13 @@ vi.mock("./db", () => ({
   upsertUserProfile: (userId: number, dados: Record<string, unknown>) => upsertFalso(userId, dados),
 }));
 vi.mock("./matching", () => ({ generateMatchesForUser: vi.fn(async () => {}) }));
-vi.mock("./termo-geral-de-uso", () => ({ exigirAceiteDoTermoGeral: vi.fn(async () => {}) }));
+vi.mock("./termo-geral-de-uso", () => ({ exigirAceiteDoTermoGeral: vi.fn(async () => ({ id: "termo-v1", version: 1 })) }));
+// A declaração de maioridade tem teste próprio (maioridade.test.ts); aqui a
+// checagem é a real e só a linha de auditoria não é gravada.
+vi.mock("./maioridade", async (original) => ({
+  ...(await original<Record<string, unknown>>()),
+  registrarDeclaracaoDeMaioridade: vi.fn(async () => {}),
+}));
 vi.mock("./nivel-do-perfil", () => ({ reavaliarNivelPeloPerfil: async () => ({ promovidaAPrata: false }) }));
 
 const compartilhado = await import("@shared/o-que-preciso");
@@ -50,7 +56,7 @@ const { userProfiles } = await import("../drizzle/schema");
 
 const ctx = { user: { id: 7, openId: "open-7", email: "dona@exemplo.com", role: "bronze" }, req: { headers: {}, socket: {} }, res: { cookie: () => {} } } as never;
 const chamadora = () => profileRouter.createCaller(ctx);
-const onboardingBase = { displayName: "Dona", city: "Lisboa", country: "PT" };
+const onboardingBase = { displayName: "Dona", city: "Lisboa", country: "PT", declaraMaioridade: true };
 const gravadoNoPerfil = () => atualizacoes.find(a => a.tabela === userProfiles)?.dados ?? {};
 
 beforeEach(() => {

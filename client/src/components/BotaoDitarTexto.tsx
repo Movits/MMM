@@ -151,7 +151,10 @@ export function BotaoDitarTexto({ onTexto, desabilitado = false }: {
         soltarMicrofone(recebida);
         return;
       }
-      const preferido = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"]
+      // mp4 (AAC) primeiro: em 16/09 o webm/opus, que o Safari novo do iPhone e o Chrome
+      // gravam por padrão, dava erro na transcrição do Gemini, e o mp4 transcreve bem.
+      // Quem não grava mp4 cai no webm/ogg como antes.
+      const preferido = ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]
         .find(tipo => MediaRecorder.isTypeSupported(tipo));
       const novo = preferido
         ? new MediaRecorder(recebida, { mimeType: preferido, audioBitsPerSecond: 64_000 })

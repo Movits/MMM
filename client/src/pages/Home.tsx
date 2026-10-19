@@ -42,48 +42,34 @@ function useInView(threshold = 0.2) {
 const MOSTRAR_CARTAO_DO_HERO = false;
 
 /**
- * Progresso de rolagem da PÁGINA inteira (0 no topo, 1 no fim). É o que faz o
- * planeta girar: a rolagem controla o ângulo, como no vídeo em que a rolagem
- * controla o café caindo.
+ * Progresso de rolagem da PÁGINA inteira (0 no topo, 1 no fim). É o que move
+ * o planeta (a viagem da Rede viva, em lib/coreografia-do-globo.ts): a rolagem
+ * controla a câmera, como no vídeo em que a rolagem controla o café caindo.
  *
  * Devolve uma FUNÇÃO, não um número: o valor muda a cada quadro de rolagem, e
- * o único consumidor hoje (GloboDoMundo) lê dentro do próprio laço de
- * animação em canvas — repassar por `useState` forçaria um render do React a
- * cada pixel rolado, e a página engasgaria.
+ * o único consumidor hoje (GloboDoMundo) lê quando redesenha — repassar por
+ * `useState` forçaria um render do React a cada pixel rolado, e a página
+ * engasgaria.
  *
- * Mesmas duas precauções do parallax: no máximo uma medição por quadro, e
- * `prefers-reduced-motion` checado no JS. Aqui, porém, quem pediu menos
- * movimento recebe progresso = 1 (não 0): o planeta aparece na posição final,
- * parado, em vez de escondido no início — informação a menos, não movimento a
- * menos.
+ * No máximo uma medição por quadro, como no parallax.
  *
- * `movimentoLigado` é a escolha explícita no botão do site, e ela VENCE a
- * preferência do sistema — a mesma regra de movimentoPadrao ("quem clicou
- * sabe o que quer"). Sem isto, quem tem os efeitos de animação desligados no
- * Windows clicava em "Movimento ligado", via os pulsos andarem, e o planeta
- * continuava pregado na posição final ignorando a rolagem (relato do Nicolas,
- * 06/09, no site publicado).
+ * `movimentoLigado` é o estado do botão de movimento (useMovimentoDoFundo,
+ * que já leva em conta a escolha guardada e o `prefers-reduced-motion`).
+ * DESLIGADO = VISTA PARADA, o segundo valor devolvido: o planeta inteiro com o
+ * Brasil de frente e a rede toda acesa, sem acompanhar a rolagem (decisão do
+ * dono, 16/09). A Rede viva não tem animação própria, então "desligar o
+ * movimento" só pode querer dizer isto — antes, o botão só parava os pulsos e,
+ * sem eles, não mudava nada.
+ *
+ * A medição continua mesmo com o globo parado: custa uma conta por quadro de
+ * rolagem, e assim, ao religar, o primeiro quadro do globo já sai na posição
+ * certa (pregado em 1, ele desenhava antes um quadro inteiro no fim da viagem).
  */
 function useProgressoDaPagina(movimentoLigado: boolean) {
   const valor = useRef(0);
   const progresso = useRef(() => valor.current).current;
-  const [semMovimento, setSemMovimento] = useState(
-    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
 
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sincronizar = () => setSemMovimento(mq.matches);
-    mq.addEventListener("change", sincronizar);
-    return () => mq.removeEventListener("change", sincronizar);
-  }, []);
-
-  useEffect(() => {
-    if (semMovimento && !movimentoLigado) {
-      valor.current = 1;
-      return;
-    }
-
     let quadro = 0;
     const medir = () => {
       quadro = 0;
@@ -104,9 +90,11 @@ function useProgressoDaPagina(movimentoLigado: boolean) {
       window.removeEventListener("resize", aoRolar);
       if (quadro) cancelAnimationFrame(quadro);
     };
-  }, [semMovimento, movimentoLigado]);
+    // Uma vez só, na montagem: assim este ouvinte de rolagem fica antes do
+    // ouvinte do globo (que é carregado depois), e o globo lê o valor já medido.
+  }, []);
 
-  return progresso;
+  return [progresso, !movimentoLigado] as const;
 }
 
 /**
@@ -359,20 +347,10 @@ const GloboDoMundo = lazy(() => import("@/components/GloboDoMundo"));
 
 const CHAVE_DO_MOVIMENTO = "mmm:movimento-do-fundo";
 
-/**
- * Decide se o planeta se mexe.
- *
- * A ordem importa. Primeiro a escolha explícita de quem visita, guardada no
- * navegador — ela vence tudo, inclusive a detecção automática, porque quem
- * clicou sabe o que quer. Depois `prefers-reduced-motion`, que é uma escolha
- * feita no sistema operacional. Só então o palpite sobre o aparelho.
- *
- * O palpite é grosseiro de propósito: número de núcleos e memória são as duas
- * únicas pistas que o navegador entrega, e nem sempre entrega. Na dúvida, o
- * padrão é COM movimento — desligar por engano para quem tem máquina boa é um
- * prejuízo silencioso, e quem tiver problema tem o botão à mão.
- */
-function movimentoPadrao(): boolean {
+const MENOS_MOVIMENTO = "(prefers-reduced-motion: reduce)";
+
+/** A escolha feita no botão e guardada no navegador, se houver. */
+function escolhaGuardada(): boolean | null {
   try {
     const guardado = localStorage.getItem(CHAVE_DO_MOVIMENTO);
     if (guardado === "on") return true;
@@ -380,15 +358,63 @@ function movimentoPadrao(): boolean {
   } catch {
     // Navegador em modo privado ou com armazenamento bloqueado: segue o fluxo.
   }
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
-  const nucleos = navigator.hardwareConcurrency;
-  const memoria = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
-  if (typeof nucleos === "number" && nucleos > 0 && nucleos <= 4) return false;
-  if (typeof memoria === "number" && memoria > 0 && memoria <= 4) return false;
-  return true;
+  return null;
 }
 
-/** Botão discreto para ligar e desligar o movimento do fundo. */
+/**
+ * Decide se o planeta acompanha a rolagem.
+ *
+ * Primeiro a escolha explícita de quem visita, guardada no navegador — ela
+ * vence tudo, porque quem clicou sabe o que quer. Depois
+ * `prefers-reduced-motion`, que é uma escolha feita no sistema operacional.
+ * Fora isso, LIGADO.
+ *
+ * Não há mais palpite pelo aparelho (núcleos e memória): ele existia para
+ * poupar o laço de animação dos pulsos, e a Rede viva só desenha quando a
+ * página rola. Com o palpite, muito celular abria na vista parada e perdia a
+ * viagem.
+ */
+function movimentoPadrao(): boolean {
+  return escolhaGuardada() ?? !window.matchMedia(MENOS_MOVIMENTO).matches;
+}
+
+/**
+ * O estado do botão de movimento. Sem escolha feita, acompanha a preferência
+ * do sistema também se ela mudar com a página aberta.
+ */
+function useMovimentoDoFundo() {
+  const [ativo, setAtivo] = useState(movimentoPadrao);
+  // O clique vale nesta visita mesmo sem armazenamento (modo privado,
+  // bloqueado): sem isto, uma mudança no sistema desfazia a escolha.
+  const escolheuNestaVisita = useRef(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia(MENOS_MOVIMENTO);
+    const sincronizar = () => {
+      if (!escolheuNestaVisita.current && escolhaGuardada() === null) setAtivo(!mq.matches);
+    };
+    mq.addEventListener("change", sincronizar);
+    return () => mq.removeEventListener("change", sincronizar);
+  }, []);
+
+  const alternar = () => {
+    escolheuNestaVisita.current = true;
+    setAtivo(atual => {
+      const proximo = !atual;
+      // A escolha fica guardada: quem desligou não precisa desligar de novo a
+      // cada visita.
+      try { localStorage.setItem(CHAVE_DO_MOVIMENTO, proximo ? "on" : "off"); } catch { /* sem armazenamento */ }
+      return proximo;
+    });
+  };
+
+  return [ativo, alternar] as const;
+}
+
+/**
+ * Botão discreto para ligar e desligar o movimento do fundo. Desligado, o
+ * planeta fica parado: inteiro, com o Brasil de frente e a rede toda acesa.
+ */
 function ChaveDoMovimento({ ativo, alternar }: { ativo: boolean; alternar: () => void }) {
   const { t } = useTranslation();
   return (
@@ -415,9 +441,9 @@ function ChaveDoMovimento({ ativo, alternar }: { ativo: boolean; alternar: () =>
  * que aparece se o WebGL não existir (aparelho antigo, GPU bloqueada) — assim
  * a falha degrada para o desenho anterior em vez de um retângulo preto.
  */
-function FundoDoPlaneta({ progresso, animar, pracas, ligacoes }: {
+function FundoDoPlaneta({ progresso, vistaParada, pracas, ligacoes }: {
   progresso: () => number;
-  animar: boolean;
+  vistaParada: boolean;
   pracas: Praca[];
   ligacoes: Ligacao[];
 }) {
@@ -429,7 +455,7 @@ function FundoDoPlaneta({ progresso, animar, pracas, ligacoes }: {
         style={{ background: "linear-gradient(180deg, rgba(6,11,20,0.80) 0%, rgba(6,11,20,0.88) 45%, rgba(6,11,20,0.94) 100%)" }} />
       <Suspense fallback={null}>
         <div className="absolute inset-0">
-          <GloboDoMundo progresso={progresso} animar={animar} pracas={pracas} ligacoes={ligacoes} />
+          <GloboDoMundo progresso={progresso} vistaParada={vistaParada} pracas={pracas} ligacoes={ligacoes} />
         </div>
       </Suspense>
     </div>
@@ -442,17 +468,8 @@ export default function Home() {
   const { ref: stepsRef, inView: stepsInView } = useInView();
   const { ref: oppsRef, inView: oppsInView } = useInView();
   const heroRef = useParallax<HTMLElement>();
-  const [movimentoAtivo, setMovimentoAtivo] = useState(movimentoPadrao);
-  const progressoDaPagina = useProgressoDaPagina(movimentoAtivo);
-  const alternarMovimento = () => {
-    setMovimentoAtivo(atual => {
-      const proximo = !atual;
-      // A escolha fica guardada: quem desligou por lentidão não precisa
-      // desligar de novo a cada visita.
-      try { localStorage.setItem(CHAVE_DO_MOVIMENTO, proximo ? "on" : "off"); } catch { /* sem armazenamento */ }
-      return proximo;
-    });
-  };
+  const [movimentoAtivo, alternarMovimento] = useMovimentoDoFundo();
+  const [progressoDaPagina, vistaParada] = useProgressoDaPagina(movimentoAtivo);
 
   // A Home pública não consulta mais stats.platform: os quatro indicadores e as
   // contagens de Bronze, Prata e Ouro moram no Dashboard (spec da Glenda, 14/09).
@@ -507,18 +524,17 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#151312] text-white overflow-x-hidden antialiased">
-      <FundoDoPlaneta progresso={progressoDaPagina} animar={movimentoAtivo} pracas={pracas} ligacoes={ligacoes} />
+      <FundoDoPlaneta progresso={progressoDaPagina} vistaParada={vistaParada} pracas={pracas} ligacoes={ligacoes} />
       <ChaveDoMovimento ativo={movimentoAtivo} alternar={alternarMovimento} />
 
       {/* ─── NAVBAR ─── */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.05] bg-[#151312]/80 backdrop-blur-2xl">
         <div className="flex items-center justify-between px-6 md:px-12 py-3.5">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center">
             <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className="cursor-pointer" aria-label={t("nav.backToTop")}>
               <BrandMark />
             </a>
-            <span className="text-[10px] uppercase tracking-wider bg-[#c98f70]/10 text-[#c98f70] border border-[#c98f70]/20 px-2 py-0.5 rounded-full font-semibold">{t("nav.beta")}</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-white/50">
             <button onClick={() => scrollTo('como-funciona')} className="whitespace-nowrap hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none">{t("nav.howItWorks")}</button>
@@ -720,9 +736,23 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* As três frases de destaque (esta, steps.closing e opportunities.closing)
+                  eram um degradê ouro rosé recortado no texto (bg-clip-text). O degradê
+                  é FUNDO, e o modo escuro do navegador do celular (Samsung Internet,
+                  "escurecer sites" do Chrome) escurece fundos: nos prints do Rosber de
+                  16/09 a frase saiu num marrom-avermelhado de ~rgb(64,16,0) sobre ~rgb(24,24,20),
+                  contraste 1,2:1 — enquanto o "40" do Dashboard, cor de TEXTO #c98f70, saiu
+                  intacto. Agora é cor de texto sólida #efcba8 (o champanhe da paleta,
+                  --chart-5): 12,9:1 sobre o fundo da página (#060b14). Sobre o globo,
+                  medido nos mesmos prints, o corpo dele dá 6 a 9:1, mas os arcos e os
+                  pontos brancos das praças dão 1 a 3:1 (cerca de 2% do fundo atrás da
+                  frase). Por isso o halo escuro (text-shadow): recorta os arcos em volta
+                  das letras, e o anel de fundo encostado nelas fica abaixo de 3:1 em 0,2%
+                  dos pixels, contra 2,6% sem ele (simulação sobre o print 05). O Chrome
+                  com o modo escuro forçado não clareia o halo (testado em 16/09). */}
               <div className="max-w-xl border-s-2 border-[#c98f70]/60 ps-4 mb-5"
                 style={{ animation: "fadeInUp 0.9s cubic-bezier(0.23,1,0.32,1) 0.3s both" }}>
-                <p className="text-xl md:text-2xl font-bold leading-snug bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+                <p className="text-xl md:text-2xl font-bold leading-snug text-[#efcba8] [text-shadow:0_0_3px_rgba(6,11,20,.95),0_0_12px_rgba(6,11,20,.85)]">
                   {t("hero.hook")}
                 </p>
                 <p className="text-sm md:text-base text-white/55 mt-2 leading-relaxed">
@@ -855,8 +885,9 @@ export default function Home() {
 
           {/* Fechamento da jornada: as três etapas explicam o mecanismo, esta
               frase devolve a pergunta para quem lê ("quem está procurando o que
-              eu tenho?") e o botão responde. O destaque é o mesmo gradiente ouro
-              rosé que a Hero já usa no gatilho dela — nenhuma cor nova.
+              eu tenho?") e o botão responde. O destaque é a mesma cor sólida #efcba8,
+              com o mesmo halo, que a Hero usa no gatilho dela (era degradê até 16/09;
+              ver lá o porquê).
               O botão NÃO é um CTA novo: é o mesmo elemento do CTA final desta
               página (mesmo Link, mesma rota, mesmas classes) e lê a MESMA chave
               hero.cta do botão da Hero, para os dois nunca divergirem. */}
@@ -866,7 +897,7 @@ export default function Home() {
               transform: stepsInView ? "translateY(0)" : "translateY(40px)",
               transition: "all 0.7s cubic-bezier(0.23,1,0.32,1) 0.45s",
             }}>
-            <p className="text-2xl md:text-3xl font-extrabold leading-snug text-balance bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+            <p className="text-2xl md:text-3xl font-extrabold leading-snug text-balance text-[#efcba8] [text-shadow:0_0_3px_rgba(6,11,20,.95),0_0_12px_rgba(6,11,20,.85)]">
               {t("steps.closing")}
             </p>
             <Link href={isAuthenticated ? "/dashboard" : "/register"}>
@@ -1011,8 +1042,8 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Fechamento no mesmo molde do de "Como funciona": frase no gradiente
-              ouro rosé e o MESMO botão (mesmo Link, mesma rota, mesmas classes,
+          {/* Fechamento no mesmo molde do de "Como funciona": frase na cor
+              de destaque #efcba8 (ver o gatilho da Hero) e o MESMO botão (mesmo Link, mesma rota, mesmas classes,
               mesma chave hero.cta). Não é CTA novo nem rota nova. */}
           <div className="max-w-3xl mx-auto mt-16 text-center"
             style={{
@@ -1020,7 +1051,7 @@ export default function Home() {
               transform: oppsInView ? "translateY(0)" : "translateY(40px)",
               transition: "all 0.7s cubic-bezier(0.23,1,0.32,1) 0.55s",
             }}>
-            <p className="text-2xl md:text-3xl font-extrabold leading-snug text-balance bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent">
+            <p className="text-2xl md:text-3xl font-extrabold leading-snug text-balance text-[#efcba8] [text-shadow:0_0_3px_rgba(6,11,20,.95),0_0_12px_rgba(6,11,20,.85)]">
               {t("opportunities.closing")}
             </p>
             <Link href={isAuthenticated ? "/dashboard" : "/register"}>
@@ -1050,7 +1081,9 @@ export default function Home() {
             <p className="text-base md:text-lg text-white/50 max-w-2xl mx-auto mb-6 leading-relaxed">
               {t("smartNetwork.subtitle")}
             </p>
-            <p className="text-xl md:text-2xl font-bold leading-snug bg-gradient-to-r from-[#efcba8] to-[#c98f70] bg-clip-text text-transparent mb-12 text-balance max-w-3xl mx-auto">
+            {/* Mesma troca das frases de destaque da Hero (degradê → cor sólida
+                com halo): o modo escuro do celular escurece o degradê. */}
+            <p className="text-xl md:text-2xl font-bold leading-snug text-[#efcba8] [text-shadow:0_0_3px_rgba(6,11,20,.95),0_0_12px_rgba(6,11,20,.85)] mb-12 text-balance max-w-3xl mx-auto">
               {t("smartNetwork.impact")}
             </p>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-start">
@@ -1183,7 +1216,9 @@ export default function Home() {
                   </li>
                 ))}
               </ul>
-              <p className="text-lg font-bold leading-snug bg-gradient-to-r from-amber-200 to-amber-400 bg-clip-text text-transparent mb-2">
+              {/* Cor sólida, e não degradê recortado no texto: o modo escuro do
+                  celular escurece o degradê (ver as frases de destaque da Hero). */}
+              <p className="text-lg font-bold leading-snug text-amber-300 mb-2">
                 {t("governance.gold.highlight")}
               </p>
               <p className="text-sm text-white/60 leading-relaxed mb-6">{t("governance.gold.closing")}</p>
@@ -1219,7 +1254,8 @@ export default function Home() {
       <FAQSection />
 
       {/* ─── FOOTER ─── */}
-      <footer className="border-t border-white/[0.05] py-10">
+      {/* pb-20 no celular: o botão fixo de movimento (canto de baixo) cobria o link dos Termos. */}
+      <footer className="relative border-t border-white/[0.05] pt-10 pb-20 md:pb-10">
         <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-white/25 text-sm">
           <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             className="cursor-pointer" aria-label="Voltar ao topo">

@@ -36,7 +36,6 @@
     "login": "Connexion",
     "startFree": "Créer un compte",
     "myDashboard": "Mon tableau de bord",
-    "beta": "Beta",
     "backToTop": "Retour en haut",
     "menu": "Menu"
   },
@@ -44,11 +43,11 @@
     "badge": "Réseau mondial d'affaires entre membres • +30 pays • possibilités infinies",
     "headline1": "L'intelligence qui connecte ",
     "headline2": "des affaires qui se concrétisent",
-    "subtitle": "Imaginez un réseau capable d'identifier qui vous devez rencontrer — et qui doit vous rencontrer.",
+    "subtitle": "Imaginez un réseau capable d'identifier : qui vous devez rencontrer et qui doit vous rencontrer.",
     "globalBefore": "Avec des ambassadrices dans ",
     "globalHighlight": "plus de 30 pays",
     "globalAfter": ", nous vous connectons à des personnes, des opportunités et des affaires au sein d'un réseau mondial sans frontières.",
-    "ai": "Notre intelligence artificielle croise profils, intérêts, besoins et opportunités pour révéler des connexions stratégiques que vous n'auriez peut-être jamais trouvées par vous-même.",
+    "ai": "Notre intelligence artificielle croise profils, intérêts, besoins et opportunités pour révéler des connexions stratégiques qui n'auraient peut-être jamais été trouvées.",
     "hook": "Votre prochaine grande affaire est peut-être déjà ici.",
     "discover": "Découvrez qui, où et quelle opportunité vous correspond.",
     "closing": "Trouvez votre Business Match.",
@@ -336,6 +335,7 @@
       "home": "Accueil",
       "continue": "Continuer",
       "analyzing": "Analyse...",
+      "carregando": "Chargement de votre inscription…",
       "findMatches": "Enregistrer et voir mes connexions"
     },
     "fields": {
@@ -655,10 +655,12 @@
     "nowLogin": "Connectez-vous maintenant pour continuer.",
     "loggingIn": "Connexion...",
     "creating": "Création du compte...",
-    "confirmPassword": "Confirmer le nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "confirmNewPassword": "Confirmer le nouveau mot de passe",
     "namePlaceholder": "Votre nom complet",
     "passwordPlaceholder": "Minimum 8 caractères",
-    "confirmPasswordPlaceholder": "Répétez le nouveau mot de passe",
+    "confirmPasswordPlaceholder": "Répétez le mot de passe",
+    "confirmNewPasswordPlaceholder": "Répétez le nouveau mot de passe",
     "strength": "Force",
     "pwd8chars": "8+ caractères",
     "pwdUppercase": "Lettre majuscule",
@@ -1780,7 +1782,10 @@
     "naoPublicado": "Les Conditions générales d’utilisation ne sont pas encore disponibles.",
     "naoPublicadoDica": "Sans elles, l’inscription ne peut pas être finalisée. Prévenez le support et réessayez plus tard ; ce que vous avez rempli reste sur cet écran.",
     "versaoMudou": "Les conditions ont été mises à jour pendant votre lecture. Lisez la nouvelle version et cochez de nouveau l’acceptation.",
-    "erroAceite": "Impossible d’enregistrer votre acceptation. Rien n’a été enregistré ; réessayez."
+    "erroAceite": "Impossible d’enregistrer votre acceptation. Rien n’a été enregistré ; réessayez.",
+    "maioridade": "Je déclare avoir 18 ans ou plus.",
+    "maioridadeObrigatoria": "L’inscription ne peut pas être finalisée sans cette déclaration : la plateforme est réservée aux personnes de 18 ans ou plus.",
+    "maioridadeRecusada": "L’inscription n’a pas été finalisée : cochez la déclaration indiquant que vous avez 18 ans ou plus, puis réessayez."
   },
   "assistenteTexto": {
     "gravar": "Enregistrer un audio",

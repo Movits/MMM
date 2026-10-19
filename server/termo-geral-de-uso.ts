@@ -34,7 +34,14 @@ export const MENSAGEM_TERMO_GERAL_NAO_PUBLICADO =
 export const MENSAGEM_TERMO_GERAL_SEM_ACEITE =
   "Para concluir o cadastro, leia e aceite o Termo Geral de Uso, Proteção de Dados e Intermediação Digital.";
 
-export async function exigirAceiteDoTermoGeral(userId: number): Promise<void> {
+/**
+ * A versão vigente que a conta aceitou. Quem conclui o cadastro a grava junto da
+ * declaração de maioridade (server/maioridade.ts): é a cláusula 3.4 DESTA versão
+ * que a declaração atende.
+ */
+export type TermoGeralAceito = { id: string; version: number };
+
+export async function exigirAceiteDoTermoGeral(userId: number): Promise<TermoGeralAceito> {
   // Banco fora do ar lança daqui (exigirDb): nunca vira "sem termo".
   const documento = await getCurrentDocument(TIPO_TERMO_GERAL);
   if (!documento) {
@@ -43,4 +50,5 @@ export async function exigirAceiteDoTermoGeral(userId: number): Promise<void> {
   if (!(await hasValidConsent(userId, TIPO_TERMO_GERAL))) {
     throw new TRPCError({ code: "PRECONDITION_FAILED", message: MENSAGEM_TERMO_GERAL_SEM_ACEITE });
   }
+  return { id: documento.id, version: documento.version };
 }

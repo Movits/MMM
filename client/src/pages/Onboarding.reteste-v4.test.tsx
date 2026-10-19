@@ -129,7 +129,8 @@ function concluirDoPasso3() {
   avancar(); // 5 → 6 (O que preciso)
   avancar(); // 6 → 7 (revisão)
   avancar(); // 7 → 8 (Termo Geral de Uso)
-  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(screen.getByRole("checkbox", { name: ptBR.termoGeral.aceite }));
+  fireEvent.click(screen.getByRole("checkbox", { name: ptBR.termoGeral.maioridade }));
   fireEvent.click(screen.getByRole("button", { name: new RegExp(pt.onboarding.nav.findMatches) }));
   return duble.chamadas.find(([nome]) => nome === "profile.completeOnboarding")![1] as Record<string, unknown>;
 }

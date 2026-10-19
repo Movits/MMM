@@ -36,7 +36,6 @@
     "login": "Iniciar Sesión",
     "startFree": "Crear cuenta",
     "myDashboard": "Mi Panel →",
-    "beta": "Beta",
     "backToTop": "Volver arriba",
     "menu": "Menú"
   },
@@ -44,11 +43,11 @@
     "badge": "Red mundial de negocios entre miembros • +30 países • infinitas posibilidades",
     "headline1": "Inteligencia que conecta ",
     "headline2": "negocios que suceden",
-    "subtitle": "Imagina una red capaz de identificar a quién necesitas conocer — y quién necesita conocerte.",
+    "subtitle": "Imagina una red capaz de identificar: a quién necesitas conocer y quién necesita conocerte.",
     "globalBefore": "Con embajadoras en ",
     "globalHighlight": "más de 30 países",
     "globalAfter": ", te conectamos con personas, oportunidades y negocios en una red global sin fronteras.",
-    "ai": "Nuestra inteligencia artificial cruza perfiles, intereses, necesidades y oportunidades para revelar conexiones estratégicas que quizá nunca encontrarías por tu cuenta.",
+    "ai": "Nuestra inteligencia artificial cruza perfiles, intereses, necesidades y oportunidades para revelar conexiones estratégicas que quizá nunca se encontrarían.",
     "hook": "Tu próximo gran negocio puede estar ya aquí.",
     "discover": "Descubre quién, dónde y qué oportunidad encaja contigo.",
     "closing": "Encuentra tu Business Match.",
@@ -336,6 +335,7 @@
       "home": "Inicio",
       "continue": "Continuar",
       "analyzing": "Analizando...",
+      "carregando": "Cargando tu registro…",
       "findMatches": "Guardar y ver mis conexiones"
     },
     "fields": {
@@ -655,10 +655,12 @@
     "nowLogin": "Ahora inicia sesión para continuar.",
     "loggingIn": "Iniciando sesión...",
     "creating": "Creando cuenta...",
-    "confirmPassword": "Confirmar nueva contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "confirmNewPassword": "Confirmar nueva contraseña",
     "namePlaceholder": "Tu nombre completo",
     "passwordPlaceholder": "Mínimo 8 caracteres",
-    "confirmPasswordPlaceholder": "Repite la nueva contraseña",
+    "confirmPasswordPlaceholder": "Repite la contraseña",
+    "confirmNewPasswordPlaceholder": "Repite la nueva contraseña",
     "strength": "Fortaleza",
     "pwd8chars": "8+ caracteres",
     "pwdUppercase": "Letra mayúscula",
@@ -1780,7 +1782,10 @@
     "naoPublicado": "Los Términos Generales de Uso aún no están disponibles.",
     "naoPublicadoDica": "Sin ellos no se puede completar el registro. Avisa al soporte e inténtalo más tarde; lo que completaste sigue en esta pantalla.",
     "versaoMudou": "Los términos se actualizaron mientras leías. Lee la nueva versión y vuelve a marcar la aceptación.",
-    "erroAceite": "No se pudo registrar la aceptación de los términos. No se guardó nada; inténtalo de nuevo."
+    "erroAceite": "No se pudo registrar la aceptación de los términos. No se guardó nada; inténtalo de nuevo.",
+    "maioridade": "Declaro que tengo 18 años o más.",
+    "maioridadeObrigatoria": "Sin esta declaración no se puede completar el registro: la plataforma es exclusiva para mayores de 18 años.",
+    "maioridadeRecusada": "No se completó el registro: marca la declaración de que tienes 18 años o más e inténtalo de nuevo."
   },
   "assistenteTexto": {
     "gravar": "Grabar audio",

@@ -1,12 +1,28 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { Line2 } from "three/examples/jsm/lines/Line2.js";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { mesh } from "topojson-client";
 import mundo from "world-atlas/countries-110m.json";
+import {
+  COREOGRAFIA,
+  INCLINACAO_GRAUS,
+  LATITUDE_DA_CAMERA_GRAUS,
+  enquadramento,
+  fracaoNaJanela,
+  raioDaPracaEmPx,
+  roteiroDaRede,
+} from "@/lib/coreografia-do-globo";
 import type { Ligacao, Praca } from "@/lib/pracas-do-globo";
 
 /**
- * O planeta do MMM: gira conforme a rolagem e mostra as praças onde a rede faz
- * negócio, ligadas por rotas acesas.
+ * O planeta do MMM — a Rede viva: o Brasil no centro e as linhas saindo dele
+ * para os continentes e, de cada continente, para os países.
+ *
+ * Tudo que se move aqui se move PELA ROLAGEM, e só por ela (a viagem está em
+ * lib/coreografia-do-globo.ts): nada anima sozinho, então o planeta só é
+ * redesenhado quando a rolagem ou o tamanho mudam.
  *
  * Por que 3D e não uma sequência de imagens: a rotação é contínua e pesa uma
  * geometria só, em vez de 60 a 120 quadros (3 a 5 MB). E o globo carrega
@@ -14,29 +30,25 @@ import type { Ligacao, Praca } from "@/lib/pracas-do-globo";
  * enfeite; isto é informação.
  *
  * As fronteiras vêm do Natural Earth (world-atlas, domínio público).
- *
- * `animar` é a chave de movimento: desligada, o planeta é desenhado UMA vez e
- * o laço de animação nem começa. É o que salva aparelho fraco — e é também o
- * caminho de quem pediu menos movimento no sistema.
  */
 
 const RAIO = 1;
 // Ouro rosé do selo WMMW (#C98F70), a mesma paleta do aplicativo.
 const OURO = new THREE.Color(0xc98f70);
+const GRAU = Math.PI / 180;
 
-// Onde o MMM faz negócio, agora de verdade: as praças chegam por props, do
-// agregado por país das usuárias reais (stats.presencaPorPais, montado por
+// Onde o MMM faz negócio, de verdade: as praças chegam por props, do agregado
+// por país das usuárias reais (stats.presencaPorPais, montado por
 // montarPracasDoGlobo) — nunca por pessoa. Sem dado, sem praça: o planeta
-// continua inteiro (continentes, atmosfera, rotação). Os padrões são
-// constantes de módulo de propósito: um [] inline nas props teria identidade
-// nova a cada render da Home e, como estão nas deps do useEffect, derrubaria
-// e reconstruiria a cena inteira sem necessidade.
+// continua inteiro. Os padrões são constantes de módulo de propósito: um []
+// inline nas props teria identidade nova a cada render da Home e, como estão
+// nas deps do useEffect, derrubaria e reconstruiria a cena sem necessidade.
 const SEM_PRACAS: Praca[] = [];
 const SEM_LIGACOES: Ligacao[] = [];
 
 function paraEsfera(lat: number, lon: number, raio = RAIO): THREE.Vector3 {
-  const phi = (90 - lat) * (Math.PI / 180);
-  const theta = (lon + 180) * (Math.PI / 180);
+  const phi = (90 - lat) * GRAU;
+  const theta = (lon + 180) * GRAU;
   return new THREE.Vector3(
     -raio * Math.sin(phi) * Math.cos(theta),
     raio * Math.cos(phi),
@@ -53,14 +65,70 @@ function paraEsfera(lat: number, lon: number, raio = RAIO): THREE.Vector3 {
  * Indonésia no centro quando eu queria o Brasil.
  */
 export function anguloParaLongitude(longitude: number): number {
-  return (-90 - longitude) * (Math.PI / 180);
+  return (-90 - longitude) * GRAU;
 }
 
-/** Arco que sai da superfície, sobe e volta — a rota entre duas praças. */
-function curvaEntre(a: THREE.Vector3, b: THREE.Vector3): THREE.QuadraticBezierCurve3 {
-  const altura = 1 + a.distanceTo(b) * 0.32;
-  const meio = a.clone().add(b).multiplyScalar(0.5).normalize().multiplyScalar(RAIO * altura);
-  return new THREE.QuadraticBezierCurve3(a, meio, b);
+/**
+ * A orientação do planeta com uma longitude de frente. A ordem ZXY é a do
+ * protótipo aprovado: gira na longitude, depois inclina a câmera 8° acima do
+ * equador, depois inclina o eixo na tela. Com a ordem padrão (XYZ) a inclinação
+ * vinha ANTES do giro e o polo balançava conforme a rolagem.
+ */
+export function orientacaoDoPlaneta(lonCentro: number): THREE.Euler {
+  return new THREE.Euler(
+    LATITUDE_DA_CAMERA_GRAUS * GRAU,
+    anguloParaLongitude(lonCentro),
+    INCLINACAO_GRAUS * GRAU,
+    "ZXY",
+  );
+}
+
+/**
+ * O céu: posições sorteadas UMA vez, com semente fixa. Sorteadas dentro do
+ * efeito, cada reconstrução da cena (trocar a vista parada, chegar o dado)
+ * mudava as estrelas de lugar.
+ */
+const POSICOES_DAS_ESTRELAS = (() => {
+  const quantas = 420;
+  let semente = 0x5eed;
+  const sortear = () => {
+    semente = (semente * 1664525 + 1013904223) >>> 0;
+    return semente / 2 ** 32;
+  };
+  const posicoes = new Float32Array(quantas * 3);
+  for (let i = 0; i < quantas; i++) {
+    posicoes.set([(sortear() * 2 - 1) * 5, (sortear() * 2 - 1) * 4, -8 - sortear() * 4], i * 3);
+  }
+  return posicoes;
+})();
+
+/** Quantos trechos cada rota tem: o crescimento anda de trecho em trecho. */
+const TRECHOS_DA_ROTA = 48;
+
+/**
+ * A rota entre duas praças: um arco pela superfície (interpolação esférica),
+ * que sobe e volta. Diferente de uma Bézier entre os dois pontos, este arco
+ * nunca entra no planeta — com a Bézier, as rotas longas (DF→Japão) passavam
+ * por dentro da esfera e sumiam no meio.
+ */
+function arcoEntre(a: Praca, b: Praca, altura: number): number[] {
+  const va = paraEsfera(a.lat, a.lon);
+  const vb = paraEsfera(b.lat, b.lon);
+  const angulo = va.angleTo(vb);
+  const pontos: number[] = [];
+  for (let i = 0; i <= TRECHOS_DA_ROTA; i++) {
+    const t = i / TRECHOS_DA_ROTA;
+    const direcao =
+      angulo < 1e-6
+        ? va.clone()
+        : va
+            .clone()
+            .multiplyScalar(Math.sin((1 - t) * angulo) / Math.sin(angulo))
+            .add(vb.clone().multiplyScalar(Math.sin(t * angulo) / Math.sin(angulo)));
+    direcao.normalize().multiplyScalar(RAIO * 1.004 + Math.sin(Math.PI * t) * altura);
+    pontos.push(direcao.x, direcao.y, direcao.z);
+  }
+  return pontos;
 }
 
 const VERTEX_NORMAL = `
@@ -88,9 +156,6 @@ const FRAG_OCEANO = `
 // escalar ali vai de cerca de -0,6 (colado no planeta) a 0 (borda externa) — e
 // a curva abaixo é decrescente nesse intervalo, que é o que faz o halo nascer
 // grudado no planeta e apagar para fora.
-//
-// A primeira versão usava expoente 3 sobre 0,62 e multiplicador 0,9: passava
-// de 1 em quase todo o anel, virando uma mancha laranja que engolia o texto.
 const FRAG_ATMOSFERA = `
   varying vec3 vNormal;
   void main() {
@@ -101,15 +166,24 @@ const FRAG_ATMOSFERA = `
 
 type Props = {
   progresso: () => number;
-  /** Falso = um quadro só, sem laço de animação. Para aparelho fraco. */
-  animar?: boolean;
+  /**
+   * Vista parada, para quem desligou o movimento (no botão da home ou pelo
+   * `prefers-reduced-motion`): o planeta inteiro com o Brasil de frente e a
+   * rede toda acesa, sem acompanhar a rolagem.
+   */
+  vistaParada?: boolean;
   /** Agregado por país (montarPracasDoGlobo) — nunca dado de uma pessoa. */
   pracas?: Praca[];
-  /** Pares de índices em `pracas`; índice inválido é ignorado. */
+  /** [de, para, nível] com índices em `pracas`; índice inválido é ignorado. */
   ligacoes?: Ligacao[];
 };
 
-export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PRACAS, ligacoes = SEM_LIGACOES }: Props) {
+export default function GloboDoMundo({
+  progresso,
+  vistaParada = false,
+  pracas = SEM_PRACAS,
+  ligacoes = SEM_LIGACOES,
+}: Props) {
   const hospedeiro = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -122,8 +196,10 @@ export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PR
     if (!teste.getContext("webgl2") && !teste.getContext("webgl")) return;
 
     const cena = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-    camera.position.z = 4.2;
+    // Câmera ORTOGRÁFICA, como no protótipo aprovado: com perspectiva, o zoom de
+    // 2,8× sobre o Brasil deformava o litoral como uma lente.
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 40);
+    camera.position.z = 10;
 
     const renderizador = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderizador.setClearColor(0x000000, 0);
@@ -139,26 +215,21 @@ export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PR
     };
 
     const grupo = new THREE.Group();
+    grupo.rotation.order = "ZXY";
     cena.add(grupo);
 
     // ── Estrelas ──────────────────────────────────────────────────────────
-    // Ficam FORA do grupo que gira: o céu não acompanha a rotação do planeta.
-    const posicoesDasEstrelas = new Float32Array(700 * 3);
-    for (let i = 0; i < 700; i++) {
-      // Distribuição uniforme na esfera: sortear z e o ângulo, não dois
-      // ângulos — senão as estrelas se acumulam nos polos.
-      const z = Math.random() * 2 - 1;
-      const ang = Math.random() * Math.PI * 2;
-      const r = Math.sqrt(1 - z * z);
-      const d = 14 + Math.random() * 10;
-      posicoesDasEstrelas.set([r * Math.cos(ang) * d, r * Math.sin(ang) * d, z * d], i * 3);
-    }
+    // Ficam FORA do grupo e ATRÁS do planeta: o céu não acompanha a viagem. Com
+    // a câmera ortográfica elas moram num plano ao fundo, espalhadas por uma
+    // área maior que a de qualquer tela.
     const geometriaDasEstrelas = registrar(new THREE.BufferGeometry());
-    geometriaDasEstrelas.setAttribute("position", new THREE.BufferAttribute(posicoesDasEstrelas, 3));
+    geometriaDasEstrelas.setAttribute("position", new THREE.BufferAttribute(POSICOES_DAS_ESTRELAS, 3));
     cena.add(
       new THREE.Points(
         geometriaDasEstrelas,
-        registrar(new THREE.PointsMaterial({ color: 0xffffff, size: 0.06, transparent: true, opacity: 0.5 })),
+        registrar(
+          new THREE.PointsMaterial({ color: 0xffffff, size: 1.4, sizeAttenuation: false, transparent: true, opacity: 0.5 }),
+        ),
       ),
     );
 
@@ -169,8 +240,8 @@ export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PR
         registrar(new THREE.ShaderMaterial({ vertexShader: VERTEX_NORMAL, fragmentShader: FRAG_OCEANO })),
       ),
     );
-    // No GRUPO, não na cena: o planeta se desloca para a direita em tela larga,
-    // e uma atmosfera presa à origem ficaria pendurada ao lado dele.
+    // No GRUPO, não na cena: a atmosfera acompanha o planeta no deslocamento e
+    // no zoom.
     grupo.add(
       new THREE.Mesh(
         registrar(new THREE.SphereGeometry(RAIO * 1.22, 48, 48)),
@@ -218,11 +289,8 @@ export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PR
     //   (a, b) => a === b   →  o traço só tem um país de um lado: é LITORAL
     //   (a, b) => a !== b   →  há país dos dois lados: é DIVISA INTERNA
     //
-    // A versão anterior desenhava `mesh` inteiro E, por cima, o polígono de
-    // cada país. Como vizinhos compartilham a mesma divisa, cada linha interna
-    // era traçada três vezes — daí o emaranhado dentro dos continentes e o
-    // brilho sujo do acúmulo. Agora cada traço existe uma vez só, e o litoral
-    // fica mais forte que as divisas, que é o que faz o continente ter forma.
+    // Assim cada traço existe uma vez só, e o litoral fica mais forte que as
+    // divisas, que é o que faz o continente ter forma.
     const topologia = mundo as any;
     const paises = topologia.objects.countries;
 
@@ -257,183 +325,169 @@ export default function GloboDoMundo({ progresso, animar = true, pracas = SEM_PR
       ),
     );
 
-    // ── Praças ────────────────────────────────────────────────────────────
-    const geometriaDaPraca = registrar(new THREE.SphereGeometry(0.014, 12, 12));
-    const materialDaPraca = registrar(new THREE.MeshBasicMaterial({ color: 0xefcba8 }));
-    const geometriaDoHalo = registrar(new THREE.SphereGeometry(0.032, 12, 12));
-    const materialDoHalo = registrar(
-      new THREE.MeshBasicMaterial({ color: OURO, transparent: true, opacity: 0.28, depthWrite: false }),
-    );
-    for (const praca of pracas) {
-      const p = paraEsfera(praca.lat, praca.lon, RAIO * 1.008);
-      const nucleo = new THREE.Mesh(geometriaDaPraca, materialDaPraca);
-      nucleo.position.copy(p);
-      grupo.add(nucleo);
-      const halo = new THREE.Mesh(geometriaDoHalo, materialDoHalo);
-      halo.position.copy(p);
-      grupo.add(halo);
-    }
+    // ── A rede: rotas e praças ────────────────────────────────────────────
+    const roteiro = roteiroDaRede(pracas, ligacoes);
 
-    // ── Rotas e os pulsos que viajam nelas ────────────────────────────────
-    // A praça 0 é o hub (Brasil/DF, ver montarPracasDoGlobo): rota que o toca
-    // é PRINCIPAL — linha mais acesa e pulso dobrado. As demais formam a malha
-    // entre as outras praças, mais discretas para não virar novelo.
-    const materialDaRotaPrincipal = registrar(
-      new THREE.LineBasicMaterial({ color: 0xefcba8, transparent: true, opacity: 0.9 }),
+    // Linhas com espessura de verdade (Line2): a LineBasicMaterial desenha um
+    // pixel de DISPOSITIVO, meio pixel numa tela 2x, e a rede sumia.
+    const materialDoTronco = registrar(
+      new LineMaterial({ color: 0xefcba8, linewidth: 1.5, transparent: true, opacity: 0.85, depthWrite: false }),
     );
-    const materialDaRota = registrar(
-      new THREE.LineBasicMaterial({ color: 0xe3b18e, transparent: true, opacity: 0.4 }),
+    const materialDoRamo = registrar(
+      new LineMaterial({ color: 0xe3b18e, linewidth: 1, transparent: true, opacity: 0.55, depthWrite: false }),
     );
-    const geometriaDoPulso = registrar(new THREE.SphereGeometry(0.018, 10, 10));
-    const materialDoPulso = registrar(new THREE.MeshBasicMaterial({ color: 0xf6e4d6 }));
-    const pulsos: Array<{ curva: THREE.QuadraticBezierCurve3; malha: THREE.Mesh; atraso: number }> = [];
-
-    // Índice fora da lista (dado vindo de fora) não pode derrubar a cena:
-    // rota inválida é descartada, o resto do planeta segue.
-    const rotas = ligacoes.filter(([de, para]) => de !== para && pracas[de] && pracas[para]);
-    rotas.forEach(([de, para], i) => {
-      const principal = de === 0 || para === 0;
-      const curva = curvaEntre(
-        paraEsfera(pracas[de].lat, pracas[de].lon, RAIO * 1.006),
-        paraEsfera(pracas[para].lat, pracas[para].lon, RAIO * 1.006),
-      );
-      const g = registrar(new THREE.BufferGeometry().setFromPoints(curva.getPoints(64)));
-      grupo.add(new THREE.Line(g, principal ? materialDaRotaPrincipal : materialDaRota));
-
-      const malha = new THREE.Mesh(geometriaDoPulso, materialDoPulso);
-      malha.position.copy(curva.getPoint(0));
-      grupo.add(malha);
-      // Atraso próprio por rota: sem ele todos os pulsos partem juntos e o
-      // planeta pisca em bloco, como um letreiro.
-      pulsos.push({ curva, malha, atraso: i / rotas.length });
-      if (principal) {
-        // Segundo pulso em contrafase: a rota da sede pulsa em dobro.
-        const eco = new THREE.Mesh(geometriaDoPulso, materialDoPulso);
-        eco.position.copy(curva.getPoint(0));
-        grupo.add(eco);
-        pulsos.push({ curva, malha: eco, atraso: i / rotas.length + 0.5 });
-      }
+    const rotas = roteiro.rotas.map(rota => {
+      const geometria = registrar(new LineGeometry());
+      const altura = rota.nivel === "tronco" ? 0.075 : 0.03;
+      geometria.setPositions(arcoEntre(pracas[rota.de], pracas[rota.para], altura));
+      const linha = new Line2(geometria, rota.nivel === "tronco" ? materialDoTronco : materialDoRamo);
+      linha.visible = false;
+      grupo.add(linha);
+      return { linha, geometria, janela: rota.janela };
     });
 
-    // Inclinação do eixo, para não parecer um mapa girando num pino.
-    grupo.rotation.z = -0.28;
+    // Praças: núcleo e halo em esferas de raio 1, reescaladas a cada quadro
+    // para terem o tamanho certo EM PIXELS — senão o zoom de 2,8× inflava os
+    // pontos junto com o planeta.
+    const geometriaDaEsfera = registrar(new THREE.SphereGeometry(1, 16, 12));
+    const marcadores = pracas.map((praca, i) => {
+      const nucleo = new THREE.Mesh(
+        geometriaDaEsfera,
+        registrar(new THREE.MeshBasicMaterial({ color: 0xefcba8, transparent: true })),
+      );
+      const halo = new THREE.Mesh(
+        geometriaDaEsfera,
+        registrar(new THREE.MeshBasicMaterial({ color: OURO, transparent: true, depthWrite: false })),
+      );
+      const posicao = paraEsfera(praca.lat, praca.lon, RAIO * 1.008);
+      nucleo.position.copy(posicao);
+      halo.position.copy(posicao);
+      grupo.add(halo, nucleo);
+      return { nucleo, halo, ...roteiro.pracas[i] };
+    });
 
-    // A viagem: começa no Brasil e termina sobre o Golfo, cruzando a África.
-    const ANGULO_INICIAL = anguloParaLongitude(-50);
-    const GIRO_TOTAL = anguloParaLongitude(60) - ANGULO_INICIAL;
+    // ── Enquadramento ─────────────────────────────────────────────────────
+    // O meio do Brasil na orientação de partida: no pico, é ele que vai para o
+    // lugar de repouso do planeta.
+    const foco = paraEsfera(COREOGRAFIA.FOCO.lat, COREOGRAFIA.FOCO.lon).applyEuler(
+      orientacaoDoPlaneta(COREOGRAFIA.LON_BRASIL),
+    );
+    const repouso = new THREE.Vector2();
+    let pxPorUnidade = 1;
 
-    let precisaDesenhar = true;
-    // No modo estático, redesenha assim que o tamanho muda (definido abaixo).
-    let redesenharParado: (() => void) | null = null;
     const dimensionar = () => {
       const { clientWidth: l, clientHeight: a } = alvo;
-      if (!l || !a) return;
-      // updateStyle fica ligado de propósito: com devicePixelRatio > 1 (todo
-      // celular, notebook retina) o three.js grava canvas.width = l*dpr e, sem
-      // style.width, o canvas ocupava l*dpr px CSS: planeta em dobro do tamanho,
-      // deslocado para o canto. Com o estilo, o canvas mede l×a px e desenha em
-      // alta densidade por dentro.
+      if (!l || !a) return false;
+      // updateStyle ligado de propósito: com devicePixelRatio > 1 o canvas mede
+      // l×a px CSS e desenha em alta densidade por dentro.
       renderizador.setSize(l, a);
-      camera.aspect = l / a;
-      // Em tela larga o planeta sai do centro e vai para a direita, liberando a
-      // coluna do texto. No celular volta ao meio, senão metade sai do quadro.
-      grupo.position.x = l / a > 1.2 ? 0.55 : 0;
-      // Celular em pé: o campo de visão VERTICAL é fixo (38°), então quanto
-      // mais estreita a tela, menor o campo horizontal — e a esfera, calibrada
-      // para tela larga com a câmera a 4.2, estourava as laterais e o globo
-      // aparecia cortado. A câmera recua até o planeta inteiro (atmosfera a
-      // 1.22 × RAIO, mais folga) caber na LARGURA. Em tela larga a conta dá
-      // menos que 4.2 e o enquadramento de sempre não muda. A esfera cabe no
-      // campo quando o seno da meia-abertura cobre o raio: d = r / sen(θ).
-      const meiaAltura = (camera.fov / 2) * (Math.PI / 180);
-      const meiaLargura = Math.atan(Math.tan(meiaAltura) * camera.aspect);
-      camera.position.z = Math.max(4.2, (RAIO * 1.29) / Math.sin(Math.min(meiaAltura, meiaLargura)));
+      // Em tela larga o planeta fica à direita (62% da largura), liberando o
+      // texto; em tela estreita, no meio, um pouco acima do centro. O raio em
+      // repouso é uma fração do menor lado — o planeta inteiro cabe sempre,
+      // atmosfera incluída.
+      const largo = l / a > 1.2;
+      pxPorUnidade = Math.min(l, a) * (largo ? 0.34 : 0.36);
+      camera.left = -l / 2 / pxPorUnidade;
+      camera.right = l / 2 / pxPorUnidade;
+      camera.top = a / 2 / pxPorUnidade;
+      camera.bottom = -a / 2 / pxPorUnidade;
       camera.updateProjectionMatrix();
-      // A rolagem não mudou, mas o quadro anterior ficou do tamanho errado.
-      precisaDesenhar = true;
-      redesenharParado?.();
+      repouso.set(largo ? (0.12 * l) / pxPorUnidade : 0, largo ? 0 : (0.02 * a) / pxPorUnidade);
+      materialDoTronco.resolution.set(l, a);
+      materialDoRamo.resolution.set(l, a);
+      return true;
     };
-    dimensionar();
-    const observador = new ResizeObserver(dimensionar);
-    observador.observe(alvo);
 
     const posicionar = (p: number) => {
-      grupo.rotation.y = ANGULO_INICIAL + p * GIRO_TOTAL;
+      // Vista parada: o enquadramento da partida (o Brasil de frente) com a
+      // rede inteira acesa.
+      const { abertura, fechamento, lonCentro } = enquadramento(vistaParada ? 0 : p);
+      const pRede = vistaParada ? 1 : p;
+
+      grupo.rotation.copy(orientacaoDoPlaneta(lonCentro));
+      grupo.scale.setScalar(abertura);
+      // Com a câmera perto, o planeta ocupa a tela inteira e fica atrás dos
+      // títulos: ele apaga um pouco para as letras continuarem na frente.
+      renderizador.domElement.style.opacity = String(1 - 0.4 * fechamento);
+      grupo.position.set(
+        repouso.x - abertura * fechamento * foco.x,
+        repouso.y - abertura * fechamento * foco.y,
+        0,
+      );
+
+      for (const rota of rotas) {
+        const fracao = fracaoNaJanela(pRede, rota.janela);
+        rota.linha.visible = fracao > 0.002;
+        rota.geometria.instanceCount = Math.max(1, Math.round(fracao * TRECHOS_DA_ROTA));
+      }
+
+      // Com o zoom, os pontos crescem um pouco (até 1,9×), não as 2,8× do planeta.
+      const ampliacao = Math.min(1.9, Math.max(1, abertura));
+      const unidadesPorPx = 1 / (pxPorUnidade * abertura);
+      for (const m of marcadores) {
+        const alfa = m.janela ? fracaoNaJanela(pRede, m.janela) * m.brilho : 1;
+        const raio = raioDaPracaEmPx(m.papel, pRede) * ampliacao * unidadesPorPx;
+        m.nucleo.visible = m.halo.visible = alfa > 0.002;
+        m.nucleo.scale.setScalar(raio);
+        m.halo.scale.setScalar(raio * 2.3);
+        (m.nucleo.material as THREE.MeshBasicMaterial).opacity = alfa;
+        (m.halo.material as THREE.MeshBasicMaterial).opacity = 0.28 * alfa;
+      }
     };
 
-    let animacao = 0;
-    if (animar) {
-      const inicio = performance.now();
-      let ultimoProgresso = Number.NaN;
-      const laco = () => {
-        const p = progresso();
-        const t = (performance.now() - inicio) / 4200;
-        for (const pulso of pulsos) {
-          const fase = (t + pulso.atraso) % 1;
-          pulso.malha.position.copy(pulso.curva.getPoint(fase));
-        }
-        if (p !== ultimoProgresso) {
-          ultimoProgresso = p;
-          posicionar(p);
-        }
+    // ── Desenho sob demanda ───────────────────────────────────────────────
+    // Um quadro quando a rolagem ou o tamanho mudam, e só. Depois de cada
+    // evento o laço confere mais alguns quadros: o hook da Home mede a rolagem
+    // no próprio requestAnimationFrame, que pode rodar depois deste — sem a
+    // conferência, o planeta parava um passo atrás da página.
+    let ultimo = Number.NaN;
+    let sujo = true;
+    let quadro = 0;
+    let quadrosSemMudanca = 0;
+    const desenhar = () => {
+      quadro = 0;
+      const p = vistaParada ? 0 : progresso();
+      if (sujo || p !== ultimo) {
+        sujo = false;
+        ultimo = p;
+        quadrosSemMudanca = 0;
+        posicionar(p);
         renderizador.render(cena, camera);
-        animacao = requestAnimationFrame(laco);
-      };
-      laco();
-    } else {
-      // Movimento desligado: um quadro e pronto. Os pulsos ficam parados na
-      // origem de cada rota e o planeta na posição de abertura.
-      posicionar(progresso());
-      renderizador.render(cena, camera);
-      // Redesenha só quando o contêiner muda de tamanho — custo praticamente
-      // nulo. Fica atrelado ao ResizeObserver (dentro de dimensionar), depois do
-      // setSize: o evento resize da janela disparava ANTES do observer, o quadro
-      // saía com o tamanho velho e o setSize seguinte limpava o canvas, deixando
-      // o planeta em branco ao girar o celular ou recolher a barra de endereço.
-      redesenharParado = () => {
-        if (!precisaDesenhar) return;
-        precisaDesenhar = false;
-        posicionar(progresso());
-        renderizador.render(cena, camera);
-      };
-      // A rolagem continua girando o planeta mesmo sem o laço de animação: é
-      // ela que dá sentido ao globo, e a heurística de aparelho fraco desligava
-      // as duas coisas juntas — quem caía nela rolava a página e via um planeta
-      // parado, como se estivesse quebrado. Um quadro por rolagem, via rAF; os
-      // pulsos continuam imóveis. Quem pediu menos movimento no SISTEMA segue
-      // parado de verdade: o hook pina o progresso em 1 e o quadro redesenhado
-      // é idêntico ao anterior. O rAF daqui roda depois do rAF de medição do
-      // hook (listener registrado antes, na montagem da Home), então o valor
-      // lido já é o da rolagem atual.
-      let quadroDeRolagem = 0;
-      const aoRolar = () => {
-        if (quadroDeRolagem) return;
-        quadroDeRolagem = requestAnimationFrame(() => {
-          quadroDeRolagem = 0;
-          posicionar(progresso());
-          renderizador.render(cena, camera);
-        });
-      };
-      window.addEventListener("scroll", aoRolar, { passive: true });
-      return () => {
-        window.removeEventListener("scroll", aoRolar);
-        if (quadroDeRolagem) cancelAnimationFrame(quadroDeRolagem);
-        redesenharParado = null;
-        observador.disconnect();
-        for (const d of descartaveis) d.dispose();
-        renderizador.dispose();
-        if (renderizador.domElement.parentNode === alvo) alvo.removeChild(renderizador.domElement);
-      };
-    }
+      } else {
+        quadrosSemMudanca++;
+      }
+      if (quadrosSemMudanca < 3) quadro = requestAnimationFrame(desenhar);
+    };
+    const agendar = () => {
+      quadrosSemMudanca = 0;
+      if (!quadro) quadro = requestAnimationFrame(desenhar);
+    };
+
+    // Redesenha assim que o contêiner muda de tamanho, atrelado ao
+    // ResizeObserver (depois do setSize): o evento resize da janela disparava
+    // ANTES do observer, o quadro saía com o tamanho velho e o setSize seguinte
+    // limpava o canvas — planeta em branco ao girar o celular.
+    const observador = new ResizeObserver(() => {
+      if (!dimensionar()) return;
+      sujo = true;
+      if (quadro) cancelAnimationFrame(quadro);
+      quadro = 0;
+      desenhar();
+    });
+    observador.observe(alvo);
+    if (dimensionar()) desenhar();
+
+    window.addEventListener("scroll", agendar, { passive: true });
 
     return () => {
-      if (animacao) cancelAnimationFrame(animacao);
+      window.removeEventListener("scroll", agendar);
+      if (quadro) cancelAnimationFrame(quadro);
       observador.disconnect();
       for (const d of descartaveis) d.dispose();
       renderizador.dispose();
       if (renderizador.domElement.parentNode === alvo) alvo.removeChild(renderizador.domElement);
     };
-  }, [progresso, animar, pracas, ligacoes]);
+  }, [progresso, vistaParada, pracas, ligacoes]);
 
   return <div ref={hospedeiro} className="w-full h-full" aria-hidden="true" />;
 }

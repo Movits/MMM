@@ -80,7 +80,7 @@ const ctx = (id: number) => ({
   res: { cookie: () => {} },
 }) as never;
 
-const ONBOARDING_MINIMO = { displayName: "Ana Souza", city: "Brasília", country: "BR" };
+const ONBOARDING_MINIMO = { displayName: "Ana Souza", city: "Brasília", country: "BR", declaraMaioridade: true };
 
 beforeEach(() => {
   leituras.clear();
@@ -108,10 +108,11 @@ describe("exigirAceiteDoTermoGeral", () => {
     });
   });
 
-  it("com o aceite da versão vigente, passa", async () => {
+  it("com o aceite da versão vigente, passa e diz QUAL versão foi aceita", async () => {
     leituras.set(documentVersions, [[TERMO]]);
     leituras.set(consents, [[{ id: 9 }]]);
-    await expect(exigirAceiteDoTermoGeral(1)).resolves.toBeUndefined();
+    // É essa versão que a declaração de maioridade registra (server/maioridade.ts).
+    await expect(exigirAceiteDoTermoGeral(1)).resolves.toEqual({ id: "termo-v1", version: 1 });
   });
 
   it("banco fora do ar é erro, nunca 'sem termo'", async () => {

@@ -9,6 +9,15 @@ import i18n from "@/i18n";
 // se registra sozinha: sem isto, o DOM de um teste vazaria para o seguinte.
 afterEach(() => {
   cleanup();
+  // O jsdom é um só por arquivo: o que um teste deixa no histórico e no
+  // sessionStorage chegaria ao seguinte. O cadastro guarda a etapa nos dois
+  // (pages/Onboarding.tsx) e reabriria na etapa em que o teste anterior parou.
+  try {
+    window.sessionStorage.clear();
+  } catch {
+    // Sem sessionStorage no ambiente: nada a limpar.
+  }
+  window.history.replaceState(null, "");
 });
 
 // As telas que usam useTranslation leem o idioma do navegador, e no jsdom isso
