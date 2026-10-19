@@ -103,7 +103,8 @@ node scripts/conferir-locales.mjs         # os 10 idiomas com as mesmas chaves
 numa branch com PR aberta e CI verde, esperando a validação de OUTRA pessoa antes do merge;
 quem fez move o cartão para lá. "Concluído": validada por outra pessoa e já na `main`,
 depois do merge e do exame de produção (passo 8); move quem validou, ou quem mesclou depois
-da validação, nunca quem fez. Exame com falha: o cartão volta a "Em andamento". Validar
+da validação, nunca quem fez. Tarefa sem código (painel, DNS, texto jurídico): "Concluído"
+quando já está em vigor e foi conferida por outra pessoa, com a evidência no cartão. Exame com falha: o cartão volta a "Em andamento". Validar
 trabalho de colega faz parte do trabalho.
 
 ## Regras que não são estilo

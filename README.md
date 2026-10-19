@@ -197,7 +197,9 @@ resolvendo o que dizia. Por isso:
    verde, à espera da validação de OUTRA pessoa antes do merge**, não "Concluído".
    Quem fez move o cartão para lá e não aprova a própria PR. "Concluído" é validado
    por outra pessoa e já na `main`, depois do merge e do exame de produção; quem move
-   é quem validou, ou quem mesclou depois da validação, nunca quem fez. Com falha no
+   é quem validou, ou quem mesclou depois da validação, nunca quem fez. Tarefa sem
+   código (painel, DNS, texto jurídico) vira "Concluído" quando já está em vigor e foi
+   conferida por outra pessoa, com a evidência no cartão. Com falha no
    exame, o cartão volta a "Em andamento". Validar PR de colega faz parte do trabalho.
 
 O detalhe de cada passo está no [CLAUDE.md](./CLAUDE.md) — que vale para pessoas
