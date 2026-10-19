@@ -193,11 +193,12 @@ resolvendo o que dizia. Por isso:
    não pode gerar arquivo se você mexeu no schema.
 5. A PR diz **o que mudou, por quê e como verificar**. Título de commit não é
    evidência.
-6. **"Feito (a validar)" no Notion é PR aberta com CI verde, à espera da validação
-   de OUTRA pessoa antes do merge**, não "Concluído". Quem fez não aprova a própria
-   PR. "Concluído" é validado por outra pessoa e já na `main`, com o exame de produção
-   sem falha; com falha no exame, o cartão volta a "Em andamento". Validar PR de
-   colega faz parte do trabalho.
+6. **"Feito (a validar)" no Notion é tarefa feita numa branch com PR aberta e CI
+   verde, à espera da validação de OUTRA pessoa antes do merge**, não "Concluído".
+   Quem fez move o cartão para lá e não aprova a própria PR. "Concluído" é validado
+   por outra pessoa e já na `main`, depois do merge e do exame de produção; quem move
+   é quem validou, ou quem mesclou depois da validação, nunca quem fez. Com falha no
+   exame, o cartão volta a "Em andamento". Validar PR de colega faz parte do trabalho.
 
 O detalhe de cada passo está no [CLAUDE.md](./CLAUDE.md) — que vale para pessoas
 tanto quanto para as máquinas.

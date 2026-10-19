@@ -1,8 +1,10 @@
 # scripts/
 
-<!-- Carregado quando o Claude lê ou edita um arquivo de scripts/. O mapa de cada script
-fica em scripts/README.md; aqui ficam as armadilhas. Este arquivo não é .mjs, então o
-"node --check scripts/*.mjs scripts/*/*.mjs" do CI não o vê. -->
+<!-- Carregado quando o Claude lê ou edita um arquivo de scripts/; rodar `node scripts/x.mjs`
+pelo Bash NÃO o carrega, por isso o CLAUDE.md da raiz manda lê-lo antes e repete a lista de
+quem grava sem recusar banco remoto (mudou a tabela abaixo, mude a linha de lá). O mapa de
+cada script fica em scripts/README.md; aqui ficam as armadilhas. Este arquivo não é .mjs,
+então o "node --check scripts/*.mjs scripts/*/*.mjs" do CI não o vê. -->
 
 Ferramentas de linha de comando, rodadas da raiz do repositório: `node` para os `.mjs`,
 `npx tsx` para os `.ts`. O cabeçalho de cada arquivo tem o uso; `scripts/README.md` é o
@@ -62,6 +64,14 @@ o banco alvo (local ou remoto).
 | `reavaliar-prata-antiga.ts`      | rebaixa a Bronze, com auditoria                                                            | `--executar --confirmar-banco=...`                           |
 | `recuperar-enriquecimento.ts`    | reaplica respostas do enriquecimento                                                       | só grava com `--aplicar`                                     |
 | `demonstrar-etapa-11.ts`         | `--exercitar` revoga e reaceita de verdade (e devolve o estado)                            | sem `--exercitar` só mostra                                  |
+
+**Quem recusa banco remoto:** só o `definir-senha-local.mjs` (recusa host que não seja
+`localhost`, `127.0.0.1` ou `::1`) e o `publicar-documento.mjs` (fora do banco local, exige
+`--confirmo-producao`). Os dois `.ts` com `--confirmar-banco` só gravam se você repetir o
+alvo que o ensaio mostrou, mas aceitam banco remoto. Todos os outros da tabela gravam no
+banco que recebem (a `DATABASE_URL` ou, no `importar-participantes.mjs`, o arquivo de
+`--env`), local ou não; `criar-banco.mjs`, `migrar.mjs`, `semear-rede-de-teste.mjs` e
+`migrar-rotulos-para-chaves.mjs` já na primeira chamada, sem flag nenhuma.
 
 Três rotinas tocam a produção por desenho: `migrar.mjs` no boot do servidor,
 `checar-producao.mjs` depois de todo deploy e `publicar-documento.mjs` quando o jurídico
