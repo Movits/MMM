@@ -49,8 +49,8 @@ estes arquivos sem o jurídico e o Roberto.
   Digital, que o cadastro exige.
 - `termo-acesso-ouro-provisorio.md`: a autorização do acervo Ouro (provisória).
 - `contrato-comissao-provisorio.md`: o contrato de comissão provisório. A retirada dele do
-  cadastro foi decidida em 14/09; no ar desde 16/09/2026 (PR #135), o cadastro não o mostra
-  mais, e a comissão passou às cláusulas 12 a 15 do Termo Geral.
+  cadastro foi decidida em 14/09 e está no ar desde 16/09/2026 (PR #135): o cadastro não o
+  mostra mais, e a comissão passou às cláusulas 12 a 15 do Termo Geral.
 - Smart Match, em **três versões**: `termo-smart-match-provisorio.md` (espelho do texto
   embutido no script), `termo-smart-match.md` (pendente de revisão jurídica) e
   `termo-smart-match-cris-2026-09-05.md` (a redação da Cris). Qual delas está vigente em
