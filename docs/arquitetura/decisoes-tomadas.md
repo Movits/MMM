@@ -7,8 +7,8 @@ ainda trava por decisão de produto.
 As regras em si moram nos CLAUDE.md (o da raiz e os de `server/`, `client/`, `drizzle/`,
 `scripts/` e `shared/`), que dizem o que fazer hoje. Este arquivo guarda a história: de
 onde cada regra veio, para ninguém desfazer sem saber. A fonte de status continua sendo o
-Notion (aba Decisões); decisão do grupo "Projetos IA" só vale para o código depois de
-registrada lá.
+Notion; as decisões da cliente nascem no grupo "Projetos IA" e nem sempre chegam ao
+Notion, e contradição entre pedido, Notion e grupo é para parar e perguntar.
 
 Formato: data, quem, o quê, onde no código. Da mais antiga para a mais nova.
 
@@ -160,9 +160,11 @@ gravado não se renomeia" no CLAUDE.md da raiz).
   - **Validar** é trabalho de OUTRA pessoa, ANTES do merge: ler o diff (não o título),
     testar o que a PR diz e aprovar a PR no GitHub escrevendo o que conferiu. Quem fez não
     aprova a própria PR.
-  - **"Concluído"**: validado por outra pessoa E na `main`, com o exame de produção sem
-    falha; se o exame falhar, o cartão volta para "Em andamento".
-  - Tarefa sem código (painel de serviço, DNS, texto jurídico) segue a mesma lógica.
+  - **"Concluído"**: validado por outra pessoa E na `main`. O exame de produção depois do
+    merge vem do fluxo que já existia na `main`; se ele falhar, o cartão volta para "Em
+    andamento".
+  - Tarefa sem código (painel de serviço, DNS, texto jurídico): "Concluído" quando já está
+    em vigor e foi conferida por outra pessoa, com a evidência no cartão.
 - **Antes:** o cartão só ia para "Feito (a validar)" depois do merge e do exame, e a
   validação era no link de teste.
 - **Onde:** "Fluxo de trabalho" (regra de status do quadro) no CLAUDE.md da raiz e
@@ -176,6 +178,17 @@ gravado não se renomeia" no CLAUDE.md da raiz).
   caracteres ou mais. Quem não consegue ler o grupo pergunta à pessoa o que houve lá e
   registra "informado por FULANA em DD/MM: resumo"; nunca inventa.
 - **Onde:** `.claude/settings.json` e `.claude/hooks/carimbo.mjs`.
+
+## 19/10/2026 — PowerShell do Claude com travas próprias (PR #160)
+
+- **Quem:** Roberto.
+- **O quê:** no Windows, a ferramenta PowerShell do Claude fica ligada e ganha no
+  `.claude/settings.json` do projeto travas equivalentes às do Bash (push na `main`, push
+  forçado, `git add -f`, ler o `.env`, scripts de banco). O Git Bash continua obrigatório
+  para os scripts do pnpm. Para desligar a ferramenta: `CLAUDE_CODE_USE_POWERSHELL_TOOL=0`.
+- **Antes:** as regras eram só de Bash, e o PowerShell ficava sem trava na máquina de quem
+  tinha regra PowerShell no settings do usuário.
+- **Onde:** `.claude/settings.json` e CLAUDE.md da raiz.
 
 ---
 

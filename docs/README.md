@@ -172,7 +172,8 @@ uma faixa no topo que diz isso.
 - **"Feito (a validar)":** o status do cartão com a PR aberta e o CI verde, esperando
   OUTRA pessoa validar. "Concluído" só vem com a PR validada por outra pessoa, na `main`
   e com o exame de produção sem falha. Com falha no exame, o cartão volta a "Em
-  andamento".
+  andamento". Tarefa sem código: "Concluído" quando já está em vigor e foi conferida
+  por outra pessoa.
 - **Render:** onde o site roda (deploy automático a cada merge na `main`).
 - **Aiven:** o MySQL de produção.
 - **B2 (Backblaze):** os arquivos (áudio, documentos, fotos).

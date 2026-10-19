@@ -10,7 +10,7 @@ está no [README](../README.md), e as palavras do projeto estão no
 Já houve push na `main` com a tarefa marcada como concluída no Notion e o código sem
 resolver o que dizia. Título de commit não é evidência. Por isso, uma tarefa anda assim:
 
-1. **Cartão.** Toda tarefa nasce de um cartão no quadro de trabalho do Notion.
+1. **Cartão.** O andamento das tarefas fica no quadro de trabalho do Notion; se a sua tem cartão, comece por ele.
 2. **`/comecar-tarefa`**, no Claude. Ele põe a pasta em dia, mostra o que entrou na
    `main`, lê o cartão e a aba Decisões, pergunta o que houve no grupo e registra a
    conferência (o carimbo, seção 8). Depois cria a branch (`feat/…`, `fix/…`, `docs/…`,
@@ -31,7 +31,8 @@ resolver o que dizia. Título de commit não é evidência. Por isso, uma tarefa
    `/conferir-producao`. Um exame cobre todos os merges desde o anterior.
 9. **"Concluído".** Com a PR validada por outra pessoa, na `main` e com o exame sem falha,
    quem validou marca o cartão. Quem fez não conclui. Com falha no exame, o cartão volta
-   a "Em andamento".
+   a "Em andamento". Tarefa sem código (painel, DNS, texto jurídico): "Concluído" quando
+   já está em vigor e foi conferida por outra pessoa, com a evidência no cartão.
 
 **Os 6 "nunca"**
 
@@ -39,19 +40,19 @@ resolver o que dizia. Título de commit não é evidência. Por isso, uma tarefa
 - Nunca rode script contra produção (Aiven, Render, Backblaze, Resend, wrwglobal.org) sem
   autorização explícita do Roberto.
 - Nunca ponha segredo num commit ou no chat. Hoje o repositório é público.
-- Nunca mude o comportamento do produto sem cartão ou decisão registrada.
+- Nunca mude o comportamento do produto sem uma decisão conhecida (cartão, grupo ou o Roberto).
 - Nunca aprove a própria PR.
 - Nunca diga que leu o Notion ou o grupo sem ter lido. Isso vale para você e para o seu Claude.
 
 **Pare e pergunte quando**
 
-- o pedido não tem cartão;
+- não está claro de onde veio o pedido (sem cartão e sem decisão no grupo);
 - pedido, Notion e grupo se contradizem;
 - o Claude pede confirmação para algo que toca produção. A resposta é não até o
   Roberto autorizar.
 
-**Onde perguntar.** Decisão de produto se pergunta no grupo e só vira código depois de
-registrada no Notion (aba Decisões). O andamento de cada tarefa fica no cartão, a
+**Onde perguntar.** Decisão de produto se pergunta no grupo. As decisões da cliente nascem lá e nem
+sempre chegam ao Notion (aba Decisões); contradição entre pedido, Notion e grupo: pare e pergunte. O andamento de cada tarefa fica no cartão, a
 dúvida sobre código fica na PR, e produção, acessos e custos ficam com o Roberto.
 
 ## 2. Acessos
@@ -76,12 +77,11 @@ Resend) ficam hoje só com o Roberto.
    - `pnpm dev` e `pnpm start` definem `NODE_ENV` com sintaxe POSIX (`NODE_ENV=… comando`),
      que o PowerShell e o cmd não entendem. Só o Git Bash não basta: o pnpm também
      precisa ser apontado para ele (item 3);
-   - boa parte das permissões do Claude neste repositório (seção 8) são regras da
-     ferramenta Bash. No Git Bash, as regras de recusa de Bash desligam a ferramenta
-     PowerShell do Claude, e todo comando passa pelo Bash, onde elas valem. Sem o Git
-     Bash, o Claude roda os comandos no PowerShell, e as regras de Bash (push na `main`,
-     scripts de banco…) não valem lá. As regras de leitura e edição de arquivo (o `.env`,
-     por exemplo) e as das ferramentas do GitHub valem sempre.
+   - os comandos do fluxo e as skills são escritos para o Bash. No Windows, a ferramenta
+     PowerShell do Claude também fica ligada, com travas próprias no `.claude/settings.json`
+     equivalentes às do Bash (push na `main`, push forçado, `git add -f`, ler o `.env`,
+     scripts de banco); decisão do Roberto em 19/10. Para desligá-la, use
+     `CLAUDE_CODE_USE_POWERSHELL_TOOL=0`.
 
    Use o Git Bash como terminal para tudo deste guia.
 2. **Node 20**, a mesma versão do CI e do `Dockerfile`. Ela saiu de suporte em
