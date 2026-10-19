@@ -169,11 +169,13 @@ uma faixa no topo que diz isso.
   push e merge para o Claude (`.claude/hooks/carimbo.mjs`). Vale 6 h, ou até a `main` mudar.
 - **Exame de produção:** `scripts/checar-producao.mjs`, rodado depois do deploy por quem tem
   o `.env.producao`. PULADO não quer dizer "passou".
-- **"Feito (a validar)":** o status do cartão com a PR aberta e o CI verde, esperando
-  OUTRA pessoa validar. "Concluído" só vem com a PR validada por outra pessoa, na `main`
-  e com o exame de produção sem falha. Com falha no exame, o cartão volta a "Em
-  andamento". Tarefa sem código: "Concluído" quando já está em vigor e foi conferida
-  por outra pessoa.
+- **"Feito (a validar)":** o status do cartão com a PR aberta e o CI verde, esperando a
+  validação. "Concluído" só vem com a PR validada, na `main` e com o exame de produção sem
+  falha. Com falha no exame, o cartão volta a "Em andamento". Tarefa sem código:
+  "Concluído" quando já está em vigor e foi conferida por outra pessoa.
+- **Validar:** outro LLM revisar a PR, o Claude de outra pessoa ou outro modelo (o Codex,
+  por exemplo), nunca o que a fez; o que ele conferiu fica registrado na PR. Revisão
+  humana só para mudança visual no app ou no site.
 - **Render:** onde o site roda (deploy automático a cada merge na `main`).
 - **Aiven:** o MySQL de produção.
 - **B2 (Backblaze):** os arquivos (áudio, documentos, fotos).

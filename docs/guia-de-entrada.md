@@ -20,16 +20,18 @@ resolver o que dizia. Título de commit não é evidência. Por isso, uma tarefa
 4. **`/abrir-pr`.** Traz a `main`, roda o que o CI roda, procura segredos e `sql.raw`,
    escreve a descrição no modelo do time (com "Como verifiquei") e abre a PR.
 5. **"Feito (a validar)"** no cartão, com o link da PR, depois de o CI da PR ficar
-   verde. Daqui em diante, o trabalho espera OUTRA pessoa.
-6. **Um colega valida** com `/validar-tarefa`: compara o diff com o cartão (não com o
-   título), abre as telas na máquina dele e aprova no GitHub.
+   verde. Daqui em diante, o trabalho espera a validação (passo 6).
+6. **Outro LLM valida**: o Claude de outra pessoa, com `/validar-tarefa`, ou outro modelo
+   (o Codex, por exemplo), nunca o que fez a PR. Compara o diff com o cartão (não com o
+   título) e registra na PR o que conferiu. Revisão humana só entra para mudança visual:
+   alguém abre as telas, no nível de conta certo, e confere.
 7. **Merge.** Segue a regra do [README](../README.md#como-trabalhamos) (hoje: quem
    revisou e aprovou mescla, por `gh pr merge`). O Claude não aprova nem mescla por
    conta própria. Se a pessoa pedir, ele mescla no computador com `gh pr merge N --merge`
    e carimbo válido. Na nuvem, não mescla: pede à pessoa que mescle do computador.
 8. **Deploy automático** no Render. Quem tem o `.env.producao` (hoje, o Roberto) roda
    `/conferir-producao`. Um exame cobre todos os merges desde o anterior.
-9. **"Concluído".** Com a PR validada por outra pessoa, na `main` e com o exame sem falha,
+9. **"Concluído".** Com a PR validada (passo 6), na `main` e com o exame sem falha,
    quem validou marca o cartão. Quem fez não conclui. Com falha no exame, o cartão volta
    a "Em andamento". Tarefa sem código (painel, DNS, texto jurídico): "Concluído" quando
    já está em vigor e foi conferida por outra pessoa, com a evidência no cartão.

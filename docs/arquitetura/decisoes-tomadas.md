@@ -159,7 +159,7 @@ gravado não se renomeia" no CLAUDE.md da raiz).
     validação. Quem fez move o cartão ao abrir a PR, com o link da PR na Comprovação.
   - **Validar** é trabalho de OUTRA pessoa, ANTES do merge: ler o diff (não o título),
     testar o que a PR diz e aprovar a PR no GitHub escrevendo o que conferiu. Quem fez não
-    aprova a própria PR.
+    aprova a própria PR. Em 19/10, "outra pessoa" passou a ser outro LLM (abaixo).
   - **"Concluído"**: validado por outra pessoa E na `main`. O exame de produção depois do
     merge vem do fluxo que já existia na `main`; se ele falhar, o cartão volta para "Em
     andamento".
@@ -178,6 +178,20 @@ gravado não se renomeia" no CLAUDE.md da raiz).
   caracteres ou mais. Quem não consegue ler o grupo pergunta à pessoa o que houve lá e
   registra "informado por FULANA em DD/MM: resumo"; nunca inventa.
 - **Onde:** `.claude/settings.json` e `.claude/hooks/carimbo.mjs`.
+
+## 19/10/2026 — validar é outro LLM revisar
+
+- **Quem:** Roberto.
+- **O quê:** a validação antes do merge é a revisão de um LLM diferente do que fez a PR: o
+  Claude de outra pessoa (com `/validar-tarefa`) ou outro modelo, como o Codex. O que conta
+  são dois olhos de modelos diferentes; a equipe não programa, então não há revisão humana
+  do código. Revisão humana só entra para mudança visual no app ou no site: alguém abre a
+  tela e confere. Quem fez continua não validando a própria PR, e o que foi conferido fica
+  registrado na PR.
+- **Antes:** a regra de 16/09 dizia "outra pessoa", e dava para ler como revisão humana do
+  código.
+- **Onde:** passo 6 e "Regra de status do quadro" no CLAUDE.md da raiz, "Como trabalhamos"
+  no README e o guia de entrada.
 
 ## 19/10/2026 — PowerShell do Claude com travas próprias (PR #160)
 
