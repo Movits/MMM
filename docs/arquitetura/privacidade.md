@@ -19,7 +19,7 @@ O escopo (etapas 8 e 10) define:
 |---|---|---|
 | **Privado** | só o dono | tudo |
 | **Ouro** | dono + Usuários Ouro autorizados | tudo que o dono liberou, incluindo dados pessoais |
-| **Público no ecossistema** | todos os membros do MMM | só as oportunidades, nunca os dados pessoais do contato |
+| **Público no ecossistema** | todos os membros da WRW | só as oportunidades, nunca os dados pessoais do contato |
 
 O padrão de um contato novo é **privado**. Nada vira público por omissão.
 

@@ -1,3 +1,6 @@
+> **Histórico. Superada pela [v2](./spec-enrichment-etapa4-v2.md).** Especificação escrita pelo Manus AI em agosto de 2026,
+> com premissas de stack que não são as do código. O sistema de hoje está no código e em [docs/README.md](./README.md).
+
 # Especificação Técnica — Etapa 4
 ## Complementação Inteligente: Chat de Enriquecimento de Cadastro
 ### Módulo CRM Inteligente · MMM (Mulheres que Movem o Mundo)

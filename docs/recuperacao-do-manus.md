@@ -1,6 +1,9 @@
+> **Histórico.** Registro de quando o código saiu do Manus (agosto e setembro de 2026). Explica o porquê
+> de algumas escolhas; não descreve o sistema de hoje. O índice atual está em [docs/README.md](./README.md).
+
 # Recuperação do código do Manus
 
-Registro do que foi preciso fazer para tirar o MMM OS da plataforma onde ele nasceu
+Registro do que foi preciso fazer para tirar o MMM OS (hoje WRW) da plataforma onde ele nasceu
 e colocá-lo neste repositório. Serve para quem for mexer no código entender por que
 algumas coisas estão como estão.
 

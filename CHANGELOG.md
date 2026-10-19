@@ -1,3 +1,6 @@
+> **Histórico.** Este arquivo vai até 02/09/2026. Depois disso, o histórico são as PRs
+> e as mensagens de commit.
+
 # Histórico da documentação
 
 ## v1.3 (02/09/2026)
