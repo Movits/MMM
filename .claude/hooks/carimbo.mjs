@@ -123,21 +123,23 @@ const RUNNERS = new Set([
 const REGEX_GIT = /\bgit\s+(?:-[^\s]+\s+)*(commit|push|merge)\b/;
 const REGEX_GH = /\bgh\s+(?:pr\s+merge|repo\s+sync|api\b[^\n]*merge)/;
 
-// `gh api` só escreve quando recebe método diferente de GET/HEAD (-X, --method)
-// ou, sem método, um corpo (-f, -F, --field, --raw-field, --input), que o gh
-// transforma em POST. Leitura (`--jq '.merged_at'`, `.allow_auto_merge`) passa.
+// `gh api` escreve quando recebe método (-X, --method) ou corpo (-f, -F,
+// --field, --raw-field, --input; com corpo e sem método, o gh manda POST). A
+// leitura simples, sem nenhuma dessas flags, passa: `--jq '.merged_at'`,
+// `.allow_auto_merge`, GET em /pulls/N/merge, `-i`, `-H`, `-q`, `--paginate`.
+// Qualquer uma delas trava, mesmo com GET: o gh aceita flag curta agrupada e
+// valor colado (`-iX PUT`, `-iXPUT`, `-X=PUT`, `-iF base=main`), e a versão que
+// tentava separar flag de valor token a token deixava esses passarem como
+// leitura (revisão de 19/10 da #161). Por isso a regra é por presença: token
+// de flag curta que tenha X, f ou F em qualquer posição, ou --method, --field,
+// --raw-field e --input (com = ou separados). Na dúvida, trava. GET já é o
+// padrão do gh, e uma busca com campos cabe na URL (`'search/issues?q=...'`).
 export function ghApiEscreve(args) {
-  let metodo = null;
-  let corpo = false;
-  for (let k = 0; k < args.length; k++) {
-    const a = args[k];
-    if (a === "-X" || a === "--method") metodo = (args[k + 1] || "").toUpperCase();
-    else if (/^-X./.test(a)) metodo = a.slice(2).toUpperCase();
-    else if (a.startsWith("--method=")) metodo = a.slice(9).toUpperCase();
-    else if (/^(?:-f|-F|--field|--raw-field|--input)(?:=|$)/.test(a) || /^-[fF]./.test(a)) corpo = true;
-  }
-  if (metodo) return metodo !== "GET" && metodo !== "HEAD";
-  return corpo;
+  return args.some(a =>
+    a.startsWith("--")
+      ? /^--(?:method|field|raw-field|input)(?:=|$)/.test(a)
+      : /^-./.test(a) && /[XfF]/.test(a)
+  );
 }
 
 // O `git merge` que só traz a main para uma branch de trabalho não mescla nada
@@ -145,12 +147,23 @@ export function ghApiEscreve(args) {
 // impasse: o --carimbar recusa branch atrás de origin/main, e o hook recusava
 // o merge que a põe em dia. Só vale na forma simples, com a branch do diretório
 // do comando conhecida e diferente de main; qualquer troca de diretório ou de
-// repositório no comando (cd, pushd, -C, GIT_DIR, --git-dir, --work-tree) tira
-// a exceção, e o merge volta a pedir carimbo.
+// repositório no comando (cd, pushd, Push-Location, -C, GIT_DIR, --git-dir,
+// --work-tree) tira a exceção, e o merge volta a pedir carimbo. O `cd` entre
+// aspas ou com barra (`"cd"`, `\cd`) também conta; `$(echo cd)` e afins não
+// são lidos, mas aí o merge da main em outro diretório continua só local.
 const ALVOS_DA_MAIN = new Set(["origin/main", "main", "refs/remotes/origin/main", "refs/heads/main"]);
 const OPCOES_DO_MERGE_SIMPLES = new Set(["--no-edit", "--ff-only", "--ff", "--no-ff"]);
 const TROCA_DE_LUGAR =
-  /(?:^|[\s;&|({])(?:cd|chdir|pushd|popd|set-location|sl)(?:\s|$)|\s-C\s|GIT_DIR|GIT_WORK_TREE|--git-dir|--work-tree/i;
+  /(?:^|[\s;&|({])["'\\]*(?:cd|chdir|pushd|popd|set-location|push-location|pop-location|sl)["']*(?:\s|$)|\s-C\s|GIT_DIR|GIT_WORK_TREE|--git-dir|--work-tree/i;
+
+// `git merge -h`, `--help`, `--abort` e `--quit` não mesclam nada, mas só
+// quando são o ÚNICO argumento depois de `merge`. Em qualquer outra posição o
+// token pode ser valor de outra opção: em `git merge -m --abort feat/outra` o
+// git toma "--abort" como a mensagem do -m e mescla feat/outra (revisão de
+// 19/10 da #161, conferido com `git rev-parse --parseopt`). Pela mesma razão
+// o `--dry-run` não libera o merge: o git merge nem tem essa opção, e em
+// `git merge -m --dry-run feat/outra` ele também vira mensagem.
+const MERGE_QUE_NAO_MESCLA = new Set(["-h", "--help", "--abort", "--quit"]);
 
 export function soTrazAMain(argsDoMerge, comandoInteiro, branch) {
   if (!branch || branch === "main" || branch === "HEAD" || branch === "?") return false;
@@ -190,15 +203,15 @@ function classificarSegmento(segmento, ctx = {}) {
       else j += 1;
     }
     const sub = t[j];
-    if (sub === "commit" || sub === "push" || sub === "merge") {
+    if (sub === "merge") {
+      const resto = t.slice(j + 1);
+      if (resto.length === 1 && MERGE_QUE_NAO_MESCLA.has(resto[0])) return null;
+      if (soTrazAMain(resto, ctx.comando || s, ctx.branch)) return null;
+      return "merge";
+    }
+    if (sub === "commit" || sub === "push") {
       if (t.includes("--dry-run")) return null;
       if (sub === "push" && t.includes("-n")) return null;
-      if (sub === "merge") {
-        const resto = t.slice(j + 1);
-        // Ajuda e desistência não mesclam nada.
-        if (resto.some(a => ["-h", "--help", "--abort", "--quit"].includes(a))) return null;
-        if (soTrazAMain(resto, ctx.comando || s, ctx.branch)) return null;
-      }
       return sub;
     }
     return null;
@@ -207,7 +220,10 @@ function classificarSegmento(segmento, ctx = {}) {
     const resto = t.slice(i + 1).join(" ");
     if (/^pr\s+merge\b/.test(resto)) return "merge";
     if (/^repo\s+sync\b/.test(resto)) return "push";
-    if (/^api\b/.test(resto) && /merge/i.test(resto) && ghApiEscreve(t.slice(i + 2))) {
+    // Aspas e barras no meio da palavra (`mer""ge`, `mer\ge`) não escondem o
+    // merge: o shell as tira antes de o gh ver o caminho.
+    const semAspas = resto.replace(/["'\\]/g, "");
+    if (/^api\b/.test(resto) && /merge/i.test(semAspas) && ghApiEscreve(t.slice(i + 2))) {
       return "merge";
     }
     return null;
@@ -473,11 +489,37 @@ function modoTestar() {
     ["git -C /outro merge origin/main", "merge", "fix/x"],
     ["git --git-dir=/outro/.git merge origin/main", "merge", "fix/x"],
     ['bash -c "git merge origin/main"', "merge", "fix/x"],
+    // Revisão de 19/10: troca de diretório que o regex não pegava.
+    ["Push-Location C:\\outro; git merge origin/main", "merge", "fix/x"],
+    ["pushd /outro && git merge origin/main", "merge", "fix/x"],
+    ['"cd" /outro && git merge origin/main', "merge", "fix/x"],
+    ["\\cd /outro && git merge origin/main", "merge", "fix/x"],
     ["git merge --abort", null],
+    ["git merge --quit", null],
     ["git merge -h", null],
+    ["git merge --help", null],
+    ["git -C /outro merge --abort", null],
+    // Revisão de 19/10: -h, --help, --abort e --quit só liberam como argumento
+    // único; noutra posição podem ser valor do -m e o merge acontece.
+    ["git merge -m --abort feat/outra", "merge", "fix/x"],
+    ["git merge -m --quit feat/outra", "merge", "fix/x"],
+    ["git merge -m -h feat/outra", "merge", "fix/x"],
+    ["git merge --abort origin/x", "merge", "fix/x"],
+    ["git merge feat/outra --abort", "merge", "fix/x"],
+    ["git merge --abort 2>&1", "merge"],
+    ["git merge -m --dry-run feat/outra", "merge", "fix/x"],
+    ["git merge --dry-run feat/outra", "merge", "fix/x"],
+    ["git commit --dry-run", null],
     ["gh api repos/o/r --jq '.allow_auto_merge'", null],
     ["gh api repos/o/r/pulls/94 --jq '{merged_at: .merged_at}'", null],
     ["gh api repos/o/r/pulls/1/merge", null],
+    ["gh api repos/o/r/pulls/1 --jq '.merged'", null],
+    ["gh api repos/o/r/pulls/1 -q .mergeable_state", null],
+    ["gh api 'repos/o/r/pulls?state=closed' --jq '.[].merged_at'", null],
+    ["gh api --paginate repos/o/r/pulls --jq '.[] | select(.merged_at)'", null],
+    ["gh api -i repos/o/r/pulls/1/merge", null],
+    ["gh api -H 'Accept: application/vnd.github+json' repos/o/r/pulls/1/merge", null],
+    ["gh api 'search/issues?q=is:merged+repo:o/r'", null],
     ["gh api -X PUT repos/o/r/pulls/1/merge", "merge"],
     ["gh api --method=PUT repos/o/r/pulls/1/merge", "merge"],
     ["gh api -XPUT repos/o/r/pulls/1/merge", "merge"],
@@ -486,7 +528,28 @@ function modoTestar() {
     ["gh api graphql -f query='mutation { mergePullRequest(input: {}) { clientMutationId } }'", "merge"],
     ["gh api graphql -F query=@merge.graphql", "merge"],
     ["gh api https://api.github.com/graphql -f query='mutation { mergePullRequest }'", "merge"],
-    ["gh api -X GET search/issues -f q='is:merged'", null],
+    // Revisão de 19/10: flag curta agrupada ou com valor colado, e as longas
+    // com = ou separadas. Qualquer método conta, até GET (na dúvida, trava).
+    ["gh api -iX PUT repos/o/r/pulls/1/merge", "merge"],
+    ["gh api -iXPUT repos/o/r/pulls/1/merge", "merge"],
+    ["gh api -X=PUT repos/o/r/pulls/1/merge", "merge"],
+    ["gh api repos/o/r/merges -iF base=main -iF head=x", "merge"],
+    ["gh api repos/o/r/merges -if base=main -if head=x", "merge"],
+    ["gh api repos/o/r/merges -Fbase=main", "merge"],
+    ["gh api --method PUT repos/o/r/pulls/1/merge", "merge"],
+    ["gh api --method=put repos/o/r/pulls/1/merge", "merge"],
+    ["gh api repos/o/r/merges --field base=main --field head=x", "merge"],
+    ["gh api repos/o/r/merges --field=base=main", "merge"],
+    ["gh api repos/o/r/merges --raw-field base=main", "merge"],
+    ["gh api repos/o/r/merges --raw-field=head=x", "merge"],
+    ["gh api repos/o/r/merges --input corpo.json", "merge"],
+    ["gh api repos/o/r/merges --input=corpo.json", "merge"],
+    ["gh api -X PATCH repos/o/r/merges", "merge"],
+    ["gh api -X PUT 'repos/o/r/pulls/1/merge'", "merge"],
+    ['gh api -X PUT repos/o/r/pulls/1/mer""ge', "merge"],
+    ["gh api -X GET repos/o/r/pulls/1/merge", "merge"],
+    ["gh api --method GET repos/o/r/pulls/1/merge", "merge"],
+    ["gh api -X GET search/issues -f q='is:merged'", "merge"],
     ["gh pr merge 12 --squash", "merge"],
     ["gh pr view 12", null],
     ["gh pr create --fill", null],
