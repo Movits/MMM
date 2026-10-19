@@ -3,6 +3,9 @@
 <!-- Carregado quando o Claude lê ou edita um arquivo de client/. As regras que valem
 em toda sessão estão no CLAUDE.md da raiz. -->
 
+Não escreva neste arquivo nomes de classes utilitárias do Tailwind: o Tailwind 4 varre os
+arquivos de `client/`, inclusive este, e geraria CSS novo em produção.
+
 React 19 + Vite, consumindo o servidor tipado via tRPC (`client/src/lib/trpc.ts` + React
 Query). Front e API na mesma origem: não há proxy de dev.
 

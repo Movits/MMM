@@ -47,9 +47,8 @@ node scripts/conferir-locales.mjs         # os 10 idiomas com as mesmas chaves
   roda os scripts no cmd mesmo chamado do Git Bash; a configuração é global e vale para todo
   projeto pnpm da máquina).
 - **Permissões do projeto:** `.claude/settings.json` recusa ler `.env*` e pergunta antes de
-  script de banco; rode na forma `node scripts/x.mjs`, sem `./` nem `bash -c`, e nunca
-  contorne uma recusa. No Git Bash, as recusas de Bash desligam a ferramenta PowerShell do
-  Claude; sem Git Bash, as regras de Bash não valem no PowerShell (as de Read/Edit/MCP sim).
+  script de banco, no Bash e no PowerShell (ligado no Windows, com travas próprias). Rode
+  na forma `node scripts/x.mjs`, sem `./` nem `bash -c`, e nunca contorne uma recusa.
 - **Variáveis:** `cp .env.example .env`. Os scripts `criar-banco`, `migrar` e `nivelar-banco`
   NÃO leem o `.env`; o `checar-producao` lê um arquivo (`--env`; sem ele, `.env.producao`,
   senão `.env`). Ver `scripts/CLAUDE.md`. Sem `JWT_SECRET` o servidor não sobe; sem
