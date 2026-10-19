@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -381,5 +381,221 @@ describe("o hook rodado de verdade (modo local, sem rede)", () => {
     );
     expect(saida.systemMessage).toMatch(/^ATENÇÃO: DATABASE_URL \(do \.env\)/);
     expect(semSegredo(r.stdout + r.stderr)).toEqual([]);
+  });
+});
+
+/**
+ * As regras de permissão do .claude/settings.json (revisão de 19/10 da #160).
+ * O Claude Code não tem comando que diga se uma regra casa, então `casa` é a
+ * LEITURA da doc (code.claude.com/docs/en/permissions, "Wildcard patterns" e
+ * "PowerShell"), não o motor dele: `*` vale qualquer texto; `:*` só no fim é o
+ * mesmo que ` *`; ` *` no fim, sendo o único curinga, também casa o comando nu;
+ * PowerShell não diferencia maiúsculas. Pega regressão do tipo `git push * :*`
+ * (que vira `git push * *` e pergunta em quase todo push); a prova de verdade
+ * continua sendo o /permissions numa sessão.
+ */
+describe("as regras do .claude/settings.json", () => {
+  type Lista = "allow" | "ask" | "deny";
+  type Ferramenta = "Bash" | "PowerShell";
+  const aqui = path.dirname(fileURLToPath(import.meta.url));
+  const { permissions } = JSON.parse(
+    readFileSync(path.resolve(aqui, "..", ".claude", "settings.json"), "utf8")
+  ) as { permissions: Record<Lista, string[]> };
+
+  const escapar = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const casa = (regra: string, ferramenta: Ferramenta, comando: string) => {
+    const m = regra.match(/^(\w+)\((.*)\)$/s);
+    if (!m || m[1] !== ferramenta) return false;
+    let padrao = m[2];
+    if (padrao.endsWith(":*")) padrao = `${padrao.slice(0, -2)} *`;
+    const pedacos = padrao.split("*");
+    const fonte =
+      pedacos.length === 2 && padrao.endsWith(" *")
+        ? `${escapar(padrao.slice(0, -2))}( .*)?`
+        : pedacos.map(escapar).join(".*");
+    const flags = ferramenta === "PowerShell" ? "is" : "s";
+    return new RegExp(`^${fonte}$`, flags).test(comando);
+  };
+  // deny, depois ask, depois allow: a primeira lista que casa decide.
+  const decide = (ferramenta: Ferramenta, comando: string): Lista | null =>
+    (["deny", "ask", "allow"] as const).find(lista =>
+      permissions[lista].some(r => casa(r, ferramenta, comando))
+    ) ?? null;
+
+  it("as regras novas estão lá", () => {
+    expect(permissions.deny).toEqual(
+      expect.arrayContaining([
+        "Bash(git add -f*)",
+        "Bash(git add * --f*)",
+        "PowerShell(git add -f*)",
+        "PowerShell(Get-Content *.env)",
+        "PowerShell(Get-Content *.env.prod*)",
+        "PowerShell(git push * main)",
+      ])
+    );
+    expect(permissions.ask).toEqual(
+      expect.arrayContaining([
+        "Bash(git push * :**)",
+        "Bash(git push * --delete)",
+        "PowerShell(git push * :**)",
+        "PowerShell(node *scripts*migrar.mjs*)",
+      ])
+    );
+  });
+
+  it("nenhuma regra de ask ou deny termina em ' :*' (curinga final, não dois-pontos)", () => {
+    const quebradas = [...permissions.ask, ...permissions.deny].filter(r =>
+      /\s:\*\)$/.test(r)
+    );
+    expect(quebradas).toEqual([]);
+  });
+
+  it("cada pnpm liberado no Bash tem o par com corepack", () => {
+    const allow = new Set(permissions.allow);
+    const semCorepack = permissions.allow
+      .filter(r => r.startsWith("Bash(") && r.includes("pnpm "))
+      .filter(r => !r.includes("corepack pnpm "))
+      .filter(r => !allow.has(r.replace("pnpm ", "corepack pnpm ")));
+    expect(semCorepack).toEqual([]);
+  });
+
+  it("cada trava de git, gh, pnpm e corepack no Bash decide igual no PowerShell", () => {
+    // O comando-exemplo de cada regra (o `*` trocado por "x") tem de dar a
+    // mesma decisão nas duas ferramentas.
+    const travas = [...permissions.ask, ...permissions.deny].filter(r =>
+      /^Bash\((git|gh|pnpm|corepack) /.test(r)
+    );
+    expect(travas.length).toBeGreaterThan(40);
+    for (const regra of travas) {
+      const comando = regra.slice("Bash(".length, -1).replace(/\*/g, "x");
+      expect({ comando, d: decide("PowerShell", comando) }).toEqual({
+        comando,
+        d: decide("Bash", comando),
+      });
+    }
+  });
+
+  it("apagar branch remota pergunta; push normal da branch não", () => {
+    for (const ferramenta of ["Bash", "PowerShell"] as const) {
+      for (const comando of [
+        "git push origin :feat/x",
+        "git push -u origin :feat/x",
+        "git push :feat/x",
+        "git push origin ':feat/x'",
+        "git push origin --delete feat/x",
+        "git push origin feat/x --delete",
+        "git push -d origin feat/x",
+        "git push origin feat/x -d",
+      ]) {
+        expect({ ferramenta, comando, d: decide(ferramenta, comando) }).toEqual(
+          { ferramenta, comando, d: "ask" }
+        );
+      }
+    }
+    for (const comando of [
+      "git push -u origin feat/x",
+      "git push -u origin claude/brave-lovelace-tlp8m5",
+      "git push -u origin fix/x-d",
+    ]) {
+      expect({ comando, d: decide("Bash", comando) }).toEqual({
+        comando,
+        d: "allow",
+      });
+      // No PowerShell o projeto não libera nada: sem regra, quem decide é o
+      // modo de permissão (ou o allow do usuário), nunca um ask ou deny daqui.
+      expect({ comando, d: decide("PowerShell", comando) }).toEqual({
+        comando,
+        d: null,
+      });
+    }
+  });
+
+  it("git add forçado é recusado; git add normal e o .env.example passam", () => {
+    for (const ferramenta of ["Bash", "PowerShell"] as const) {
+      for (const comando of [
+        "git add -f .env",
+        "git add --force .env.producao",
+        "git add --forc .env",
+        "git add . -f",
+        "git add -A --force",
+        "git add -Af",
+      ]) {
+        expect({ ferramenta, comando, d: decide(ferramenta, comando) }).toEqual(
+          { ferramenta, comando, d: "deny" }
+        );
+      }
+    }
+    for (const comando of [
+      "git add .env.example",
+      "git add -A",
+      "git add client/src/pages/Perfil-final.tsx",
+      "git add docs/",
+    ]) {
+      expect({ comando, d: decide("Bash", comando) }).toEqual({
+        comando,
+        d: "allow",
+      });
+      expect({ comando, d: decide("PowerShell", comando) }).toEqual({
+        comando,
+        d: null,
+      });
+    }
+  });
+
+  it("no PowerShell, ler o .env é recusado e o .env.example não", () => {
+    for (const comando of [
+      "Get-Content .env",
+      "Get-Content .\\.env -Raw",
+      "Get-Content '.env'",
+      'Get-Content -Path ".env"',
+      "get-content C:\\Users\\x\\MMM\\.ENV.producao",
+      "Select-String JWT .env",
+      "Copy-Item .env x.txt",
+      "Format-Hex .env.local",
+    ]) {
+      expect({ comando, d: decide("PowerShell", comando) }).toEqual({
+        comando,
+        d: "deny",
+      });
+    }
+    for (const comando of [
+      "Get-Content .env.example",
+      "Get-Content .\\.env.example -Raw",
+      "Select-String JWT_SECRET .env.example",
+    ]) {
+      expect({ comando, d: decide("PowerShell", comando) }).toEqual({
+        comando,
+        d: null,
+      });
+    }
+  });
+
+  it("no PowerShell, push na main e forçado são recusados; banco e merge perguntam", () => {
+    for (const comando of [
+      "git push origin main",
+      "git push origin HEAD:main",
+      "git push --force origin feat/x",
+      "git push origin +feat/x",
+    ]) {
+      expect({ comando, d: decide("PowerShell", comando) }).toEqual({
+        comando,
+        d: "deny",
+      });
+    }
+    for (const comando of [
+      "node .\\scripts\\migrar.mjs --simular",
+      "node scripts/criar-banco.mjs",
+      "corepack pnpm db:migrate",
+      "gh pr merge 160 --squash",
+      "Remove-Item -Recurse -Force node_modules",
+    ]) {
+      expect({ comando, d: decide("PowerShell", comando) }).toEqual({
+        comando,
+        d: "ask",
+      });
+    }
+    expect(decide("Bash", "corepack pnpm db:migrate")).toBe("ask");
+    expect(decide("Bash", "corepack pnpm test")).toBe("allow");
+    expect(decide("Bash", "corepack pnpm check")).toBe("allow");
   });
 });
