@@ -1,0 +1,28 @@
+# Donos de código: servem só para pedir revisão automaticamente.
+#
+# Quando uma PR mexe num dos caminhos abaixo, o GitHub pede a revisão das
+# pessoas listadas. Não é obrigatório: a regra "Require review from Code Owners",
+# da proteção da main, deve ficar desligada (confira em Settings → Branches),
+# então qualquer colega pode revisar e aprovar. O que não está aqui não tem
+# dono: quem abre a PR escolhe quem revisa.
+#
+# Quem é quem: Movits é o Roberto, que lidera o projeto; nicolasriber19 é o
+# Nicolas. Gabriel (DevGabriel03) e Lucas Yan (pacocateamo123-max) também
+# revisam qualquer caminho, inclusive estes.
+#
+# Por que estes caminhos: as migrações rodam no boot da produção (drizzle/); o CI
+# e este arquivo (.github/); a configuração e os hooks do Claude de todo o time
+# (.claude/); a entrada, o cookie de sessão (sdk.ts) e o proxy do storage
+# (server/_core/); o texto jurídico que vai para aceite das usuárias
+# (docs/termos/).
+#
+# Formato: um caminho por linha, seguido dos donos; se mais de uma linha casar,
+# vale a última. Os donos precisam ter permissão de escrita no repositório. O
+# GitHub usa a versão deste arquivo que está na branch de destino (a main) e não
+# pede revisão em PR de rascunho: o pedido sai quando ela fica pronta.
+
+/drizzle/       @nicolasriber19 @Movits
+/.github/       @nicolasriber19 @Movits
+/.claude/       @nicolasriber19 @Movits
+/server/_core/  @nicolasriber19 @Movits
+/docs/termos/   @nicolasriber19 @Movits

@@ -1,4 +1,4 @@
-# Identidade visual do MMM
+# Identidade visual
 
 **Desde 15/09/2026 a marca é WRW — Women Rocking the World**: os originais em uso
 estão em [`wrw/`](wrw/README.md). Os arquivos abaixo são a identidade anterior

@@ -36,7 +36,6 @@
     "login": "登录",
     "startFree": "创建账户",
     "myDashboard": "我的仪表板",
-    "beta": "测试版",
     "backToTop": "返回顶部",
     "menu": "菜单"
   },
@@ -44,11 +43,11 @@
     "badge": "会员之间的全球商业网络 • +30 个国家 • 无限可能",
     "headline1": "智能，连接",
     "headline2": "真正发生的生意",
-    "subtitle": "想象一个网络，能识别出您需要认识的人 — 以及需要认识您的人。",
+    "subtitle": "想象一个网络，能识别出：您需要认识的人，以及需要认识您的人。",
     "globalBefore": "我们在",
     "globalHighlight": "30 个以上国家",
     "globalAfter": "拥有大使，将您与人脉、机遇和生意连接在一个无国界的全球网络中。",
-    "ai": "我们的人工智能交叉比对档案、兴趣、需求与机遇，揭示您独自可能永远发现不了的战略性连接。",
+    "ai": "我们的人工智能交叉比对档案、兴趣、需求与机遇，揭示可能永远不会被发现的战略性连接。",
     "hook": "您的下一笔大生意，也许就在这里。",
     "discover": "发现与您契合的人、地点与机遇。",
     "closing": "找到您的 Business Match。",
@@ -336,6 +335,7 @@
       "home": "首页",
       "continue": "继续",
       "analyzing": "分析中...",
+      "carregando": "正在加载您的注册信息…",
       "findMatches": "保存并查看我的连接"
     },
     "fields": {
@@ -655,10 +655,12 @@
     "nowLogin": "现在登录以继续。",
     "loggingIn": "登录中...",
     "creating": "创建账户中...",
-    "confirmPassword": "确认新密码",
+    "confirmPassword": "确认密码",
+    "confirmNewPassword": "确认新密码",
     "namePlaceholder": "您的全名",
     "passwordPlaceholder": "至少8个字符",
-    "confirmPasswordPlaceholder": "重复输入新密码",
+    "confirmPasswordPlaceholder": "重复输入密码",
+    "confirmNewPasswordPlaceholder": "重复输入新密码",
     "strength": "强度",
     "pwd8chars": "8+字符",
     "pwdUppercase": "大写字母",
@@ -1780,7 +1782,10 @@
     "naoPublicado": "通用使用条款尚未发布。",
     "naoPublicadoDica": "没有该条款无法完成注册。请联系支持并稍后再试；您填写的内容仍保留在此页面。",
     "versaoMudou": "您阅读期间条款已更新。请阅读新版本并重新勾选接受。",
-    "erroAceite": "无法记录您对条款的接受。没有保存任何内容；请重试。"
+    "erroAceite": "无法记录您对条款的接受。没有保存任何内容；请重试。",
+    "maioridade": "本人声明已年满18周岁。",
+    "maioridadeObrigatoria": "未作出此声明将无法完成注册：本平台仅限年满18周岁的人士使用。",
+    "maioridadeRecusada": "注册未完成：请勾选您已年满18周岁的声明，然后重试。"
   },
   "assistenteTexto": {
     "gravar": "录制语音",

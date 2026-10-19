@@ -37,7 +37,13 @@ vi.mock("./db", async (original) => ({
 
 vi.mock("./termo-geral-de-uso", async (original) => ({
   ...(await original<Record<string, unknown>>()),
-  exigirAceiteDoTermoGeral: async () => {},
+  exigirAceiteDoTermoGeral: async () => ({ id: "termo-v1", version: 1 }),
+}));
+// A declaração de maioridade tem teste próprio (maioridade.test.ts); aqui a
+// checagem é a real e só a linha de auditoria não é gravada.
+vi.mock("./maioridade", async (original) => ({
+  ...(await original<Record<string, unknown>>()),
+  registrarDeclaracaoDeMaioridade: vi.fn(async () => {}),
 }));
 vi.mock("./nivel-do-perfil", async (original) => ({
   ...(await original<Record<string, unknown>>()),
@@ -51,7 +57,7 @@ vi.mock("./matching", async (original) => ({
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
-const CADASTRO_MINIMO = { displayName: "Ana Souza", city: "Porto Alegre" };
+const CADASTRO_MINIMO = { displayName: "Ana Souza", city: "Porto Alegre", declaraMaioridade: true };
 /** Uma bio importada que não cabe no campo do cadastro. */
 const BIO_IMPORTADA = `Exporto vinho para a Europa desde 2011. ${"Detalhe do meu trabalho. ".repeat(60)}`;
 const CORTE_DO_FORMULARIO = cortarSemPartirEmoji(BIO_IMPORTADA, LIMITE_DA_BIO_NO_CADASTRO);

@@ -2,13 +2,17 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { publicProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
-import { getRequestIp } from "../password-reset-security";
+import { chaveDeRede, ipDaCliente } from "../ip-da-cliente";
 
 // O ask é público e cada chamada custa uma requisição de LLM. Sem um teto
-// próprio, qualquer visitante anônimo podia disparar até o limite global de
-// 100 req/min contra a conta do provedor. Janela deslizante em memória:
-// suficiente para a instância única do Render.
-const FAQ_LIMIT = 5;
+// próprio, qualquer visitante anônimo podia disparar até o limite da API
+// (hoje 1200 req/min por IP) contra a conta do provedor. Janela deslizante em
+// memória: suficiente para a instância única do Render. Por IP real
+// (ip-da-cliente.ts): com o primeiro item do X-Forwarded-For, bastava trocá-lo
+// a cada pergunta. 60 por minuto porque uma sala inteira no mesmo wi-fi divide
+// o mesmo IP (se a apresentação convidar a testar a assistente, 20 acabavam no
+// primeiro minuto); o Gemini pago aguenta 1000 por minuto.
+export const FAQ_LIMIT = 60;
 const FAQ_WINDOW_MS = 60_000;
 const faqCalls = new Map<string, number[]>();
 
@@ -54,7 +58,7 @@ export const faqRouter = router({
       idioma: z.string().max(10).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      assertFaqRate(getRequestIp(ctx.req.headers["x-forwarded-for"], ctx.req.socket?.remoteAddress));
+      assertFaqRate(chaveDeRede(ipDaCliente(ctx.req)));
       const idiomaDaResposta = IDIOMA_DA_RESPOSTA[input.idioma ?? ""] ?? IDIOMA_DA_RESPOSTA["pt-BR"];
       const systemPrompt = `Você é a assistente virtual da plataforma WRW — Women Rocking the World — uma rede de negócios para pessoas empreendedoras e líderes de negócios. Responda perguntas sobre a plataforma de forma clara, amigável e concisa (máximo 3 parágrafos curtos).
 

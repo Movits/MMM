@@ -126,7 +126,8 @@ describe("Onboarding — O que preciso", () => {
 
     avancar(); // → Revisão
     avancar(); // → Termo Geral de Uso
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("checkbox", { name: ptBR.termoGeral.aceite }));
+    fireEvent.click(screen.getByRole("checkbox", { name: ptBR.termoGeral.maioridade }));
     fireEvent.click(screen.getByRole("button", { name: new RegExp(pt.onboarding.nav.findMatches) }));
 
     const perfil = duble.chamadas.find(([nome]) => nome === "profile.completeOnboarding")![1] as Record<string, unknown>;

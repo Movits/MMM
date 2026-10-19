@@ -41,7 +41,13 @@ vi.mock("./nivel-do-perfil", () => ({
   reavaliarNivelPeloPerfil: (usuaria: { id: number; role: string }) => reavaliar(usuaria),
 }));
 vi.mock("./matching", () => ({ generateMatchesForUser: vi.fn(async () => { eventos.push("matches"); }) }));
-vi.mock("./termo-geral-de-uso", () => ({ exigirAceiteDoTermoGeral: vi.fn(async () => {}) }));
+vi.mock("./termo-geral-de-uso", () => ({ exigirAceiteDoTermoGeral: vi.fn(async () => ({ id: "termo-v1", version: 1 })) }));
+// A declaração de maioridade tem teste próprio (maioridade.test.ts); aqui a
+// checagem é a real e só a linha de auditoria não é gravada.
+vi.mock("./maioridade", async (original) => ({
+  ...(await original<Record<string, unknown>>()),
+  registrarDeclaracaoDeMaioridade: vi.fn(async () => {}),
+}));
 
 const { profileRouter } = await import("./routers/profile");
 
@@ -66,7 +72,7 @@ describe("perfil gravado → nível reavaliado", () => {
 
   it("profile.completeOnboarding reavalia depois das DUAS escritas (O que tenho/preciso vão na segunda)", async () => {
     const r = await caller.completeOnboarding({
-      displayName: "Bia Lima", city: "Porto", country: "PT",
+      displayName: "Bia Lima", city: "Porto", country: "PT", declaraMaioridade: true,
       whatIHave: ["imoveis"], whatINeed: ["investidores"],
     });
 

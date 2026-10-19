@@ -16,7 +16,11 @@ const Streamdown = lazy(() => import("streamdown").then(modulo => ({ default: mo
  * mudou). Sem versão publicada não há o que aceitar, e a etapa diz isso em vez
  * de deixar concluir.
  *
- * Este componente só exibe; o estado (consulta, caixa marcada, envio) é do
+ * Ao lado do aceite, a declaração "Declaro que tenho 18 anos ou mais." (cláusula
+ * 3.4 do termo: a plataforma é exclusiva para maiores de idade). São duas caixas
+ * e as duas são obrigatórias; a de maioridade não depende da versão do termo.
+ *
+ * Este componente só exibe; o estado (consulta, caixas marcadas, envio) é do
  * Onboarding.
  */
 
@@ -54,12 +58,39 @@ export const TIPOGRAFIA_DO_TERMO =
   "[&_p]:mb-3 [&_strong]:font-semibold [&_strong]:text-white " +
   "[&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1";
 
-export function EtapaTermoGeralDeUso({ carregando, erro, documento, aceito, onAceitoChange, onTentarDeNovo }: {
+/** Uma caixa obrigatória da última etapa, com o aviso de que ela falta logo abaixo. */
+function CaixaObrigatoria({ marcada, onChange, rotulo, aviso }: {
+  marcada: boolean;
+  onChange: (marcada: boolean) => void;
+  rotulo: string;
+  aviso: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 transition-all duration-200"
+        style={{
+          borderColor: marcada ? "#c98f70" : "rgba(255,255,255,0.1)",
+          backgroundColor: marcada ? "rgba(201,143,112,0.1)" : "rgba(255,255,255,0.02)",
+        }}>
+        <input type="checkbox" checked={marcada} onChange={evento => onChange(evento.target.checked)}
+          className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-[#c98f70]" />
+        <span className="text-sm font-medium text-white">{rotulo}</span>
+      </label>
+      {!marcada && <p className="text-center text-xs text-red-400/70">{aviso}</p>}
+    </div>
+  );
+}
+
+export function EtapaTermoGeralDeUso({
+  carregando, erro, documento, aceito, onAceitoChange, maioridadeDeclarada, onMaioridadeChange, onTentarDeNovo,
+}: {
   carregando: boolean;
   erro: boolean;
   documento: DocumentoDoTermo | null;
   aceito: boolean;
   onAceitoChange: (aceito: boolean) => void;
+  maioridadeDeclarada: boolean;
+  onMaioridadeChange: (declarada: boolean) => void;
   onTentarDeNovo: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -119,17 +150,13 @@ export function EtapaTermoGeralDeUso({ carregando, erro, documento, aceito, onAc
         </Suspense>
       </div>
 
-      <div className="space-y-2">
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 transition-all duration-200"
-          style={{
-            borderColor: aceito ? "#c98f70" : "rgba(255,255,255,0.1)",
-            backgroundColor: aceito ? "rgba(201,143,112,0.1)" : "rgba(255,255,255,0.02)",
-          }}>
-          <input type="checkbox" checked={aceito} onChange={evento => onAceitoChange(evento.target.checked)}
-            className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-[#c98f70]" />
-          <span className="text-sm font-medium text-white">{t("termoGeral.aceite")}</span>
-        </label>
-        {!aceito && <p className="text-center text-xs text-red-400/70">{t("termoGeral.obrigatorio")}</p>}
+      {/* O aceite vem logo abaixo do texto, no lugar da linha "☐ LI E ACEITO"
+          do documento; a declaração de maioridade, em seguida. */}
+      <div className="space-y-3">
+        <CaixaObrigatoria marcada={aceito} onChange={onAceitoChange}
+          rotulo={t("termoGeral.aceite")} aviso={t("termoGeral.obrigatorio")} />
+        <CaixaObrigatoria marcada={maioridadeDeclarada} onChange={onMaioridadeChange}
+          rotulo={t("termoGeral.maioridade")} aviso={t("termoGeral.maioridadeObrigatoria")} />
       </div>
     </div>
   );

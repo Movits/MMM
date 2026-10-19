@@ -1,3 +1,6 @@
+> **Histórico.** Especificação escrita pelo Manus AI em agosto de 2026, quando o código ainda estava na
+> plataforma Manus (Drizzle sobre MySQL/TiDB e tRPC, com a API descrita em notação REST). Registra o pedido; o sistema de hoje está no código e em [docs/README.md](./README.md).
+
 # Especificação Técnica — Base Particular de Contatos
 ## Módulo: Minha Rede de Relacionamentos · MMM (Mulheres que Movem o Mundo)
 
