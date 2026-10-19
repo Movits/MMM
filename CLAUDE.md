@@ -84,11 +84,11 @@ node scripts/conferir-locales.mjs         # os 10 idiomas com as mesmas chaves
    tela: "testado" no front inclui abrir cada tela afetada no nível certo (`client/CLAUDE.md`).
 5. **Abra a PR com `/abrir-pr`**; com o CI verde, mova o cartão conforme a regra de status
    (abaixo), com o link da PR na Comprovação.
-6. **Validar é de OUTRA pessoa, antes do merge** (`/validar-tarefa`): ler o diff contra o
-   cartão (não o título), testar o que a PR diz ("Como verifiquei" e as telas, com o nível de
-   conta certo) e aprovar a PR no GitHub escrevendo o que conferiu. Sem código (painel, DNS,
-   texto jurídico), outra pessoa confere e registra no cartão o que viu. Quem fez não valida
-   nem aprova a própria PR.
+6. **Validar é outro LLM revisar, antes do merge**: o Claude de outra pessoa
+   (`/validar-tarefa`) ou outro modelo (o Codex, por exemplo), nunca o que fez a PR. Lê o
+   diff contra o cartão (não o título), testa o que a PR diz e registra na PR o que conferiu.
+   Revisão humana só para mudança visual (abrir as telas no nível de conta certo). Sem código
+   (painel, DNS, texto jurídico), outra pessoa confere e registra no cartão o que viu.
 7. **Merge** com aprovação e CI verde, só por `gh pr merge` (o botão do site e a ferramenta
    MCP de merge passam ao largo do carimbo); quem mescla segue a regra do README (hoje: quem
    revisou e aprovou mescla). O Claude não aprova nem mescla por conta própria. Se a pessoa
@@ -98,13 +98,13 @@ node scripts/conferir-locales.mjs         # os 10 idiomas com as mesmas chaves
    `/conferir-producao` (`node scripts/checar-producao.mjs --env .env.producao`; PULADO não é
    "passou"); o cartão anda conforme a regra de status, com a saída na Comprovação.
 
-**Regra de status do quadro** (do Roberto, 16/09). "Feito (a validar)": a tarefa está feita
-numa branch com PR aberta e CI verde, esperando a validação de OUTRA pessoa antes do merge;
-quem fez move o cartão para lá. "Concluído": validada por outra pessoa e já na `main`,
-depois do merge e do exame de produção (passo 8); move quem validou, ou quem mesclou depois
-da validação, nunca quem fez. Tarefa sem código (painel, DNS, texto jurídico): "Concluído"
-quando já está em vigor e foi conferida por outra pessoa, com a evidência no cartão. Exame com falha: o cartão volta a "Em andamento". Validar
-trabalho de colega faz parte do trabalho.
+**Regra de status do quadro** (do Roberto, 16/09 e 19/10). "Feito (a validar)": feita numa
+branch com PR aberta e CI verde, esperando a validação do passo 6; quem fez move o cartão
+para lá. "Concluído": validada e já na `main`, depois do merge e do exame de produção (passo
+8); move quem validou ou quem mesclou depois da validação, nunca quem fez. Sem código (painel,
+DNS, texto jurídico): "Concluído" quando já está em vigor e foi conferida por outra pessoa,
+com a evidência no cartão. Exame com falha: volta a "Em andamento". Validar trabalho de colega
+faz parte do trabalho.
 
 ## Regras que não são estilo
 

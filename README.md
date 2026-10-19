@@ -194,9 +194,12 @@ resolvendo o que dizia. Por isso:
 5. A PR diz **o que mudou, por quê e como verificar**. Título de commit não é
    evidência.
 6. **"Feito (a validar)" no Notion é tarefa feita numa branch com PR aberta e CI
-   verde, à espera da validação de OUTRA pessoa antes do merge**, não "Concluído".
-   Quem fez move o cartão para lá e não aprova a própria PR. "Concluído" é validado
-   por outra pessoa e já na `main`, depois do merge e do exame de produção; quem move
+   verde, à espera da validação antes do merge**, não "Concluído". **Validar é outro
+   LLM revisar**: o Claude de outra pessoa ou outro modelo (o Codex, por exemplo),
+   nunca o que fez a PR, com o que conferiu registrado na PR. Revisão humana só entra
+   para mudança visual (abrir a tela). Quem fez move o cartão para lá e não aprova a
+   própria PR. "Concluído" é validado e já na `main`, depois do merge e do exame de
+   produção; quem move
    é quem validou, ou quem mesclou depois da validação, nunca quem fez. Tarefa sem
    código (painel, DNS, texto jurídico) vira "Concluído" quando já está em vigor e foi
    conferida por outra pessoa, com a evidência no cartão. Com falha no
