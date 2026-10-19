@@ -34,7 +34,7 @@ allowed-tools:
 
 Cartão: $ARGUMENTS
 
-**Nuvem × computador.** Na nuvem não há `.env` nem MySQL, `gh pr` dá 403 (a PR sai por `mcp__github__create_pull_request`) e não dá para abrir as telas: escreva "smoke não feito" na PR. No computador (Windows: Git Bash e, uma vez por computador, `pnpm config set script-shell "C:\\Program Files\\Git\\bin\\bash.exe"`), a PR sai por `gh pr create` e as telas se abrem com `pnpm dev` antes de começar.
+**Nuvem × computador.** Na nuvem não há `.env` nem MySQL, `gh pr` dá 403 (a PR sai por `mcp__github__create_pull_request`) e não dá para abrir as telas: escreva "smoke não feito" na PR. No computador (Windows: Git Bash e, uma vez por computador, `pnpm config set script-shell "C:\\Program Files\\Git\\bin\\bash.exe"`), a PR sai por `gh pr create` e as telas se abrem com `pnpm dev` antes de começar. Antes do `pnpm dev`, confirme que o `DATABASE_URL` do `.env` aponta para banco local, sem mostrar o valor (o aviso de início de sessão diz a classe: local, Aiven ou remoto); se não for local, pare e pergunte.
 
 1. Na `main`, recuse: "crie a branch com /comecar-tarefa".
 2. **Carimbo.** `git fetch --prune origin` e `node .claude/hooks/carimbo.mjs --status`. Inválido (venceu ou a `main` andou): leia os passos 7 a 9 em `.claude/skills/comecar-tarefa/SKILL.md` e siga só eles (não invoque a skill: ela troca e cria branch). O passo 9 diz como carimbar com a branch atrás da `main` e voltar para a branch anotada. O que não foi commitado vai junto na troca; se o git recusar, pare e pergunte.
@@ -57,4 +57,4 @@ Cartão: $ARGUMENTS
 9. **Publicar.** `git push -u origin <nome da branch>`, com o nome escrito (o hook confere o carimbo; a forma com `HEAD` pede confirmação). Computador: `gh pr create --base main --title "<tipo>: <o que muda>" --body-file <arquivo>`. Nuvem: `mcp__github__create_pull_request` com `base: main` e a branch atual como `head` (owner e repo do fim de `git remote get-url origin`). Mostre o link.
 10. **CI:** acompanhe com `gh run list --branch <branch> --limit 3`. Vermelho: corrija antes de pedir validação.
 11. **Cartão:** com o CI verde e o ok da pessoa, mova o cartão conforme a regra de status do CLAUDE.md, com o link da PR, e diga a quem pedir a validação (outra pessoa do time; quem fez não valida).
-12. Nunca aprove, mescle nem marque "Concluído": isso é da `/validar-tarefa` e da `/conferir-producao`.
+12. Nunca aprove, mescle nem marque "Concluído": quem marca "Concluído" é outra pessoa, conforme a regra de status do quadro no CLAUDE.md.

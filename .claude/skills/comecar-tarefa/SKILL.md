@@ -37,7 +37,7 @@ Cartão ou assunto: $ARGUMENTS
 ## Pôr a pasta em dia (sempre)
 1. Há mudança não commitada? Pare e pergunte o que fazer. Nada de `stash` por conta própria.
 2. `git fetch --prune origin`.
-3. Anote a branch atual (`git branch --show-current`). Computador, pasta limpa: anote `git rev-parse --short main`, rode `git switch main && git pull --ff-only` e compare (`git diff --name-only <antes> HEAD`). Se o `--ff-only` recusar, a `main` local tem commit que não está no GitHub: pare e pergunte. Na nuvem, não troque de branch agora.
+3. Anote a branch atual (`git branch --show-current`). Computador, pasta limpa: anote `git rev-parse --short main`, rode `git switch main && git pull --ff-only` e compare (`git diff --name-only <antes> HEAD`). Numa worktree (a `main` presa na pasta principal), troque o `git switch main && git pull --ff-only` por `git fetch --prune origin` e compare com `origin/main`. Se o `--ff-only` recusar, a `main` local tem commit que não está no GitHub: pare e pergunte. Na nuvem, não troque de branch agora.
    - mudou `pnpm-lock.yaml`: rode `pnpm install`;
    - mudou `drizzle/`: lembre de aplicar as migrações no banco LOCAL (leia o passo 4 de `.claude/skills/mudar-schema/SKILL.md`);
    - mudou `.env.example`: liste só os NOMES das variáveis novas.
@@ -48,7 +48,7 @@ Cartão ou assunto: $ARGUMENTS
 ## Com o cartão ou o assunto
 7. **Notion.** Com o conector, leia o cartão e a aba Decisões. Sem ele, diga isso e peça à pessoa o texto do cartão e das decisões que importam. Nunca diga que leu o que não abriu.
 8. **Grupo "Projetos IA".** Se você não tem como ler o grupo, pergunte à pessoa o que houve lá desde a última conferência (decisões, pedidos da cliente); nunca invente. Decisão que só existe no grupo: peça que ela seja anotada no cartão ou na aba Decisões antes de implementar. Pedido, cartão e grupo em contradição: pare e pergunte.
-9. **Carimbo.** O registro exige `HEAD` em dia com `origin/main`. Se a branch ficou atrás de `origin/main` (`git rev-list --count HEAD..origin/main` não dá 0, no computador ou na nuvem): anote a branch (`git branch --show-current`), `git switch main && git pull --ff-only`, carimbe, volte com `git switch <branch anotada>` e rode `git merge origin/main`. Nunca rebase de branch já empurrada. O registro:
+9. **Carimbo.** O registro exige `HEAD` em dia com `origin/main`. Se a branch ficou atrás de `origin/main` (`git rev-list --count HEAD..origin/main` não dá 0, no computador ou na nuvem): anote a branch (`git branch --show-current`), `git switch main && git pull --ff-only`, carimbe, volte com `git switch <branch anotada>` e rode `git merge origin/main`. Numa worktree, onde a `main` está presa na pasta principal e o `git switch main` falha, use `git switch --detach origin/main` no lugar dele e volte do mesmo jeito. Nunca rebase de branch já empurrada. O registro:
    `node .claude/hooks/carimbo.mjs --carimbar --github "..." --notion "..." --whatsapp "..."`
    - cada texto com 20 caracteres ou mais; o de `--github` cita o SHA curto de `origin/main` (`git rev-parse --short origin/main`) e diz o que você viu;
    - `--notion`: "cartão X lido pelo conector em <DD/MM>: <resumo>" ou "texto do cartão colado por <pessoa> em <DD/MM>: <resumo>";

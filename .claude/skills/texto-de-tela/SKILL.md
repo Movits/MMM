@@ -10,7 +10,7 @@ allowed-tools:
   - "Bash(pnpm check)"
 ---
 
-**Nuvem × computador.** Igual nos dois, menos o passo 7: o smoke das telas só dá para fazer no computador (Windows: Git Bash e, uma vez por computador, `pnpm config set script-shell "C:\\Program Files\\Git\\bin\\bash.exe"`), com `pnpm dev` e banco local. Na nuvem, escreva "smoke não feito" na PR.
+**Nuvem × computador.** Igual nos dois, menos o passo 7: o smoke das telas só dá para fazer no computador (Windows: Git Bash e, uma vez por computador, `pnpm config set script-shell "C:\\Program Files\\Git\\bin\\bash.exe"`), com `pnpm dev` e banco local. Antes do `pnpm dev`, confirme que o `DATABASE_URL` do `.env` aponta para banco local, sem mostrar o valor (o aviso de início de sessão diz a classe: local, Aiven ou remoto); se não for local, pare e pergunte. Na nuvem, escreva "smoke não feito" na PR.
 
 1. **Nada de texto fixo em JSX.** Use `const { t } = useTranslation()` e `t("area.chave")`. A exceção é `AdminPanel`, `PresidentPanel` e `LegalPage`, que seguem em pt-BR fixo: traduzi-los é o cartão F1, não misture com outra tarefa.
 2. **Os 10 arquivos** de `client/src/i18n/locales/`: `pt-BR.json`, `en.json`, `es.json`, `fr.json`, `de.json`, `ru.json`, `hi.json`, `ar.json`, `zh.json` e `ja.json`. Cada um tem de 120 a 226 KB e cerca de 2.500 linhas, com as chaves na mesma ordem. **Não leia nenhum inteiro:** ache uma chave vizinha com Grep (`"chaveVizinha"`, com número de linha), leia só aquele trecho e faça a mesma edição com Edit, arquivo por arquivo, usando a vizinha como âncora.

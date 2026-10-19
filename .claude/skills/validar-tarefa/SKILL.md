@@ -37,7 +37,7 @@ allowed-tools:
 
 PR ou cartão: $ARGUMENTS
 
-**Nuvem × computador.** Na nuvem `gh pr` dá 403: leia com `mcp__github__pull_request_read` (owner e repo do fim de `git remote get-url origin`); não há banco, então o roteiro de telas fica para a máquina local. No computador (Windows: Git Bash e, uma vez por computador, `pnpm config set script-shell "C:\\Program Files\\Git\\bin\\bash.exe"`) use `gh pr ...` e `pnpm dev` com banco local.
+**Nuvem × computador.** Na nuvem `gh pr` dá 403: leia com `mcp__github__pull_request_read` (owner e repo do fim de `git remote get-url origin`); não há banco, então o roteiro de telas fica para a máquina local. No computador (Windows: Git Bash e, uma vez por computador, `pnpm config set script-shell "C:\\Program Files\\Git\\bin\\bash.exe"`) use `gh pr ...` e `pnpm dev` com banco local. Antes do `pnpm dev`, confirme que o `DATABASE_URL` do `.env` aponta para banco local, sem mostrar o valor (o aviso de início de sessão diz a classe: local, Aiven ou remoto); se não for local, pare e pergunte.
 
 1. **Quem pede.** Descubra o login (`gh api user --jq .login` ou `mcp__github__get_me`). Se for autor da PR ou de commits dela, recuse: quem fez não valida.
 2. **Ler a PR inteira.** Computador: `gh pr view N --comments`, `gh pr diff N` e `gh pr checks N`. Nuvem: `mcp__github__pull_request_read` com `get`, `get_diff`, `get_files`, `get_check_runs` (o CI é GitHub Actions, que registra check runs) e `get_review_comments`. Leia o "Como verifiquei" do autor: o que ele diz que conferiu e o que deixou de fora.

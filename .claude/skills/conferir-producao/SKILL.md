@@ -13,7 +13,7 @@ allowed-tools:
 
 Argumento: $ARGUMENTS (vazio = sem `--com-ia`)
 
-O comando do exame fica fora do `allowed-tools` de propósito: ele cria e apaga dados em produção, e a pessoa aprova cada execução.
+O comando do exame fica fora do `allowed-tools` de propósito: ele cria e apaga dados em produção. Peça o sim da pessoa naquela hora, antes de cada execução, mesmo que as permissões do computador não perguntem, e registre o resultado na PR e no cartão.
 
 **Nuvem × computador.** Na nuvem esta skill recusa (passo 1). No computador com Windows, rode no Git Bash, a partir da raiz do repositório: o caminho de `--env` é relativo à pasta atual.
 
