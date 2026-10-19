@@ -879,7 +879,10 @@ function classificarGh(t, i) {
 // Caminho de script como o Git Bash e o PowerShell escrevem: /c/Users/...,
 // ~/x, $HOME/x, $env:USERPROFILE\x, /tmp/x.
 function resolverCaminho(caminho, base) {
+  // A barra invertida do PowerShell (.\x.ps1) vira barra: o Windows aceita as
+  // duas, e fora dele (o CI roda em Linux) a invertida não separa pasta.
   let c = caminho
+    .replace(/\\/g, "/")
     .replace(/^~(?=[\\/]|$)/, homedir())
     .replace(/^\$\{?HOME\}?(?=[\\/]|$)/i, homedir())
     .replace(/^\$env:USERPROFILE(?=[\\/]|$)/i, homedir())
