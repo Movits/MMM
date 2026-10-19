@@ -1,11 +1,14 @@
-# Colocar o MMM no ar
+# Colocar a WRW no ar
+
+> **Hoje:** o site roda em https://wrwglobal.org, no Render (o serviço técnico ainda se
+> chama `mmm-gud5`), com banco MySQL no Aiven e arquivos no Backblaze B2.
 
 ## Por que não dá para usar o GitHub Pages
 
 O GitHub Pages serve **arquivos estáticos**. Ele entrega HTML, CSS, JavaScript
 e imagens, e não executa nada do lado do servidor.
 
-O MMM não é um site estático. É um processo Node único que faz as duas coisas
+A WRW não é um site estático. É um processo Node único que faz as duas coisas
 ao mesmo tempo:
 
 | O que | Onde |
@@ -28,18 +31,20 @@ servidor: a conexão com o MySQL, o `JWT_SECRET` que assina as sessões e a chav
 do LLM. Publicá-las no bundle seria entregá-las a qualquer visitante.
 
 **Onde funciona:** Railway, Render, Fly.io, Cloud Run ou um VPS. A decisão
-[D6](./arquitetura/decisoes-em-aberto.md) recomenda Railway, porque sobe o
-código como está, com MySQL gerenciado no mesmo lugar e sem hibernação.
+[D6](./arquitetura/decisoes-em-aberto.md) recomendava Railway, porque sobe o
+código como está, com MySQL gerenciado no mesmo lugar e sem hibernação. O caminho
+adotado foi Render + Aiven, na seção seguinte.
 
 ---
 
-## Subir de graça: Render + Aiven
+## Render + Aiven: o caminho em uso
 
-Caminho escolhido em 29/08/2026 para a versão de teste, enquanto não há decisão
-sobre hospedagem paga. Nenhum dos dois pede cartão.
+Caminho escolhido em 29/08/2026 para a versão de teste, nos planos gratuitos, que não
+pedem cartão. O serviço do Render passou depois a um plano pago. O plano em vigor se
+confere no painel do Render.
 
 O banco fica no **Aiven** porque o plano gratuito do Render oferece PostgreSQL, e
-o MMM fala MySQL pelo driver `mysql2`.
+a aplicação fala MySQL pelo driver `mysql2`.
 
 1. **Banco.** aiven.io → *Create service* → **MySQL** → plano **Free**. Leva uns
    dois minutos para ficar de pé. Copie a *Service URI* do painel.
@@ -59,7 +64,7 @@ o MMM fala MySQL pelo driver `mysql2`.
    DATABASE_URL='mysql://...' node scripts/criar-banco.mjs
    ```
 
-4. **Aplicação.** render.com → *New* → *Web Service* → conectar `Movits/MMM` →
+4. **Aplicação.** render.com → *New* → *Web Service* → conectar este repositório →
    runtime **Docker**. Ele acha o `Dockerfile` sozinho e injeta a `PORT`, que o
    servidor respeita em produção (`server/_core/index.ts`).
 
@@ -69,17 +74,22 @@ o MMM fala MySQL pelo driver `mysql2`.
 6. Depois do primeiro deploy, copiar o endereço `*.onrender.com` e voltar em
    *Environment* para apontar `FRONTEND_URL` para ele.
 
-**O custo do plano gratuito:** o serviço dorme depois de um tempo sem acesso, e
-a primeira visita seguinte demora de 30 a 60 segundos. Vale avisar quem for
-testar, senão parece que está fora do ar.
+**Plano gratuito × pago:** no plano gratuito do Render, o serviço dorme depois de um
+tempo sem acesso, e a primeira visita seguinte demora de 30 a 60 segundos. O serviço
+de produção está hoje num plano pago. Antes de prometer tempo de resposta a alguém,
+confira no painel qual plano está em vigor.
 
-## Subir no Railway
+## Subir no Railway (histórico)
+
+> **Histórico.** O Railway foi a recomendação da D6 em 25/08, mas o caminho adotado em
+> 29/08 foi Render + Aiven (acima). O passo 5 (criar as tabelas e como as migrações
+> rodam) vale para qualquer hospedagem.
 
 O repositório já tem `Dockerfile`, então o Railway não precisa adivinhar nada.
 
 1. **Criar a conta** em railway.app e conectar o GitHub. Pede cartão, mesmo no
    plano Hobby.
-2. **New Project → Deploy from GitHub repo → `Movits/MMM`.** Ele detecta o
+2. **New Project → Deploy from GitHub repo → este repositório.** Ele detecta o
    `Dockerfile` sozinho.
 3. **Add MySQL** no mesmo projeto. O Railway cria a variável `DATABASE_URL` e
    já a injeta no serviço do app.
@@ -139,14 +149,14 @@ código conseguia assinar uma sessão válida.
 | Variável | Para quê | Valor |
 |---|---|---|
 | `NODE_ENV` | modo produção | `production` |
-| `FRONTEND_URL` | links de e-mail e redirects | o domínio do Railway |
+| `FRONTEND_URL` | links de e-mail e redirects | o endereço público do site |
 | `LLM_API_URL` | matches, enriquecimento, transcrição | `https://generativelanguage.googleapis.com/v1beta/openai` |
 | `LLM_API_KEY` | a chave do endpoint acima | Google AI Studio |
 | `RESEND_API_KEY` | e-mail de recuperação de senha | resend.com |
 | `EMAIL_FROM` | remetente | `nao-responda@seudominio` (o nome WRW é posto pelo código) |
 | `LLM_AUDIO_MODEL_RESERVA` | opcional: modelo reserva da transcrição (assume no 503/cota) | padrão `gemini-3.5-flash-lite`; sempre id concreto, nunca alias |
 
-`PORT` o Railway injeta sozinho. Não defina na mão.
+`PORT` a hospedagem injeta sozinha (o Render e o Railway fazem isso). Não defina na mão.
 
 ### Só para o exame de produção
 

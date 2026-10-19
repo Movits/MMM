@@ -1,6 +1,6 @@
 # WRW — Women Rocking the World
 
-> O repositório, o serviço no Render e o bucket continuam com o nome técnico MMM (Mulheres que Movem o Mundo, nome anterior da marca). A marca passou a WRW em 15/09/2026.
+> A marca passou a WRW em 15/09/2026. O nome técnico MMM (Mulheres que Movem o Mundo, nome anterior da marca) continua em alguns nomes de infraestrutura.
 
 Uma empresária entra na plataforma e cadastra a base de contatos que ela já tem na
 agenda. Para cada contato, anota duas coisas: **o que aquela pessoa tem** para
@@ -12,16 +12,15 @@ privada de negociação, e o movimento fica com uma comissão sobre o que fechar
 É um CRM de networking, não uma rede social: **ninguém navega nos contatos de
 ninguém**. O cruzamento é feito pelo sistema e só o resultado aparece.
 
-## Situação em 12/09/2026
+## Situação
 
 | | |
 |---|---|
-| **Entrega** | 16/09/2026 |
-| **No ar** | https://mmm-gud5.onrender.com (plano gratuito: a primeira visita leva 30-60 s) |
-| **Escopo da entrega** | a plataforma com a base de participantes carregada e as conexões funcionando. **Fora**: pagamento pelo site e aplicativo móvel. **Talvez**: verificação completa de documentos |
-| **Etapas 1 a 11** | prontas e validadas |
-| **Etapa 12** (corretor de negócios) | aguardando decisão da cliente sobre quem é o corretor |
-| **Etapa 13** (acordo de intermediação) | parcial |
+| **No ar** | https://wrwglobal.org, no Render (o serviço técnico ainda se chama `mmm-gud5`), com banco MySQL no Aiven e arquivos no Backblaze B2 |
+| **Entregue** | etapas 1 a 11, em 16/09/2026 (a última leva da entrega entrou com a PR #135) |
+| **Em andamento e próximo** | no quadro de trabalho do Notion, aba Agora |
+| **Precisa de decisão** | aba Decisões do Notion e [docs/arquitetura/decisoes-em-aberto.md](./docs/arquitetura/decisoes-em-aberto.md) |
+| **Fora do site, por decisão** | pagamento pelo site (ajuste A14) e aplicativo móvel (repositório à parte; o lugar dele ainda vai ser decidido) |
 
 O escopo detalhado, quem está com cada item, status e prazos ficam no **Notion**,
 não aqui. Este repositório é para código e desenho técnico.
@@ -32,6 +31,8 @@ não aqui. Este repositório é para código e desenho técnico.
 - **Nicolas** (`nicolasriber19`), **Gabriel** (`DevGabriel03`) e **Lucas Yan**
   (`pacocateamo123-max`) desenvolvem. Cada um instrui o próprio Claude, e é por isso
   que o [CLAUDE.md](./CLAUDE.md) existe: ele é lido por todas essas máquinas.
+- **Gabryel** (`gabryelns`) colaborou até a entrega e está fora do time por enquanto.
+  As PRs e revisões dele seguem no histórico.
 - **Dra. Glenda** é a cliente e dona do produto. As decisões dela nascem no grupo de
   WhatsApp do time e nem sempre chegam ao Notion — quando pedido, Notion e grupo se
   contradizem, pare e pergunte.
@@ -72,7 +73,7 @@ Todo o texto do repositório — documentação, commits, PRs, comentários — 
    ir ao ar, e uma análise automática sugere que documentação aquele negócio pede.
 6. **Negociar.** Quem se interessa abre uma **Sala de Negociação**, que só destrava
    depois das duas partes aceitarem o acordo de confidencialidade. O registro do
-   negócio fechado — valor, lucro declarado e aviso de comissão — **ainda não
+   negócio fechado — valor, honorários da intermediação e aviso de comissão — **ainda não
    está no ar**: é o ajuste A11, em rascunho na PR #94, e depende de decisões
    comerciais da cliente que seguem em aberto.
 
@@ -95,46 +96,21 @@ A privacidade é aplicada **na consulta**, nunca escondendo coisas no front-end:
 
 Esconder no React não conta. Se a consulta seleciona a coluna, o dado vazou.
 
-## Comece aqui (15 minutos)
+## Comece aqui
 
-Requisitos: Node 20+, `pnpm` e um MySQL acessível. **No Windows, use o Git Bash**:
-`dev` e `start` definem `NODE_ENV` com sintaxe POSIX e falham no PowerShell.
-
-```bash
-pnpm install
-cp .env.example .env            # preencha as variáveis
-DATABASE_URL='mysql://...' node scripts/criar-banco.mjs   # banco do zero, pelas migrações
-pnpm dev                        # http://localhost:3000
-```
-
-**Os scripts `.mjs` de banco não leem o `.env`** — por isso a variável vai na
-linha de comando acima. `criar-banco.mjs`, `migrar.mjs` (`pnpm db:migrate`) e
-`nivelar-banco.mjs` leem `process.env.DATABASE_URL` e param se ela não estiver no
-ambiente: preencher o arquivo não basta. As mensagens são diferentes, e é por elas
-que se reconhece qual script parou — `criar-banco.mjs` imprime "DATABASE_URL não
-definida." com um exemplo de linha de comando; `migrar.mjs` e `nivelar-banco.mjs`
-imprimem "Defina DATABASE_URL.". Para exportar o `.env` inteiro de uma vez no Git
-Bash, `set -a; . ./.env; set +a` — com o cuidado de que ali o arquivo vira script
-do shell, então valor com espaço, `{` ou `#` precisa estar entre aspas.
-
-Quem carrega o arquivo sozinho é o servidor (`pnpm dev`, `pnpm start`), a suíte de
-testes, o `checar-producao.mjs` (que o recebe em `--env`) e — a exceção entre os
-comandos de banco — o `pnpm db:generate`: o `drizzle.config.ts` só lê
-`process.env.DATABASE_URL`, mas a CLI do drizzle-kit carrega o `.env` do diretório
-atual antes de abrir a configuração, então ali o arquivo basta. Sem a variável em
-lugar nenhum, o que aparece é "DATABASE_URL is required to run drizzle commands".
-
-`JWT_SECRET` é obrigatória — o servidor se recusa a subir sem ela, em vez de cair
-para um padrão inseguro. Sem `DATABASE_URL` o servidor **sobe**, e todo acesso a
-dados responde "Banco de dados indisponível": banco fora do ar é erro, nunca "sem
-dados". Em desenvolvimento não há `STORAGE_*` nem Resend, então upload e e-mail não
-funcionam, e isso é esperado.
-
-Depois de subir, abra estas três telas para entender o produto em cinco minutos:
-`/network` (a rede particular, com possui e procura), `/contexts` (onde cada pessoa
-foi conhecida) e `/dashboard` (os matches). Para as telas que dependem de nível,
-crie a conta e ajuste o papel no banco — `scripts/definir-senha-local.mjs` define
-senha em banco local, já que não há e-mail em desenvolvimento.
+1. Leia a seção 1 do [guia de entrada](./docs/guia-de-entrada.md): como uma tarefa
+   anda, do cartão ao "Concluído".
+2. Prepare a máquina pelo guia: Git Bash (no Windows, com o `script-shell` do pnpm
+   apontando para ele), Node 20, pnpm, MariaDB 11.4 local e Claude Code.
+3. `pnpm install`, `cp .env.example .env` (só valores locais) e, com o banco local do
+   guia, `DATABASE_URL='mysql://root:root@127.0.0.1:3306/wrw_dev' node scripts/criar-banco.mjs`.
+   Os scripts `.mjs` de banco não leem o `.env` (exceto o `checar-producao` e o
+   `importar-participantes`, que recebem o arquivo em `--env`), por isso a variável vai
+   na linha de comando.
+4. Siga as seções 4 a 6 do guia (banco, `.env` e o Termo Geral publicado no banco
+   local; sem ele o cadastro trava) e então `pnpm dev` (http://localhost:3000).
+5. As palavras do projeto (Ouro, distribuidor, demanda expressa, carimbo…) estão no
+   [glossário](./docs/README.md#glossário).
 
 ## A stack, e onde cada coisa mora
 
@@ -145,7 +121,7 @@ sem proxy de desenvolvimento.
 |---|---|
 | Front | React 19, Vite 7, Tailwind 4 (configurado no próprio CSS), shadcn/ui, wouter |
 | API | tRPC 11 sobre Express 4, tipos ponta a ponta sem escrever cliente HTTP |
-| Banco | MySQL via Drizzle ORM (51 tabelas, migrações versionadas) |
+| Banco | MySQL via Drizzle ORM (57 tabelas, migrações versionadas) |
 | IA | qualquer endpoint compatível com a API da OpenAI (Gemini em produção) |
 | Arquivos | storage compatível com S3 (Backblaze B2), servido por proxy autenticado |
 | Idiomas | 10, com o mesmo conjunto de chaves em todos |
@@ -163,7 +139,7 @@ server/
 drizzle/         schema.ts + as migrações SQL versionadas
 shared/          o que client e servidor usam juntos
 scripts/         ferramentas de linha de comando (ver scripts/README.md)
-docs/            desenho do sistema e specs por etapa
+docs/            guia de entrada, desenho, termos e histórico (índice em docs/README.md)
 vitrine/         página estática publicada no GitHub Pages — NÃO é a aplicação
 ```
 
@@ -177,7 +153,7 @@ Já houve push na `main` com a tarefa marcada "concluída" no Notion e o código
 resolvendo o que dizia. Por isso:
 
 1. A `main` é protegida e todo merge nela **vira deploy em produção**. Trabalhe em
-   branch (`feat/`, `fix/`, `docs/`) e abra PR.
+   branch (`feat/`, `fix/`, `docs/`, `chore/`) e abra PR.
 2. **Quem mescla é quem revisou.** A proteção da `main` pede duas coisas: uma
    aprovação de quem **não** é autor da PR e o check "Tipos, banco do zero e testes"
    verde. Não há restrição de pessoa — os quatro têm permissão de escrita, então
@@ -185,20 +161,32 @@ resolvendo o que dizia. Por isso:
    `gh pr merge`: o botão do site passa ao largo do hook.
 3. Antes de começar, leia o que entrou (`git log`, `gh pr list`), confira o quadro
    do Notion e o grupo de WhatsApp, e registre a conferência com
-   `node .claude/hooks/carimbo.mjs --carimbar`. Sem carimbo válido, o hook recusa
-   `git commit`, `git push`, `git merge` e `gh pr merge` — para todo mundo igual, no
-   seu próprio clone: o hook não sabe quem está rodando, é disciplina e não portaria.
+   `node .claude/hooks/carimbo.mjs --carimbar --github "…" --notion "…" --whatsapp "…"`.
+   O texto de `--github` cita o commit atual de `origin/main`, e o `/comecar-tarefa` do
+   Claude faz o registro com você. Se o seu Claude não lê o grupo, você conta a ele o
+   que houve lá, e ele registra isso sem inventar. Sem carimbo válido, o hook recusa
+   `git commit`, `git push`, `git merge` e `gh pr merge` pedidos ao Claude (é um hook
+   do Claude Code: no seu terminal nada é bloqueado). É disciplina, não portaria.
 4. Rode o que o CI roda: `pnpm check`, `pnpm test`, `pnpm build`;
    `node scripts/conferir-locales.mjs` se tocou em texto de tela; e `pnpm db:generate`
    não pode gerar arquivo se você mexeu no schema.
 5. A PR diz **o que mudou, por quê e como verificar**. Título de commit não é
    evidência.
-6. **"Feito (a validar)" no Notion é trabalho à espera de validação por OUTRA
-   pessoa**, não "Concluído". Quem fez não conclui. Validar item de colega faz parte
-   do trabalho.
+6. **"Feito (a validar)" no Notion é tarefa feita numa branch com PR aberta e CI
+   verde, à espera da validação antes do merge**, não "Concluído". **Validar é outro
+   LLM revisar**: o Claude de outra pessoa ou outro modelo (o Codex, por exemplo),
+   nunca o que fez a PR, com o que conferiu registrado na PR. Revisão humana só entra
+   para mudança visual (abrir a tela). Quem fez move o cartão para lá e não aprova a
+   própria PR. "Concluído" é validado e já na `main`, depois do merge e do exame de
+   produção; quem move
+   é quem validou, ou quem mesclou depois da validação, nunca quem fez. Tarefa sem
+   código (painel, DNS, texto jurídico) vira "Concluído" quando já está em vigor e foi
+   conferida por outra pessoa, com a evidência no cartão. Com falha no
+   exame, o cartão volta a "Em andamento". Validar PR de colega faz parte do trabalho.
 
-O detalhe de cada passo está no [CLAUDE.md](./CLAUDE.md) — que vale para pessoas
-tanto quanto para as máquinas.
+O passo a passo, com o comando do Claude para cada etapa, está no
+[guia de entrada](./docs/guia-de-entrada.md). As regras valem para pessoas tanto
+quanto para as máquinas e estão no [CLAUDE.md](./CLAUDE.md).
 
 ## Testes
 
@@ -225,7 +213,8 @@ Merge na `main` dispara o deploy no Render (Docker, pelo `Dockerfile`; as variá
 vivem no painel). Banco MySQL no Aiven, arquivos no Backblaze B2, vitrine no GitHub
 Pages.
 
-Depois de **todo** deploy, rode o exame de saúde:
+Depois de **todo** deploy, quem tem o `.env.producao` (hoje, o Roberto) roda o exame
+de saúde:
 
 ```bash
 node scripts/checar-producao.mjs --env .env.producao
@@ -259,18 +248,11 @@ próprio script, junto com as outras opções. Mapa das ferramentas:
 
 ## Documentação
 
-| Documento | Conteúdo |
-|---|---|
-| [CLAUDE.md](./CLAUDE.md) | o guia de trabalho completo, lido por pessoas e por Claudes |
-| [docs/arquitetura/](./docs/arquitetura/) | o desenho do sistema: camadas, princípios, modelo de dados, fluxos |
-| [docs/arquitetura/privacidade.md](./docs/arquitetura/privacidade.md) | os três níveis de acesso, em detalhe |
-| [docs/arquitetura/decisoes-em-aberto.md](./docs/arquitetura/decisoes-em-aberto.md) | o que trava implementação e precisa de decisão de produto |
-| [docs/deploy.md](./docs/deploy.md) | passo a passo do deploy e a tabela de variáveis |
-| [docs/recuperacao-do-manus.md](./docs/recuperacao-do-manus.md) | o projeto nasceu na plataforma Manus; como o código foi extraído e o que mudou |
-| [scripts/README.md](./scripts/README.md) | o mapa das ferramentas de linha de comando |
-| [CHANGELOG.md](./CHANGELOG.md) | histórico de versões da documentação |
+O índice de toda a documentação, com o glossário, está em
+[docs/README.md](./docs/README.md). Para começar, leia o
+[guia de entrada](./docs/guia-de-entrada.md). As ferramentas de linha de comando estão em
+[scripts/README.md](./scripts/README.md).
 
 **`docs/arquitetura/` é referência de projeto, não retrato do código.** Ela descreve
 para onde o sistema vai, assume Postgres com RLS, e nem tudo desenhado existe — o
-código roda MySQL. As `docs/spec-*.md` são as especificações por etapa, como
-vieram do Manus.
+código roda MySQL.

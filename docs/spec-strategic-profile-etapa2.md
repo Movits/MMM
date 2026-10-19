@@ -1,3 +1,6 @@
+> **Histórico.** Especificação escrita pelo Manus AI em agosto de 2026, com premissas de stack que não
+> são as do código (NestJS, Postgres, Expo). Registra o pedido; o sistema de hoje está no código e em [docs/README.md](./README.md).
+
 # Especificação Técnica — Etapa 2
 ## Perfil Estratégico do Contato: Ativos (Oferta) e Necessidades (Demanda)
 ### Módulo CRM Inteligente · MMM (Mulheres que Movem o Mundo)

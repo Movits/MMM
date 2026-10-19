@@ -1,4 +1,7 @@
-# Sistema de Recuperação de Senha por E-mail — MMM
+> **Histórico.** Documento da era Manus (banco "MySQL (TiDB)"); os trechos de código e de e-mail são os de então.
+> O fluxo de hoje está em `server/routers/auth.ts`, `server/password-reset-security.ts` e `server/_core/email.ts`.
+
+# Sistema de Recuperação de Senha por E-mail
 
 **Stack:** Node.js · tRPC 11 · Drizzle ORM · MySQL (TiDB) · Resend API · bcrypt
 
