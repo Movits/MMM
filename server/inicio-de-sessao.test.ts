@@ -462,8 +462,13 @@ describe("as regras do .claude/settings.json", () => {
   it("cada trava de git, gh, pnpm e corepack no Bash decide igual no PowerShell", () => {
     // O comando-exemplo de cada regra (o `*` trocado por "x") tem de dar a
     // mesma decisão nas duas ferramentas.
+    // O PowerShell compara sem distinguir maiúsculas: "-C" e "-c" são o mesmo
+    // texto lá. Por isso o git switch -C (forçar a recriação) fica sem pergunta
+    // no PowerShell, de propósito, para não perguntar no git switch -c do fluxo;
+    // a forma longa --force-create continua perguntando.
+    const SEM_PAR_NO_POWERSHELL = new Set(["Bash(git switch -C*)", "Bash(git switch * -C*)"]);
     const travas = [...permissions.ask, ...permissions.deny].filter(r =>
-      /^Bash\((git|gh|pnpm|corepack) /.test(r)
+      /^Bash\((git|gh|pnpm|corepack) /.test(r) && !SEM_PAR_NO_POWERSHELL.has(r)
     );
     expect(travas.length).toBeGreaterThan(40);
     for (const regra of travas) {
@@ -473,6 +478,21 @@ describe("as regras do .claude/settings.json", () => {
         d: decide("Bash", comando),
       });
     }
+  });
+
+  it("no PowerShell, criar branch com git switch -c não pergunta; --force-create pergunta", () => {
+    expect(decide("PowerShell", "git switch -c feat/x")).not.toBe("ask");
+    expect(decide("PowerShell", "git switch --force-create feat/x")).toBe("ask");
+    // git branch -D e -d são o mesmo texto no PowerShell: o -d seguro também
+    // pergunta, o que só custa um clique.
+    expect(decide("PowerShell", "git branch -D feat/x")).toBe("ask");
+  });
+
+  it("no PowerShell, ler .env.test, .env.dev e .env.bak é recusado", () => {
+    for (const arquivo of [".env.test", ".env.development", ".env.bak"]) {
+      expect(decide("PowerShell", `Get-Content ${arquivo}`)).toBe("deny");
+    }
+    expect(decide("PowerShell", "Get-Content .env.example")).not.toBe("deny");
   });
 
   it("apagar branch remota pergunta; push normal da branch não", () => {
